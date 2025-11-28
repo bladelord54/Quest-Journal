@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<!-- Quest Journal v1.0 - Last updated: Nov 27, 2025 -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quest Journal - Life Adventures</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Transform your life goals into epic quests. Track habits, earn rewards, and level up your life!">
+    <meta name="theme-color" content="#78350f">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Quest Journal">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;700&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dark-mode.css">
+    <link rel="stylesheet" href="animations.css">
+    <link rel="stylesheet" href="mobile.css">
+</head>
+<body class="bg-stone-900">
+    <!-- Achievement Toast -->
+    <div id="achievement-toast" class="hidden fixed top-8 right-8 z-50 transform transition-all duration-300 scale-0">
+        <div class="bg-gradient-to-br from-yellow-600 via-amber-500 to-yellow-700 text-white p-6 rounded-lg shadow-2xl border-4 border-yellow-400 quest-card">
+            <div class="flex items-center space-x-4">
+                <div class="text-6xl animate-bounce">⚔️</div>
+                <div>
+                    <div class="text-2xl font-bold medieval-font">Achievement Unlocked!</div>
+                    <div id="achievement-text" class="text-sm mt-1">Quest Completed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Search Modal -->
+    <div id="search-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm">
+        <div class="flex items-start justify-center min-h-screen pt-20">
+            <div class="bg-gradient-to-br from-gray-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 w-full max-w-3xl mx-4">
+                <!-- Search Header -->
+                <div class="p-6 border-b-2 border-amber-700/50">
+                    <div class="flex items-center gap-4">
+                        <i class="ri-search-line text-3xl text-amber-400"></i>
+                        <input 
+                            type="text" 
+                            id="global-search-input" 
+                            placeholder="Search all quests, habits, and goals..."
+                            class="flex-1 bg-stone-800 text-amber-100 px-4 py-3 rounded-lg border-2 border-amber-700 focus:border-amber-500 focus:outline-none fancy-font text-lg"
+                            onkeyup="goalManager.performSearch(this.value)"
+                        >
+                        <button onclick="goalManager.closeSearch()" class="text-amber-400 hover:text-amber-300 text-3xl">
+                            <i class="ri-close-line"></i>
+                        </button>
+                    </div>
+                    <div class="text-xs text-amber-400 mt-2 fancy-font">Press Ctrl+K or / to open search • Esc to close</div>
+                </div>
+                
+                <!-- Search Results -->
+                <div id="search-results" class="p-6 max-h-96 overflow-y-auto">
+                    <div class="text-center text-amber-300 fancy-font py-8">
+                        <i class="ri-search-2-line text-5xl mb-3 opacity-50"></i>
+                        <p>Start typing to search...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Modal -->
+    <div id="quick-add-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-gradient-to-br from-gray-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-green-600 w-full max-w-lg mx-4">
+                <div class="p-6">
+                    <div class="flex items-center gap-4 mb-4">
+                        <i class="ri-add-circle-line text-4xl text-green-400"></i>
+                        <h3 class="text-2xl font-bold text-green-300 medieval-title">Quick Add</h3>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="quick-add-input" 
+                        placeholder="What do you want to accomplish?"
+                        class="w-full bg-stone-800 text-amber-100 px-4 py-4 rounded-lg border-2 border-green-700 focus:border-green-500 focus:outline-none fancy-font text-lg mb-3"
+                        onkeydown="goalManager.handleQuickAdd(event)"
+                    >
+                    <div class="text-xs text-green-400 fancy-font mb-4">
+                        Press Enter to add • Esc to cancel • Will add to current view
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="goalManager.handleQuickAdd({key: 'Enter', target: document.getElementById('quick-add-input')})" 
+                            class="flex-1 bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                            ✓ Add Task
+                        </button>
+                        <button onclick="goalManager.closeQuickAdd()" 
+                            class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <div id="bulk-actions-bar" class="hidden fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-purple-900 to-indigo-900 border-t-4 border-purple-600 shadow-2xl p-4">
+        <div class="flex items-center justify-between max-w-7xl mx-auto">
+            <div class="flex items-center gap-4">
+                <div class="text-purple-100 font-bold fancy-font text-lg">
+                    <span id="bulk-selected-count">0</span> item(s) selected
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="goalManager.bulkComplete()" 
+                    class="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                    ✓ Complete All
+                </button>
+                <button onclick="goalManager.bulkArchive()" 
+                    class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                    📦 Archive All
+                </button>
+                <button onclick="goalManager.bulkDelete()" 
+                    class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                    🗑️ Delete All
+                </button>
+                <button onclick="goalManager.cancelBulkSelection()" 
+                    class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="hidden fixed inset-0 z-50 bg-black bg-opacity-40">
+        <!-- Spotlight highlight -->
+        <div id="tutorial-spotlight" class="absolute pointer-events-none border-4 border-yellow-400 rounded-lg shadow-2xl" style="display: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5), 0 0 50px 10px rgba(250, 204, 21, 0.8); z-index: 51;"></div>
+        
+        <!-- Tutorial Tooltip -->
+        <div id="tutorial-tooltip" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-amber-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 w-full max-w-2xl mx-4 p-8" style="z-index: 52;">
+            <div class="text-center mb-6">
+                <h2 id="tutorial-title" class="text-4xl font-bold text-amber-300 medieval-title mb-3">Welcome!</h2>
+                <div id="tutorial-content" class="text-amber-100 fancy-font text-lg leading-relaxed">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between mt-8">
+                <div class="text-sm text-amber-400 fancy-font">
+                    Step <span id="tutorial-step-number">1 / 14</span>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="goalManager.skipTutorial()" 
+                        class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        Skip Tutorial
+                    </button>
+                    <button onclick="goalManager.previousTutorialStep()" 
+                        class="bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        ← Back
+                    </button>
+                    <button id="tutorial-next-btn" onclick="goalManager.nextTutorialStep()" 
+                        class="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        Next →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Medieval Sidebar -->
+        <div id="main-sidebar" class="w-72 bg-gradient-to-b from-amber-900 via-amber-950 to-stone-950 text-amber-100 shadow-2xl border-r-4 border-amber-700 relative overflow-hidden">
+            <!-- Mobile Nav Toggle Button (shown only on mobile via CSS) -->
+            <button id="mobile-nav-toggle" onclick="toggleMobileNav()" class="hidden md:hidden">
+                <i class="ri-arrow-down-s-line"></i>
+            </button>
+            <!-- Decorative corner ornaments -->
+            <div class="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-amber-600 opacity-30"></div>
+            <div class="absolute top-0 right-0 w-16 h-16 border-r-4 border-t-4 border-amber-600 opacity-30"></div>
+            
+            <div class="p-6 border-b-2 border-amber-700/50 relative z-10">
+                <h1 class="text-3xl font-bold text-center text-amber-300 medieval-title">
+                    ⚔️ Quest Journal ⚔️
+                </h1>
+                <p class="text-center text-xs text-amber-400 mt-2 fancy-font">Your Life's Grand Adventure</p>
+            </div>
+            
+            <nav class="mt-6 space-y-1 relative z-10">
+                <a href="#dashboard" class="nav-link active flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="dashboard">
+                    <i class="ri-dashboard-line mr-3 text-2xl text-amber-400"></i>
+                    <span class="fancy-font text-lg">Your Castle</span>
+                </a>
+                <a href="#life-goals" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="life-goals">
+                    <i class="ri-flag-line mr-3 text-2xl text-red-400"></i>
+                    <span class="fancy-font text-lg">Epic Quests</span>
+                </a>
+                <a href="#yearly" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="yearly">
+                    <i class="ri-calendar-2-line mr-3 text-2xl text-purple-400"></i>
+                    <span class="fancy-font text-lg">Yearly Campaigns</span>
+                </a>
+                <a href="#monthly" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="monthly">
+                    <i class="ri-calendar-line mr-3 text-2xl text-blue-400"></i>
+                    <span class="fancy-font text-lg">Monthly Raids</span>
+                </a>
+                <a href="#weekly" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="weekly">
+                    <i class="ri-calendar-check-line mr-3 text-2xl text-green-400"></i>
+                    <span class="fancy-font text-lg">Weekly Battles</span>
+                </a>
+                <a href="#daily" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="daily">
+                    <i class="ri-sword-line mr-3 text-2xl text-orange-400"></i>
+                    <span class="fancy-font text-lg">Daily Skirmishes</span>
+                </a>
+                <a href="#calendar" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="calendar">
+                    <i class="ri-calendar-event-line mr-3 text-2xl text-yellow-400"></i>
+                    <span class="fancy-font text-lg">Quest Calendar</span>
+                </a>
+                <a href="#sidequests" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="sidequests">
+                    <i class="ri-compass-3-line mr-3 text-2xl text-cyan-400"></i>
+                    <span class="fancy-font text-lg">Side Quests</span>
+                </a>
+                <a href="#rewards" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="rewards">
+                    <i class="ri-trophy-line mr-3 text-2xl text-yellow-400"></i>
+                    <span class="fancy-font text-lg">Treasury & Rewards</span>
+                </a>
+                <a href="#spellbook" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="spellbook">
+                    <i class="ri-book-2-line mr-3 text-2xl text-purple-400"></i>
+                    <span class="fancy-font text-lg">📖 Spellbook</span>
+                </a>
+                <a href="#analytics" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="analytics">
+                    <i class="ri-line-chart-line mr-3 text-2xl text-blue-400"></i>
+                    <span class="fancy-font text-lg">📊 Analytics</span>
+                </a>
+                <a href="#bossbattles" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="bossbattles">
+                    <i class="ri-skull-2-line mr-3 text-2xl text-red-400"></i>
+                    <span class="fancy-font text-lg">⚔️ Boss Battles</span>
+                </a>
+                <a href="#questchains" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="questchains">
+                    <i class="ri-route-line mr-3 text-2xl text-cyan-400"></i>
+                    <span class="fancy-font text-lg">⛓️ Quest Chains</span>
+                </a>
+                <a href="#focus" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="focus">
+                    <i class="ri-time-line mr-3 text-2xl text-blue-400"></i>
+                    <span class="fancy-font text-lg">🎯 Focus Timer</span>
+                </a>
+                <a href="#enchantments" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="enchantments">
+                    <i class="ri-magic-line mr-3 text-2xl text-pink-400"></i>
+                    <span class="fancy-font text-lg">✨ Enchantments</span>
+                </a>
+                <a href="#tools" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="tools">
+                    <i class="ri-tools-line mr-3 text-2xl text-gray-400"></i>
+                    <span class="fancy-font text-lg">Tools & Settings</span>
+                </a>
+            </nav>
+            
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-y-auto bg-stone-800 relative">
+            <!-- Player Stats Panel - Top Right -->
+            <div id="stats-panel" class="fixed top-4 right-4 z-50" style="transition: transform 0.3s ease-in-out;">
+                <!-- Toggle Button -->
+                <button onclick="if(window.goalManager) { window.goalManager.toggleStatsPanel(); } else { alert('GoalManager not loaded yet!'); }" 
+                    class="absolute -left-12 top-2 bg-purple-700 hover:bg-purple-600 text-white p-3 rounded-l-lg shadow-xl border-2 border-purple-500 transition-all z-10">
+                    <i id="stats-toggle-icon" class="ri-arrow-right-s-line text-xl"></i>
+                </button>
+                
+                <!-- Stats Content -->
+                <div id="stats-content" class="space-y-2 w-64" style="transition: opacity 0.3s ease-in-out;">
+                    <!-- Focus Crystals -->
+                    <div class="quest-card bg-gradient-to-br from-cyan-700 to-blue-800 backdrop-blur-sm rounded-lg p-3 border-2 border-cyan-500 shadow-2xl cursor-pointer hover:scale-105 transition-transform" onclick="goalManager.switchView('enchantments')">
+                        <div class="text-2xl font-bold text-cyan-100 fancy-font flex items-center justify-center">
+                            <span class="text-3xl mr-2">💎</span>
+                            <span id="focus-crystals">0</span>
+                            <span class="text-sm ml-2">Crystals</span>
+                        </div>
+                        <div class="text-xs text-center text-cyan-200 mt-1">Click to enchant</div>
+                    </div>
+                    
+                    <!-- Gold Coins -->
+                    <div class="quest-card bg-gradient-to-br from-yellow-700 to-yellow-800 backdrop-blur-sm rounded-lg p-3 border-2 border-yellow-500 shadow-2xl">
+                        <div class="text-2xl font-bold text-yellow-100 fancy-font flex items-center justify-center">
+                            <i class="ri-coin-line mr-2 text-3xl"></i>
+                            <span id="gold-coins">0</span>
+                            <span class="text-sm ml-2">Gold</span>
+                        </div>
+                    </div>
+                    
+                    <!-- XP and Level -->
+                    <div class="quest-card bg-gradient-to-br from-purple-800 to-purple-900 backdrop-blur-sm rounded-lg p-3 border-2 border-purple-600 shadow-2xl">
+                        <div class="text-sm font-bold mb-2 text-purple-100 fancy-font flex items-center justify-between">
+                            <span><i class="ri-vip-crown-line mr-2 text-yellow-400"></i>Level <span id="player-level">1</span></span>
+                            <span class="text-xs"><span id="player-xp">0</span> XP</span>
+                        </div>
+                        <div class="text-xs text-purple-200 fancy-font mb-2"><span id="player-title">Peasant</span></div>
+                        <div class="w-full bg-purple-950 rounded-full h-3 border border-purple-700 mb-2">
+                            <div id="xp-progress" class="bg-gradient-to-r from-purple-500 to-purple-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <div class="text-xs text-purple-200 fancy-font text-center">
+                            <span id="xp-to-next">500 XP</span> to next level
+                        </div>
+                        <div id="current-prefix" class="text-xs text-yellow-300 text-center mt-2 italic"></div>
+                    </div>
+                    
+                    <!-- Daily Progress -->
+                    <div class="quest-card bg-gradient-to-br from-amber-800 to-amber-900 backdrop-blur-sm rounded-lg p-3 border-2 border-amber-600 shadow-2xl">
+                        <div class="text-sm font-bold mb-2 text-amber-100 fancy-font flex items-center">
+                            <i class="ri-star-fill mr-2 text-yellow-400"></i>
+                            Today's Glory
+                        </div>
+                        <div class="w-full bg-amber-950 rounded-full h-3 mb-2 border border-amber-700">
+                            <div id="daily-progress" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-amber-200 fancy-font">
+                            <span><span id="completed-count">0</span> completed</span>
+                            <span><span id="total-count">0</span> total</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Badges & Theme Buttons -->
+                    <div class="flex gap-2">
+                        <button onclick="goalManager.switchView('tools')" class="flex-1 text-sm bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-500">
+                            🏆 <span id="badge-count">0</span>
+                        </button>
+                        <button onclick="goalManager.toggleDarkMode()" id="theme-toggle" class="flex-1 text-sm bg-stone-700 hover:bg-stone-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-stone-500">
+                            🌙
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view-container p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-3">🏰 Your Castle 🏰</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Your adventure awaits, brave hero!</p>
+
+                    <!-- Current Title Banner -->
+                    <div id="current-title-banner" class="mt-3 text-amber-200 fancy-font text-base hidden">
+                        <span class="opacity-80">Title Equipped:</span>
+                        <span id="current-title-text" class="ml-1 text-amber-100 font-semibold"></span>
+                    </div>
+
+                    <!-- Motivational Quote -->
+                    <div class="mt-6 quest-card bg-gradient-to-br from-purple-900/40 to-purple-950/40 p-4 rounded-lg border-2 border-purple-600/30 max-w-2xl mx-auto">
+                        <div class="text-purple-200 fancy-font italic text-lg" id="motivational-quote">
+                            "Loading wisdom..."
+                        </div>
+                        <div class="text-purple-400 text-sm mt-2" id="quote-author">- Ancient Sage</div>
+                        <button onclick="goalManager.render()" class="text-xs text-purple-300 hover:text-purple-100 mt-2 underline">
+                            🔄 New Quote
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Period Summaries -->
+                <div class="mb-8 flex justify-center gap-4 flex-wrap">
+                    <button onclick="goalManager.showPeriodSummary('week')" 
+                        class="bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-green-500">
+                        📅 Week Summary
+                    </button>
+                    <button onclick="goalManager.showPeriodSummary('month')" 
+                        class="bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-purple-500">
+                        📆 Month Summary
+                    </button>
+                    <button onclick="goalManager.showPeriodSummary('year')" 
+                        class="bg-gradient-to-r from-red-700 to-red-800 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-red-500">
+                        🗓️ Year Summary
+                    </button>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-red-200 text-sm fancy-font">Epic Quests</p>
+                                <p class="text-5xl font-bold mt-2 medieval-title" id="life-goals-count">0</p>
+                            </div>
+                            <div class="text-6xl opacity-30">🏰</div>
+                        </div>
+                        <div class="text-sm text-red-200 fancy-font">Legendary Goals</div>
+                    </div>
+                    
+                    <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 text-white p-6 rounded-xl shadow-2xl border-4 border-purple-700 hover:scale-105 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-purple-200 text-sm fancy-font">Monthly Raids</p>
+                                <p class="text-5xl font-bold mt-2 medieval-title" id="monthly-goals-count">0</p>
+                            </div>
+                            <div class="text-6xl opacity-30">👑</div>
+                        </div>
+                        <div class="text-sm text-purple-200 fancy-font">This month's conquests</div>
+                    </div>
+                    
+                    <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 text-white p-6 rounded-xl shadow-2xl border-4 border-green-700 hover:scale-105 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-green-200 text-sm fancy-font">Weekly Battles</p>
+                                <p class="text-5xl font-bold mt-2 medieval-title" id="weekly-goals-count">0</p>
+                            </div>
+                            <div class="text-6xl opacity-30">🛡️</div>
+                        </div>
+                        <div class="text-sm text-green-200 fancy-font">This week's missions</div>
+                    </div>
+                    
+                    <div class="quest-card bg-gradient-to-br from-orange-900 to-amber-950 text-white p-6 rounded-xl shadow-2xl border-4 border-orange-700 hover:scale-105 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-orange-200 text-sm fancy-font">Victories Today</p>
+                                <p class="text-5xl font-bold mt-2 medieval-title" id="daily-completed-count">0</p>
+                            </div>
+                            <div class="text-6xl opacity-30">⚔️</div>
+                        </div>
+                        <div class="text-sm text-orange-200 fancy-font">Keep conquering!</div>
+                    </div>
+                </div>
+
+                <!-- Today's Quests -->
+                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 rounded-xl shadow-2xl p-8 border-4 border-amber-600">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-amber-900 medieval-title">📜 Today's Quests</h3>
+                        <button onclick="addDailyTask()" class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg hover:scale-105 transition-transform border-2 border-amber-700">
+                            <i class="ri-add-line mr-2"></i>New Quest
+                        </button>
+                    </div>
+                    
+                    <div id="today-tasks-list" class="space-y-3">
+                        <div class="text-amber-800 text-center py-8 fancy-font">No quests for today. Begin your adventure!</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Life Goals View -->
+            <div id="life-goals-view" class="view-container hidden p-8">
+                <header class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2">🏰 Epic Life Quests</h2>
+                        <p class="text-amber-200 fancy-font">Your grandest adventures and legendary achievements</p>
+                    </div>
+                    <button onclick="addLifeGoal()" class="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-red-500">
+                        <i class="ri-flag-line mr-2"></i>New Epic Quest
+                    </button>
+                </header>
+
+                <div id="life-goals-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
+
+            <!-- Yearly Goals View -->
+            <div id="yearly-view" class="view-container hidden p-8">
+                <header class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2">📅 Yearly Campaigns - 2025</h2>
+                        <p class="text-amber-200 fancy-font">The great battles of this year</p>
+                    </div>
+                    <button onclick="addYearlyGoal()" class="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-purple-500">
+                        <i class="ri-calendar-2-line mr-2"></i>New Campaign
+                    </button>
+                </header>
+
+                <div id="yearly-goals-container" class="grid grid-cols-1 gap-4"></div>
+            </div>
+
+            <!-- Monthly Goals View -->
+            <div id="monthly-view" class="view-container hidden p-8">
+                <header class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2">🗓️ Monthly Raids - November 2025</h2>
+                        <p class="text-amber-200 fancy-font">Conquer this month's challenges</p>
+                    </div>
+                    <button onclick="addMonthlyGoal()" class="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-blue-500">
+                        <i class="ri-calendar-line mr-2"></i>New Raid
+                    </button>
+                </header>
+
+                <div id="monthly-goals-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
+
+            <!-- Weekly Goals View -->
+            <div id="weekly-view" class="view-container hidden p-8">
+                <header class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2">⚔️ Weekly Battles</h2>
+                        <p class="text-amber-200 fancy-font">This week's strategic missions</p>
+                    </div>
+                    <button onclick="addWeeklyGoal()" class="bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-green-500">
+                        <i class="ri-calendar-check-line mr-2"></i>New Battle
+                    </button>
+                </header>
+
+                <div id="weekly-goals-container" class="space-y-4"></div>
+            </div>
+
+            <!-- Daily Tasks View -->
+            <div id="daily-view" class="view-container hidden p-8">
+                <header class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2">⚔️ Daily Skirmishes</h2>
+                        <p class="text-amber-200 fancy-font">Today's action items and quick victories</p>
+                    </div>
+                    <button onclick="addDailyTask()" class="bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-700 hover:to-amber-800 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-orange-500">
+                        <i class="ri-sword-line mr-2"></i>New Skirmish
+                    </button>
+                </header>
+
+                <!-- Daily Rituals Section -->
+                <div class="mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title">🕯️ Daily Rituals (Habits)</h3>
+                        <button onclick="goalManager.addHabit()" class="bg-gradient-to-r from-yellow-600 to-yellow-700 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg hover:scale-105 transition-transform">
+                            <i class="ri-add-line mr-1"></i>New Ritual
+                        </button>
+                    </div>
+                    <div id="habits-container" class="space-y-3 mb-6"></div>
+                </div>
+
+                <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4">Today's Tasks</h3>
+                <div id="daily-tasks-container" class="space-y-3"></div>
+            </div>
+
+            <!-- Analytics View -->
+            <div id="analytics-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-blue-300 medieval-title mb-3">📊 Quest Analytics 📊</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Track your journey to greatness</p>
+                </header>
+
+                <!-- Quick Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="stat-card bg-gradient-to-br from-green-900 to-green-950 p-6 rounded-xl border-3 border-green-600 text-center">
+                        <div class="text-4xl mb-2">✅</div>
+                        <div id="stat-total-completed" class="text-3xl font-bold text-green-300 medieval-title">0</div>
+                        <div class="text-sm text-green-200 fancy-font">Total Completed</div>
+                    </div>
+                    <div class="stat-card bg-gradient-to-br from-blue-900 to-blue-950 p-6 rounded-xl border-3 border-blue-600 text-center">
+                        <div class="text-4xl mb-2">🔥</div>
+                        <div id="stat-current-streak" class="text-3xl font-bold text-blue-300 medieval-title">0</div>
+                        <div class="text-sm text-blue-200 fancy-font">Day Streak</div>
+                    </div>
+                    <div class="stat-card bg-gradient-to-br from-purple-900 to-purple-950 p-6 rounded-xl border-3 border-purple-600 text-center">
+                        <div class="text-4xl mb-2">⚡</div>
+                        <div id="stat-total-xp" class="text-3xl font-bold text-purple-300 medieval-title">0</div>
+                        <div class="text-sm text-purple-200 fancy-font">Total XP Earned</div>
+                    </div>
+                    <div class="stat-card bg-gradient-to-br from-yellow-900 to-yellow-950 p-6 rounded-xl border-3 border-yellow-600 text-center">
+                        <div class="text-4xl mb-2">📈</div>
+                        <div id="stat-completion-rate" class="text-3xl font-bold text-yellow-300 medieval-title">0%</div>
+                        <div class="text-sm text-yellow-200 fancy-font">Completion Rate</div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Activity Heatmap -->
+                    <div class="chart-card bg-gradient-to-br from-amber-900/40 to-stone-900/40 p-6 rounded-xl border-2 border-amber-700/50">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-calendar-check-line mr-2"></i>Activity Heatmap
+                        </h3>
+                        <p class="text-xs text-amber-200 mb-4 fancy-font">Your quest completion history (last 12 weeks)</p>
+                        <div id="activity-heatmap" class="overflow-x-auto">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- XP Timeline -->
+                    <div class="chart-card bg-gradient-to-br from-amber-900/40 to-stone-900/40 p-6 rounded-xl border-2 border-amber-700/50">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-line-chart-line mr-2"></i>XP Timeline
+                        </h3>
+                        <p class="text-xs text-amber-200 mb-4 fancy-font">Experience points earned (last 30 days)</p>
+                        <div id="xp-timeline-chart" class="h-64">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Task Breakdown -->
+                    <div class="chart-card bg-gradient-to-br from-amber-900/40 to-stone-900/40 p-6 rounded-xl border-2 border-amber-700/50">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-pie-chart-line mr-2"></i>Quest Type Breakdown
+                        </h3>
+                        <p class="text-xs text-amber-200 mb-4 fancy-font">Completed quests by category</p>
+                        <div id="task-breakdown-chart" class="flex items-center justify-center h-64">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Productivity Pattern -->
+                    <div class="chart-card bg-gradient-to-br from-amber-900/40 to-stone-900/40 p-6 rounded-xl border-2 border-amber-700/50">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-bar-chart-line mr-2"></i>Most Productive Days
+                        </h3>
+                        <p class="text-xs text-amber-200 mb-4 fancy-font">Average tasks completed by day of week</p>
+                        <div id="productivity-pattern-chart" class="h-64">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personal Records -->
+                <div class="chart-card bg-gradient-to-br from-amber-900/40 to-stone-900/40 p-6 rounded-xl border-2 border-amber-700/50 mb-6">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-trophy-line mr-2"></i>Personal Records
+                    </h3>
+                    <div id="personal-records" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Goal Progress Overview -->
+                <div class="chart-card bg-gradient-to-br from-amber-900/40 to-stone-900/40 p-6 rounded-xl border-2 border-amber-700/50">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-flag-line mr-2"></i>All Goals Progress
+                    </h3>
+                    <p class="text-xs text-amber-200 mb-4 fancy-font">Current status of all active quests</p>
+                    <div id="goals-progress-overview" class="space-y-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boss Battles View -->
+            <div id="bossbattles-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-red-300 medieval-title mb-3">⚔️ BOSS BATTLES ⚔️</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Face your greatest challenges and claim legendary victories</p>
+                </header>
+
+                <!-- Active Boss Battles -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-sword-line mr-2"></i>Active Boss Battles
+                    </h3>
+                    <div id="active-bosses-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Boss Gallery (Defeated) -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-trophy-line mr-2"></i>Hall of Champions
+                    </h3>
+                    <p class="text-sm text-amber-200 mb-4 fancy-font">Your legendary victories over conquered bosses</p>
+                    <div id="defeated-bosses-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Convert Goals to Bosses -->
+                <div class="bg-gradient-to-br from-red-900/40 to-stone-900/40 p-6 rounded-xl border-2 border-red-700/50">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-shield-star-line mr-2"></i>Create Boss Battle
+                    </h3>
+                    <p class="text-amber-200 mb-4 fancy-font text-sm">
+                        Transform your Life Goals or Yearly Campaigns into epic boss battles! 
+                        Each sub-goal completed will deal damage to the boss until final victory.
+                    </p>
+                    <div id="boss-conversion-list" class="space-y-2">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quest Chains View -->
+            <div id="questchains-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-cyan-300 medieval-title mb-3">⛓️ QUEST CHAINS ⛓️</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Epic storylines with guided progression and rewards</p>
+                </header>
+
+                <!-- Active Quest Chains -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-map-pin-line mr-2"></i>Active Journeys
+                    </h3>
+                    <div id="active-questchains-container" class="space-y-6">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Available Quest Chain Templates -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-compass-line mr-2"></i>Available Adventures
+                    </h3>
+                    <p class="text-sm text-amber-200 mb-4 fancy-font">Begin your journey with these pre-made quest chains!</p>
+                    <div id="available-questchains-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Completed Quest Chains -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-trophy-line mr-2"></i>Completed Sagas
+                    </h3>
+                    <div id="completed-questchains-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Focus Timer View -->
+            <div id="focus-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-blue-300 medieval-title mb-3">🎯 Focus Timer 🎯</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Deep work sessions to earn Focus Crystals</p>
+                </header>
+
+                <div class="max-w-2xl mx-auto">
+                    <!-- Timer Display -->
+                    <div class="quest-card bg-gradient-to-br from-blue-900 to-purple-900 p-12 rounded-2xl shadow-2xl border-4 border-blue-600 mb-6">
+                        <div class="text-center">
+                            <div id="focus-timer-display" class="text-8xl font-bold text-blue-100 mb-6 fancy-font tracking-wider">25:00</div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="w-full bg-blue-950 rounded-full h-4 border-2 border-blue-700 mb-6">
+                                <div id="focus-timer-progress" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-4 rounded-full shadow-lg transition-all duration-1000" style="width: 0%"></div>
+                            </div>
+                            
+                            <!-- Timer Controls -->
+                            <div class="flex justify-center gap-4">
+                                <button onclick="goalManager.startFocusTimer()" class="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
+                                    ▶️ Start
+                                </button>
+                                <button onclick="goalManager.pauseFocusTimer()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
+                                    ⏸️ Pause
+                                </button>
+                                <button onclick="goalManager.resumeFocusTimer()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
+                                    ▶️ Resume
+                                </button>
+                                <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
+                                    ⏹️ Stop
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="quest-card bg-gradient-to-br from-cyan-800 to-blue-900 p-6 rounded-lg border-2 border-cyan-600 text-center">
+                            <div class="text-3xl mb-2">💎</div>
+                            <div class="text-3xl font-bold text-cyan-100 fancy-font"><span id="focus-crystals-display">0</span></div>
+                            <div class="text-sm text-cyan-200 fancy-font">Focus Crystals</div>
+                        </div>
+                        <div class="quest-card bg-gradient-to-br from-purple-800 to-indigo-900 p-6 rounded-lg border-2 border-purple-600 text-center">
+                            <div class="text-3xl mb-2">⏱️</div>
+                            <div class="text-3xl font-bold text-purple-100 fancy-font"><span id="total-focus-time">0</span> min</div>
+                            <div class="text-sm text-purple-200 fancy-font">Total Focus Time</div>
+                        </div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="quest-card bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-lg border-2 border-gray-600">
+                        <h3 class="text-xl font-bold text-amber-300 medieval-title mb-3">📜 How It Works</h3>
+                        <ul class="text-amber-200 fancy-font space-y-2 text-sm">
+                            <li>✨ Complete 25-minute focus sessions to earn 1 Focus Crystal</li>
+                            <li>💎 Use Focus Crystals to purchase powerful enchantments</li>
+                            <li>⏳ Time Warden enchantment extends sessions to 35 minutes</li>
+                            <li>🎁 Discovery enchantment gives +1 bonus crystal per session</li>
+                            <li>🎯 Stay focused and accumulate crystals for magical buffs!</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enchantments View -->
+            <div id="enchantments-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-pink-300 medieval-title mb-3">✨ Mystic Enchantments ✨</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Empower yourself with magical buffs</p>
+                </header>
+
+                <div class="max-w-5xl mx-auto">
+                    <!-- Currency Display -->
+                    <div class="text-center mb-8">
+                        <div class="inline-block quest-card bg-gradient-to-br from-cyan-700 to-blue-800 p-6 rounded-lg border-4 border-cyan-500 shadow-2xl">
+                            <div class="text-5xl font-bold text-cyan-100 fancy-font flex items-center">
+                                <span class="text-5xl mr-3">💎</span>
+                                <span id="enchantments-crystals">0</span>
+                                <span class="text-2xl ml-3">Focus Crystals</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Enchantments -->
+                    <div class="mb-8">
+                        <h3 class="text-2xl font-bold text-pink-300 medieval-title mb-4 text-center">🔮 Active Enchantments</h3>
+                        <div id="active-enchantments-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Active enchantments will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Available Enchantments -->
+                    <div>
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center">🛒 Enchantment Shop</h3>
+                        <div id="enchantments-shop-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Enchantments will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tools & Settings View -->
+            <div id="tools-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-3">⚙️ Tools & Settings ⚙️</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Manage your quest journal</p>
+                </header>
+
+                <!-- Quick Actions -->
+                <div class="flex justify-center gap-4 mb-6 flex-wrap">
+                    <button onclick="goalManager.undo()" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        ↩️ Undo (Ctrl+Z)
+                    </button>
+                    <button onclick="goalManager.redo()" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        ↪️ Redo (Ctrl+Y)
+                    </button>
+                    <button onclick="goalManager.toggleBulkSelectionMode()" class="bg-purple-700 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        📦 Bulk Actions
+                    </button>
+                    <button onclick="goalManager.switchView('archives')" class="bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        📦 Archives (<span id="archive-count">0</span>)
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Backup & Export -->
+                    <div class="quest-card bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border-4 border-gray-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-save-line mr-2"></i> Backup & Export
+                        </h3>
+                        <p class="text-gray-200 fancy-font mb-4 text-sm">Protect your quest data by exporting backups</p>
+                        <div class="space-y-3">
+                            <button onclick="goalManager.exportData()" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-blue-500">
+                                <i class="ri-download-line mr-2"></i> Export All Data (JSON)
+                            </button>
+                            <button onclick="document.getElementById('importFile').click()" class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-green-500">
+                                <i class="ri-upload-line mr-2"></i> Import Data from Backup
+                            </button>
+                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="goalManager.importData(event)">
+                        </div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="quest-card bg-gradient-to-br from-indigo-800 to-indigo-900 p-6 rounded-xl shadow-2xl border-4 border-indigo-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-settings-3-line mr-2"></i> Settings
+                        </h3>
+                        <p class="text-indigo-200 fancy-font mb-4 text-sm">Customize your quest journal</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-indigo-200 fancy-font text-sm mb-2">
+                                    <i class="ri-time-line mr-1"></i> Time Zone
+                                </label>
+                                <select id="timezone-select" 
+                                    class="w-full px-4 py-3 rounded-lg bg-indigo-950 border-2 border-indigo-600 text-white fancy-font focus:border-indigo-400 focus:outline-none"
+                                    onchange="goalManager.updateTimezone(this.value)">
+                                    <option value="auto">Auto-detect</option>
+                                    <option value="-12">UTC-12:00 (Baker Island)</option>
+                                    <option value="-11">UTC-11:00 (American Samoa)</option>
+                                    <option value="-10">UTC-10:00 (Hawaii)</option>
+                                    <option value="-9">UTC-09:00 (Alaska)</option>
+                                    <option value="-8">UTC-08:00 (Pacific Time)</option>
+                                    <option value="-7">UTC-07:00 (Mountain Time)</option>
+                                    <option value="-6">UTC-06:00 (Central Time)</option>
+                                    <option value="-5">UTC-05:00 (Eastern Time)</option>
+                                    <option value="-4">UTC-04:00 (Atlantic Time)</option>
+                                    <option value="-3">UTC-03:00 (Buenos Aires)</option>
+                                    <option value="-2">UTC-02:00 (South Georgia)</option>
+                                    <option value="-1">UTC-01:00 (Azores)</option>
+                                    <option value="0">UTC+00:00 (London, GMT)</option>
+                                    <option value="1">UTC+01:00 (Paris, Berlin)</option>
+                                    <option value="2">UTC+02:00 (Cairo, Athens)</option>
+                                    <option value="3">UTC+03:00 (Moscow, Istanbul)</option>
+                                    <option value="4">UTC+04:00 (Dubai)</option>
+                                    <option value="5">UTC+05:00 (Pakistan)</option>
+                                    <option value="5.5">UTC+05:30 (India)</option>
+                                    <option value="6">UTC+06:00 (Bangladesh)</option>
+                                    <option value="7">UTC+07:00 (Bangkok)</option>
+                                    <option value="8">UTC+08:00 (Singapore, Beijing)</option>
+                                    <option value="9">UTC+09:00 (Tokyo, Seoul)</option>
+                                    <option value="10">UTC+10:00 (Sydney)</option>
+                                    <option value="11">UTC+11:00 (Solomon Islands)</option>
+                                    <option value="12">UTC+12:00 (Fiji, Auckland)</option>
+                                    <option value="13">UTC+13:00 (Tonga)</option>
+                                </select>
+                                <p class="text-xs text-indigo-300 mt-2 fancy-font" id="timezone-info">
+                                    Current: Auto-detected
+                                </p>
+                            </div>
+                            
+                            <!-- Audio Settings -->
+                            <div class="border-t-2 border-indigo-700 pt-4">
+                                <label class="block text-indigo-200 fancy-font text-sm mb-2">
+                                    <i class="ri-volume-up-line mr-1"></i> Sound Effects
+                                </label>
+                                
+                                <!-- Enable/Disable Toggle -->
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-indigo-200 text-sm">Enable Sounds</span>
+                                    <button onclick="toggleAudio()" id="audio-toggle-btn" 
+                                        class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-green-600">
+                                        <span id="audio-toggle-circle" class="inline-block w-4 h-4 transform transition-transform bg-white rounded-full translate-x-6"></span>
+                                    </button>
+                                </div>
+                                
+                                <!-- Volume Slider -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-indigo-200 text-sm">Volume</span>
+                                        <span id="volume-display" class="text-indigo-300 text-sm font-bold">50%</span>
+                                    </div>
+                                    <input type="range" id="volume-slider" min="0" max="100" value="50" 
+                                        class="w-full h-2 bg-indigo-950 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        oninput="updateVolume(this.value)">
+                                </div>
+                                
+                                <!-- Test Sound Button -->
+                                <button onclick="testSound()" 
+                                    class="w-full mt-3 bg-indigo-700 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold fancy-font transition-all">
+                                    <i class="ri-play-circle-line mr-1"></i> Test Sound
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tutorial -->
+                    <div class="quest-card bg-gradient-to-br from-blue-800 to-blue-900 p-6 rounded-xl shadow-2xl border-4 border-blue-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-booklet-line mr-2"></i> Tutorial & Help
+                        </h3>
+                        <p class="text-blue-200 fancy-font mb-4 text-sm">Learn how to master Quest Journal</p>
+                        <div class="space-y-3">
+                            <button onclick="goalManager.restartTutorial()" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-blue-500">
+                                <i class="ri-play-circle-line mr-2"></i> Restart Tutorial
+                            </button>
+                            <p class="text-xs text-blue-300 fancy-font text-center">
+                                Review the guided walkthrough to refresh your knowledge of all features
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Privacy & Legal -->
+                    <div class="quest-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl shadow-2xl border-4 border-slate-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-shield-check-line mr-2"></i> Privacy & Legal
+                        </h3>
+                        <p class="text-slate-200 fancy-font mb-4 text-sm">Your data stays private and secure</p>
+                        <div class="space-y-3">
+                            <a href="privacy-policy.html" target="_blank" class="w-full block text-center bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-slate-500">
+                                <i class="ri-file-text-line mr-2"></i> Privacy Policy
+                            </a>
+                            <p class="text-xs text-slate-300 fancy-font text-center">
+                                🔒 All your data is stored locally on your device. We never collect or transmit your personal information.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Search -->
+                    <div class="quest-card bg-gradient-to-br from-purple-800 to-purple-900 p-6 rounded-xl shadow-2xl border-4 border-purple-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-search-line mr-2"></i> Global Search
+                        </h3>
+                        <p class="text-purple-200 fancy-font mb-4 text-sm">Find any quest across all categories</p>
+                        <div class="space-y-3">
+                            <input type="text" id="global-search" placeholder="Search all quests..." 
+                                class="w-full px-4 py-3 rounded-lg bg-purple-950 border-2 border-purple-600 text-white fancy-font focus:border-purple-400 focus:outline-none"
+                                onkeyup="goalManager.performSearch(this.value)">
+                            <div id="search-results" class="max-h-96 overflow-y-auto space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Badges Gallery -->
+                    <div class="quest-card bg-gradient-to-br from-amber-800 to-amber-900 p-6 rounded-xl shadow-2xl border-4 border-amber-600 col-span-1 md:col-span-2">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-trophy-line mr-2"></i> Badge Gallery
+                        </h3>
+                        <div id="badges-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Archives View -->
+            <div id="archives-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-3">📦 Hall of Legends 📦</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Your archived quests and past victories</p>
+                </header>
+
+                <div id="archives-container" class="space-y-4"></div>
+            </div>
+
+            <!-- Treasury & Rewards View -->
+            <div id="rewards-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-yellow-300 medieval-title mb-3">💰 Royal Treasury 💰</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Your riches, unlockables, and legendary rewards</p>
+                </header>
+
+                <!-- Treasure Chests Section -->
+                <div class="mb-8">
+                    <h3 class="text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-treasure-map-line mr-3"></i>Treasure Chests
+                    </h3>
+                    <div class="bg-amber-900/30 border-2 border-amber-700 rounded-lg p-4 mb-4">
+                        <p class="text-amber-200 text-sm fancy-font">
+                            <strong class="text-amber-300">💡 Tip:</strong> Each chest contains <strong>randomized loot</strong>! Open the same chest multiple times to collect different spells, themes, and companions. 
+                            <span class="text-amber-400">XP rewards also grant gold</span> (1 XP = 1 Gold), so your net cost is lower than the chest price!
+                        </p>
+                    </div>
+                    <div id="treasure-chests-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Themes Section -->
+                <div class="mb-8">
+                    <h3 class="text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-palette-line mr-3"></i>Kingdom Themes
+                    </h3>
+                    <div id="themes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Titles Section -->
+                <div class="mb-8">
+                    <h3 class="text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-medal-line mr-3"></i>Earned Titles
+                    </h3>
+                    <div id="titles-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Companion Section -->
+                <div class="mb-8">
+                    <h3 class="text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-bear-smile-line mr-3"></i>Loyal Companion
+                    </h3>
+                    <div id="companion-container">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spellbook View -->
+            <div id="spellbook-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-purple-300 medieval-title mb-3">📖 Ancient Spellbook 📖</h2>
+                    <p class="text-purple-200 fancy-font text-lg">Master arcane powers and bend reality to your will</p>
+                </header>
+
+                <!-- Active Spells Section -->
+                <div class="mb-8">
+                    <h3 class="text-3xl font-bold text-purple-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-flashlight-line mr-3"></i>Active Enchantments
+                    </h3>
+                    <div id="active-spells-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Spellbook Collection -->
+                <div class="mb-8">
+                    <h3 class="text-3xl font-bold text-purple-300 medieval-title mb-4 flex items-center">
+                        <i class="ri-book-open-line mr-3"></i>Collected Spells
+                    </h3>
+                    <div id="spellbook-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side Quests View -->
+            <div id="sidequests-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-3">🧭 Side Quests 🧭</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Optional adventures and flexible tasks</p>
+                </header>
+
+                <!-- Priority Filter -->
+                <div class="quest-card bg-gradient-to-br from-cyan-900 to-cyan-950 rounded-xl shadow-2xl p-6 border-4 border-cyan-600 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title">Filter by Priority</h3>
+                        <button onclick="goalManager.addSideQuest()" class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white px-6 py-3 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-cyan-500">
+                            <i class="ri-compass-3-line mr-2"></i>New Side Quest
+                        </button>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="goalManager.filterSideQuests('all')" id="filter-all" class="px-4 py-2 rounded-lg bg-cyan-700 text-white font-semibold fancy-font hover:bg-cyan-600 transition-all">
+                            All Quests
+                        </button>
+                        <button onclick="goalManager.filterSideQuests('high')" id="filter-high" class="px-4 py-2 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font hover:bg-cyan-700 transition-all">
+                            ⚡ High Priority
+                        </button>
+                        <button onclick="goalManager.filterSideQuests('medium')" id="filter-medium" class="px-4 py-2 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font hover:bg-cyan-700 transition-all">
+                            ⭐ Medium Priority
+                        </button>
+                        <button onclick="goalManager.filterSideQuests('low')" id="filter-low" class="px-4 py-2 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font hover:bg-cyan-700 transition-all">
+                            💫 Low Priority
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Side Quests Container -->
+                <div id="sidequests-container" class="space-y-4"></div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendar-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-3">📅 Quest Calendar 📅</h2>
+                    <p class="text-amber-200 fancy-font text-lg">Track your adventures through time</p>
+                </header>
+
+                <!-- Calendar Controls -->
+                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 rounded-xl shadow-2xl p-6 border-4 border-amber-600 mb-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <button onclick="goalManager.previousMonth()" class="bg-amber-700 hover:bg-amber-800 text-white p-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105">
+                            <i class="ri-arrow-left-line text-2xl"></i>
+                        </button>
+                        <h3 id="calendar-month-year" class="text-3xl font-bold text-amber-900 medieval-title"></h3>
+                        <button onclick="goalManager.nextMonth()" class="bg-amber-700 hover:bg-amber-800 text-white p-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105">
+                            <i class="ri-arrow-right-line text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Calendar Grid -->
+                    <div class="grid grid-cols-7 gap-2">
+                        <!-- Day Headers -->
+                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Sun</div>
+                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Mon</div>
+                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Tue</div>
+                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Wed</div>
+                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Thu</div>
+                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Fri</div>
+                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Sat</div>
+                        
+                        <!-- Calendar Days -->
+                        <div id="calendar-days" class="col-span-7 grid grid-cols-7 gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- Selected Day Tasks -->
+                <div id="calendar-tasks-container" class="quest-card bg-gradient-to-br from-stone-700 to-stone-800 rounded-xl shadow-2xl p-6 border-4 border-amber-600">
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4">
+                        <i class="ri-calendar-check-line mr-2"></i>
+                        <span id="selected-date-title">Select a date to view quests</span>
+                    </h3>
+                    <div id="selected-date-tasks" class="space-y-3">
+                        <div class="text-amber-200 text-center py-8 fancy-font">Click on a calendar date to see your quests</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Install Button (hidden by default, shown when installable) -->
+    <button id="pwa-install-button" onclick="installPWA()" class="hidden fixed bottom-6 right-6 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6 py-4 rounded-full shadow-2xl font-bold fancy-font transition-all hover:scale-110 z-50 border-2 border-green-400">
+        📱 Install App
+    </button>
+
+    <script src="pwa-handler.js"></script>
+    <script src="goal-manager.js"></script>
+    <script src="mobile-touch.js"></script>
+    
+    <!-- Initialize GoalManager -->
+    <script>
+        // goalManager is declared in goal-manager.js
+        console.log('Starting GoalManager initialization...');
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, creating GoalManager...');
+            try {
+                goalManager = new GoalManager();
+                window.goalManager = goalManager; // Also set on window object
+                console.log('✅ GoalManager created successfully!', goalManager);
+            } catch (err) {
+                console.error('❌ Error creating GoalManager:', err);
+                alert('Error loading app: ' + err.message);
+            }
+        });
+        
+        // Mobile Nav Toggle Function
+        function toggleMobileNav() {
+            const sidebar = document.getElementById('main-sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('nav-collapsed');
+                // Save state to localStorage
+                localStorage.setItem('mobileNavCollapsed', sidebar.classList.contains('nav-collapsed'));
+            }
+        }
+        
+        // Restore mobile nav state on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const isCollapsed = localStorage.getItem('mobileNavCollapsed') === 'true';
+            if (isCollapsed) {
+                const sidebar = document.getElementById('main-sidebar');
+                if (sidebar) sidebar.classList.add('nav-collapsed');
+            }
+        });
+    </script>
+</body>
+</html>

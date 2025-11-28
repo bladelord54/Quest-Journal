@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate PWA Icons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1c1917;
+            color: #d97706;
+        }
+        canvas {
+            margin: 10px;
+            border: 2px solid #78350f;
+        }
+        .icon-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .instructions {
+            background: #78350f;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚔️ Quest Journal Icon Generator</h1>
+    
+    <div class="instructions">
+        <h2>Instructions:</h2>
+        <ol>
+            <li>Right-click on each icon below</li>
+            <li>Select "Save Image As..."</li>
+            <li>Save to a folder called "icons" in your project directory</li>
+            <li>Name them exactly as: icon-72.png, icon-96.png, etc.</li>
+        </ol>
+        <p><strong>Sizes needed:</strong> 72, 96, 128, 144, 152, 192, 384, 512</p>
+    </div>
+
+    <div class="icon-container" id="icons"></div>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const container = document.getElementById('icons');
+
+        sizes.forEach(size => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#78350f');
+            gradient.addColorStop(1, '#451a03');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Draw sword emoji
+            ctx.font = `${size * 0.5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚔️', size / 2, size / 2);
+
+            // Add border
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = size * 0.05;
+            ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, size - ctx.lineWidth, size - ctx.lineWidth);
+
+            // Create wrapper
+            const wrapper = document.createElement('div');
+            wrapper.style.textAlign = 'center';
+            
+            const label = document.createElement('p');
+            label.textContent = `${size}x${size}`;
+            label.style.margin = '5px 0';
+            
+            wrapper.appendChild(canvas);
+            wrapper.appendChild(label);
+            container.appendChild(wrapper);
+        });
+    </script>
+</body>
+</html>

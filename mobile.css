@@ -1,0 +1,283 @@
+/* Mobile-Responsive Styles for PWA */
+
+/* Mobile Navigation - Bottom Tab Bar */
+@media (max-width: 768px) {
+    /* Hide desktop sidebar */
+    body > .flex > div:first-child {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100% !important;
+        height: auto;
+        z-index: 40;
+        border-right: none;
+        border-top: 4px solid #b45309;
+        padding: 0;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    /* Collapsed state for mobile nav */
+    body > .flex > div:first-child.nav-collapsed {
+        transform: translateY(calc(100% - 40px));
+    }
+
+    /* Mobile Bottom Navigation Container */
+    body > .flex > div:first-child > div:nth-child(2) {
+        display: none; /* Hide desktop header in mobile nav */
+    }
+
+    body > .flex > div:first-child > nav {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0.5rem 0;
+        gap: 0;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+    }
+
+    body > .flex > div:first-child > nav::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
+
+    /* Mobile Nav Items - Icons Only */
+    body > .flex > div:first-child > nav > a {
+        flex: 0 0 auto;
+        min-width: 55px;
+        text-align: center;
+        padding: 0.75rem 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0;
+        margin: 0;
+        border-left: none !important;
+        position: relative;
+    }
+
+    /* Hide ALL text labels on mobile */
+    body > .flex > div:first-child > nav > a span {
+        display: none !important;
+    }
+
+    /* Mobile Nav Icons - Bigger and Centered */
+    body > .flex > div:first-child > nav > a i {
+        font-size: 1.75rem !important;
+        margin: 0 !important;
+    }
+
+    /* Active indicator */
+    body > .flex > div:first-child > nav > a.active {
+        background: rgba(251, 191, 36, 0.2);
+        border-bottom: 3px solid #fbbf24;
+    }
+
+    body > .flex > div:first-child > nav > a.active i {
+        color: #fbbf24 !important;
+    }
+
+    /* Nav Toggle Button - Pull Tab */
+    #mobile-nav-toggle {
+        display: flex !important;
+        position: absolute;
+        top: -32px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 70px;
+        height: 32px;
+        background: linear-gradient(to bottom, #92400e, #78350f);
+        border: 3px solid #fbbf24;
+        border-bottom: none;
+        border-radius: 12px 12px 0 0;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 100;
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+    }
+
+    #mobile-nav-toggle i {
+        color: #fbbf24;
+        font-size: 1.5rem;
+        transition: transform 0.3s ease;
+        filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    }
+
+    #main-sidebar.nav-collapsed #mobile-nav-toggle i {
+        transform: rotate(180deg);
+    }
+
+    /* Main Content Area */
+    body > .flex > div:last-child {
+        width: 100%;
+        padding-bottom: 80px; /* Space for bottom nav */
+    }
+
+    /* Dashboard adjustments */
+    #dashboard-view {
+        padding: 1rem !important;
+    }
+
+    /* Stats Grid - Stack on Mobile */
+    #dashboard-view > div:nth-of-type(3) {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    /* Quest Cards - Smaller padding */
+    .quest-card {
+        padding: 1rem !important;
+    }
+
+    /* Titles - Smaller */
+    .medieval-title {
+        font-size: 1.5rem !important;
+    }
+
+    h2.medieval-title {
+        font-size: 2rem !important;
+    }
+
+    /* Achievement Toast - Adjust position */
+    #achievement-toast {
+        top: 1rem !important;
+        right: 1rem !important;
+        left: 1rem !important;
+        width: auto !important;
+    }
+
+    #achievement-toast > div {
+        padding: 1rem !important;
+    }
+
+    /* Modal adjustments */
+    .fixed.inset-0 > div {
+        margin: 1rem !important;
+        max-height: calc(100vh - 2rem) !important;
+        overflow-y: auto;
+    }
+
+    /* Button adjustments */
+    button {
+        padding: 0.75rem 1rem !important;
+        font-size: 0.875rem !important;
+    }
+
+    /* Input fields */
+    input[type="text"],
+    input[type="date"],
+    input[type="number"],
+    textarea,
+    select {
+        font-size: 16px !important; /* Prevent zoom on iOS */
+    }
+
+    /* PWA Install Button - Adjust for mobile nav */
+    #pwa-install-button {
+        bottom: 90px !important; /* Above bottom nav */
+    }
+
+    /* Hide desktop-only features on mobile */
+    .desktop-only {
+        display: none !important;
+    }
+
+    /* Life Goals Container - Single Column */
+    #life-goals-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Touch-friendly checkboxes */
+    input[type="checkbox"] {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        min-width: 1.5rem !important;
+    }
+
+    /* Calendar adjustments */
+    #calendar-days {
+        font-size: 0.75rem;
+    }
+
+    /* Spellbook Grid */
+    #spellbook-container {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    }
+
+    /* Boss Battle Cards */
+    #active-bosses-container > div,
+    #defeated-bosses-container > div {
+        padding: 1rem !important;
+    }
+
+    /* Quest Chains */
+    #active-questchains-container,
+    #available-questchains-container,
+    #completed-questchains-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Safe area for notched phones */
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Scrollable content areas */
+    .view-container {
+        max-height: calc(100vh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Tablet adjustments (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    body > .flex > div:first-child {
+        width: 200px !important;
+    }
+
+    #dashboard-view > div:nth-of-type(3) {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    #life-goals-container {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Landscape mobile adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+    body > .flex > div:first-child {
+        height: 60px;
+    }
+
+    body > .flex > div:first-child > nav > a {
+        padding: 0.5rem 0.25rem;
+    }
+
+    body > .flex > div:last-child {
+        padding-bottom: 70px;
+    }
+
+    #pwa-install-button {
+        bottom: 70px !important;
+    }
+}
+
+/* iOS specific adjustments */
+@supports (-webkit-touch-callout: none) {
+    /* iOS safe area insets */
+    body {
+        padding-top: max(env(safe-area-inset-top), 20px);
+        padding-bottom: max(env(safe-area-inset-bottom), 0px);
+    }
+
+    @media (max-width: 768px) {
+        body > .flex > div:first-child {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    }
+}

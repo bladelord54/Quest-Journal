@@ -1,0 +1,144 @@
+/* Dark Mode Theme for Medieval Quest App */
+
+body.dark-mode {
+    background: linear-gradient(to bottom, #0f1419, #1a1f2e);
+}
+
+.dark-mode .bg-stone-800 {
+    background-color: #0f1419 !important;
+}
+
+.dark-mode .bg-stone-700 {
+    background-color: #1a1f2e !important;
+}
+
+.dark-mode .bg-stone-900 {
+    background-color: #0a0d12 !important;
+}
+
+.dark-mode .sidebar {
+    background: linear-gradient(to bottom, #1a1f2e, #0f1419) !important;
+}
+
+.dark-mode .quest-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.dark-mode .text-amber-900 {
+    color: #fef3c7 !important;
+}
+
+.dark-mode .text-amber-800 {
+    color: #fde68a !important;
+}
+
+.dark-mode .text-amber-700 {
+    color: #fcd34d !important;
+}
+
+.dark-mode .text-stone-100 {
+    color: #e7e5e4 !important;
+}
+
+.dark-mode .text-stone-200 {
+    color: #d6d3d1 !important;
+}
+
+.dark-mode .bg-amber-50 {
+    background: linear-gradient(to bottom, #292524, #1c1917) !important;
+}
+
+.dark-mode .bg-amber-100 {
+    background: linear-gradient(to bottom, #3c3532, #292524) !important;
+}
+
+.dark-mode .bg-yellow-50 {
+    background: linear-gradient(to bottom, #2d2a1e, #1f1d15) !important;
+}
+
+.dark-mode .bg-yellow-100 {
+    background: linear-gradient(to bottom, #3d3824, #2d2a1e) !important;
+}
+
+.dark-mode .border-amber-300,
+.dark-mode .border-amber-600,
+.dark-mode .border-yellow-600 {
+    border-color: #92400e !important;
+}
+
+.dark-mode .from-amber-100 {
+    --tw-gradient-from: #3c3532 !important;
+}
+
+.dark-mode .to-yellow-50 {
+    --tw-gradient-to: #2d2a1e !important;
+}
+
+.dark-mode .to-amber-50 {
+    --tw-gradient-to: #292524 !important;
+}
+
+.dark-mode .from-yellow-100 {
+    --tw-gradient-from: #3d3824 !important;
+}
+
+/* Calendar dark mode */
+.dark-mode .bg-amber-200 {
+    background-color: #3c3532 !important;
+}
+
+.dark-mode .hover\:bg-amber-300:hover {
+    background-color: #52443d !important;
+}
+
+/* Calendar selected */
+.dark-mode .calendar-day.selected {
+    background: linear-gradient(to bottom, #92400e, #78350f) !important;
+}
+
+/* Toast notifications dark mode */
+.dark-mode #achievement-toast {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-color: #fbbf24;
+}
+
+/* Scrollbar dark mode */
+.dark-mode ::-webkit-scrollbar-track {
+    background: #1a1f2e;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+    background: #374151;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+}
+
+/* Input fields dark mode */
+.dark-mode input[type="text"],
+.dark-mode input[type="file"] {
+    background-color: #1a1f2e !important;
+    color: #e7e5e4 !important;
+    border-color: #374151 !important;
+}
+
+.dark-mode input[type="text"]:focus {
+    border-color: #fbbf24 !important;
+}
+
+/* Buttons dark mode */
+.dark-mode button {
+    filter: brightness(0.9);
+}
+
+.dark-mode button:hover {
+    filter: brightness(1.1);
+}
+
+/* Progress bars stay vibrant */
+.dark-mode #xp-progress,
+.dark-mode #daily-progress,
+.dark-mode .bg-gradient-to-r {
+    filter: brightness(1.2);
+}

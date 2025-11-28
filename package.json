@@ -1,0 +1,36 @@
+{
+  "name": "life-organize",
+  "version": "1.0.0",
+  "description": "A life organization app with goal management and achievement tracking",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:dir": "electron-builder --win --dir"
+  },
+  "keywords": [
+    "productivity",
+    "goals",
+    "tasks",
+    "habits"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "build": {
+    "appId": "com.lifeorganize.app",
+    "productName": "Life Organize",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icon.ico"
+    }
+  }
+}
