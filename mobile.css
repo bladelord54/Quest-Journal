@@ -22,9 +22,14 @@
         transform: translateY(calc(100% - 40px));
     }
 
-    /* Mobile Bottom Navigation Container */
-    body > .flex > div:first-child > div:nth-child(2) {
-        display: none; /* Hide desktop header in mobile nav */
+    /* Hide the Quest Journal header panel on mobile */
+    body > .flex > div:first-child > div.p-6 {
+        display: none !important; /* Hide desktop header in mobile nav */
+    }
+    
+    /* Also hide decorative corners on mobile */
+    body > .flex > div:first-child > div.absolute {
+        display: none !important;
     }
 
     body > .flex > div:first-child > nav {
