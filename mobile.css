@@ -158,22 +158,49 @@
         padding: 1rem !important;
     }
     
-    /* Goal items - stack content better on mobile */
-    .goal-item .flex.items-start {
-        flex-direction: column !important;
+    /* Goal items - keep checkbox inline with title, stack actions below */
+    .goal-item > .flex.items-start {
+        flex-wrap: wrap !important;
     }
     
-    .goal-item .flex.items-start > .flex-1 {
-        width: 100% !important;
+    .goal-item > .flex.items-start > .flex-1 {
+        flex: 1 1 calc(100% - 60px) !important;
+        min-width: 0 !important;
     }
     
-    /* Move edit/delete buttons to horizontal row */
-    .goal-item .flex.items-start > .flex.flex-col {
+    /* Edit/delete buttons - move to bottom right */
+    .goal-item > .flex.items-start > .flex.flex-col {
+        position: absolute !important;
+        top: 0.5rem !important;
+        right: 0.5rem !important;
         flex-direction: row !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* Make goal cards relative for button positioning */
+    .goal-item {
+        position: relative !important;
+        padding-right: 3rem !important;
+        overflow: visible !important;
+    }
+    
+    /* Ensure grid containers don't overlap items */
+    #monthly-goals-container,
+    #weekly-goals-container,
+    #yearly-goals-container {
+        display: flex !important;
+        flex-direction: column !important;
         gap: 1rem !important;
-        margin-top: 0.75rem !important;
-        justify-content: flex-end !important;
-        width: 100% !important;
+    }
+    
+    /* Fix linked items inside goal cards */
+    .goal-item .border-l-2 {
+        margin-left: 0 !important;
+        padding-left: 0.75rem !important;
+    }
+    
+    .goal-item .border-l-2 .flex.items-center {
+        flex-wrap: nowrap !important;
     }
 
     /* Titles - Smaller */
