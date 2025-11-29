@@ -23,13 +23,18 @@
     }
 
     /* Hide the Quest Journal header panel on mobile */
-    body > .flex > div:first-child > div.p-6 {
-        display: none !important; /* Hide desktop header in mobile nav */
+    #main-sidebar > div.p-6 {
+        display: none !important;
     }
     
     /* Also hide decorative corners on mobile */
-    body > .flex > div:first-child > div.absolute {
+    #main-sidebar > div.absolute {
         display: none !important;
+    }
+    
+    /* Remove margin from nav since header is hidden */
+    #main-sidebar > nav {
+        margin-top: 0 !important;
     }
 
     body > .flex > div:first-child > nav {
