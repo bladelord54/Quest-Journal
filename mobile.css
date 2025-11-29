@@ -125,9 +125,26 @@
         padding-bottom: 80px; /* Space for bottom nav */
     }
 
-    /* Dashboard adjustments */
-    #dashboard-view {
+    /* All view containers - reduce padding on mobile */
+    .view-container {
         padding: 1rem !important;
+    }
+
+    /* View headers - stack vertically on mobile */
+    .view-container > header {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 1rem !important;
+    }
+
+    .view-container > header > div {
+        text-align: center !important;
+    }
+
+    .view-container > header button {
+        width: 100% !important;
+        max-width: 280px !important;
     }
 
     /* Stats Grid - Stack on Mobile */
@@ -136,9 +153,27 @@
         gap: 1rem !important;
     }
 
-    /* Quest Cards - Smaller padding */
+    /* Quest Cards - Smaller padding and better layout */
     .quest-card {
         padding: 1rem !important;
+    }
+    
+    /* Goal items - stack content better on mobile */
+    .goal-item .flex.items-start {
+        flex-direction: column !important;
+    }
+    
+    .goal-item .flex.items-start > .flex-1 {
+        width: 100% !important;
+    }
+    
+    /* Move edit/delete buttons to horizontal row */
+    .goal-item .flex.items-start > .flex.flex-col {
+        flex-direction: row !important;
+        gap: 1rem !important;
+        margin-top: 0.75rem !important;
+        justify-content: flex-end !important;
+        width: 100% !important;
     }
 
     /* Titles - Smaller */
