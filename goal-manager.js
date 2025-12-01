@@ -2368,7 +2368,7 @@ class GoalManager {
         
         // Apply current theme
         if (this.currentTheme && this.currentTheme !== 'default') {
-            this.applyRewardTheme(this.currentTheme);
+            this.applyColorTheme();
         }
     }
 
