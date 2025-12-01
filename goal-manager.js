@@ -3858,10 +3858,12 @@ class GoalManager {
             if (thisMonthsTasks.length > 0) {
                 const weekGroups = {};
                 thisMonthsTasks.forEach(task => {
-                    const taskDate = new Date(task.dueDate);
+                    // Parse date as local time to avoid timezone issues
+                    const [year, month, day] = task.dueDate.split('-').map(Number);
+                    const taskDate = new Date(year, month - 1, day);
                     const startOfWeek = new Date(taskDate);
                     startOfWeek.setDate(taskDate.getDate() - taskDate.getDay());
-                    const weekKey = startOfWeek.toISOString().split('T')[0];
+                    const weekKey = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
                     
                     if (!weekGroups[weekKey]) {
                         weekGroups[weekKey] = [];
@@ -3877,14 +3879,16 @@ class GoalManager {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         ${Object.keys(weekGroups).sort().map(weekKey => {
                             const weekTasks = weekGroups[weekKey];
-                            const weekStart = new Date(weekKey);
+                            const [wy, wm, wd] = weekKey.split('-').map(Number);
+                            const weekStart = new Date(wy, wm - 1, wd);
                             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                             return `
                             <div class="bg-blue-950/40 p-3 rounded-lg border border-blue-700/30">
                                 <p class="text-sm text-blue-300 font-semibold mb-2">${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} Week</p>
                                 <div class="space-y-1">
                                     ${weekTasks.map(task => {
-                                        const taskDate = new Date(task.dueDate);
+                                        const [ty, tm, td] = task.dueDate.split('-').map(Number);
+                                        const taskDate = new Date(ty, tm - 1, td);
                                         const todayDate = new Date(this.getTodayDateString());
                                         const isOverdue = taskDate < todayDate && !this.isToday(task.dueDate) && !task.completed;
                                         return `
@@ -4014,7 +4018,9 @@ class GoalManager {
                             
                             <div class="mt-3 pl-4 border-l-2 border-green-600/40 space-y-2">
                                 ${thisWeeksTasks.map(task => {
-                                    const taskDate = new Date(task.dueDate);
+                                    // Parse date as local time to avoid timezone issues
+                                    const [year, month, day] = task.dueDate.split('-').map(Number);
+                                    const taskDate = new Date(year, month - 1, day);
                                     const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][taskDate.getDay()];
                                     const todayDate = new Date(this.getTodayDateString());
                                     const isOverdue = taskDate < todayDate && !this.isToday(task.dueDate) && !task.completed;
