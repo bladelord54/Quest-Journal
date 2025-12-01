@@ -1428,26 +1428,13 @@ class GoalManager {
     }
 
     tryUnlockRandomTheme() {
-        const allThemes = ['forest', 'desert', 'ice', 'volcanic', 'mystic', 'golden', 'shadow'];
+        // Use centralized themeDefinitions - exclude 'default' since it's always unlocked
+        const allThemes = Object.keys(this.themeDefinitions).filter(t => t !== 'default');
         const lockedThemes = allThemes.filter(t => !this.unlockedThemes.includes(t));
         if (lockedThemes.length > 0) {
             const randomTheme = lockedThemes[Math.floor(Math.random() * lockedThemes.length)];
-            const themeNames = {
-                forest: 'Forest Kingdom',
-                desert: 'Desert Oasis',
-                ice: 'Ice Citadel',
-                volcanic: 'Volcanic Forge',
-                mystic: 'Mystic Realm',
-                golden: 'Golden Empire',
-                shadow: 'Shadow Realm'
-            };
-            this.unlockTheme(randomTheme, themeNames[randomTheme]);
+            this.unlockTheme(randomTheme, this.themeDefinitions[randomTheme].name);
         }
-    }
-
-    switchTheme(themeId) {
-        // Redirect to the new selectTheme function
-        this.selectTheme(themeId);
     }
 
     // Treasure Chest System
