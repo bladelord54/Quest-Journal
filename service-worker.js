@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quest-journal-v18';
+const CACHE_NAME = 'quest-journal-v20';
 const urlsToCache = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const urlsToCache = [
   './dark-mode.css',
   './animations.css',
   './mobile.css',
+  './themes.css',
   './manifest.json',
   // Sound files (optional - will cache when first played)
   './sounds/achievement-daily.wav',

@@ -1,0 +1,290 @@
+/* Quest Journal Theme System */
+
+/* ===== DEFAULT THEME (Amber/Medieval) ===== */
+:root {
+    --theme-primary: #b45309;
+    --theme-primary-light: #d97706;
+    --theme-primary-dark: #92400e;
+    --theme-secondary: #78350f;
+    --theme-accent: #fbbf24;
+    --theme-bg-start: #78350f;
+    --theme-bg-mid: #451a03;
+    --theme-bg-end: #1c1917;
+    --theme-card-from: #78350f;
+    --theme-card-to: #451a03;
+    --theme-border: #b45309;
+    --theme-text: #fef3c7;
+    --theme-text-muted: #fcd34d;
+}
+
+/* ===== FOREST KINGDOM ===== */
+body.theme-forest {
+    --theme-primary: #047857;
+    --theme-primary-light: #059669;
+    --theme-primary-dark: #065f46;
+    --theme-secondary: #064e3b;
+    --theme-accent: #34d399;
+    --theme-bg-start: #064e3b;
+    --theme-bg-mid: #022c22;
+    --theme-bg-end: #0f1510;
+    --theme-card-from: #065f46;
+    --theme-card-to: #022c22;
+    --theme-border: #059669;
+    --theme-text: #d1fae5;
+    --theme-text-muted: #6ee7b7;
+}
+
+body.theme-forest .bg-gradient-to-b.from-amber-900 {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+body.theme-forest .border-amber-700,
+body.theme-forest .border-r-4.border-amber-700 {
+    border-color: var(--theme-border) !important;
+}
+
+body.theme-forest .text-amber-300,
+body.theme-forest .text-amber-400 {
+    color: var(--theme-accent) !important;
+}
+
+body.theme-forest .bg-amber-600,
+body.theme-forest .bg-amber-700 {
+    background-color: var(--theme-primary) !important;
+}
+
+body.theme-forest .from-amber-600,
+body.theme-forest .to-amber-700 {
+    --tw-gradient-from: var(--theme-primary) !important;
+    --tw-gradient-to: var(--theme-primary-dark) !important;
+}
+
+/* ===== DESERT OASIS ===== */
+body.theme-desert {
+    --theme-primary: #c2410c;
+    --theme-primary-light: #ea580c;
+    --theme-primary-dark: #9a3412;
+    --theme-secondary: #7c2d12;
+    --theme-accent: #fdba74;
+    --theme-bg-start: #7c2d12;
+    --theme-bg-mid: #431407;
+    --theme-bg-end: #1a0f0a;
+    --theme-card-from: #9a3412;
+    --theme-card-to: #431407;
+    --theme-border: #ea580c;
+    --theme-text: #ffedd5;
+    --theme-text-muted: #fdba74;
+}
+
+body.theme-desert .bg-gradient-to-b.from-amber-900 {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+body.theme-desert .border-amber-700 {
+    border-color: var(--theme-border) !important;
+}
+
+body.theme-desert .text-amber-300,
+body.theme-desert .text-amber-400 {
+    color: var(--theme-accent) !important;
+}
+
+/* ===== ICE CITADEL ===== */
+body.theme-ice {
+    --theme-primary: #0369a1;
+    --theme-primary-light: #0284c7;
+    --theme-primary-dark: #075985;
+    --theme-secondary: #0c4a6e;
+    --theme-accent: #7dd3fc;
+    --theme-bg-start: #0c4a6e;
+    --theme-bg-mid: #082f49;
+    --theme-bg-end: #0a1929;
+    --theme-card-from: #075985;
+    --theme-card-to: #082f49;
+    --theme-border: #0284c7;
+    --theme-text: #e0f2fe;
+    --theme-text-muted: #7dd3fc;
+}
+
+body.theme-ice .bg-gradient-to-b.from-amber-900 {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+body.theme-ice .border-amber-700 {
+    border-color: var(--theme-border) !important;
+}
+
+body.theme-ice .text-amber-300,
+body.theme-ice .text-amber-400 {
+    color: var(--theme-accent) !important;
+}
+
+body.theme-ice .bg-amber-600,
+body.theme-ice .bg-amber-700 {
+    background-color: var(--theme-primary) !important;
+}
+
+/* ===== VOLCANIC FORGE ===== */
+body.theme-volcanic {
+    --theme-primary: #dc2626;
+    --theme-primary-light: #ef4444;
+    --theme-primary-dark: #b91c1c;
+    --theme-secondary: #7f1d1d;
+    --theme-accent: #fca5a5;
+    --theme-bg-start: #7f1d1d;
+    --theme-bg-mid: #450a0a;
+    --theme-bg-end: #1a0505;
+    --theme-card-from: #991b1b;
+    --theme-card-to: #450a0a;
+    --theme-border: #ef4444;
+    --theme-text: #fee2e2;
+    --theme-text-muted: #fca5a5;
+}
+
+body.theme-volcanic .bg-gradient-to-b.from-amber-900 {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+body.theme-volcanic .border-amber-700 {
+    border-color: var(--theme-border) !important;
+}
+
+body.theme-volcanic .text-amber-300,
+body.theme-volcanic .text-amber-400 {
+    color: var(--theme-accent) !important;
+}
+
+/* ===== MYSTIC REALM ===== */
+body.theme-mystic {
+    --theme-primary: #7c3aed;
+    --theme-primary-light: #8b5cf6;
+    --theme-primary-dark: #6d28d9;
+    --theme-secondary: #5b21b6;
+    --theme-accent: #c4b5fd;
+    --theme-bg-start: #5b21b6;
+    --theme-bg-mid: #3b0764;
+    --theme-bg-end: #1a0533;
+    --theme-card-from: #6d28d9;
+    --theme-card-to: #3b0764;
+    --theme-border: #8b5cf6;
+    --theme-text: #ede9fe;
+    --theme-text-muted: #c4b5fd;
+}
+
+body.theme-mystic .bg-gradient-to-b.from-amber-900 {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+body.theme-mystic .border-amber-700 {
+    border-color: var(--theme-border) !important;
+}
+
+body.theme-mystic .text-amber-300,
+body.theme-mystic .text-amber-400 {
+    color: var(--theme-accent) !important;
+}
+
+/* ===== GOLDEN EMPIRE ===== */
+body.theme-golden {
+    --theme-primary: #ca8a04;
+    --theme-primary-light: #eab308;
+    --theme-primary-dark: #a16207;
+    --theme-secondary: #854d0e;
+    --theme-accent: #fde047;
+    --theme-bg-start: #854d0e;
+    --theme-bg-mid: #422006;
+    --theme-bg-end: #1a0f03;
+    --theme-card-from: #a16207;
+    --theme-card-to: #422006;
+    --theme-border: #eab308;
+    --theme-text: #fef9c3;
+    --theme-text-muted: #fde047;
+}
+
+body.theme-golden .bg-gradient-to-b.from-amber-900 {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+body.theme-golden .border-amber-700 {
+    border-color: var(--theme-border) !important;
+}
+
+body.theme-golden .text-amber-300,
+body.theme-golden .text-amber-400 {
+    color: var(--theme-accent) !important;
+}
+
+/* ===== SHADOW REALM ===== */
+body.theme-shadow {
+    --theme-primary: #374151;
+    --theme-primary-light: #4b5563;
+    --theme-primary-dark: #1f2937;
+    --theme-secondary: #111827;
+    --theme-accent: #9ca3af;
+    --theme-bg-start: #1f2937;
+    --theme-bg-mid: #111827;
+    --theme-bg-end: #030712;
+    --theme-card-from: #374151;
+    --theme-card-to: #111827;
+    --theme-border: #4b5563;
+    --theme-text: #e5e7eb;
+    --theme-text-muted: #9ca3af;
+}
+
+body.theme-shadow .bg-gradient-to-b.from-amber-900 {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+body.theme-shadow .border-amber-700 {
+    border-color: var(--theme-border) !important;
+}
+
+body.theme-shadow .text-amber-300,
+body.theme-shadow .text-amber-400 {
+    color: var(--theme-accent) !important;
+}
+
+/* ===== COMMON THEME OVERRIDES ===== */
+body[class*="theme-"] #main-sidebar {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+    border-color: var(--theme-border) !important;
+}
+
+body[class*="theme-"] .medieval-title {
+    color: var(--theme-accent) !important;
+}
+
+body[class*="theme-"] .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-left-color: var(--theme-accent) !important;
+}
+
+body[class*="theme-"] .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Theme selector styling */
+.theme-option {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 3px solid transparent;
+}
+
+.theme-option:hover {
+    transform: scale(1.05);
+}
+
+.theme-option.selected {
+    border-color: #fbbf24;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+}
+
+.theme-option.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.theme-option.locked:hover {
+    transform: none;
+}

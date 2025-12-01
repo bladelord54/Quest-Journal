@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="dark-mode.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="themes.css">
 </head>
 <body class="bg-stone-900">
     <!-- Achievement Toast -->
@@ -928,6 +929,17 @@
                                     <i class="ri-play-circle-line mr-1"></i> Test Sound
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Theme Selector -->
+                    <div class="quest-card bg-gradient-to-br from-purple-800 to-purple-900 p-6 rounded-xl shadow-2xl border-4 border-purple-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-palette-line mr-2"></i> Realm Themes
+                        </h3>
+                        <p class="text-purple-200 fancy-font mb-4 text-sm">Choose your kingdom's colors (unlock more by leveling up!)</p>
+                        <div id="theme-selector-container" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <!-- Themes will be rendered here by JavaScript -->
                         </div>
                     </div>
 

@@ -1446,17 +1446,8 @@ class GoalManager {
     }
 
     switchTheme(themeId) {
-        if (this.unlockedThemes.includes(themeId)) {
-            this.currentTheme = themeId;
-            this.applyRewardTheme(themeId);
-            this.saveData();
-            this.render();
-        }
-    }
-
-    applyRewardTheme(themeId) {
-        document.body.className = document.body.className.replace(/theme-\w+/g, '');
-        document.body.classList.add(`theme-${themeId}`);
+        // Redirect to the new selectTheme function
+        this.selectTheme(themeId);
     }
 
     // Treasure Chest System
@@ -2333,6 +2324,7 @@ class GoalManager {
             this.renderQuestChains();
             this.renderFocusTimer();
             this.renderEnchantments();
+            this.renderThemeSelector();
             this.updateProgress();
             
             // Render calendar if on calendar view
@@ -2637,39 +2629,32 @@ class GoalManager {
         const container = document.getElementById('themes-container');
         if (!container) return;
 
-        const allThemes = [
-            { id: 'default', name: 'Medieval Castle', icon: '🏰', level: 0, color: 'amber' },
-            { id: 'forest', name: 'Forest Kingdom', icon: '🌲', level: 5, color: 'green' },
-            { id: 'desert', name: 'Desert Oasis', icon: '🏜️', level: 10, color: 'orange' },
-            { id: 'ice', name: 'Ice Citadel', icon: '❄️', level: 15, color: 'blue' },
-            { id: 'volcanic', name: 'Volcanic Forge', icon: '🌋', level: 20, color: 'red' },
-            { id: 'mystic', name: 'Mystic Realm', icon: '🔮', level: 25, color: 'purple' },
-            { id: 'golden', name: 'Golden Empire', icon: '👑', level: 0, special: '100 completions', color: 'yellow' },
-            { id: 'shadow', name: 'Shadow Realm', icon: '🌑', level: 0, special: '5 life goals', color: 'gray' }
-        ];
+        container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
+            const isUnlocked = this.unlockedThemes.includes(id);
+            const isSelected = this.currentTheme === id;
+            const lockReason = !isUnlocked ? 
+                (theme.special ? theme.special : `Level ${theme.unlockLevel}`) : '';
 
-        container.innerHTML = allThemes.map(theme => {
-            const unlocked = this.unlockedThemes.includes(theme.id);
-            const active = this.currentTheme === theme.id;
-            
             return `
-                <div class="quest-card bg-gradient-to-br from-${theme.color}-900 to-${theme.color}-950 p-5 rounded-xl shadow-xl border-3 border-${theme.color}-600 text-center ${active ? 'ring-4 ring-yellow-400' : ''}">
+                <div onclick="goalManager.selectTheme('${id}')" 
+                    class="theme-option quest-card p-5 rounded-xl shadow-xl text-center cursor-pointer transition-all ${isSelected ? 'ring-4 ring-yellow-400' : ''} ${!isUnlocked ? 'opacity-60' : ''}"
+                    style="background: linear-gradient(135deg, ${theme.color}, ${this.darkenColor(theme.color, 40)}); border: 3px solid ${theme.color};"
+                    title="${isUnlocked ? 'Click to apply' : 'Locked: ' + lockReason}">
                     <div class="text-5xl mb-2">${theme.icon}</div>
-                    <h4 class="text-lg font-bold text-amber-300 medieval-title mb-2">${theme.name}</h4>
-                    ${!unlocked ? `
-                        <p class="text-${theme.color}-300 text-xs mb-2">
-                            ${theme.special ? `🔒 ${theme.special}` : `🔒 Reach Level ${theme.level}`}
+                    <h4 class="text-lg font-bold text-white medieval-title mb-2">${theme.name}</h4>
+                    ${!isUnlocked ? `
+                        <p class="text-white/70 text-xs mb-2">
+                            🔒 ${lockReason}
                         </p>
-                        <div class="text-${theme.color}-400 text-sm italic">Locked</div>
-                    ` : active ? `
-                        <div class="bg-yellow-500/20 border-2 border-yellow-400 rounded-lg px-3 py-2 text-yellow-300 text-sm font-bold">
+                        <div class="text-white/50 text-sm italic">Locked</div>
+                    ` : isSelected ? `
+                        <div class="bg-yellow-500/30 border-2 border-yellow-400 rounded-lg px-3 py-2 text-yellow-300 text-sm font-bold">
                             ✓ Active Theme
                         </div>
                     ` : `
-                        <button onclick="goalManager.switchTheme('${theme.id}')" 
-                            class="w-full bg-${theme.color}-700 hover:bg-${theme.color}-600 text-white px-3 py-2 rounded-lg font-semibold text-sm fancy-font shadow-lg transition-transform hover:scale-105">
-                            Activate
-                        </button>
+                        <div class="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 text-white text-sm font-bold transition-all">
+                            Click to Activate
+                        </div>
                     `}
                 </div>
             `;
@@ -3074,11 +3059,12 @@ class GoalManager {
         }
     }
 
-    // Dark Mode
+    // Dark Mode & Theme System
     loadTheme() {
         const savedTheme = localStorage.getItem('questTheme');
         this.darkMode = savedTheme === 'dark';
         this.applyTheme();
+        this.applyColorTheme();
     }
 
     toggleDarkMode() {
@@ -3104,6 +3090,81 @@ class GoalManager {
         } else {
             body.classList.remove('dark-mode');
         }
+    }
+
+    // Color Theme System
+    themeDefinitions = {
+        default: { name: 'Medieval Kingdom', icon: '🏰', color: '#b45309', unlockLevel: 0 },
+        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 5 },
+        desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10 },
+        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15 },
+        volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20 },
+        mystic: { name: 'Mystic Realm', icon: '✨', color: '#7c3aed', unlockLevel: 25 },
+        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: '100 completed' },
+        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: '5 life goals' }
+    };
+
+    applyColorTheme() {
+        const body = document.body;
+        // Remove all theme classes
+        Object.keys(this.themeDefinitions).forEach(themeId => {
+            body.classList.remove(`theme-${themeId}`);
+        });
+        
+        // Apply current theme if not default
+        if (this.currentTheme && this.currentTheme !== 'default') {
+            body.classList.add(`theme-${this.currentTheme}`);
+        }
+    }
+
+    selectTheme(themeId) {
+        if (!this.unlockedThemes.includes(themeId)) {
+            this.showAchievement('🔒 Theme locked! Keep leveling up!', 'daily');
+            return;
+        }
+        
+        this.currentTheme = themeId;
+        this.applyColorTheme();
+        this.saveData();
+        this.renderThemeSelector();
+        
+        const theme = this.themeDefinitions[themeId];
+        if (theme) {
+            this.showAchievement(`🎨 ${theme.name} theme activated!`, 'daily');
+        }
+    }
+
+    renderThemeSelector() {
+        const container = document.getElementById('theme-selector-container');
+        if (!container) return;
+
+        container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
+            const isUnlocked = this.unlockedThemes.includes(id);
+            const isSelected = this.currentTheme === id;
+            const lockReason = !isUnlocked ? 
+                (theme.special ? theme.special : `Level ${theme.unlockLevel}`) : '';
+
+            return `
+                <div onclick="goalManager.selectTheme('${id}')" 
+                    class="theme-option p-3 rounded-lg text-center transition-all ${isSelected ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}"
+                    style="background: linear-gradient(135deg, ${theme.color}, ${this.darkenColor(theme.color, 30)})"
+                    title="${isUnlocked ? 'Click to apply' : 'Locked: ' + lockReason}">
+                    <div class="text-3xl mb-1">${theme.icon}</div>
+                    <div class="text-xs font-bold text-white truncate">${theme.name}</div>
+                    ${!isUnlocked ? `<div class="text-xs text-white/70 mt-1">🔒 ${lockReason}</div>` : ''}
+                    ${isSelected ? '<div class="text-xs text-yellow-300 mt-1">✓ Active</div>' : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    darkenColor(hex, percent) {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = Math.max((num >> 16) - amt, 0);
+        const G = Math.max((num >> 8 & 0x00FF) - amt, 0);
+        const B = Math.max((num & 0x0000FF) - amt, 0);
+        return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
     }
 
     toggleStatsPanel() {
