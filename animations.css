@@ -226,3 +226,43 @@
 .ice-effect {
     background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
 }
+
+/* ===== Onboarding Slides ===== */
+.onboarding-slide {
+    transition: opacity 0.5s ease-in-out;
+}
+
+.onboarding-dot {
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+}
+
+/* ===== Loading Overlay ===== */
+#loading-overlay {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Pulse animation for loading text */
+#loading-text {
+    animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+/* ===== Empty State Animations ===== */
+.empty-state-icon {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}

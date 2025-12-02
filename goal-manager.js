@@ -3672,9 +3672,16 @@ class GoalManager {
         const container = document.getElementById('life-goals-container');
         if (this.lifeGoals.length === 0) {
             container.innerHTML = `
-                <div class="col-span-2 text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">🏰</div>
-                    <p class="fancy-font text-lg">No epic quests yet. Begin your legendary journey!</p>
+                <div class="col-span-2 text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">🏰</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Your Kingdom Awaits</h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        Every great adventure begins with a dream. What legacy will you build?
+                    </p>
+                    <button onclick="goalManager.addLifeGoal()" 
+                        class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400">
+                        <i class="ri-add-line mr-2"></i>Create Your First Life Goal
+                    </button>
                 </div>
             `;
         } else {
@@ -3986,9 +3993,16 @@ class GoalManager {
         
         if (this.weeklyGoals.length === 0 && thisWeeksTasks.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">⚔️</div>
-                    <p class="fancy-font text-lg">No weekly battles yet. Plan your strategy!</p>
+                <div class="text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">🛡️</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Plan Your Week</h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        A hero always has a plan. What battles will you fight this week?
+                    </p>
+                    <button onclick="goalManager.addWeeklyGoal()" 
+                        class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-green-400">
+                        <i class="ri-add-line mr-2"></i>Create Weekly Goal
+                    </button>
                 </div>
             `;
         } else {
@@ -4120,11 +4134,15 @@ class GoalManager {
         
         if (todaysTasks.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">⚔️</div>
-                    <p class="fancy-font text-lg">No skirmishes scheduled for today. Prepare for battle!</p>
-                    <button onclick="addDailyTask()" class="mt-4 bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all">
-                        <i class="ri-add-line mr-2"></i>Add Today's Quest
+                <div class="text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">⚔️</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Ready for Battle!</h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        Your battlefield is clear. What challenge will you conquer today?
+                    </p>
+                    <button onclick="addDailyTask()" 
+                        class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
+                        <i class="ri-sword-line mr-2"></i>Add Today's Quest
                     </button>
                 </div>
             `;
@@ -4197,10 +4215,24 @@ class GoalManager {
         }
         
         if (filteredQuests.length === 0) {
+            const isFiltered = this.sideQuestFilter !== 'all';
             container.innerHTML = `
-                <div class="text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">🧭</div>
-                    <p class="fancy-font text-lg">No side quests ${this.sideQuestFilter !== 'all' ? 'with this priority' : 'yet'}. Explore new adventures!</p>
+                <div class="text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">🧭</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">
+                        ${isFiltered ? 'No Matching Quests' : 'Discover Side Quests'}
+                    </h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        ${isFiltered 
+                            ? 'Try a different priority filter or create a new quest!' 
+                            : 'Side quests are optional adventures. Track ideas, errands, or things you want to explore!'}
+                    </p>
+                    ${!isFiltered ? `
+                        <button onclick="goalManager.addSideQuest()" 
+                            class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-cyan-400">
+                            <i class="ri-compass-3-line mr-2"></i>Add Side Quest
+                        </button>
+                    ` : ''}
                 </div>
             `;
         } else {

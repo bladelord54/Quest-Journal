@@ -27,6 +27,93 @@
     <link rel="stylesheet" href="themes.css">
 </head>
 <body class="bg-stone-900">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 z-[100] bg-stone-900/95 flex items-center justify-center">
+        <div class="text-center">
+            <div class="loading-spinner mb-4">
+                <div class="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+            <p id="loading-text" class="text-amber-300 fancy-font text-lg">Loading your quest journal...</p>
+        </div>
+    </div>
+
+    <!-- Onboarding Slides -->
+    <div id="onboarding-modal" class="hidden fixed inset-0 z-[90] bg-stone-900">
+        <div class="h-full flex flex-col">
+            <!-- Slides Container -->
+            <div id="onboarding-slides" class="flex-1 overflow-hidden relative">
+                <!-- Slide 1: Welcome -->
+                <div class="onboarding-slide absolute inset-0 flex flex-col items-center justify-center p-8 text-center" data-slide="0">
+                    <div class="text-8xl mb-6 animate-bounce">⚔️</div>
+                    <h1 class="text-4xl font-bold text-amber-300 medieval-title mb-4">Welcome, Brave Hero!</h1>
+                    <p class="text-amber-200 fancy-font text-xl max-w-md">Transform your daily tasks into epic quests and level up your real life!</p>
+                </div>
+                
+                <!-- Slide 2: Goals -->
+                <div class="onboarding-slide absolute inset-0 flex flex-col items-center justify-center p-8 text-center opacity-0" data-slide="1">
+                    <div class="text-8xl mb-6">🎯</div>
+                    <h2 class="text-3xl font-bold text-amber-300 medieval-title mb-4">Set Your Destiny</h2>
+                    <p class="text-amber-200 fancy-font text-lg max-w-md">Create Life Goals, break them into Yearly Campaigns, Monthly Raids, and Weekly Quests.</p>
+                    <div class="mt-6 flex gap-4 text-4xl">
+                        <span>🏰</span><span>→</span><span>📅</span><span>→</span><span>📋</span><span>→</span><span>✅</span>
+                    </div>
+                </div>
+                
+                <!-- Slide 3: XP & Rewards -->
+                <div class="onboarding-slide absolute inset-0 flex flex-col items-center justify-center p-8 text-center opacity-0" data-slide="2">
+                    <div class="text-8xl mb-6">✨</div>
+                    <h2 class="text-3xl font-bold text-amber-300 medieval-title mb-4">Earn Rewards</h2>
+                    <p class="text-amber-200 fancy-font text-lg max-w-md">Complete tasks to earn XP, Gold, unlock Spells, Themes, and Titles!</p>
+                    <div class="mt-6 flex gap-6 text-3xl">
+                        <div class="text-center">
+                            <div>⭐</div>
+                            <div class="text-xs text-amber-300">XP</div>
+                        </div>
+                        <div class="text-center">
+                            <div>💰</div>
+                            <div class="text-xs text-amber-300">Gold</div>
+                        </div>
+                        <div class="text-center">
+                            <div>📜</div>
+                            <div class="text-xs text-amber-300">Spells</div>
+                        </div>
+                        <div class="text-center">
+                            <div>🎨</div>
+                            <div class="text-xs text-amber-300">Themes</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Slide 4: Ready -->
+                <div class="onboarding-slide absolute inset-0 flex flex-col items-center justify-center p-8 text-center opacity-0" data-slide="3">
+                    <div class="text-8xl mb-6">🚀</div>
+                    <h2 class="text-3xl font-bold text-amber-300 medieval-title mb-4">Your Adventure Awaits!</h2>
+                    <p class="text-amber-200 fancy-font text-lg max-w-md">You're ready to begin. Start with a simple daily task and watch your kingdom grow!</p>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="p-6 bg-stone-800/50">
+                <!-- Progress Dots -->
+                <div class="flex justify-center gap-2 mb-4">
+                    <div class="onboarding-dot w-3 h-3 rounded-full bg-amber-400" data-dot="0"></div>
+                    <div class="onboarding-dot w-3 h-3 rounded-full bg-amber-900" data-dot="1"></div>
+                    <div class="onboarding-dot w-3 h-3 rounded-full bg-amber-900" data-dot="2"></div>
+                    <div class="onboarding-dot w-3 h-3 rounded-full bg-amber-900" data-dot="3"></div>
+                </div>
+                <!-- Buttons -->
+                <div class="flex justify-between items-center max-w-md mx-auto">
+                    <button id="onboarding-skip" onclick="skipOnboarding()" class="text-amber-400 hover:text-amber-300 fancy-font">
+                        Skip
+                    </button>
+                    <button id="onboarding-next" onclick="nextOnboardingSlide()" class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-8 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        Next →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Achievement Toast -->
     <div id="achievement-toast" class="hidden fixed top-8 right-8 z-50 transform transition-all duration-300 scale-0">
         <div class="bg-gradient-to-br from-yellow-600 via-amber-500 to-yellow-700 text-white p-6 rounded-lg shadow-2xl border-4 border-yellow-400 quest-card">
@@ -1219,6 +1306,111 @@
                 const sidebar = document.getElementById('main-sidebar');
                 if (sidebar) sidebar.classList.add('nav-collapsed');
             }
+        });
+        
+        // ===== Loading Overlay Functions =====
+        function showLoading(text = 'Loading...') {
+            const overlay = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+            if (overlay) {
+                overlay.classList.remove('hidden');
+                if (loadingText) loadingText.textContent = text;
+            }
+        }
+        
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+            }
+        }
+        
+        // ===== Onboarding Functions =====
+        let currentOnboardingSlide = 0;
+        const totalOnboardingSlides = 4;
+        
+        function showOnboarding() {
+            // Only show if user hasn't completed onboarding
+            if (localStorage.getItem('onboardingComplete') === 'true') {
+                return false;
+            }
+            const modal = document.getElementById('onboarding-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                return true;
+            }
+            return false;
+        }
+        
+        function nextOnboardingSlide() {
+            currentOnboardingSlide++;
+            
+            if (currentOnboardingSlide >= totalOnboardingSlides) {
+                completeOnboarding();
+                return;
+            }
+            
+            updateOnboardingSlide();
+        }
+        
+        function updateOnboardingSlide() {
+            // Update slides
+            document.querySelectorAll('.onboarding-slide').forEach((slide, index) => {
+                if (index === currentOnboardingSlide) {
+                    slide.style.opacity = '1';
+                    slide.style.pointerEvents = 'auto';
+                } else {
+                    slide.style.opacity = '0';
+                    slide.style.pointerEvents = 'none';
+                }
+            });
+            
+            // Update dots
+            document.querySelectorAll('.onboarding-dot').forEach((dot, index) => {
+                if (index === currentOnboardingSlide) {
+                    dot.classList.remove('bg-amber-900');
+                    dot.classList.add('bg-amber-400');
+                } else {
+                    dot.classList.remove('bg-amber-400');
+                    dot.classList.add('bg-amber-900');
+                }
+            });
+            
+            // Update button text on last slide
+            const nextBtn = document.getElementById('onboarding-next');
+            if (nextBtn) {
+                if (currentOnboardingSlide === totalOnboardingSlides - 1) {
+                    nextBtn.textContent = "Let's Go! 🚀";
+                } else {
+                    nextBtn.textContent = 'Next →';
+                }
+            }
+        }
+        
+        function skipOnboarding() {
+            completeOnboarding();
+        }
+        
+        function completeOnboarding() {
+            localStorage.setItem('onboardingComplete', 'true');
+            const modal = document.getElementById('onboarding-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+            // Start the tutorial after onboarding
+            if (typeof goalManager !== 'undefined' && goalManager.startTutorial) {
+                setTimeout(() => goalManager.startTutorial(), 500);
+            }
+        }
+        
+        // Check for first-time user on load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Small delay to let the app initialize first
+            setTimeout(() => {
+                if (!localStorage.getItem('onboardingComplete')) {
+                    showOnboarding();
+                }
+            }, 500);
         });
     </script>
 </body>
