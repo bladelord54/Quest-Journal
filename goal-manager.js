@@ -3753,9 +3753,16 @@ class GoalManager {
         const container = document.getElementById('yearly-goals-container');
         if (this.yearlyGoals.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">📅</div>
-                    <p class="fancy-font text-lg">No yearly campaigns yet. Plan your conquests!</p>
+                <div class="text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">📜</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Write Your Legend</h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        Great campaigns are written in scrolls. What will this year's chapter hold?
+                    </p>
+                    <button onclick="goalManager.addYearlyGoal()" 
+                        class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-purple-400">
+                        <i class="ri-add-line mr-2"></i>Create Yearly Campaign
+                    </button>
                 </div>
             `;
         } else {
@@ -3840,9 +3847,16 @@ class GoalManager {
         
         if (this.monthlyGoals.length === 0 && thisMonthsTasks.length === 0) {
             container.innerHTML = `
-                <div class="col-span-2 text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">🗓️</div>
-                    <p class="fancy-font text-lg">No monthly raids yet. Plan your conquests!</p>
+                <div class="col-span-2 text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">📖</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Open Your Tome</h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        Each month is a new chapter in your tome. What raids will you record?
+                    </p>
+                    <button onclick="goalManager.addMonthlyGoal()" 
+                        class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-blue-400">
+                        <i class="ri-add-line mr-2"></i>Create Monthly Raid
+                    </button>
                 </div>
             `;
         } else {
