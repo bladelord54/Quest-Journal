@@ -86,100 +86,120 @@ class GoalManager {
     }
 
     loadData() {
-        const saved = localStorage.getItem('lifeOrganizeData');
-        if (saved) {
-            const data = JSON.parse(saved);
-            this.lifeGoals = data.lifeGoals || [];
-            this.yearlyGoals = data.yearlyGoals || [];
-            this.monthlyGoals = data.monthlyGoals || [];
-            this.weeklyGoals = data.weeklyGoals || [];
-            this.dailyTasks = data.dailyTasks || [];
-            this.sideQuests = data.sideQuests || [];
-            this.habits = data.habits || [];
-            this.xp = data.xp || 0;
-            this.level = data.level || 1;
-            this.badges = data.badges || [];
-            this.archivedGoals = data.archivedGoals || [];
-            
-            // Rewards System
-            this.goldCoins = data.goldCoins || 0;
-            this.unlockedThemes = data.unlockedThemes || ['default'];
-            this.currentTheme = data.currentTheme || 'default';
-            this.unlockedTitles = data.unlockedTitles || [];
-            this.currentTitle = data.currentTitle || null;
-            this.treasureChests = data.treasureChests || [];
-            this.companion = data.companion || null;
-            this.companionLevel = data.companionLevel || 1;
-            this.questPath = data.questPath || null;
-            this.pathProgress = data.pathProgress || { warrior: 0, sage: 0, merchant: 0 };
-            this.upgrades = data.upgrades || [];
-            
-            // Spellbook System
-            this.spellbook = data.spellbook || [];
-            this.activeSpells = data.activeSpells || [];
-            
-            // Quest Chains System
-            this.activeQuestChains = data.activeQuestChains || [];
-            this.completedQuestChains = data.completedQuestChains || [];
-            
-            // Focus & Enchantments
-            this.focusCrystals = data.focusCrystals || 0;
-            this.totalFocusTime = data.totalFocusTime || 0;
-            this.activeEnchantments = data.activeEnchantments || [];
-            
-            // Settings
-            this.timezone = data.timezone || 'auto';
-            this.timezoneOffset = data.timezoneOffset || 0;
-            
-            // Tutorial
-            this.tutorialCompleted = data.tutorialCompleted || false;
-            
-            // Add dueDate to existing tasks that don't have one
-            this.dailyTasks.forEach(task => {
-                if (!task.dueDate) {
-                    task.dueDate = new Date().toISOString().split('T')[0];
-                }
-            });
+        try {
+            const saved = localStorage.getItem('lifeOrganizeData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.lifeGoals = data.lifeGoals || [];
+                this.yearlyGoals = data.yearlyGoals || [];
+                this.monthlyGoals = data.monthlyGoals || [];
+                this.weeklyGoals = data.weeklyGoals || [];
+                this.dailyTasks = data.dailyTasks || [];
+                this.sideQuests = data.sideQuests || [];
+                this.habits = data.habits || [];
+                this.xp = data.xp || 0;
+                this.level = data.level || 1;
+                this.badges = data.badges || [];
+                this.archivedGoals = data.archivedGoals || [];
+                
+                // Rewards System
+                this.goldCoins = data.goldCoins || 0;
+                this.unlockedThemes = data.unlockedThemes || ['default'];
+                this.currentTheme = data.currentTheme || 'default';
+                this.unlockedTitles = data.unlockedTitles || [];
+                this.currentTitle = data.currentTitle || null;
+                this.treasureChests = data.treasureChests || [];
+                this.companion = data.companion || null;
+                this.companionLevel = data.companionLevel || 1;
+                this.questPath = data.questPath || null;
+                this.pathProgress = data.pathProgress || { warrior: 0, sage: 0, merchant: 0 };
+                this.upgrades = data.upgrades || [];
+                
+                // Spellbook System
+                this.spellbook = data.spellbook || [];
+                this.activeSpells = data.activeSpells || [];
+                
+                // Quest Chains System
+                this.activeQuestChains = data.activeQuestChains || [];
+                this.completedQuestChains = data.completedQuestChains || [];
+                
+                // Focus & Enchantments
+                this.focusCrystals = data.focusCrystals || 0;
+                this.totalFocusTime = data.totalFocusTime || 0;
+                this.activeEnchantments = data.activeEnchantments || [];
+                
+                // Settings
+                this.timezone = data.timezone || 'auto';
+                this.timezoneOffset = data.timezoneOffset || 0;
+                
+                // Tutorial
+                this.tutorialCompleted = data.tutorialCompleted || false;
+                
+                // Add dueDate to existing tasks that don't have one
+                this.dailyTasks.forEach(task => {
+                    if (!task.dueDate) {
+                        task.dueDate = new Date().toISOString().split('T')[0];
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+            this.showErrorNotification('Failed to load your data. Some progress may be lost.');
+            // Try to backup corrupted data before resetting
+            const corrupted = localStorage.getItem('lifeOrganizeData');
+            if (corrupted) {
+                localStorage.setItem('lifeOrganizeData_backup_' + Date.now(), corrupted);
+            }
         }
     }
 
     saveData() {
-        localStorage.setItem('lifeOrganizeData', JSON.stringify({
-            lifeGoals: this.lifeGoals,
-            yearlyGoals: this.yearlyGoals,
-            monthlyGoals: this.monthlyGoals,
-            weeklyGoals: this.weeklyGoals,
-            dailyTasks: this.dailyTasks,
-            sideQuests: this.sideQuests,
-            habits: this.habits,
-            xp: this.xp,
-            level: this.level,
-            badges: this.badges,
-            archivedGoals: this.archivedGoals,
-            goldCoins: this.goldCoins,
-            unlockedThemes: this.unlockedThemes,
-            currentTheme: this.currentTheme,
-            unlockedTitles: this.unlockedTitles,
-            currentTitle: this.currentTitle,
-            treasureChests: this.treasureChests,
-            companion: this.companion,
-            companionLevel: this.companionLevel,
-            questPath: this.questPath,
-            pathProgress: this.pathProgress,
-            upgrades: this.upgrades,
-            spellbook: this.spellbook,
-            activeSpells: this.activeSpells,
-            activeQuestChains: this.activeQuestChains,
-            completedQuestChains: this.completedQuestChains,
-            focusCrystals: this.focusCrystals,
-            totalFocusTime: this.totalFocusTime,
-            activeEnchantments: this.activeEnchantments,
-            timezone: this.timezone,
-            timezoneOffset: this.timezoneOffset,
-            tutorialCompleted: this.tutorialCompleted,
-            lastHabitReset: this.getTodayDateString(),
-            lastWeekReset: this.getWeekString(new Date())
-        }));
+        try {
+            const dataToSave = JSON.stringify({
+                lifeGoals: this.lifeGoals,
+                yearlyGoals: this.yearlyGoals,
+                monthlyGoals: this.monthlyGoals,
+                weeklyGoals: this.weeklyGoals,
+                dailyTasks: this.dailyTasks,
+                sideQuests: this.sideQuests,
+                habits: this.habits,
+                xp: this.xp,
+                level: this.level,
+                badges: this.badges,
+                archivedGoals: this.archivedGoals,
+                goldCoins: this.goldCoins,
+                unlockedThemes: this.unlockedThemes,
+                currentTheme: this.currentTheme,
+                unlockedTitles: this.unlockedTitles,
+                currentTitle: this.currentTitle,
+                treasureChests: this.treasureChests,
+                companion: this.companion,
+                companionLevel: this.companionLevel,
+                questPath: this.questPath,
+                pathProgress: this.pathProgress,
+                upgrades: this.upgrades,
+                spellbook: this.spellbook,
+                activeSpells: this.activeSpells,
+                activeQuestChains: this.activeQuestChains,
+                completedQuestChains: this.completedQuestChains,
+                focusCrystals: this.focusCrystals,
+                totalFocusTime: this.totalFocusTime,
+                activeEnchantments: this.activeEnchantments,
+                timezone: this.timezone,
+                timezoneOffset: this.timezoneOffset,
+                tutorialCompleted: this.tutorialCompleted,
+                lastHabitReset: this.getTodayDateString(),
+                lastWeekReset: this.getWeekString(new Date())
+            });
+            localStorage.setItem('lifeOrganizeData', dataToSave);
+        } catch (error) {
+            console.error('Error saving data:', error);
+            if (error.name === 'QuotaExceededError') {
+                this.showErrorNotification('Storage full! Please export your data and clear some old quests.');
+            } else {
+                this.showErrorNotification('Failed to save your progress. Please try again.');
+            }
+        }
     }
 
     initializeEnchantments() {
@@ -4307,55 +4327,100 @@ class GoalManager {
 
     // Data Export/Import
     exportData() {
-        const data = {
-            lifeGoals: this.lifeGoals,
-            yearlyGoals: this.yearlyGoals,
-            monthlyGoals: this.monthlyGoals,
-            weeklyGoals: this.weeklyGoals,
-            dailyTasks: this.dailyTasks,
-            sideQuests: this.sideQuests,
-            exportDate: new Date().toISOString(),
-            version: '1.0'
-        };
-        
-        const dataStr = JSON.stringify(data, null, 2);
-        const dataBlob = new Blob([dataStr], {type: 'application/json'});
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `quest-journal-backup-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-        
-        this.showAchievement('📦 Data Exported Successfully!', 'daily');
+        try {
+            const data = {
+                lifeGoals: this.lifeGoals,
+                yearlyGoals: this.yearlyGoals,
+                monthlyGoals: this.monthlyGoals,
+                weeklyGoals: this.weeklyGoals,
+                dailyTasks: this.dailyTasks,
+                sideQuests: this.sideQuests,
+                habits: this.habits,
+                xp: this.xp,
+                level: this.level,
+                goldCoins: this.goldCoins,
+                unlockedThemes: this.unlockedThemes,
+                currentTheme: this.currentTheme,
+                spellbook: this.spellbook,
+                focusCrystals: this.focusCrystals,
+                exportDate: new Date().toISOString(),
+                version: '2.0'
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `quest-journal-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            this.showSuccessNotification('Your quest data has been exported successfully!');
+            this.showAchievement('📦 Data Exported Successfully!', 'daily');
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showErrorNotification('Failed to export data. Please try again.');
+        }
     }
 
     importData(event) {
         const file = event.target.files[0];
         if (!file) return;
         
+        // Validate file type
+        if (!file.name.endsWith('.json')) {
+            this.showErrorNotification('Please select a valid JSON backup file.');
+            event.target.value = '';
+            return;
+        }
+        
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
                 
-                if (confirm('This will replace all current data. Are you sure?')) {
+                // Validate it's a Quest Journal backup
+                if (!data.version && !data.lifeGoals && !data.dailyTasks) {
+                    this.showErrorNotification('This doesn\'t appear to be a valid Quest Journal backup file.');
+                    return;
+                }
+                
+                if (confirm('This will replace all current data. Are you sure?\n\nTip: Export your current data first as a backup!')) {
+                    // Backup current data before import
+                    const currentData = localStorage.getItem('lifeOrganizeData');
+                    if (currentData) {
+                        localStorage.setItem('lifeOrganizeData_pre_import_backup', currentData);
+                    }
+                    
                     this.lifeGoals = data.lifeGoals || [];
                     this.yearlyGoals = data.yearlyGoals || [];
                     this.monthlyGoals = data.monthlyGoals || [];
                     this.weeklyGoals = data.weeklyGoals || [];
                     this.dailyTasks = data.dailyTasks || [];
                     this.sideQuests = data.sideQuests || [];
+                    this.habits = data.habits || this.habits;
+                    this.xp = data.xp || this.xp;
+                    this.level = data.level || this.level;
+                    this.goldCoins = data.goldCoins || this.goldCoins;
+                    this.spellbook = data.spellbook || this.spellbook;
+                    this.focusCrystals = data.focusCrystals || this.focusCrystals;
                     
                     this.saveData();
                     this.render();
+                    this.showSuccessNotification('Your quest data has been restored successfully!');
                     this.showAchievement('📥 Data Imported Successfully!', 'weekly');
                 }
             } catch (error) {
-                alert('Error importing data. Please check the file format.');
-                console.error(error);
+                console.error('Import error:', error);
+                this.showErrorNotification('Failed to import data. The file may be corrupted or invalid.');
             }
         };
+        
+        reader.onerror = () => {
+            this.showErrorNotification('Failed to read the file. Please try again.');
+        };
+        
         reader.readAsText(file);
         
         // Reset file input
@@ -6305,6 +6370,68 @@ class GoalManager {
         }
     }
 
+    showErrorNotification(message) {
+        // Create error toast element
+        let errorToast = document.getElementById('error-toast');
+        if (!errorToast) {
+            errorToast = document.createElement('div');
+            errorToast.id = 'error-toast';
+            errorToast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md';
+            document.body.appendChild(errorToast);
+        }
+        
+        errorToast.innerHTML = `
+            <div class="bg-gradient-to-r from-red-900 to-red-800 text-white px-6 py-4 rounded-lg shadow-2xl border-2 border-red-500 flex items-center gap-3 animate-slide-down">
+                <i class="ri-error-warning-line text-2xl text-red-300"></i>
+                <div class="flex-1">
+                    <div class="font-bold fancy-font">Quest Failed!</div>
+                    <div class="text-sm text-red-200">${message}</div>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-red-300 hover:text-white">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+        `;
+        
+        // Auto-remove after 8 seconds
+        setTimeout(() => {
+            if (errorToast.parentElement) {
+                errorToast.remove();
+            }
+        }, 8000);
+    }
+
+    showSuccessNotification(message) {
+        // Create success toast element
+        let successToast = document.getElementById('success-toast');
+        if (!successToast) {
+            successToast = document.createElement('div');
+            successToast.id = 'success-toast';
+            successToast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md';
+            document.body.appendChild(successToast);
+        }
+        
+        successToast.innerHTML = `
+            <div class="bg-gradient-to-r from-green-900 to-green-800 text-white px-6 py-4 rounded-lg shadow-2xl border-2 border-green-500 flex items-center gap-3 animate-slide-down">
+                <i class="ri-checkbox-circle-line text-2xl text-green-300"></i>
+                <div class="flex-1">
+                    <div class="font-bold fancy-font">Success!</div>
+                    <div class="text-sm text-green-200">${message}</div>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-green-300 hover:text-white">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+        `;
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (successToast.parentElement) {
+                successToast.remove();
+            }
+        }, 5000);
+    }
+
     scheduleEnchantmentExpiryNotification(enchantment) {
         const timeUntilExpiry = enchantment.expiresAt - Date.now();
         const warningTime = 5 * 60 * 1000; // 5 minutes
@@ -6914,5 +7041,26 @@ function addWeeklyGoal() {
 function addDailyTask() {
     if (window.goalManager) goalManager.addDailyTask();
 }
+
+// Global Error Handler - catches uncaught errors and displays user-friendly message
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('Global error:', { message, source, lineno, colno, error });
+    
+    // Only show user notification for non-trivial errors
+    if (window.goalManager && message && !message.includes('Script error')) {
+        window.goalManager.showErrorNotification('Something went wrong. Your data is safe, but please refresh if issues persist.');
+    }
+    
+    return false; // Let the error propagate for debugging
+};
+
+// Handle unhandled promise rejections
+window.onunhandledrejection = function(event) {
+    console.error('Unhandled promise rejection:', event.reason);
+    
+    if (window.goalManager) {
+        window.goalManager.showErrorNotification('An operation failed. Please try again.');
+    }
+};
 
 // GoalManager is initialized in index.html now
