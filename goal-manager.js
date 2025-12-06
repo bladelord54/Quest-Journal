@@ -812,7 +812,7 @@ class GoalManager {
         }
     }
 
-    showAchievement(text, level = 'daily') {
+    showAchievement(text, level = 'daily', playSound = true) {
         const toast = document.getElementById('achievement-toast');
         const achievementText = document.getElementById('achievement-text');
         
@@ -820,7 +820,9 @@ class GoalManager {
         toast.classList.remove('hidden', 'scale-0');
         toast.classList.add('scale-100');
         
-        this.playAchievementSound(level);
+        if (playSound) {
+            this.playAchievementSound(level);
+        }
         
         setTimeout(() => {
             toast.classList.remove('scale-100');
@@ -1290,6 +1292,9 @@ class GoalManager {
         this.xp += finalXP;
         const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
         
+        // Trigger XP bar animation
+        this.animateXPGain(finalXP);
+        
         // Also award gold coins (XP = Coins for simplicity)
         this.addGold(amount, source);
         
@@ -1301,6 +1306,44 @@ class GoalManager {
         this.checkLootDrop(source);
         this.checkTitleUnlocks();
         this.saveData();
+    }
+    
+    // XP Bar Animation
+    animateXPGain(amount) {
+        const xpBar = document.getElementById('xp-progress');
+        if (xpBar) {
+            // Add glow and shimmer animation class
+            xpBar.classList.add('xp-gaining');
+            
+            // Remove class after animation completes
+            setTimeout(() => {
+                xpBar.classList.remove('xp-gaining');
+            }, 800);
+        }
+        
+        // Show floating XP text
+        this.showFloatingXP(amount);
+    }
+    
+    showFloatingXP(amount) {
+        // Get XP bar position for floating text
+        const xpBar = document.getElementById('xp-progress');
+        if (!xpBar) return;
+        
+        const rect = xpBar.getBoundingClientRect();
+        
+        const floatText = document.createElement('div');
+        floatText.className = 'xp-gain-float';
+        floatText.textContent = `+${amount} XP`;
+        floatText.style.left = `${rect.left + rect.width / 2}px`;
+        floatText.style.top = `${rect.top}px`;
+        
+        document.body.appendChild(floatText);
+        
+        // Remove after animation
+        setTimeout(() => {
+            floatText.remove();
+        }, 1500);
     }
 
     // Gold Coin System
@@ -1366,7 +1409,8 @@ class GoalManager {
         };
         
         const message = `${rarityEmojis[rarity]} ${rarity.toUpperCase()} LOOT! +${reward.coins} coins${reward.xpBonus ? ` +${reward.xpBonus} XP` : ''}`;
-        this.showAchievement(message, 'monthly');
+        // Skip sound for loot drops since the main achievement already plays one
+        this.showAchievement(message, 'monthly', false);
     }
 
     // Title System
@@ -2102,7 +2146,7 @@ class GoalManager {
         });
     }
 
-    toggleTask(taskId) {
+    toggleTask(taskId, event) {
         const task = this.dailyTasks.find(t => t.id === taskId);
         if (task) {
             // Check if trying to complete task
@@ -2118,6 +2162,8 @@ class GoalManager {
             if (task.completed) {
                 this.addXP(10, 'daily');
                 this.showAchievement('Quest Task Completed! +10 XP ⚔️', 'daily');
+                // Trigger completion animation
+                this.playQuestCompleteAnimation(event);
             } else {
                 this.xp = Math.max(0, this.xp - 10);
             }
@@ -2127,7 +2173,7 @@ class GoalManager {
         }
     }
 
-    toggleWeeklyGoal(goalId) {
+    toggleWeeklyGoal(goalId, event) {
         const goal = this.weeklyGoals.find(g => g.id === goalId);
         if (goal) {
             // Check if trying to complete goal
@@ -2143,6 +2189,8 @@ class GoalManager {
             if (goal.completed) {
                 this.addXP(50, 'weekly');
                 this.showAchievement('Weekly Quest Conquered! +50 XP 🛡️', 'weekly');
+                // Trigger completion animation
+                this.playQuestCompleteAnimation(event);
             } else {
                 this.xp = Math.max(0, this.xp - 50);
             }
@@ -2152,7 +2200,7 @@ class GoalManager {
         }
     }
 
-    toggleMonthlyGoal(goalId) {
+    toggleMonthlyGoal(goalId, event) {
         const goal = this.monthlyGoals.find(g => g.id === goalId);
         if (goal) {
             goal.completed = !goal.completed;
@@ -2161,6 +2209,8 @@ class GoalManager {
                 this.showAchievement('Monthly Victory Achieved! +200 XP 👑', 'monthly');
                 // Deal damage to parent boss if exists
                 this.dealBossDamage(goal, 'monthly');
+                // Trigger completion animation
+                this.playQuestCompleteAnimation(event);
             } else {
                 this.xp = Math.max(0, this.xp - 200);
             }
@@ -2169,8 +2219,95 @@ class GoalManager {
             this.render();
         }
     }
+    
+    // Quest Complete Animation
+    playQuestCompleteAnimation(event) {
+        // Get position from event or use center of screen
+        let x, y;
+        if (event && event.target) {
+            const rect = event.target.getBoundingClientRect();
+            x = rect.left + rect.width / 2;
+            y = rect.top + rect.height / 2;
+            
+            // Add flash to parent card
+            const card = event.target.closest('.quest-card, .goal-item, [class*="card"]');
+            if (card) {
+                card.classList.add('task-completing');
+                setTimeout(() => card.classList.remove('task-completing'), 500);
+            }
+        } else {
+            x = window.innerWidth / 2;
+            y = window.innerHeight / 2;
+        }
+        
+        // Create particle burst
+        this.createCompletionParticles(x, y);
+    }
+    
+    createCompletionParticles(x, y) {
+        const colors = ['#22c55e', '#4ade80', '#86efac', '#fbbf24', '#a855f7'];
+        const particleCount = 12;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'completion-particle';
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            particle.style.left = `${x}px`;
+            particle.style.top = `${y}px`;
+            particle.style.position = 'fixed';
+            particle.style.zIndex = '9999';
+            
+            // Calculate burst direction
+            const angle = (i / particleCount) * 360;
+            const distance = 30 + Math.random() * 40;
+            const tx = Math.cos(angle * Math.PI / 180) * distance;
+            const ty = Math.sin(angle * Math.PI / 180) * distance;
+            
+            // Set custom animation end position
+            particle.style.setProperty('--tx', `${tx}px`);
+            particle.style.setProperty('--ty', `${ty}px`);
+            particle.animate([
+                { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+            ], {
+                duration: 600 + Math.random() * 200,
+                easing: 'ease-out'
+            });
+            
+            document.body.appendChild(particle);
+            
+            // Remove after animation
+            setTimeout(() => particle.remove(), 800);
+        }
+        
+        // Create checkmark burst
+        const checkmark = document.createElement('div');
+        checkmark.innerHTML = '✓';
+        checkmark.style.cssText = `
+            position: fixed;
+            left: ${x}px;
+            top: ${y}px;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            color: #22c55e;
+            text-shadow: 0 0 20px rgba(34, 197, 94, 0.8);
+            pointer-events: none;
+            z-index: 10000;
+        `;
+        checkmark.animate([
+            { transform: 'translate(-50%, -50%) scale(0) rotate(-45deg)', opacity: 0 },
+            { transform: 'translate(-50%, -50%) scale(1.5) rotate(0deg)', opacity: 1 },
+            { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 0 }
+        ], {
+            duration: 600,
+            easing: 'ease-out'
+        });
+        
+        document.body.appendChild(checkmark);
+        setTimeout(() => checkmark.remove(), 600);
+    }
 
-    toggleYearlyGoal(goalId) {
+    toggleYearlyGoal(goalId, event) {
         const goal = this.yearlyGoals.find(g => g.id === goalId);
         if (goal) {
             goal.completed = !goal.completed;
@@ -2179,6 +2316,8 @@ class GoalManager {
                 this.showAchievement('Yearly Triumph! LEGENDARY! +1000 XP 🏆', 'yearly');
                 // Deal damage to parent boss if exists
                 this.dealBossDamage(goal, 'yearly');
+                // Trigger completion animation
+                this.playQuestCompleteAnimation(event);
             } else {
                 this.xp = Math.max(0, this.xp - 1000);
             }
@@ -2188,13 +2327,15 @@ class GoalManager {
         }
     }
 
-    toggleLifeGoal(goalId) {
+    toggleLifeGoal(goalId, event) {
         const goal = this.lifeGoals.find(g => g.id === goalId);
         if (goal) {
             goal.completed = !goal.completed;
             if (goal.completed) {
                 this.addXP(5000, 'life');
                 this.showAchievement('LIFE GOAL MASTERED! +5000 XP! ⚡👑⚡', 'life');
+                // Trigger completion animation
+                this.playQuestCompleteAnimation(event);
             } else {
                 this.xp = Math.max(0, this.xp - 5000);
             }
@@ -3678,7 +3819,7 @@ class GoalManager {
                     <input 
                         type="checkbox" 
                         ${task.completed ? 'checked' : ''} 
-                        onchange="goalManager.toggleTask(${task.id})">
+                        onchange="goalManager.toggleTask(${task.id}, event)">
                     <span class="ml-4 flex-1 fancy-font font-semibold text-lg ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
                     <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-600 hover:text-red-800 text-xl">
                         <i class="ri-delete-bin-line"></i>
@@ -3718,7 +3859,7 @@ class GoalManager {
                         <input 
                             type="checkbox" 
                             ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleLifeGoal(${goal.id})"
+                            onchange="goalManager.toggleLifeGoal(${goal.id}, event)"
                             class="mt-1">
                         <div class="flex-1">
                             <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h3>
@@ -3735,7 +3876,7 @@ class GoalManager {
                                     ${linkedYearly.map(yearly => `
                                         <div class="flex items-center text-sm">
                                             <input type="checkbox" ${yearly.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleYearlyGoal(${yearly.id})"
+                                                onchange="goalManager.toggleYearlyGoal(${yearly.id}, event)"
                                                 class="mr-2">
                                             <span class="${yearly.completed ? 'line-through text-red-400 opacity-60' : 'text-red-100'}">${yearly.title} (${yearly.progress}%)</span>
                                         </div>
@@ -3798,7 +3939,7 @@ class GoalManager {
                         <input 
                             type="checkbox" 
                             ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleYearlyGoal(${goal.id})">
+                            onchange="goalManager.toggleYearlyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-xl text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
                             
@@ -3823,7 +3964,7 @@ class GoalManager {
                                     ${linkedMonthly.map(monthly => `
                                         <div class="flex items-center text-sm">
                                             <input type="checkbox" ${monthly.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleMonthlyGoal(${monthly.id})"
+                                                onchange="goalManager.toggleMonthlyGoal(${monthly.id}, event)"
                                                 class="mr-2">
                                             <span class="${monthly.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'}">${monthly.title} (${monthly.progress}%)</span>
                                         </div>
@@ -3922,7 +4063,7 @@ class GoalManager {
                                         return `
                                         <div class="flex items-center text-xs ${isOverdue ? 'bg-red-900/20 p-1 rounded' : ''}">
                                             <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleTask(${task.id})"
+                                                onchange="goalManager.toggleTask(${task.id}, event)"
                                                 class="mr-2">
                                             <span class="${task.completed ? 'line-through text-blue-400 opacity-60' : isOverdue ? 'text-red-300' : 'text-blue-100'}">${task.title}</span>
                                         </div>
@@ -3956,7 +4097,7 @@ class GoalManager {
                         <input 
                             type="checkbox" 
                             ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleMonthlyGoal(${goal.id})">
+                            onchange="goalManager.toggleMonthlyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
                             
@@ -3981,7 +4122,7 @@ class GoalManager {
                                     ${linkedWeekly.map(weekly => `
                                         <div class="flex items-center text-sm">
                                             <input type="checkbox" ${weekly.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleWeeklyGoal(${weekly.id})"
+                                                onchange="goalManager.toggleWeeklyGoal(${weekly.id}, event)"
                                                 class="mr-2">
                                             <span class="${weekly.completed ? 'line-through text-blue-400 opacity-60' : 'text-blue-100'}">${weekly.title} (${weekly.progress}%)</span>
                                         </div>
@@ -4062,7 +4203,7 @@ class GoalManager {
                                     return `
                                     <div class="flex items-center text-sm ${isOverdue ? 'bg-red-900/20 p-2 rounded' : ''}">
                                         <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                                            onchange="goalManager.toggleTask(${task.id})"
+                                            onchange="goalManager.toggleTask(${task.id}, event)"
                                             class="mr-2">
                                         <span class="text-xs text-green-300 mr-2 font-bold">${dayName}</span>
                                         <span class="${task.completed ? 'line-through text-green-400 opacity-60' : isOverdue ? 'text-red-300 font-semibold' : 'text-green-100'}">${task.title}</span>
@@ -4097,7 +4238,7 @@ class GoalManager {
                         <input 
                             type="checkbox" 
                             ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleWeeklyGoal(${goal.id})">
+                            onchange="goalManager.toggleWeeklyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
                             
@@ -4122,7 +4263,7 @@ class GoalManager {
                                     ${linkedTasks.map(task => `
                                         <div class="flex items-center text-sm">
                                             <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleTask(${task.id})"
+                                                onchange="goalManager.toggleTask(${task.id}, event)"
                                                 class="mr-2">
                                             <span class="${task.completed ? 'line-through text-green-400 opacity-60' : 'text-green-100'}">${task.title}</span>
                                         </div>
@@ -4205,7 +4346,7 @@ class GoalManager {
                         <input 
                             type="checkbox" 
                             ${task.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleTask(${task.id})"
+                            onchange="goalManager.toggleTask(${task.id}, event)"
                             class="mt-1">
                         <div class="ml-4 flex-1">
                             <span class="text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
@@ -4706,7 +4847,7 @@ class GoalManager {
                     <input 
                         type="checkbox" 
                         ${task.completed ? 'checked' : ''} 
-                        onchange="goalManager.toggleTask(${task.id})">
+                        onchange="goalManager.toggleTask(${task.id}, event)">
                     <span class="ml-4 flex-1 text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
                     <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-600 hover:text-red-800 text-xl">
                         <i class="ri-delete-bin-line"></i>
