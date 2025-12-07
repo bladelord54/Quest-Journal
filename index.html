@@ -466,7 +466,7 @@
 
                 <!-- Stats Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform">
+                    <div onclick="goalManager.switchView('life-goals')" class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform cursor-pointer">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-red-200 text-sm fancy-font">Epic Quests</p>
@@ -477,18 +477,18 @@
                         <div class="text-sm text-red-200 fancy-font">Legendary Goals</div>
                     </div>
                     
-                    <div class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 text-white p-6 rounded-xl shadow-2xl border-4 border-blue-700 hover:scale-105 transition-transform">
+                    <div onclick="goalManager.switchView('monthly')" class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 text-white p-6 rounded-xl shadow-2xl border-4 border-blue-700 hover:scale-105 transition-transform cursor-pointer">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-blue-200 text-sm fancy-font">Monthly Raids</p>
                                 <p class="text-5xl font-bold mt-2 medieval-title" id="monthly-goals-count">0</p>
                             </div>
-                            <div class="text-6xl opacity-30">�</div>
+                            <div class="text-6xl opacity-30">👑</div>
                         </div>
                         <div class="text-sm text-blue-200 fancy-font">This month's conquests</div>
                     </div>
                     
-                    <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 text-white p-6 rounded-xl shadow-2xl border-4 border-green-700 hover:scale-105 transition-transform">
+                    <div onclick="goalManager.switchView('weekly')" class="quest-card bg-gradient-to-br from-green-900 to-green-950 text-white p-6 rounded-xl shadow-2xl border-4 border-green-700 hover:scale-105 transition-transform cursor-pointer">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-green-200 text-sm fancy-font">Weekly Battles</p>
@@ -499,7 +499,7 @@
                         <div class="text-sm text-green-200 fancy-font">This week's missions</div>
                     </div>
                     
-                    <div class="quest-card bg-gradient-to-br from-orange-900 to-amber-950 text-white p-6 rounded-xl shadow-2xl border-4 border-orange-700 hover:scale-105 transition-transform">
+                    <div onclick="goalManager.switchView('daily')" class="quest-card bg-gradient-to-br from-orange-900 to-amber-950 text-white p-6 rounded-xl shadow-2xl border-4 border-orange-700 hover:scale-105 transition-transform cursor-pointer">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-orange-200 text-sm fancy-font">Victories Today</p>
