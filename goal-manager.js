@@ -7195,8 +7195,24 @@ function addDailyTask() {
 window.onerror = function(message, source, lineno, colno, error) {
     console.error('Global error:', { message, source, lineno, colno, error });
     
-    // Only show user notification for non-trivial errors
-    if (window.goalManager && message && !message.includes('Script error')) {
+    // List of non-critical errors to ignore (don't show notification)
+    const ignoredErrors = [
+        'Script error',
+        'ResizeObserver',
+        'Loading chunk',
+        'Network',
+        'fetch',
+        'audio',
+        'sound',
+        'NotAllowedError',
+        'AbortError'
+    ];
+    
+    const messageStr = String(message || '').toLowerCase();
+    const shouldIgnore = ignoredErrors.some(err => messageStr.includes(err.toLowerCase()));
+    
+    // Only show user notification for critical errors
+    if (window.goalManager && message && !shouldIgnore) {
         window.goalManager.showErrorNotification('Something went wrong. Your data is safe, but please refresh if issues persist.');
     }
     
@@ -7207,7 +7223,26 @@ window.onerror = function(message, source, lineno, colno, error) {
 window.onunhandledrejection = function(event) {
     console.error('Unhandled promise rejection:', event.reason);
     
-    if (window.goalManager) {
+    // Don't show notifications for common non-critical rejections
+    const reason = String(event.reason || '').toLowerCase();
+    const ignoredReasons = [
+        'audio',
+        'sound',
+        'play',
+        'media',
+        'notallowederror',
+        'aborterror',
+        'network',
+        'fetch',
+        'load',
+        'the play() request was interrupted',
+        'user denied'
+    ];
+    
+    const shouldIgnore = ignoredReasons.some(r => reason.includes(r));
+    
+    // Only show notification for truly unexpected errors
+    if (window.goalManager && !shouldIgnore) {
         window.goalManager.showErrorNotification('An operation failed. Please try again.');
     }
 };
