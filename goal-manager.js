@@ -4963,15 +4963,15 @@ class GoalManager {
                         
                         <!-- Stats Grid -->
                         <div class="grid grid-cols-2 gap-4 mb-6">
-                            <div onclick="goalManager.switchView('daily'); this.closest('.fixed').remove();" class="bg-blue-900/40 p-4 rounded-lg border-2 border-blue-600 cursor-pointer hover:bg-blue-800/50 hover:border-blue-500 transition-all">
-                                <div class="text-4xl font-bold text-blue-300 medieval-title">${summary.tasks.completed}/${summary.tasks.total}</div>
-                                <div class="text-blue-200 fancy-font">Daily Tasks</div>
-                                <div class="text-blue-100 text-sm mt-2">${summary.tasks.completionRate}% Complete</div>
+                            <div onclick="event.stopPropagation(); goalManager.switchView('daily'); this.closest('.fixed').remove();" class="bg-blue-900/40 p-4 rounded-lg border-2 border-blue-600 cursor-pointer hover:bg-blue-800/50 hover:border-blue-500 transition-all">
+                                <div class="text-4xl font-bold text-blue-300 medieval-title pointer-events-none">${summary.tasks.completed}/${summary.tasks.total}</div>
+                                <div class="text-blue-200 fancy-font pointer-events-none">Daily Tasks</div>
+                                <div class="text-blue-100 text-sm mt-2 pointer-events-none">${summary.tasks.completionRate}% Complete</div>
                             </div>
-                            <div onclick="goalManager.switchView('${period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly'}'); this.closest('.fixed').remove();" class="bg-green-900/40 p-4 rounded-lg border-2 border-green-600 cursor-pointer hover:bg-green-800/50 hover:border-green-500 transition-all">
-                                <div class="text-4xl font-bold text-green-300 medieval-title">${summary.goals.completed}/${summary.goals.total}</div>
-                                <div class="text-green-200 fancy-font">${period.charAt(0).toUpperCase() + period.slice(1)}ly Goals</div>
-                                <div class="text-green-100 text-sm mt-2">${summary.goals.completionRate}% Complete</div>
+                            <div onclick="event.stopPropagation(); goalManager.switchView('${period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly'}'); this.closest('.fixed').remove();" class="bg-green-900/40 p-4 rounded-lg border-2 border-green-600 cursor-pointer hover:bg-green-800/50 hover:border-green-500 transition-all">
+                                <div class="text-4xl font-bold text-green-300 medieval-title pointer-events-none">${summary.goals.completed}/${summary.goals.total}</div>
+                                <div class="text-green-200 fancy-font pointer-events-none">${period.charAt(0).toUpperCase() + period.slice(1)}ly Goals</div>
+                                <div class="text-green-100 text-sm mt-2 pointer-events-none">${summary.goals.completionRate}% Complete</div>
                             </div>
                         </div>
                         
