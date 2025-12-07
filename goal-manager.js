@@ -775,6 +775,14 @@ class GoalManager {
         });
         document.getElementById(`${viewName}-view`).classList.remove('hidden');
         
+        // Update navigation link active states
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-view') === viewName) {
+                link.classList.add('active');
+            }
+        });
+        
         // Render calendar when switching to calendar view
         if (viewName === 'calendar') {
             this.renderCalendar();
