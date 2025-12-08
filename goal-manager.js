@@ -4897,11 +4897,22 @@ class GoalManager {
             periodName = today.getFullYear().toString();
         }
         
-        const startStr = startDate.toISOString().split('T')[0];
-        const endStr = endDate.toISOString().split('T')[0];
+        // ISO format for internal comparisons
+        const startISO = startDate.toISOString().split('T')[0];
+        const endISO = endDate.toISOString().split('T')[0];
+        
+        // Format dates as MM/DD/YYYY for display
+        const formatDate = (d) => {
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${month}/${day}/${year}`;
+        };
+        const startStr = formatDate(startDate);
+        const endStr = formatDate(endDate);
         
         // Calculate stats for daily tasks
-        const periodTasks = this.dailyTasks.filter(t => t.dueDate >= startStr && t.dueDate <= endStr);
+        const periodTasks = this.dailyTasks.filter(t => t.dueDate >= startISO && t.dueDate <= endISO);
         const completedTasks = periodTasks.filter(t => t.completed);
         const incompleteTasks = periodTasks.filter(t => !t.completed);
         
@@ -4934,6 +4945,7 @@ class GoalManager {
             periodName,
             startDate: startStr,
             endDate: endStr,
+            endDateISO: endISO,  // ISO format for internal operations
             tasks: {
                 total: periodTasks.length,
                 completed: completedTasks.length,
@@ -4958,8 +4970,11 @@ class GoalManager {
             <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="this.remove()">
                 <div class="bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 rounded-xl shadow-2xl border-4 border-amber-600 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                     <div class="p-6">
-                        <h2 class="text-3xl font-bold text-amber-300 medieval-title mb-2 text-center">${emoji} ${summary.periodName} Summary ${emoji}</h2>
-                        <p class="text-amber-200 text-center mb-6 fancy-font">${summary.startDate} to ${summary.endDate}</p>
+                        <div class="text-center mb-2">
+                            <span class="text-4xl">${emoji}</span>
+                        </div>
+                        <h2 class="text-2xl font-bold text-amber-300 medieval-title mb-2 text-center">${summary.periodName} Summary</h2>
+                        <p class="text-amber-200 text-center mb-6 fancy-font text-sm">${summary.startDate} to ${summary.endDate}</p>
                         
                         <!-- Stats Grid -->
                         <div class="grid grid-cols-2 gap-4 mb-6">
@@ -4990,7 +5005,7 @@ class GoalManager {
                                 ${summary.goals.incomplete.length > 0 ? `
                                     <p class="text-orange-200 mb-3">${summary.goals.incomplete.length} ${period}ly goal${summary.goals.incomplete.length !== 1 ? 's' : ''}</p>
                                 ` : ''}
-                                <button onclick="goalManager.rolloverIncompleteTasks('${period}', '${summary.endDate}'); this.closest('.fixed').remove();" 
+                                <button onclick="goalManager.rolloverIncompleteTasks('${period}', '${summary.endDateISO}'); this.closest('.fixed').remove();" 
                                     class="w-full bg-orange-700 hover:bg-orange-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font">
                                     ➡️ Move to Next ${period.charAt(0).toUpperCase() + period.slice(1)}
                                 </button>
