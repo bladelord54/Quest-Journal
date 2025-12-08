@@ -7212,60 +7212,19 @@ function addDailyTask() {
     if (window.goalManager) goalManager.addDailyTask();
 }
 
-// Global Error Handler - catches uncaught errors and displays user-friendly message
+// Global Error Handler - catches uncaught errors (log only, no notification)
 window.onerror = function(message, source, lineno, colno, error) {
-    console.error('Global error:', { message, source, lineno, colno, error });
-    
-    // List of non-critical errors to ignore (don't show notification)
-    const ignoredErrors = [
-        'Script error',
-        'ResizeObserver',
-        'Loading chunk',
-        'Network',
-        'fetch',
-        'audio',
-        'sound',
-        'NotAllowedError',
-        'AbortError'
-    ];
-    
-    const messageStr = String(message || '').toLowerCase();
-    const shouldIgnore = ignoredErrors.some(err => messageStr.includes(err.toLowerCase()));
-    
-    // Only show user notification for critical errors
-    if (window.goalManager && message && !shouldIgnore) {
-        window.goalManager.showErrorNotification('Something went wrong. Your data is safe, but please refresh if issues persist.');
-    }
-    
-    return false; // Let the error propagate for debugging
+    // Log for debugging but don't bother the user with notifications
+    // Most global errors are non-critical (extensions, third-party scripts, etc.)
+    console.warn('Global error (suppressed notification):', { message, source, lineno, colno, error });
+    return false;
 };
 
-// Handle unhandled promise rejections
+// Handle unhandled promise rejections (log only, no notification)
 window.onunhandledrejection = function(event) {
-    console.error('Unhandled promise rejection:', event.reason);
-    
-    // Don't show notifications for common non-critical rejections
-    const reason = String(event.reason || '').toLowerCase();
-    const ignoredReasons = [
-        'audio',
-        'sound',
-        'play',
-        'media',
-        'notallowederror',
-        'aborterror',
-        'network',
-        'fetch',
-        'load',
-        'the play() request was interrupted',
-        'user denied'
-    ];
-    
-    const shouldIgnore = ignoredReasons.some(r => reason.includes(r));
-    
-    // Only show notification for truly unexpected errors
-    if (window.goalManager && !shouldIgnore) {
-        window.goalManager.showErrorNotification('An operation failed. Please try again.');
-    }
+    // Log for debugging but don't bother the user
+    // Common causes: audio playback, network hiccups, browser quirks
+    console.warn('Unhandled promise rejection (suppressed notification):', event.reason);
 };
 
 // GoalManager is initialized in index.html now
