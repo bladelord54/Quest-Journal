@@ -4964,14 +4964,20 @@ class GoalManager {
 
     showPeriodSummary(period) {
         const summary = this.generatePeriodSummary(period);
-        const emoji = period === 'week' ? '📅' : period === 'month' ? '📆' : '🗓️';
+        // Use matching Remix Icons from bottom navigation
+        const iconConfig = {
+            week: { icon: 'ri-shield-line', color: 'text-green-400' },
+            month: { icon: 'ri-book-3-line', color: 'text-blue-400' },
+            year: { icon: 'ri-file-paper-2-line', color: 'text-purple-400' }
+        };
+        const { icon, color } = iconConfig[period];
         
         const html = `
             <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="this.remove()">
                 <div class="bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 rounded-xl shadow-2xl border-4 border-amber-600 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                     <div class="p-6">
                         <div class="text-center mb-2">
-                            <span class="text-4xl">${emoji}</span>
+                            <i class="${icon} text-5xl ${color}"></i>
                         </div>
                         <h2 class="text-2xl font-bold text-amber-300 medieval-title mb-2 text-center">${summary.periodName} Summary</h2>
                         <p class="text-amber-200 text-center mb-6 fancy-font text-sm">${summary.startDate} to ${summary.endDate}</p>
