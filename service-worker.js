@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quest-journal-v46';
+const CACHE_NAME = 'quest-journal-v47';
 const urlsToCache = [
   './',
   './index.html',

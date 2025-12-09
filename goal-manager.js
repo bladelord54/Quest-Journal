@@ -3294,7 +3294,8 @@ class GoalManager {
 
     selectTheme(themeId) {
         if (!this.unlockedThemes.includes(themeId)) {
-            this.showAchievement('🔒 Theme locked! Keep leveling up!', 'daily');
+            // Show a toast notification instead of achievement
+            this.showLockedNotification('Theme locked! Keep leveling up to unlock.');
             return;
         }
         
@@ -6976,6 +6977,37 @@ class GoalManager {
                 errorToast.remove();
             }
         }, 8000);
+    }
+
+    showLockedNotification(message) {
+        // Create locked toast element - different from achievement notification
+        let lockedToast = document.getElementById('locked-toast');
+        if (!lockedToast) {
+            lockedToast = document.createElement('div');
+            lockedToast.id = 'locked-toast';
+            lockedToast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md';
+            document.body.appendChild(lockedToast);
+        }
+        
+        lockedToast.innerHTML = `
+            <div class="bg-gradient-to-r from-gray-800 to-gray-700 text-white px-6 py-4 rounded-lg shadow-2xl border-2 border-gray-500 flex items-center gap-3 animate-slide-down">
+                <i class="ri-lock-line text-2xl text-gray-300"></i>
+                <div class="flex-1">
+                    <div class="font-bold fancy-font">Locked</div>
+                    <div class="text-sm text-gray-300">${message}</div>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-gray-300 hover:text-white">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+        `;
+        
+        // Auto-remove after 3 seconds (shorter than errors)
+        setTimeout(() => {
+            if (lockedToast.parentElement) {
+                lockedToast.remove();
+            }
+        }, 3000);
     }
 
     showSuccessNotification(message) {
