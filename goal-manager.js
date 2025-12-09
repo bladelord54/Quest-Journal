@@ -4897,10 +4897,11 @@ class GoalManager {
         let startDate, endDate, periodName;
         
         if (period === 'week') {
-            // Get current week (Sunday to Saturday)
+            // Get current week (Monday to Sunday)
             const dayOfWeek = today.getDay();
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 6 days from Monday
             startDate = new Date(today);
-            startDate.setDate(today.getDate() - dayOfWeek);
+            startDate.setDate(today.getDate() - daysFromMonday);
             endDate = new Date(startDate);
             endDate.setDate(startDate.getDate() + 6);
             periodName = 'This Week';
@@ -5051,12 +5052,17 @@ class GoalManager {
         let startDate, endDate, periodName;
         
         if (period === 'week') {
-            // Get last week (Sunday to Saturday)
+            // Get last week (Monday to Sunday)
             const dayOfWeek = today.getDay();
-            endDate = new Date(today);
-            endDate.setDate(today.getDate() - dayOfWeek - 1); // Last Saturday
-            startDate = new Date(endDate);
-            startDate.setDate(endDate.getDate() - 6); // Previous Sunday
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            // This Monday
+            const thisMonday = new Date(today);
+            thisMonday.setDate(today.getDate() - daysFromMonday);
+            // Last week's Monday and Sunday
+            startDate = new Date(thisMonday);
+            startDate.setDate(thisMonday.getDate() - 7);
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
             periodName = 'Last Week';
         } else if (period === 'month') {
             // Get last month
