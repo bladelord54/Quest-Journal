@@ -4894,7 +4894,8 @@ class GoalManager {
 
     // Period Summary System
     generatePeriodSummary(period) {
-        const today = new Date(this.getTodayDateString());
+        // Use noon to avoid timezone edge cases when parsing date string
+        const today = new Date(this.getTodayDateString() + 'T12:00:00');
         let startDate, endDate, periodName;
         
         if (period === 'week') {
@@ -5049,7 +5050,8 @@ class GoalManager {
 
     // Generate previous period summary (for transition slideshow)
     generatePreviousPeriodSummary(period) {
-        const today = new Date(this.getTodayDateString());
+        // Use noon to avoid timezone edge cases when parsing date string
+        const today = new Date(this.getTodayDateString() + 'T12:00:00');
         let startDate, endDate, periodName;
         
         if (period === 'week') {
