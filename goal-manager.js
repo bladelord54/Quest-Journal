@@ -75,6 +75,12 @@ class GoalManager {
         this.currentTutorialStep = 0;
         this.tutorialActive = false;
         
+        // Period Transition Tracking
+        this.lastVisitDate = null;
+        this.lastWeekNumber = null;
+        this.lastMonth = null;
+        this.lastYear = null;
+        
         this.loadData();
         this.requestNotificationPermission();
         this.checkHabitReset();
@@ -83,6 +89,9 @@ class GoalManager {
         this.setupKeyboardShortcuts();
         this.updateTimezoneDisplay();
         this.checkFirstTimeUser();
+        
+        // Check for period transitions after a short delay to let UI render first
+        setTimeout(() => this.checkPeriodTransitions(), 1000);
     }
 
     loadData() {
@@ -134,6 +143,12 @@ class GoalManager {
                 
                 // Tutorial
                 this.tutorialCompleted = data.tutorialCompleted || false;
+                
+                // Period Transition Tracking
+                this.lastVisitDate = data.lastVisitDate || null;
+                this.lastWeekNumber = data.lastWeekNumber || null;
+                this.lastMonth = data.lastMonth || null;
+                this.lastYear = data.lastYear || null;
                 
                 // Add dueDate to existing tasks that don't have one
                 this.dailyTasks.forEach(task => {
@@ -189,7 +204,11 @@ class GoalManager {
                 timezoneOffset: this.timezoneOffset,
                 tutorialCompleted: this.tutorialCompleted,
                 lastHabitReset: this.getTodayDateString(),
-                lastWeekReset: this.getWeekString(new Date())
+                lastWeekReset: this.getWeekString(new Date()),
+                lastVisitDate: this.lastVisitDate,
+                lastWeekNumber: this.lastWeekNumber,
+                lastMonth: this.lastMonth,
+                lastYear: this.lastYear
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
         } catch (error) {
@@ -4960,6 +4979,388 @@ class GoalManager {
             },
             xpEarned: totalXP
         };
+    }
+
+    // Get the ISO week number
+    getWeekNumber(date) {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // Check for period transitions (new week/month/year)
+    checkPeriodTransitions() {
+        // Don't show for first-time users
+        if (!this.tutorialCompleted && this.lastVisitDate === null) {
+            this.updatePeriodTracking();
+            return;
+        }
+
+        // Use timezone-aware date for consistency with rest of app
+        const todayString = this.getTodayDateString();
+        const today = new Date(todayString + 'T12:00:00'); // Use noon to avoid timezone edge cases
+        const currentWeek = this.getWeekNumber(today);
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+
+        const transitions = [];
+
+        // Check for year transition
+        if (this.lastYear !== null && this.lastYear < currentYear) {
+            transitions.push('year');
+        }
+        
+        // Check for month transition
+        if (this.lastMonth !== null && (this.lastMonth !== currentMonth || this.lastYear !== currentYear)) {
+            transitions.push('month');
+        }
+        
+        // Check for week transition
+        if (this.lastWeekNumber !== null && (this.lastWeekNumber !== currentWeek || this.lastYear !== currentYear)) {
+            transitions.push('week');
+        }
+
+        // Show slideshow for the most significant transition
+        if (transitions.length > 0) {
+            // Prioritize: year > month > week
+            const priority = ['year', 'month', 'week'];
+            const mainTransition = priority.find(p => transitions.includes(p));
+            this.showPeriodTransitionSlideshow(mainTransition, transitions);
+        }
+
+        // Update tracking
+        this.updatePeriodTracking();
+    }
+
+    updatePeriodTracking() {
+        // Use timezone-aware date for consistency
+        const todayString = this.getTodayDateString();
+        const today = new Date(todayString + 'T12:00:00');
+        this.lastVisitDate = todayString;
+        this.lastWeekNumber = this.getWeekNumber(today);
+        this.lastMonth = today.getMonth();
+        this.lastYear = today.getFullYear();
+        this.saveData();
+    }
+
+    // Generate previous period summary (for transition slideshow)
+    generatePreviousPeriodSummary(period) {
+        const today = new Date(this.getTodayDateString());
+        let startDate, endDate, periodName;
+        
+        if (period === 'week') {
+            // Get last week (Sunday to Saturday)
+            const dayOfWeek = today.getDay();
+            endDate = new Date(today);
+            endDate.setDate(today.getDate() - dayOfWeek - 1); // Last Saturday
+            startDate = new Date(endDate);
+            startDate.setDate(endDate.getDate() - 6); // Previous Sunday
+            periodName = 'Last Week';
+        } else if (period === 'month') {
+            // Get last month
+            startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+            periodName = monthNames[startDate.getMonth()] + ' ' + startDate.getFullYear();
+        } else if (period === 'year') {
+            // Get last year
+            startDate = new Date(today.getFullYear() - 1, 0, 1);
+            endDate = new Date(today.getFullYear() - 1, 11, 31);
+            periodName = (today.getFullYear() - 1).toString();
+        }
+        
+        const startISO = startDate.toISOString().split('T')[0];
+        const endISO = endDate.toISOString().split('T')[0];
+        
+        // Format dates for display
+        const formatDate = (d) => {
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${month}/${day}/${year}`;
+        };
+        
+        // Calculate stats for daily tasks in that period
+        const periodTasks = this.dailyTasks.filter(t => t.dueDate >= startISO && t.dueDate <= endISO);
+        const completedTasks = periodTasks.filter(t => t.completed);
+        const incompleteTasks = periodTasks.filter(t => !t.completed);
+        
+        // Calculate habit completions (approximation based on streak)
+        const habitsCompleted = this.habits.reduce((total, h) => total + (h.streak || 0), 0);
+        
+        // Calculate goals
+        let periodGoals = [];
+        let completedGoals = [];
+        let incompleteGoals = [];
+        
+        if (period === 'week') {
+            periodGoals = this.weeklyGoals;
+            completedGoals = this.weeklyGoals.filter(g => g.completed);
+            incompleteGoals = this.weeklyGoals.filter(g => !g.completed);
+        } else if (period === 'month') {
+            periodGoals = this.monthlyGoals;
+            completedGoals = this.monthlyGoals.filter(g => g.completed);
+            incompleteGoals = this.monthlyGoals.filter(g => !g.completed);
+        } else if (period === 'year') {
+            periodGoals = this.yearlyGoals;
+            completedGoals = this.yearlyGoals.filter(g => g.completed);
+            incompleteGoals = this.yearlyGoals.filter(g => !g.completed);
+        }
+        
+        const xpPerTask = 10;
+        const xpPerGoal = period === 'week' ? 50 : period === 'month' ? 200 : 1000;
+        const totalXP = (completedTasks.length * xpPerTask) + (completedGoals.length * xpPerGoal);
+        
+        return {
+            period,
+            periodName,
+            startDate: formatDate(startDate),
+            endDate: formatDate(endDate),
+            endDateISO: endISO,
+            tasks: {
+                total: periodTasks.length,
+                completed: completedTasks.length,
+                incomplete: incompleteTasks,
+                completionRate: periodTasks.length > 0 ? Math.round((completedTasks.length / periodTasks.length) * 100) : 0
+            },
+            goals: {
+                total: periodGoals.length,
+                completed: completedGoals.length,
+                incomplete: incompleteGoals,
+                completionRate: periodGoals.length > 0 ? Math.round((completedGoals.length / periodGoals.length) * 100) : 0
+            },
+            habits: {
+                total: this.habits.length,
+                completions: habitsCompleted
+            },
+            xpEarned: totalXP
+        };
+    }
+
+    // Animated Period Transition Slideshow
+    showPeriodTransitionSlideshow(mainPeriod, allTransitions) {
+        const summary = this.generatePreviousPeriodSummary(mainPeriod);
+        
+        const iconConfig = {
+            week: { icon: 'ri-shield-line', color: 'text-green-400', bg: 'from-green-900 to-green-950', border: 'border-green-600' },
+            month: { icon: 'ri-book-3-line', color: 'text-blue-400', bg: 'from-blue-900 to-blue-950', border: 'border-blue-600' },
+            year: { icon: 'ri-file-paper-2-line', color: 'text-purple-400', bg: 'from-purple-900 to-purple-950', border: 'border-purple-600' }
+        };
+        const config = iconConfig[mainPeriod];
+        
+        const periodLabel = mainPeriod === 'week' ? 'Week' : mainPeriod === 'month' ? 'Month' : 'Year';
+        const nextPeriodLabel = mainPeriod === 'week' ? 'This Week' : mainPeriod === 'month' ? 'This Month' : 'This Year';
+        
+        const slides = [
+            // Slide 1: Period Complete Celebration
+            `<div class="slide-content text-center animate-fade-in">
+                <div class="text-8xl mb-6 animate-bounce-slow">🎉</div>
+                <h2 class="text-3xl font-bold text-amber-300 medieval-title mb-4">${periodLabel} Complete!</h2>
+                <p class="text-amber-200 fancy-font text-xl mb-4">${summary.periodName}</p>
+                <p class="text-amber-300/70 text-sm">${summary.startDate} - ${summary.endDate}</p>
+            </div>`,
+            
+            // Slide 2: Tasks & Goals Stats
+            `<div class="slide-content animate-fade-in">
+                <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-6 text-center">Your Accomplishments</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-blue-900/50 p-6 rounded-xl border-2 border-blue-500 text-center">
+                        <i class="ri-sword-line text-4xl text-orange-400 mb-2"></i>
+                        <div class="text-5xl font-bold text-blue-300 medieval-title animate-count-up">${summary.tasks.completed}</div>
+                        <div class="text-blue-200 fancy-font">Tasks Completed</div>
+                        <div class="text-blue-300/70 text-sm mt-1">${summary.tasks.completionRate}% completion rate</div>
+                    </div>
+                    <div class="bg-green-900/50 p-6 rounded-xl border-2 border-green-500 text-center">
+                        <i class="${config.icon} text-4xl ${config.color} mb-2"></i>
+                        <div class="text-5xl font-bold text-green-300 medieval-title animate-count-up">${summary.goals.completed}</div>
+                        <div class="text-green-200 fancy-font">${periodLabel}ly Goals</div>
+                        <div class="text-green-300/70 text-sm mt-1">${summary.goals.completionRate}% completion rate</div>
+                    </div>
+                </div>
+                ${summary.habits.total > 0 ? `
+                <div class="mt-4 bg-purple-900/50 p-4 rounded-xl border-2 border-purple-500 text-center">
+                    <i class="ri-repeat-line text-3xl text-purple-400 mb-2"></i>
+                    <div class="text-3xl font-bold text-purple-300 medieval-title">${summary.habits.completions}</div>
+                    <div class="text-purple-200 fancy-font">Habit Completions</div>
+                </div>
+                ` : ''}
+            </div>`,
+            
+            // Slide 3: XP & Progress
+            `<div class="slide-content animate-fade-in text-center">
+                <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-6">Experience Gained</h3>
+                <div class="bg-gradient-to-br from-yellow-900/50 to-amber-900/50 p-8 rounded-xl border-2 border-yellow-500 mb-6">
+                    <div class="text-6xl mb-4">⭐</div>
+                    <div class="text-5xl font-bold text-yellow-300 medieval-title mb-2">${summary.xpEarned} XP</div>
+                    <div class="text-yellow-200 fancy-font">Total Experience Earned</div>
+                </div>
+                <div class="text-amber-200 fancy-font">
+                    Current Level: <span class="text-2xl font-bold text-amber-300">${this.level}</span>
+                </div>
+            </div>`,
+            
+            // Slide 4: Incomplete Items & Rollover Option
+            `<div class="slide-content animate-fade-in">
+                <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-6 text-center">Ready for ${nextPeriodLabel}?</h3>
+                ${summary.tasks.incomplete.length > 0 || summary.goals.incomplete.length > 0 ? `
+                <div class="bg-orange-900/50 p-6 rounded-xl border-2 border-orange-500 mb-6">
+                    <h4 class="text-lg font-bold text-orange-300 mb-4 flex items-center">
+                        <i class="ri-error-warning-line mr-2"></i>Unfinished Quests
+                    </h4>
+                    ${summary.tasks.incomplete.length > 0 ? `
+                    <p class="text-orange-200 mb-2"><i class="ri-sword-line mr-2"></i>${summary.tasks.incomplete.length} incomplete task${summary.tasks.incomplete.length !== 1 ? 's' : ''}</p>
+                    ` : ''}
+                    ${summary.goals.incomplete.length > 0 ? `
+                    <p class="text-orange-200 mb-4"><i class="${config.icon} mr-2"></i>${summary.goals.incomplete.length} incomplete ${mainPeriod}ly goal${summary.goals.incomplete.length !== 1 ? 's' : ''}</p>
+                    ` : ''}
+                    <button onclick="goalManager.rolloverFromSlideshow('${mainPeriod}', '${summary.endDateISO}'); goalManager.nextSlide();" 
+                        class="w-full bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font mb-2">
+                        <i class="ri-arrow-right-line mr-2"></i>Move to ${nextPeriodLabel}
+                    </button>
+                    <button onclick="goalManager.nextSlide();" 
+                        class="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all fancy-font text-sm">
+                        Skip - Leave as is
+                    </button>
+                </div>
+                ` : `
+                <div class="bg-green-900/50 p-6 rounded-xl border-2 border-green-500 mb-6 text-center">
+                    <div class="text-6xl mb-4">🏆</div>
+                    <h4 class="text-xl font-bold text-green-300 mb-2">Perfect ${periodLabel}!</h4>
+                    <p class="text-green-200 fancy-font">All quests completed! Amazing work!</p>
+                </div>
+                `}
+                <div class="text-center">
+                    <p class="text-amber-200 fancy-font text-sm">Good luck on your new adventures!</p>
+                </div>
+            </div>`
+        ];
+
+        // Create slideshow modal
+        const modal = document.createElement('div');
+        modal.id = 'period-transition-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br ${config.bg} rounded-2xl shadow-2xl border-4 ${config.border} max-w-lg w-full overflow-hidden">
+                <!-- Header with icon -->
+                <div class="bg-black/30 p-4 text-center border-b-2 ${config.border}">
+                    <i class="${config.icon} text-4xl ${config.color}"></i>
+                </div>
+                
+                <!-- Slides container -->
+                <div id="slideshow-container" class="p-6 min-h-[400px] flex items-center justify-center">
+                    ${slides[0]}
+                </div>
+                
+                <!-- Navigation -->
+                <div class="bg-black/30 p-4 border-t-2 ${config.border}">
+                    <div class="flex justify-between items-center">
+                        <button id="prev-slide-btn" onclick="goalManager.prevSlide()" 
+                            class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold transition-all opacity-50 pointer-events-none">
+                            <i class="ri-arrow-left-line mr-1"></i>Back
+                        </button>
+                        
+                        <!-- Slide indicators -->
+                        <div class="flex gap-2">
+                            ${slides.map((_, i) => `<div class="slide-dot w-3 h-3 rounded-full ${i === 0 ? 'bg-amber-400' : 'bg-gray-600'} transition-all"></div>`).join('')}
+                        </div>
+                        
+                        <button id="next-slide-btn" onclick="goalManager.nextSlide()" 
+                            class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-bold transition-all">
+                            Next<i class="ri-arrow-right-line ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Store slides data for navigation
+        this.slideshowData = {
+            slides: slides,
+            currentSlide: 0,
+            totalSlides: slides.length
+        };
+    }
+
+    nextSlide() {
+        if (!this.slideshowData) return;
+        
+        const { slides, currentSlide, totalSlides } = this.slideshowData;
+        
+        if (currentSlide >= totalSlides - 1) {
+            // Close slideshow
+            this.closeSlideshow();
+            return;
+        }
+        
+        this.slideshowData.currentSlide++;
+        this.updateSlideshow();
+    }
+
+    prevSlide() {
+        if (!this.slideshowData || this.slideshowData.currentSlide <= 0) return;
+        
+        this.slideshowData.currentSlide--;
+        this.updateSlideshow();
+    }
+
+    updateSlideshow() {
+        const { slides, currentSlide, totalSlides } = this.slideshowData;
+        
+        const container = document.getElementById('slideshow-container');
+        const prevBtn = document.getElementById('prev-slide-btn');
+        const nextBtn = document.getElementById('next-slide-btn');
+        const dots = document.querySelectorAll('.slide-dot');
+        
+        if (container) {
+            container.innerHTML = slides[currentSlide];
+        }
+        
+        // Update prev button
+        if (prevBtn) {
+            if (currentSlide === 0) {
+                prevBtn.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                prevBtn.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+        
+        // Update next button
+        if (nextBtn) {
+            if (currentSlide === totalSlides - 1) {
+                nextBtn.innerHTML = 'Finish<i class="ri-check-line ml-1"></i>';
+            } else {
+                nextBtn.innerHTML = 'Next<i class="ri-arrow-right-line ml-1"></i>';
+            }
+        }
+        
+        // Update dots
+        dots.forEach((dot, i) => {
+            if (i === currentSlide) {
+                dot.classList.remove('bg-gray-600');
+                dot.classList.add('bg-amber-400');
+            } else {
+                dot.classList.remove('bg-amber-400');
+                dot.classList.add('bg-gray-600');
+            }
+        });
+    }
+
+    closeSlideshow() {
+        const modal = document.getElementById('period-transition-modal');
+        if (modal) {
+            modal.remove();
+        }
+        this.slideshowData = null;
+    }
+
+    rolloverFromSlideshow(period, endDateISO) {
+        this.rolloverIncompleteTasks(period, endDateISO);
+        this.showAchievement('📦 Quests moved to new ' + period + '!', 'daily');
     }
 
     showPeriodSummary(period) {
