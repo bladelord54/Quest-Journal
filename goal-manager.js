@@ -8,6 +8,7 @@ class GoalManager {
         this.dailyTasks = [];
         this.sideQuests = [];
         this.habits = [];
+        this.recurringTasks = []; // Tasks that repeat on schedule
         this.currentCalendarDate = new Date();
         this.selectedDate = null;
         this.sideQuestFilter = 'all';
@@ -84,6 +85,8 @@ class GoalManager {
         this.loadData();
         this.requestNotificationPermission();
         this.checkHabitReset();
+        this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
+        this.initializeReminders(); // Set up task reminders
         this.initializeUI();
         this.loadTheme();
         this.setupKeyboardShortcuts();
@@ -106,6 +109,7 @@ class GoalManager {
                 this.dailyTasks = data.dailyTasks || [];
                 this.sideQuests = data.sideQuests || [];
                 this.habits = data.habits || [];
+                this.recurringTasks = data.recurringTasks || [];
                 this.xp = data.xp || 0;
                 this.level = data.level || 1;
                 this.badges = data.badges || [];
@@ -156,6 +160,18 @@ class GoalManager {
                         task.dueDate = new Date().toISOString().split('T')[0];
                     }
                 });
+
+                this.yearlyGoals.forEach(g => {
+                    if (!g.priority || !['low', 'medium', 'high'].includes(g.priority)) g.priority = 'medium';
+                });
+
+                this.monthlyGoals.forEach(g => {
+                    if (!g.priority || !['low', 'medium', 'high'].includes(g.priority)) g.priority = 'medium';
+                });
+
+                this.weeklyGoals.forEach(g => {
+                    if (!g.priority || !['low', 'medium', 'high'].includes(g.priority)) g.priority = 'medium';
+                });
             }
         } catch (error) {
             console.error('Error loading data:', error);
@@ -178,6 +194,7 @@ class GoalManager {
                 dailyTasks: this.dailyTasks,
                 sideQuests: this.sideQuests,
                 habits: this.habits,
+                recurringTasks: this.recurringTasks,
                 xp: this.xp,
                 level: this.level,
                 badges: this.badges,
@@ -881,6 +898,10 @@ class GoalManager {
         const title = prompt('Enter your yearly goal:');
         if (title && title.trim()) {
             const description = prompt('Add a description (optional):', '') || '';
+            const priorityInput = prompt('Priority (high/medium/low) - optional:', 'medium');
+            const priority = priorityInput && ['high', 'medium', 'low'].includes(priorityInput.toLowerCase())
+                ? priorityInput.toLowerCase()
+                : 'medium';
             const goal = {
                 id: Date.now(),
                 title: title.trim(),
@@ -888,7 +909,8 @@ class GoalManager {
                 lifeGoalIds: parentLifeGoalId ? [parentLifeGoalId] : [],
                 created: new Date().toISOString(),
                 completed: false,
-                progress: 0
+                progress: 0,
+                priority: priority
             };
             this.yearlyGoals.push(goal);
             this.saveData();
@@ -900,6 +922,10 @@ class GoalManager {
         const title = prompt('Enter your monthly goal:');
         if (title && title.trim()) {
             const description = prompt('Add a description (optional):', '') || '';
+            const priorityInput = prompt('Priority (high/medium/low) - optional:', 'medium');
+            const priority = priorityInput && ['high', 'medium', 'low'].includes(priorityInput.toLowerCase())
+                ? priorityInput.toLowerCase()
+                : 'medium';
             const goal = {
                 id: Date.now(),
                 title: title.trim(),
@@ -907,7 +933,8 @@ class GoalManager {
                 yearlyGoalIds: parentYearlyGoalId ? [parentYearlyGoalId] : [],
                 created: new Date().toISOString(),
                 completed: false,
-                progress: 0
+                progress: 0,
+                priority: priority
             };
             this.monthlyGoals.push(goal);
             this.saveData();
@@ -919,6 +946,10 @@ class GoalManager {
         const title = prompt('Enter your weekly goal:');
         if (title && title.trim()) {
             const description = prompt('Add a description (optional):', '') || '';
+            const priorityInput = prompt('Priority (high/medium/low) - optional:', 'medium');
+            const priority = priorityInput && ['high', 'medium', 'low'].includes(priorityInput.toLowerCase())
+                ? priorityInput.toLowerCase()
+                : 'medium';
             const goal = {
                 id: Date.now(),
                 title: title.trim(),
@@ -927,7 +958,8 @@ class GoalManager {
                 created: new Date().toISOString(),
                 completed: false,
                 progress: 0,
-                checklist: []
+                checklist: [],
+                priority: priority
             };
             this.weeklyGoals.push(goal);
             this.saveData();
@@ -961,6 +993,239 @@ class GoalManager {
             this.saveData();
             this.render();
         }
+    }
+
+    // ==================== RECURRING TASKS ====================
+    
+    addRecurringTask() {
+        const title = prompt('Enter the recurring task name:');
+        if (!title || !title.trim()) return;
+        
+        const description = prompt('Add a description (optional):', '') || '';
+        
+        // Ask for recurrence pattern
+        const patternOptions = `Choose recurrence pattern:
+1 = Daily (use Habits instead)
+2 = Weekly (specific days)
+3 = Bi-weekly
+4 = Monthly (specific date)
+5 = Monthly (e.g., first Monday)`;
+        
+        const patternChoice = prompt(patternOptions, '2');
+        if (!patternChoice) return;
+        
+        let recurrence = {};
+        
+        switch (patternChoice) {
+            case '1':
+                alert('For daily recurring tasks, please use Daily Rituals (Habits) instead!');
+                return;
+            case '2':
+                const daysInput = prompt('Enter days (comma-separated): Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Mon,Wed,Fri');
+                if (!daysInput) return;
+                recurrence = {
+                    type: 'weekly',
+                    days: daysInput.split(',').map(d => d.trim().toLowerCase())
+                };
+                break;
+            case '3':
+                const biweeklyDay = prompt('Enter day of week: Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Mon');
+                if (!biweeklyDay) return;
+                recurrence = {
+                    type: 'biweekly',
+                    day: biweeklyDay.trim().toLowerCase(),
+                    lastGenerated: null
+                };
+                break;
+            case '4':
+                const dateNum = prompt('Enter day of month (1-28):', '1');
+                if (!dateNum) return;
+                recurrence = {
+                    type: 'monthly-date',
+                    dayOfMonth: Math.min(28, Math.max(1, parseInt(dateNum) || 1))
+                };
+                break;
+            case '5':
+                const weekOptions = prompt('Enter week (1=first, 2=second, 3=third, 4=fourth, -1=last):', '1');
+                const dayOption = prompt('Enter day: Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Mon');
+                if (!weekOptions || !dayOption) return;
+                recurrence = {
+                    type: 'monthly-weekday',
+                    week: parseInt(weekOptions) || 1,
+                    day: dayOption.trim().toLowerCase()
+                };
+                break;
+            default:
+                return;
+        }
+        
+        const recurringTask = {
+            id: Date.now(),
+            title: title.trim(),
+            description: description.trim(),
+            recurrence: recurrence,
+            active: true,
+            created: new Date().toISOString(),
+            lastGenerated: null
+        };
+        
+        this.recurringTasks.push(recurringTask);
+        this.saveData();
+        this.generateRecurringTasksForToday();
+        this.render();
+        this.showAchievement(`🔄 Recurring task "${title.trim()}" created!`, 'daily');
+    }
+
+    generateRecurringTasksForToday() {
+        const today = new Date(this.getTodayDateString() + 'T12:00:00');
+        const todayStr = this.getTodayDateString();
+        const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const todayDay = dayNames[today.getDay()];
+        const todayDate = today.getDate();
+        
+        this.recurringTasks.forEach(rt => {
+            if (!rt.active) return;
+            
+            // Check if already generated for today
+            if (rt.lastGenerated === todayStr) return;
+            
+            // Check if task already exists for today (by title match)
+            const existsToday = this.dailyTasks.some(t => 
+                t.title === rt.title && 
+                t.dueDate === todayStr && 
+                t.recurringTaskId === rt.id
+            );
+            if (existsToday) return;
+            
+            let shouldGenerate = false;
+            
+            switch (rt.recurrence.type) {
+                case 'weekly':
+                    shouldGenerate = rt.recurrence.days.includes(todayDay);
+                    break;
+                    
+                case 'biweekly':
+                    if (rt.recurrence.day === todayDay) {
+                        // Check if it's been at least 13 days since last generation
+                        if (!rt.recurrence.lastGenerated) {
+                            shouldGenerate = true;
+                        } else {
+                            const lastGen = new Date(rt.recurrence.lastGenerated);
+                            const daysDiff = Math.floor((today - lastGen) / (1000 * 60 * 60 * 24));
+                            shouldGenerate = daysDiff >= 13;
+                        }
+                    }
+                    break;
+                    
+                case 'monthly-date':
+                    shouldGenerate = todayDate === rt.recurrence.dayOfMonth;
+                    break;
+                    
+                case 'monthly-weekday':
+                    if (rt.recurrence.day === todayDay) {
+                        const weekOfMonth = Math.ceil(todayDate / 7);
+                        if (rt.recurrence.week === -1) {
+                            // Last occurrence of this day in month
+                            const nextWeek = new Date(today);
+                            nextWeek.setDate(todayDate + 7);
+                            shouldGenerate = nextWeek.getMonth() !== today.getMonth();
+                        } else {
+                            shouldGenerate = weekOfMonth === rt.recurrence.week;
+                        }
+                    }
+                    break;
+            }
+            
+            if (shouldGenerate) {
+                const task = {
+                    id: Date.now() + Math.random(),
+                    title: rt.title,
+                    description: rt.description,
+                    weeklyGoalIds: [],
+                    created: new Date().toISOString(),
+                    dueDate: todayStr,
+                    completed: false,
+                    checklist: [],
+                    recurringTaskId: rt.id // Link to parent recurring task
+                };
+                this.dailyTasks.push(task);
+                rt.lastGenerated = todayStr;
+                if (rt.recurrence.type === 'biweekly') {
+                    rt.recurrence.lastGenerated = todayStr;
+                }
+            }
+        });
+        
+        this.saveData();
+    }
+
+    deleteRecurringTask(id) {
+        if (confirm('Delete this recurring task? Future tasks will not be generated.')) {
+            this.recurringTasks = this.recurringTasks.filter(rt => rt.id !== id);
+            this.saveData();
+            this.render();
+        }
+    }
+
+    toggleRecurringTask(id) {
+        const rt = this.recurringTasks.find(r => r.id === id);
+        if (rt) {
+            rt.active = !rt.active;
+            this.saveData();
+            this.render();
+        }
+    }
+
+    renderRecurringTasks() {
+        const container = document.getElementById('recurring-tasks-container');
+        if (!container) return;
+        
+        if (this.recurringTasks.length === 0) {
+            container.innerHTML = `
+                <p class="text-cyan-300/70 text-sm text-center fancy-font py-2">
+                    No recurring tasks yet. Add one to auto-generate tasks on schedule!
+                </p>
+            `;
+            return;
+        }
+        
+        const dayLabels = { sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat' };
+        
+        container.innerHTML = this.recurringTasks.map(rt => {
+            let scheduleText = '';
+            switch (rt.recurrence.type) {
+                case 'weekly':
+                    scheduleText = 'Every ' + rt.recurrence.days.map(d => dayLabels[d] || d).join(', ');
+                    break;
+                case 'biweekly':
+                    scheduleText = 'Every other ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day);
+                    break;
+                case 'monthly-date':
+                    scheduleText = 'Monthly on day ' + rt.recurrence.dayOfMonth;
+                    break;
+                case 'monthly-weekday':
+                    const weekLabel = rt.recurrence.week === -1 ? 'Last' : ['', '1st', '2nd', '3rd', '4th'][rt.recurrence.week];
+                    scheduleText = weekLabel + ' ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day) + ' of month';
+                    break;
+            }
+            
+            return `
+                <div class="flex items-center gap-2 p-2 rounded-lg ${rt.active ? 'bg-cyan-900/40' : 'bg-gray-800/40 opacity-60'} border border-cyan-700/50">
+                    <button onclick="goalManager.toggleRecurringTask(${rt.id})" 
+                        class="text-lg ${rt.active ? 'text-green-400' : 'text-gray-500'}">
+                        ${rt.active ? '<i class="ri-checkbox-circle-fill"></i>' : '<i class="ri-checkbox-blank-circle-line"></i>'}
+                    </button>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-white text-sm font-bold truncate">${rt.title}</div>
+                        <div class="text-cyan-300/70 text-xs">${scheduleText}</div>
+                    </div>
+                    <button onclick="goalManager.deleteRecurringTask(${rt.id})" 
+                        class="text-red-400 hover:text-red-300 p-1">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
     }
 
     addSideQuest() {
@@ -2448,6 +2713,14 @@ class GoalManager {
             }
         }
 
+        if (type === 'weekly' || type === 'monthly' || type === 'yearly') {
+            const currentPriority = item.priority && ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
+            const newPriority = prompt('Edit priority (high/medium/low):', currentPriority);
+            if (newPriority !== null && newPriority.trim() !== '' && ['high', 'medium', 'low'].includes(newPriority.toLowerCase())) {
+                item.priority = newPriority.toLowerCase();
+            }
+        }
+
         // For habits, allow editing frequency
         if (type === 'habit') {
             const newFrequency = prompt('Edit frequency (daily/weekly/monthly):', item.frequency);
@@ -2500,6 +2773,8 @@ class GoalManager {
             this.renderFocusTimer();
             this.renderEnchantments();
             this.renderThemeSelector();
+            this.renderRecurringTasks();
+            this.renderReminderSettings();
             this.updateProgress();
             
             // Render calendar if on calendar view
@@ -3544,7 +3819,7 @@ class GoalManager {
             // Ctrl+K or / to open search
             if ((e.ctrlKey && e.key === 'k') || (e.key === '/' && !isInputField)) {
                 e.preventDefault();
-                this.openSearch();
+                this.openSearchModal();
                 return;
             }
             
@@ -3961,6 +4236,12 @@ class GoalManager {
                     return ids.includes(goal.id);
                 });
                 const parentNames = this.getParentNames(goal, 'lifeGoalIds', this.lifeGoals);
+                const priority = goal.priority && ['low', 'medium', 'high'].includes(goal.priority) ? goal.priority : 'medium';
+                const priorityBadge = priority === 'high'
+                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
+                    : priority === 'low'
+                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
+                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
                 return `
                 <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 p-5 rounded-lg shadow-xl border-3 border-purple-700 goal-item">
                     <div class="flex items-start space-x-4">
@@ -3970,6 +4251,7 @@ class GoalManager {
                             onchange="goalManager.toggleYearlyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-xl text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
+                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
                                 <div class="mb-2 flex flex-wrap gap-1">
@@ -4112,6 +4394,12 @@ class GoalManager {
                 });
                 const parentNames = this.getParentNames(goal, 'yearlyGoalIds', this.yearlyGoals);
                 const isSelected = this.selectedItems.has(`monthly-${goal.id}`);
+                const priority = goal.priority && ['low', 'medium', 'high'].includes(goal.priority) ? goal.priority : 'medium';
+                const priorityBadge = priority === 'high'
+                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
+                    : priority === 'low'
+                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
+                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
                 return `
                 <div class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-6 rounded-xl shadow-xl border-3 border-blue-700 goal-item ${isSelected ? 'ring-4 ring-purple-500' : ''}">
                     <div class="flex items-start space-x-4">
@@ -4128,6 +4416,7 @@ class GoalManager {
                             onchange="goalManager.toggleMonthlyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
+                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
                                 <div class="mb-2 flex flex-wrap gap-1">
@@ -4253,6 +4542,12 @@ class GoalManager {
                 });
                 const parentNames = this.getParentNames(goal, 'monthlyGoalIds', this.monthlyGoals);
                 const isSelected = this.selectedItems.has(`weekly-${goal.id}`);
+                const priority = goal.priority && ['low', 'medium', 'high'].includes(goal.priority) ? goal.priority : 'medium';
+                const priorityBadge = priority === 'high'
+                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
+                    : priority === 'low'
+                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
+                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
                 return `
                 <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-5 rounded-lg shadow-xl border-3 border-green-700 goal-item mb-4 ${isSelected ? 'ring-4 ring-purple-500' : ''}">
                     <div class="flex items-start space-x-4">
@@ -4269,6 +4564,7 @@ class GoalManager {
                             onchange="goalManager.toggleWeeklyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
+                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
                                 <div class="mb-2 flex flex-wrap gap-1">
@@ -6950,6 +7246,209 @@ class GoalManager {
         }
     }
 
+    // ==================== TASK REMINDERS ====================
+    
+    initializeReminders() {
+        // Load reminder settings
+        const savedSettings = localStorage.getItem('reminderSettings');
+        if (savedSettings) {
+            this.reminderSettings = JSON.parse(savedSettings);
+        } else {
+            this.reminderSettings = {
+                enabled: true,
+                morningReminder: true,
+                morningTime: '09:00',
+                eveningReminder: true,
+                eveningTime: '18:00',
+                overdueAlert: true
+            };
+        }
+        
+        // Schedule daily reminders
+        this.scheduleDailyReminders();
+        
+        // Check for overdue tasks periodically
+        this.checkOverdueTasks();
+        setInterval(() => this.checkOverdueTasks(), 30 * 60 * 1000); // Every 30 minutes
+    }
+
+    scheduleDailyReminders() {
+        if (!this.reminderSettings.enabled) return;
+        
+        const now = new Date();
+        
+        // Schedule morning reminder
+        if (this.reminderSettings.morningReminder) {
+            const [hours, mins] = this.reminderSettings.morningTime.split(':').map(Number);
+            const morningTime = new Date(now);
+            morningTime.setHours(hours, mins, 0, 0);
+            
+            if (morningTime > now) {
+                const delay = morningTime - now;
+                setTimeout(() => {
+                    this.sendMorningReminder();
+                    // Reschedule for next day
+                    setTimeout(() => this.scheduleDailyReminders(), 1000);
+                }, delay);
+            }
+        }
+        
+        // Schedule evening reminder
+        if (this.reminderSettings.eveningReminder) {
+            const [hours, mins] = this.reminderSettings.eveningTime.split(':').map(Number);
+            const eveningTime = new Date(now);
+            eveningTime.setHours(hours, mins, 0, 0);
+            
+            if (eveningTime > now) {
+                const delay = eveningTime - now;
+                setTimeout(() => {
+                    this.sendEveningReminder();
+                }, delay);
+            }
+        }
+    }
+
+    sendMorningReminder() {
+        const todayStr = this.getTodayDateString();
+        const todayTasks = this.dailyTasks.filter(t => t.dueDate === todayStr && !t.completed);
+        const incompleteHabits = this.habits.filter(h => !h.completedToday);
+        
+        if (todayTasks.length > 0 || incompleteHabits.length > 0) {
+            let body = '';
+            if (todayTasks.length > 0) {
+                body += `📋 ${todayTasks.length} task${todayTasks.length !== 1 ? 's' : ''} for today`;
+            }
+            if (incompleteHabits.length > 0) {
+                body += (body ? ' • ' : '') + `🔄 ${incompleteHabits.length} habit${incompleteHabits.length !== 1 ? 's' : ''} to complete`;
+            }
+            
+            this.showNotification('🌅 Good Morning, Adventurer!', body);
+        }
+    }
+
+    sendEveningReminder() {
+        const todayStr = this.getTodayDateString();
+        const incompleteTasks = this.dailyTasks.filter(t => t.dueDate === todayStr && !t.completed);
+        const incompleteHabits = this.habits.filter(h => !h.completedToday);
+        
+        if (incompleteTasks.length > 0 || incompleteHabits.length > 0) {
+            let body = 'Before the day ends: ';
+            if (incompleteTasks.length > 0) {
+                body += `${incompleteTasks.length} task${incompleteTasks.length !== 1 ? 's' : ''} remaining`;
+            }
+            if (incompleteHabits.length > 0) {
+                body += (incompleteTasks.length > 0 ? ', ' : '') + `${incompleteHabits.length} habit${incompleteHabits.length !== 1 ? 's' : ''} to complete`;
+            }
+            
+            this.showNotification('🌆 Evening Check-in', body);
+        } else {
+            this.showNotification('🏆 Quest Complete!', 'Amazing! All tasks and habits done for today!');
+        }
+    }
+
+    checkOverdueTasks() {
+        if (!this.reminderSettings.enabled || !this.reminderSettings.overdueAlert) return;
+        
+        const todayStr = this.getTodayDateString();
+        const overdueTasks = this.dailyTasks.filter(t => 
+            !t.completed && t.dueDate < todayStr
+        );
+        
+        // Only notify once per session for overdue tasks
+        if (overdueTasks.length > 0 && !this.overdueNotificationSent) {
+            this.showNotification(
+                '⚠️ Overdue Quests!',
+                `You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} that need attention`
+            );
+            this.overdueNotificationSent = true;
+        }
+    }
+
+    updateReminderSettings(setting, value) {
+        this.reminderSettings[setting] = value;
+        localStorage.setItem('reminderSettings', JSON.stringify(this.reminderSettings));
+        
+        // Reschedule reminders if times changed
+        if (setting === 'morningTime' || setting === 'eveningTime' || setting === 'enabled') {
+            this.scheduleDailyReminders();
+        }
+    }
+
+    renderReminderSettings() {
+        const container = document.getElementById('reminder-settings-container');
+        if (!container) return;
+        
+        const settings = this.reminderSettings;
+        
+        container.innerHTML = `
+            <div class="space-y-4">
+                <!-- Master Toggle -->
+                <div class="flex items-center justify-between">
+                    <span class="text-amber-200 fancy-font">Enable Reminders</span>
+                    <button onclick="goalManager.updateReminderSettings('enabled', ${!settings.enabled}); goalManager.renderReminderSettings();"
+                        class="w-14 h-8 rounded-full transition-all ${settings.enabled ? 'bg-green-600' : 'bg-gray-600'} relative">
+                        <span class="absolute w-6 h-6 bg-white rounded-full top-1 transition-all ${settings.enabled ? 'left-7' : 'left-1'}"></span>
+                    </button>
+                </div>
+                
+                ${settings.enabled ? `
+                <!-- Morning Reminder -->
+                <div class="flex items-center justify-between">
+                    <span class="text-amber-200 fancy-font text-sm">🌅 Morning Reminder</span>
+                    <div class="flex items-center gap-2">
+                        <input type="time" value="${settings.morningTime}" 
+                            onchange="goalManager.updateReminderSettings('morningTime', this.value)"
+                            class="bg-amber-900/50 text-white px-2 py-1 rounded border border-amber-600 text-sm">
+                        <button onclick="goalManager.updateReminderSettings('morningReminder', ${!settings.morningReminder}); goalManager.renderReminderSettings();"
+                            class="w-10 h-6 rounded-full transition-all ${settings.morningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
+                            <span class="absolute w-4 h-4 bg-white rounded-full top-1 transition-all ${settings.morningReminder ? 'left-5' : 'left-1'}"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Evening Reminder -->
+                <div class="flex items-center justify-between">
+                    <span class="text-amber-200 fancy-font text-sm">🌆 Evening Reminder</span>
+                    <div class="flex items-center gap-2">
+                        <input type="time" value="${settings.eveningTime}" 
+                            onchange="goalManager.updateReminderSettings('eveningTime', this.value)"
+                            class="bg-amber-900/50 text-white px-2 py-1 rounded border border-amber-600 text-sm">
+                        <button onclick="goalManager.updateReminderSettings('eveningReminder', ${!settings.eveningReminder}); goalManager.renderReminderSettings();"
+                            class="w-10 h-6 rounded-full transition-all ${settings.eveningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
+                            <span class="absolute w-4 h-4 bg-white rounded-full top-1 transition-all ${settings.eveningReminder ? 'left-5' : 'left-1'}"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Overdue Alert -->
+                <div class="flex items-center justify-between">
+                    <span class="text-amber-200 fancy-font text-sm">⚠️ Overdue Alerts</span>
+                    <button onclick="goalManager.updateReminderSettings('overdueAlert', ${!settings.overdueAlert}); goalManager.renderReminderSettings();"
+                        class="w-10 h-6 rounded-full transition-all ${settings.overdueAlert ? 'bg-green-600' : 'bg-gray-600'} relative">
+                        <span class="absolute w-4 h-4 bg-white rounded-full top-1 transition-all ${settings.overdueAlert ? 'left-5' : 'left-1'}"></span>
+                    </button>
+                </div>
+                ` : '<p class="text-gray-400 text-sm text-center">Enable reminders to configure notification times</p>'}
+                
+                <!-- Notification Status -->
+                <div class="mt-4 pt-4 border-t border-amber-700/50">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-amber-300/70">Browser Notifications:</span>
+                        <span class="${this.notificationsEnabled ? 'text-green-400' : 'text-red-400'}">
+                            ${this.notificationsEnabled ? '✓ Enabled' : '✗ Disabled'}
+                        </span>
+                    </div>
+                    ${!this.notificationsEnabled ? `
+                    <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
+                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
+                        Enable Browser Notifications
+                    </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
     showErrorNotification(message) {
         // Create error toast element
         let errorToast = document.getElementById('error-toast');
@@ -7041,6 +7540,258 @@ class GoalManager {
                 successToast.remove();
             }
         }, 5000);
+    }
+
+    // ==================== SEARCH FUNCTIONALITY ====================
+    
+    openSearchModal() {
+        const modal = document.createElement('div');
+        modal.id = 'search-modal';
+        modal.className = 'fixed inset-0 bg-black/70 z-[100] flex items-start justify-center pt-20 p-4';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-indigo-900 to-indigo-950 rounded-xl shadow-2xl border-4 border-indigo-600 w-full max-w-2xl max-h-[70vh] flex flex-col">
+                <div class="p-4 border-b-2 border-indigo-600">
+                    <div class="flex items-center gap-3">
+                        <i class="ri-search-line text-2xl text-indigo-300"></i>
+                        <input type="text" id="search-input" 
+                            placeholder="Search all quests, tasks, and goals..."
+                            class="flex-1 bg-indigo-800/50 text-white px-4 py-3 rounded-lg border-2 border-indigo-500 focus:border-indigo-400 outline-none fancy-font text-lg"
+                            oninput="goalManager.performSearch(this.value)"
+                            autofocus>
+                        <button onclick="document.getElementById('search-modal').remove()" class="text-indigo-300 hover:text-white p-2">
+                            <i class="ri-close-line text-2xl"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="goalManager.filterSearchResults('all')" class="search-filter-btn active px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-600 text-white" data-filter="all">All</button>
+                        <button onclick="goalManager.filterSearchResults('tasks')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="tasks">Tasks</button>
+                        <button onclick="goalManager.filterSearchResults('goals')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="goals">Goals</button>
+                        <button onclick="goalManager.filterSearchResults('habits')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="habits">Habits</button>
+                        <button onclick="goalManager.filterSearchResults('sidequests')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="sidequests">Side Quests</button>
+                    </div>
+                </div>
+                <div id="search-results" class="flex-1 overflow-y-auto p-4">
+                    <div class="text-indigo-300 text-center fancy-font py-8">
+                        <i class="ri-search-line text-4xl mb-2 block opacity-50"></i>
+                        Start typing to search...
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        this.currentSearchFilter = 'all';
+        
+        // Focus the input
+        setTimeout(() => document.getElementById('search-input')?.focus(), 100);
+        
+        // Add keyboard shortcut to close
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    filterSearchResults(filter) {
+        this.currentSearchFilter = filter;
+        
+        // Update button styles
+        document.querySelectorAll('.search-filter-btn').forEach(btn => {
+            if (btn.dataset.filter === filter) {
+                btn.className = 'search-filter-btn active px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-600 text-white';
+            } else {
+                btn.className = 'search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700';
+            }
+        });
+        
+        // Re-run search with current query
+        const input = document.getElementById('search-input');
+        if (input && input.value) {
+            this.performSearch(input.value);
+        }
+    }
+
+    performSearch(query) {
+        const resultsContainer = document.getElementById('search-results');
+        if (!resultsContainer) return;
+        
+        if (!query || query.length < 2) {
+            resultsContainer.innerHTML = `
+                <div class="text-indigo-300 text-center fancy-font py-8">
+                    <i class="ri-search-line text-4xl mb-2 block opacity-50"></i>
+                    Type at least 2 characters to search...
+                </div>
+            `;
+            return;
+        }
+        
+        const lowerQuery = query.toLowerCase();
+        const results = [];
+        const filter = this.currentSearchFilter || 'all';
+        
+        // Search daily tasks
+        if (filter === 'all' || filter === 'tasks') {
+            this.dailyTasks.forEach(task => {
+                if (task.title.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'task',
+                        icon: 'ri-sword-line',
+                        color: 'orange',
+                        title: task.title,
+                        subtitle: `Daily Task • ${task.dueDate}`,
+                        completed: task.completed,
+                        view: 'daily',
+                        id: task.id
+                    });
+                }
+            });
+        }
+        
+        // Search habits
+        if (filter === 'all' || filter === 'habits') {
+            this.habits.forEach(habit => {
+                if (habit.name.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'habit',
+                        icon: 'ri-repeat-line',
+                        color: 'purple',
+                        title: habit.name,
+                        subtitle: `Daily Ritual • ${habit.streak || 0} day streak`,
+                        completed: habit.completedToday,
+                        view: 'daily',
+                        id: habit.id
+                    });
+                }
+            });
+        }
+        
+        // Search weekly goals
+        if (filter === 'all' || filter === 'goals') {
+            this.weeklyGoals.forEach(goal => {
+                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'goal',
+                        icon: 'ri-shield-line',
+                        color: 'green',
+                        title: goal.title,
+                        subtitle: 'Weekly Goal',
+                        completed: goal.completed,
+                        view: 'weekly',
+                        id: goal.id
+                    });
+                }
+            });
+            
+            // Search monthly goals
+            this.monthlyGoals.forEach(goal => {
+                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'goal',
+                        icon: 'ri-book-3-line',
+                        color: 'blue',
+                        title: goal.title,
+                        subtitle: 'Monthly Goal',
+                        completed: goal.completed,
+                        view: 'monthly',
+                        id: goal.id
+                    });
+                }
+            });
+            
+            // Search yearly goals
+            this.yearlyGoals.forEach(goal => {
+                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'goal',
+                        icon: 'ri-file-paper-2-line',
+                        color: 'purple',
+                        title: goal.title,
+                        subtitle: 'Yearly Goal',
+                        completed: goal.completed,
+                        view: 'yearly',
+                        id: goal.id
+                    });
+                }
+            });
+            
+            // Search life goals
+            this.lifeGoals.forEach(goal => {
+                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'goal',
+                        icon: 'ri-flag-line',
+                        color: 'red',
+                        title: goal.title,
+                        subtitle: 'Life Goal',
+                        completed: goal.completed,
+                        view: 'life-goals',
+                        id: goal.id
+                    });
+                }
+            });
+        }
+        
+        // Search side quests
+        if (filter === 'all' || filter === 'sidequests') {
+            this.sideQuests.forEach(quest => {
+                if (quest.title.toLowerCase().includes(lowerQuery)) {
+                    results.push({
+                        type: 'sidequest',
+                        icon: 'ri-compass-3-line',
+                        color: 'cyan',
+                        title: quest.title,
+                        subtitle: `Side Quest • ${quest.priority} priority`,
+                        completed: quest.completed,
+                        view: 'sidequests',
+                        id: quest.id
+                    });
+                }
+            });
+        }
+        
+        // Render results
+        if (results.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="text-indigo-300 text-center fancy-font py-8">
+                    <i class="ri-emotion-sad-line text-4xl mb-2 block opacity-50"></i>
+                    No quests found for "${query}"
+                </div>
+            `;
+            return;
+        }
+        
+        resultsContainer.innerHTML = `
+            <div class="text-indigo-300 text-sm mb-3 fancy-font">${results.length} result${results.length !== 1 ? 's' : ''} found</div>
+            ${results.map(r => `
+                <div onclick="goalManager.goToSearchResult('${r.view}', '${r.id}'); document.getElementById('search-modal').remove();" 
+                    class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-indigo-800/50 mb-2 ${r.completed ? 'opacity-60' : ''}">
+                    <i class="${r.icon} text-2xl text-${r.color}-400"></i>
+                    <div class="flex-1">
+                        <div class="text-white font-bold ${r.completed ? 'line-through' : ''}">${r.title}</div>
+                        <div class="text-indigo-300 text-sm">${r.subtitle}</div>
+                    </div>
+                    ${r.completed ? '<i class="ri-checkbox-circle-fill text-green-400 text-xl"></i>' : '<i class="ri-arrow-right-s-line text-indigo-400 text-xl"></i>'}
+                </div>
+            `).join('')}
+        `;
+    }
+
+    goToSearchResult(view, id) {
+        this.switchView(view);
+        // Optionally scroll to or highlight the item
+        setTimeout(() => {
+            const element = document.querySelector(`[data-id="${id}"]`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.classList.add('ring-4', 'ring-yellow-400');
+                setTimeout(() => element.classList.remove('ring-4', 'ring-yellow-400'), 2000);
+            }
+        }, 300);
     }
 
     scheduleEnchantmentExpiryNotification(enchantment) {

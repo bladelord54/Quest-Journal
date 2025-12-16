@@ -421,6 +421,11 @@
                             🌙
                         </button>
                     </div>
+                    
+                    <!-- Search Button -->
+                    <button onclick="goalManager.openSearchModal()" class="w-full mt-2 text-sm bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-indigo-500 flex items-center justify-center">
+                        <i class="ri-search-line mr-2"></i> Search Quests
+                    </button>
                 </div>
             </div>
             
@@ -1020,6 +1025,31 @@
                                     <i class="ri-play-circle-line mr-1"></i> Test Sound
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Recurring Tasks -->
+                    <div class="quest-card bg-gradient-to-br from-cyan-800 to-cyan-900 p-6 rounded-xl shadow-2xl border-4 border-cyan-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-repeat-2-line mr-2"></i> Recurring Tasks
+                        </h3>
+                        <p class="text-cyan-200 fancy-font mb-4 text-sm">Schedule tasks that repeat weekly or monthly</p>
+                        <button onclick="goalManager.addRecurringTask()" class="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-cyan-500 mb-4">
+                            <i class="ri-add-line mr-2"></i> Add Recurring Task
+                        </button>
+                        <div id="recurring-tasks-container" class="space-y-2 max-h-48 overflow-y-auto">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Task Reminders -->
+                    <div class="quest-card bg-gradient-to-br from-amber-800 to-amber-900 p-6 rounded-xl shadow-2xl border-4 border-amber-600">
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
+                            <i class="ri-notification-3-line mr-2"></i> Task Reminders
+                        </h3>
+                        <p class="text-amber-200 fancy-font mb-4 text-sm">Get notified about your quests and tasks</p>
+                        <div id="reminder-settings-container">
+                            <!-- Will be populated by JavaScript -->
                         </div>
                     </div>
 
