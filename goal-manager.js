@@ -898,23 +898,21 @@ class GoalManager {
         const title = prompt('Enter your yearly goal:');
         if (title && title.trim()) {
             const description = prompt('Add a description (optional):', '') || '';
-            const priorityInput = prompt('Priority (high/medium/low) - optional:', 'medium');
-            const priority = priorityInput && ['high', 'medium', 'low'].includes(priorityInput.toLowerCase())
-                ? priorityInput.toLowerCase()
-                : 'medium';
-            const goal = {
-                id: Date.now(),
-                title: title.trim(),
-                description: description.trim(),
-                lifeGoalIds: parentLifeGoalId ? [parentLifeGoalId] : [],
-                created: new Date().toISOString(),
-                completed: false,
-                progress: 0,
-                priority: priority
-            };
-            this.yearlyGoals.push(goal);
-            this.saveData();
-            this.render();
+            this.showPriorityModal('medium', (priority) => {
+                const goal = {
+                    id: Date.now(),
+                    title: title.trim(),
+                    description: description.trim(),
+                    lifeGoalIds: parentLifeGoalId ? [parentLifeGoalId] : [],
+                    created: new Date().toISOString(),
+                    completed: false,
+                    progress: 0,
+                    priority: priority
+                };
+                this.yearlyGoals.push(goal);
+                this.saveData();
+                this.render();
+            });
         }
     }
 
@@ -922,23 +920,21 @@ class GoalManager {
         const title = prompt('Enter your monthly goal:');
         if (title && title.trim()) {
             const description = prompt('Add a description (optional):', '') || '';
-            const priorityInput = prompt('Priority (high/medium/low) - optional:', 'medium');
-            const priority = priorityInput && ['high', 'medium', 'low'].includes(priorityInput.toLowerCase())
-                ? priorityInput.toLowerCase()
-                : 'medium';
-            const goal = {
-                id: Date.now(),
-                title: title.trim(),
-                description: description.trim(),
-                yearlyGoalIds: parentYearlyGoalId ? [parentYearlyGoalId] : [],
-                created: new Date().toISOString(),
-                completed: false,
-                progress: 0,
-                priority: priority
-            };
-            this.monthlyGoals.push(goal);
-            this.saveData();
-            this.render();
+            this.showPriorityModal('medium', (priority) => {
+                const goal = {
+                    id: Date.now(),
+                    title: title.trim(),
+                    description: description.trim(),
+                    yearlyGoalIds: parentYearlyGoalId ? [parentYearlyGoalId] : [],
+                    created: new Date().toISOString(),
+                    completed: false,
+                    progress: 0,
+                    priority: priority
+                };
+                this.monthlyGoals.push(goal);
+                this.saveData();
+                this.render();
+            });
         }
     }
 
@@ -946,24 +942,22 @@ class GoalManager {
         const title = prompt('Enter your weekly goal:');
         if (title && title.trim()) {
             const description = prompt('Add a description (optional):', '') || '';
-            const priorityInput = prompt('Priority (high/medium/low) - optional:', 'medium');
-            const priority = priorityInput && ['high', 'medium', 'low'].includes(priorityInput.toLowerCase())
-                ? priorityInput.toLowerCase()
-                : 'medium';
-            const goal = {
-                id: Date.now(),
-                title: title.trim(),
-                description: description.trim(),
-                monthlyGoalIds: parentMonthlyGoalId ? [parentMonthlyGoalId] : [],
-                created: new Date().toISOString(),
-                completed: false,
-                progress: 0,
-                checklist: [],
-                priority: priority
-            };
-            this.weeklyGoals.push(goal);
-            this.saveData();
-            this.render();
+            this.showPriorityModal('medium', (priority) => {
+                const goal = {
+                    id: Date.now(),
+                    title: title.trim(),
+                    description: description.trim(),
+                    monthlyGoalIds: parentMonthlyGoalId ? [parentMonthlyGoalId] : [],
+                    created: new Date().toISOString(),
+                    completed: false,
+                    progress: 0,
+                    checklist: [],
+                    priority: priority
+                };
+                this.weeklyGoals.push(goal);
+                this.saveData();
+                this.render();
+            });
         }
     }
 
@@ -2698,6 +2692,19 @@ class GoalManager {
         const newTitle = prompt('Edit quest title:', item.title);
         if (newTitle === null || newTitle.trim() === '') return;
 
+        // For weekly/monthly/yearly, defer title update until after priority selection
+        if (type === 'weekly' || type === 'monthly' || type === 'yearly') {
+            const currentPriority = item.priority && ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
+            this.showPriorityModal(currentPriority, (newPriority) => {
+                item.title = newTitle.trim(); // Apply title change only on confirm
+                item.priority = newPriority;
+                this.saveData();
+                this.render();
+                this.showAchievement('✏️ Quest updated!', 'daily');
+            });
+            return; // Don't save yet - wait for modal callback
+        }
+
         item.title = newTitle.trim();
 
         // For side quests, also allow editing description and priority
@@ -2709,14 +2716,6 @@ class GoalManager {
 
             const newPriority = prompt('Edit priority (high/medium/low):', item.priority);
             if (newPriority !== null && ['high', 'medium', 'low'].includes(newPriority.toLowerCase())) {
-                item.priority = newPriority.toLowerCase();
-            }
-        }
-
-        if (type === 'weekly' || type === 'monthly' || type === 'yearly') {
-            const currentPriority = item.priority && ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
-            const newPriority = prompt('Edit priority (high/medium/low):', currentPriority);
-            if (newPriority !== null && newPriority.trim() !== '' && ['high', 'medium', 'low'].includes(newPriority.toLowerCase())) {
                 item.priority = newPriority.toLowerCase();
             }
         }
@@ -3800,8 +3799,15 @@ class GoalManager {
             
             // Escape to close modals
             if (e.key === 'Escape') {
+                const priorityModal = document.getElementById('priority-modal');
                 const searchModal = document.getElementById('search-modal');
                 const quickAddModal = document.getElementById('quick-add-modal');
+                
+                if (priorityModal) {
+                    e.preventDefault();
+                    this.closePriorityModal();
+                    return;
+                }
                 
                 if (searchModal && !searchModal.classList.contains('hidden')) {
                     e.preventDefault();
@@ -7215,6 +7221,82 @@ class GoalManager {
         `;
         
         resultsContainer.innerHTML = html;
+    }
+
+    // ==================== PRIORITY SELECTION MODAL ====================
+    
+    showPriorityModal(currentPriority = 'medium', callback) {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('priority-modal');
+        if (existingModal) existingModal.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'priority-modal';
+        modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border-4 border-amber-600 max-w-sm w-full mx-4 animate-slide-down">
+                <h3 class="text-xl font-bold text-amber-300 medieval-title mb-4 text-center">
+                    <i class="ri-flag-line mr-2"></i>Select Priority
+                </h3>
+                <div class="space-y-3">
+                    <button onclick="goalManager.selectPriority('high')" 
+                        class="w-full p-4 rounded-lg border-2 transition-all hover:scale-105 flex items-center gap-3
+                        ${currentPriority === 'high' ? 'bg-red-700 border-red-500 ring-2 ring-red-400' : 'bg-red-900/50 border-red-700 hover:bg-red-800'}">
+                        <span class="text-2xl">🔥</span>
+                        <div class="text-left">
+                            <div class="font-bold text-red-200">High Priority</div>
+                            <div class="text-xs text-red-300/70">Urgent and important</div>
+                        </div>
+                    </button>
+                    <button onclick="goalManager.selectPriority('medium')" 
+                        class="w-full p-4 rounded-lg border-2 transition-all hover:scale-105 flex items-center gap-3
+                        ${currentPriority === 'medium' ? 'bg-yellow-700 border-yellow-500 ring-2 ring-yellow-400' : 'bg-yellow-900/50 border-yellow-700 hover:bg-yellow-800'}">
+                        <span class="text-2xl">⭐</span>
+                        <div class="text-left">
+                            <div class="font-bold text-yellow-200">Medium Priority</div>
+                            <div class="text-xs text-yellow-300/70">Normal importance</div>
+                        </div>
+                    </button>
+                    <button onclick="goalManager.selectPriority('low')" 
+                        class="w-full p-4 rounded-lg border-2 transition-all hover:scale-105 flex items-center gap-3
+                        ${currentPriority === 'low' ? 'bg-gray-600 border-gray-400 ring-2 ring-gray-300' : 'bg-gray-700/50 border-gray-600 hover:bg-gray-600'}">
+                        <span class="text-2xl">🪶</span>
+                        <div class="text-left">
+                            <div class="font-bold text-gray-200">Low Priority</div>
+                            <div class="text-xs text-gray-300/70">Can wait if needed</div>
+                        </div>
+                    </button>
+                </div>
+                <button onclick="goalManager.closePriorityModal()" 
+                    class="w-full mt-4 p-2 text-gray-400 hover:text-white text-sm fancy-font">
+                    Cancel
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        this.priorityCallback = callback;
+        
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closePriorityModal();
+            }
+        });
+    }
+
+    selectPriority(priority) {
+        const callback = this.priorityCallback;
+        this.closePriorityModal();
+        if (callback) {
+            callback(priority);
+        }
+    }
+
+    closePriorityModal() {
+        const modal = document.getElementById('priority-modal');
+        if (modal) modal.remove();
+        this.priorityCallback = null;
     }
 
     // Notification System
