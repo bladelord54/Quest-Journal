@@ -7232,9 +7232,10 @@ class GoalManager {
         
         const modal = document.createElement('div');
         modal.id = 'priority-modal';
-        modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 overflow-auto';
+        modal.className = 'fixed inset-0 bg-black/70 z-50 overflow-auto flex items-center justify-center';
+        modal.style.cssText = 'display: flex; align-items: center; justify-content: center; padding: 1rem;';
         modal.innerHTML = `
-            <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down m-4" style="width: calc(100% - 2rem); max-width: 280px;">
+            <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down" style="width: 280px; max-width: calc(100vw - 2rem); flex-shrink: 0;">
                 <h3 class="text-xl font-bold text-amber-300 medieval-title mb-4 text-center">
                     <i class="ri-flag-line mr-2"></i>Select Priority
                 </h3>
