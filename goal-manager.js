@@ -5787,9 +5787,10 @@ class GoalManager {
         // Create slideshow modal
         const modal = document.createElement('div');
         modal.id = 'period-transition-modal';
-        modal.className = 'fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4';
+        modal.className = 'fixed inset-0 bg-black/80 z-[100] flex items-center justify-center overflow-hidden';
+        modal.style.cssText = 'padding: 16px;';
         modal.innerHTML = `
-            <div class="bg-gradient-to-br ${config.bg} rounded-2xl shadow-2xl border-4 ${config.border} max-w-lg w-full overflow-hidden">
+            <div class="bg-gradient-to-br ${config.bg} rounded-2xl shadow-2xl border-4 ${config.border} overflow-hidden" style="width: 100%; max-width: min(512px, calc(100vw - 32px));">
                 <!-- Header with icon -->
                 <div class="bg-black/30 p-4 text-center border-b-2 ${config.border}">
                     <i class="${config.icon} text-4xl ${config.color}"></i>
@@ -5920,8 +5921,8 @@ class GoalManager {
         const { icon, color } = iconConfig[period];
         
         const html = `
-            <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="this.remove()">
-                <div class="bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 rounded-xl shadow-2xl border-4 border-amber-600 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center overflow-hidden" style="padding: 16px;" onclick="this.remove()">
+                <div class="bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 rounded-xl shadow-2xl border-4 border-amber-600 max-h-[90vh] overflow-y-auto" style="width: 100%; max-width: min(672px, calc(100vw - 32px));" onclick="event.stopPropagation()">
                     <div class="p-6">
                         <div class="text-center mb-2">
                             <i class="${icon} text-5xl ${color}"></i>
