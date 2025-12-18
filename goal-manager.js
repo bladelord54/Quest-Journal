@@ -878,196 +878,369 @@ class GoalManager {
     }
 
     addLifeGoal() {
-        const title = prompt('Enter your life goal:');
-        if (title && title.trim()) {
-            const description = prompt('Add a description (optional):', '') || '';
-            const goal = {
-                id: Date.now(),
-                title: title.trim(),
-                description: description.trim(),
-                created: new Date().toISOString(),
-                completed: false
-            };
-            this.lifeGoals.push(goal);
-            this.saveData();
-            this.render();
-        }
+        this.showInputModal({
+            title: 'New Life Goal',
+            placeholder: 'Enter your life goal...',
+            icon: 'ri-compass-3-line'
+        }, (title) => {
+            if (!title.trim()) return;
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                const goal = {
+                    id: Date.now(),
+                    title: title.trim(),
+                    description: (description || '').trim(),
+                    created: new Date().toISOString(),
+                    completed: false
+                };
+                this.lifeGoals.push(goal);
+                this.saveData();
+                this.render();
+            });
+        });
     }
 
     addYearlyGoal(parentLifeGoalId = null) {
-        const title = prompt('Enter your yearly goal:');
-        if (title && title.trim()) {
-            const description = prompt('Add a description (optional):', '') || '';
-            this.showPriorityModal('medium', (priority) => {
-                const goal = {
-                    id: Date.now(),
-                    title: title.trim(),
-                    description: description.trim(),
-                    lifeGoalIds: parentLifeGoalId ? [parentLifeGoalId] : [],
-                    created: new Date().toISOString(),
-                    completed: false,
-                    progress: 0,
-                    priority: priority
-                };
-                this.yearlyGoals.push(goal);
-                this.saveData();
-                this.render();
+        this.showInputModal({
+            title: 'New Yearly Campaign',
+            placeholder: 'Enter your yearly goal...',
+            icon: 'ri-calendar-line'
+        }, (title) => {
+            if (!title.trim()) return;
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                this.showPriorityModal('medium', (priority) => {
+                    const goal = {
+                        id: Date.now(),
+                        title: title.trim(),
+                        description: (description || '').trim(),
+                        lifeGoalIds: parentLifeGoalId ? [parentLifeGoalId] : [],
+                        created: new Date().toISOString(),
+                        completed: false,
+                        progress: 0,
+                        priority: priority
+                    };
+                    this.yearlyGoals.push(goal);
+                    this.saveData();
+                    this.render();
+                });
             });
-        }
+        });
     }
 
     addMonthlyGoal(parentYearlyGoalId = null) {
-        const title = prompt('Enter your monthly goal:');
-        if (title && title.trim()) {
-            const description = prompt('Add a description (optional):', '') || '';
-            this.showPriorityModal('medium', (priority) => {
-                const goal = {
-                    id: Date.now(),
-                    title: title.trim(),
-                    description: description.trim(),
-                    yearlyGoalIds: parentYearlyGoalId ? [parentYearlyGoalId] : [],
-                    created: new Date().toISOString(),
-                    completed: false,
-                    progress: 0,
-                    priority: priority
-                };
-                this.monthlyGoals.push(goal);
-                this.saveData();
-                this.render();
+        this.showInputModal({
+            title: 'New Monthly Quest',
+            placeholder: 'Enter your monthly goal...',
+            icon: 'ri-calendar-2-line'
+        }, (title) => {
+            if (!title.trim()) return;
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                this.showPriorityModal('medium', (priority) => {
+                    const goal = {
+                        id: Date.now(),
+                        title: title.trim(),
+                        description: (description || '').trim(),
+                        yearlyGoalIds: parentYearlyGoalId ? [parentYearlyGoalId] : [],
+                        created: new Date().toISOString(),
+                        completed: false,
+                        progress: 0,
+                        priority: priority
+                    };
+                    this.monthlyGoals.push(goal);
+                    this.saveData();
+                    this.render();
+                });
             });
-        }
+        });
     }
 
     addWeeklyGoal(parentMonthlyGoalId = null) {
-        const title = prompt('Enter your weekly goal:');
-        if (title && title.trim()) {
-            const description = prompt('Add a description (optional):', '') || '';
-            this.showPriorityModal('medium', (priority) => {
-                const goal = {
-                    id: Date.now(),
-                    title: title.trim(),
-                    description: description.trim(),
-                    monthlyGoalIds: parentMonthlyGoalId ? [parentMonthlyGoalId] : [],
-                    created: new Date().toISOString(),
-                    completed: false,
-                    progress: 0,
-                    checklist: [],
-                    priority: priority
-                };
-                this.weeklyGoals.push(goal);
-                this.saveData();
-                this.render();
+        this.showInputModal({
+            title: 'New Weekly Mission',
+            placeholder: 'Enter your weekly goal...',
+            icon: 'ri-calendar-check-line'
+        }, (title) => {
+            if (!title.trim()) return;
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                this.showPriorityModal('medium', (priority) => {
+                    const goal = {
+                        id: Date.now(),
+                        title: title.trim(),
+                        description: (description || '').trim(),
+                        monthlyGoalIds: parentMonthlyGoalId ? [parentMonthlyGoalId] : [],
+                        created: new Date().toISOString(),
+                        completed: false,
+                        progress: 0,
+                        checklist: [],
+                        priority: priority
+                    };
+                    this.weeklyGoals.push(goal);
+                    this.saveData();
+                    this.render();
+                });
             });
-        }
+        });
     }
 
     addDailyTask(parentWeeklyGoalId = null, scheduledDate = null) {
-        const title = prompt('Enter your daily task:');
-        if (title && title.trim()) {
-            const description = prompt('Add a description (optional):', '') || '';
-            let dueDate = scheduledDate;
-            if (!dueDate) {
-                const todayString = this.getTodayDateString();
-                const dateInput = prompt('Enter due date (YYYY-MM-DD) or leave empty for today:', 
-                    todayString);
-                dueDate = dateInput && dateInput.trim() ? dateInput.trim() : todayString;
-            }
-            
-            const task = {
-                id: Date.now(),
-                title: title.trim(),
-                description: description.trim(),
-                weeklyGoalIds: parentWeeklyGoalId ? [parentWeeklyGoalId] : [],
-                created: new Date().toISOString(),
-                dueDate: dueDate,
-                completed: false,
-                checklist: []
-            };
-            this.dailyTasks.push(task);
-            this.saveData();
-            this.render();
-        }
+        this.showInputModal({
+            title: 'New Daily Task',
+            placeholder: 'Enter your daily task...',
+            icon: 'ri-checkbox-circle-line'
+        }, (title) => {
+            if (!title.trim()) return;
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                const finishAddingTask = (dueDate) => {
+                    const task = {
+                        id: Date.now(),
+                        title: title.trim(),
+                        description: (description || '').trim(),
+                        weeklyGoalIds: parentWeeklyGoalId ? [parentWeeklyGoalId] : [],
+                        created: new Date().toISOString(),
+                        dueDate: dueDate,
+                        completed: false,
+                        checklist: []
+                    };
+                    this.dailyTasks.push(task);
+                    this.saveData();
+                    this.render();
+                };
+
+                if (scheduledDate) {
+                    finishAddingTask(scheduledDate);
+                } else {
+                    const todayString = this.getTodayDateString();
+                    this.showInputModal({
+                        title: 'Due Date',
+                        placeholder: 'YYYY-MM-DD',
+                        defaultValue: todayString,
+                        icon: 'ri-calendar-event-line',
+                        inputType: 'date'
+                    }, (dateInput) => {
+                        const dueDate = dateInput && dateInput.trim() ? dateInput.trim() : todayString;
+                        finishAddingTask(dueDate);
+                    });
+                }
+            });
+        });
     }
 
     // ==================== RECURRING TASKS ====================
     
     addRecurringTask() {
-        const title = prompt('Enter the recurring task name:');
-        if (!title || !title.trim()) return;
-        
-        const description = prompt('Add a description (optional):', '') || '';
-        
-        // Ask for recurrence pattern
-        const patternOptions = `Choose recurrence pattern:
-1 = Daily (use Habits instead)
-2 = Weekly (specific days)
-3 = Bi-weekly
-4 = Monthly (specific date)
-5 = Monthly (e.g., first Monday)`;
-        
-        const patternChoice = prompt(patternOptions, '2');
-        if (!patternChoice) return;
-        
-        let recurrence = {};
-        
-        switch (patternChoice) {
-            case '1':
-                alert('For daily recurring tasks, please use Daily Rituals (Habits) instead!');
-                return;
-            case '2':
-                const daysInput = prompt('Enter days (comma-separated): Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Mon,Wed,Fri');
-                if (!daysInput) return;
-                recurrence = {
-                    type: 'weekly',
-                    days: daysInput.split(',').map(d => d.trim().toLowerCase())
-                };
-                break;
-            case '3':
-                const biweeklyDay = prompt('Enter day of week: Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Mon');
-                if (!biweeklyDay) return;
-                recurrence = {
-                    type: 'biweekly',
-                    day: biweeklyDay.trim().toLowerCase(),
-                    lastGenerated: null
-                };
-                break;
-            case '4':
-                const dateNum = prompt('Enter day of month (1-28):', '1');
-                if (!dateNum) return;
-                recurrence = {
-                    type: 'monthly-date',
-                    dayOfMonth: Math.min(28, Math.max(1, parseInt(dateNum) || 1))
-                };
-                break;
-            case '5':
-                const weekOptions = prompt('Enter week (1=first, 2=second, 3=third, 4=fourth, -1=last):', '1');
-                const dayOption = prompt('Enter day: Mon,Tue,Wed,Thu,Fri,Sat,Sun', 'Mon');
-                if (!weekOptions || !dayOption) return;
-                recurrence = {
-                    type: 'monthly-weekday',
-                    week: parseInt(weekOptions) || 1,
-                    day: dayOption.trim().toLowerCase()
-                };
-                break;
-            default:
-                return;
-        }
-        
-        const recurringTask = {
-            id: Date.now(),
-            title: title.trim(),
-            description: description.trim(),
-            recurrence: recurrence,
-            active: true,
-            created: new Date().toISOString(),
-            lastGenerated: null
+        this.showInputModal({
+            title: 'New Recurring Task',
+            placeholder: 'Enter the recurring task name...',
+            icon: 'ri-repeat-line'
+        }, (title) => {
+            if (!title || !title.trim()) return;
+            
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                // Show pattern selection
+                this.showSelectModal({
+                    title: 'Recurrence Pattern',
+                    icon: 'ri-repeat-line',
+                    choices: [
+                        { value: '2', label: 'Weekly', icon: '📅', description: 'Specific days each week' },
+                        { value: '3', label: 'Bi-weekly', icon: '📆', description: 'Every two weeks' },
+                        { value: '4', label: 'Monthly (Date)', icon: '🗓️', description: 'Same date each month' },
+                        { value: '5', label: 'Monthly (Day)', icon: '📋', description: 'e.g., First Monday' }
+                    ]
+                }, (patternChoice) => {
+                    this.finishRecurringTaskSetup(title.trim(), (description || '').trim(), patternChoice);
+                });
+            });
+        });
+    }
+
+    finishRecurringTaskSetup(title, description, patternChoice) {
+        const dayChoices = [
+            { value: 'mon', label: 'Monday', icon: '📌' },
+            { value: 'tue', label: 'Tuesday', icon: '📌' },
+            { value: 'wed', label: 'Wednesday', icon: '📌' },
+            { value: 'thu', label: 'Thursday', icon: '📌' },
+            { value: 'fri', label: 'Friday', icon: '📌' },
+            { value: 'sat', label: 'Saturday', icon: '📌' },
+            { value: 'sun', label: 'Sunday', icon: '📌' }
+        ];
+
+        const createTask = (recurrence) => {
+            const recurringTask = {
+                id: Date.now(),
+                title: title,
+                description: description,
+                recurrence: recurrence,
+                active: true,
+                created: new Date().toISOString(),
+                lastGenerated: null
+            };
+            this.recurringTasks.push(recurringTask);
+            this.saveData();
+            this.generateRecurringTasksForToday();
+            this.render();
+            this.showAchievement(`🔄 Recurring task "${title}" created!`, 'daily');
         };
-        
-        this.recurringTasks.push(recurringTask);
-        this.saveData();
-        this.generateRecurringTasksForToday();
-        this.render();
-        this.showAchievement(`🔄 Recurring task "${title.trim()}" created!`, 'daily');
+
+        switch (patternChoice) {
+            case '2': // Weekly
+                this.showMultiSelectDays((days) => {
+                    if (days.length === 0) return;
+                    createTask({ type: 'weekly', days: days });
+                });
+                break;
+            case '3': // Bi-weekly
+                this.showSelectModal({
+                    title: 'Select Day of Week',
+                    icon: 'ri-calendar-line',
+                    choices: dayChoices
+                }, (day) => {
+                    createTask({ type: 'biweekly', day: day, lastGenerated: null });
+                });
+                break;
+            case '4': // Monthly date
+                this.showInputModal({
+                    title: 'Day of Month',
+                    placeholder: '1-28',
+                    defaultValue: '1',
+                    icon: 'ri-calendar-line'
+                }, (dateNum) => {
+                    const dayOfMonth = Math.min(28, Math.max(1, parseInt(dateNum) || 1));
+                    createTask({ type: 'monthly-date', dayOfMonth: dayOfMonth });
+                });
+                break;
+            case '5': // Monthly weekday
+                this.showSelectModal({
+                    title: 'Which Week?',
+                    icon: 'ri-calendar-line',
+                    choices: [
+                        { value: '1', label: 'First', icon: '1️⃣' },
+                        { value: '2', label: 'Second', icon: '2️⃣' },
+                        { value: '3', label: 'Third', icon: '3️⃣' },
+                        { value: '4', label: 'Fourth', icon: '4️⃣' },
+                        { value: '-1', label: 'Last', icon: '🔚' }
+                    ]
+                }, (week) => {
+                    this.showSelectModal({
+                        title: 'Select Day',
+                        icon: 'ri-calendar-line',
+                        choices: dayChoices
+                    }, (day) => {
+                        createTask({ type: 'monthly-weekday', week: parseInt(week), day: day });
+                    });
+                });
+                break;
+        }
+    }
+
+    showMultiSelectDays(callback) {
+        const existingModal = document.getElementById('multiselect-modal');
+        if (existingModal) existingModal.remove();
+
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        const modal = document.createElement('div');
+        modal.id = 'multiselect-modal';
+        modal.className = 'fixed inset-0 bg-black/70 z-50 overflow-hidden';
+        modal.style.cssText = 'display: flex; align-items: center; justify-content: center; padding: 24px;';
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down" style="width: 320px; max-width: calc(100vw - 48px);">
+                <h3 class="text-lg font-bold text-amber-300 medieval-title mb-4 text-center">
+                    <i class="ri-calendar-check-line mr-2"></i>Select Days
+                </h3>
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    ${days.map((d, i) => `
+                        <button type="button" data-day="${d}" 
+                            class="day-toggle p-2 rounded-lg border-2 border-gray-600 bg-gray-700/50 text-gray-300 hover:bg-amber-700 hover:border-amber-500 transition-all text-sm font-semibold">
+                            ${labels[i]}
+                        </button>
+                    `).join('')}
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="goalManager.closeMultiSelectModal()" 
+                        class="flex-1 p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold transition-all fancy-font">
+                        Cancel
+                    </button>
+                    <button onclick="goalManager.submitMultiSelectDays()" 
+                        class="flex-1 p-3 rounded-lg bg-amber-700 hover:bg-amber-600 text-amber-100 font-semibold transition-all fancy-font">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        this.multiSelectCallback = callback;
+        this.selectedDays = [];
+
+        // Setup day toggle buttons
+        modal.querySelectorAll('.day-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const day = btn.dataset.day;
+                if (this.selectedDays.includes(day)) {
+                    this.selectedDays = this.selectedDays.filter(d => d !== day);
+                    btn.classList.remove('bg-amber-700', 'border-amber-500', 'text-white');
+                    btn.classList.add('bg-gray-700/50', 'border-gray-600', 'text-gray-300');
+                } else {
+                    this.selectedDays.push(day);
+                    btn.classList.add('bg-amber-700', 'border-amber-500', 'text-white');
+                    btn.classList.remove('bg-gray-700/50', 'border-gray-600', 'text-gray-300');
+                }
+            });
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeMultiSelectModal();
+        });
+    }
+
+    submitMultiSelectDays() {
+        const callback = this.multiSelectCallback;
+        const days = [...this.selectedDays];
+        this.closeMultiSelectModal();
+        if (callback) callback(days);
+    }
+
+    closeMultiSelectModal() {
+        const modal = document.getElementById('multiselect-modal');
+        if (modal) modal.remove();
+        this.multiSelectCallback = null;
+        this.selectedDays = [];
     }
 
     generateRecurringTasksForToday() {
@@ -1223,27 +1396,35 @@ class GoalManager {
     }
 
     addSideQuest() {
-        const title = prompt('Enter your side quest:');
-        if (title && title.trim()) {
-            const description = prompt('Add a description (optional):', '') || '';
-            const priorityInput = prompt('Enter priority (high, medium, low):', 'medium');
-            const priority = ['high', 'medium', 'low'].includes(priorityInput?.toLowerCase()) 
-                ? priorityInput.toLowerCase() 
-                : 'medium';
-            
-            const quest = {
-                id: Date.now(),
-                title: title.trim(),
-                description: description.trim(),
-                priority: priority,
-                created: new Date().toISOString(),
-                completed: false,
-                checklist: []
-            };
-            this.sideQuests.push(quest);
-            this.saveData();
-            this.render();
-        }
+        this.showInputModal({
+            title: 'New Side Quest',
+            placeholder: 'Enter your side quest...',
+            icon: 'ri-compass-3-line'
+        }, (title) => {
+            if (!title || !title.trim()) return;
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                this.showPriorityModal('medium', (priority) => {
+                    const quest = {
+                        id: Date.now(),
+                        title: title.trim(),
+                        description: (description || '').trim(),
+                        priority: priority,
+                        created: new Date().toISOString(),
+                        completed: false,
+                        checklist: []
+                    };
+                    this.sideQuests.push(quest);
+                    this.saveData();
+                    this.render();
+                });
+            });
+        });
     }
 
     toggleSideQuest(questId) {
@@ -1420,11 +1601,23 @@ class GoalManager {
         return true; // No checklist = can complete anytime
     }
 
+    promptAddChecklistItem(taskType, taskId) {
+        this.showInputModal({
+            title: 'Add Checklist Item',
+            placeholder: 'Enter checklist item...',
+            icon: 'ri-checkbox-line'
+        }, (text) => {
+            if (text && text.trim()) {
+                this.addChecklistItem(taskType, taskId, text);
+            }
+        });
+    }
+
     renderChecklistHTML(task, taskType) {
         if (!task.checklist || task.checklist.length === 0) {
             return `
                 <div class="mt-3 pt-3 border-t border-gray-700/50">
-                    <button onclick="const text = prompt('Checklist item:'); if(text) goalManager.addChecklistItem('${taskType}', ${task.id}, text);" 
+                    <button onclick="goalManager.promptAddChecklistItem('${taskType}', ${task.id});" 
                         class="text-xs bg-purple-800/50 hover:bg-purple-700/60 text-purple-200 px-3 py-1 rounded border border-purple-600 fancy-font">
                         ✓ Add Checklist Item
                     </button>
@@ -1438,7 +1631,7 @@ class GoalManager {
             <div class="mt-3 pt-3 border-t border-gray-700/50">
                 <div class="flex items-center justify-between mb-2">
                     <p class="text-xs text-purple-300 font-semibold">✓ Checklist (${progress.completed}/${progress.total})</p>
-                    <button onclick="const text = prompt('Checklist item:'); if(text) goalManager.addChecklistItem('${taskType}', ${task.id}, text);" 
+                    <button onclick="goalManager.promptAddChecklistItem('${taskType}', ${task.id});" 
                         class="text-xs bg-purple-800/50 hover:bg-purple-700/60 text-purple-200 px-2 py-1 rounded border border-purple-600 fancy-font">
                         + Add
                     </button>
@@ -1530,22 +1723,33 @@ class GoalManager {
     }
 
     addHabit() {
-        const title = prompt('Enter your daily ritual/habit:');
-        if (title && title.trim()) {
-            const description = prompt('Add a description (optional):', '') || '';
-            const habit = {
-                id: Date.now(),
-                title: title.trim(),
-                description: description.trim(),
-                created: new Date().toISOString(),
-                completedToday: false,
-                streak: 0,
-                totalCompletions: 0
-            };
-            this.habits.push(habit);
-            this.saveData();
-            this.render();
-        }
+        this.showInputModal({
+            title: 'New Daily Ritual',
+            placeholder: 'Enter your daily ritual/habit...',
+            icon: 'ri-fire-line'
+        }, (title) => {
+            if (!title || !title.trim()) return;
+            this.showInputModal({
+                title: 'Description',
+                placeholder: 'Add a description (optional)...',
+                icon: 'ri-file-text-line',
+                inputType: 'textarea',
+                optional: true
+            }, (description) => {
+                const habit = {
+                    id: Date.now(),
+                    title: title.trim(),
+                    description: (description || '').trim(),
+                    created: new Date().toISOString(),
+                    completedToday: false,
+                    streak: 0,
+                    totalCompletions: 0
+                };
+                this.habits.push(habit);
+                this.saveData();
+                this.render();
+            });
+        });
     }
 
     // XP and Leveling System
@@ -2688,49 +2892,59 @@ class GoalManager {
 
         if (!item) return;
 
-        // Prompt for new title
-        const newTitle = prompt('Edit quest title:', item.title);
-        if (newTitle === null || newTitle.trim() === '') return;
+        const typeLabels = {
+            life: 'Life Goal', yearly: 'Yearly Campaign', monthly: 'Monthly Quest',
+            weekly: 'Weekly Mission', daily: 'Daily Task', side: 'Side Quest', habit: 'Daily Ritual'
+        };
 
-        // For weekly/monthly/yearly, defer title update until after priority selection
-        if (type === 'weekly' || type === 'monthly' || type === 'yearly') {
-            const currentPriority = item.priority && ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
-            this.showPriorityModal(currentPriority, (newPriority) => {
-                item.title = newTitle.trim(); // Apply title change only on confirm
-                item.priority = newPriority;
-                this.saveData();
-                this.render();
-                this.showAchievement('✏️ Quest updated!', 'daily');
-            });
-            return; // Don't save yet - wait for modal callback
-        }
+        this.showInputModal({
+            title: `Edit ${typeLabels[type] || 'Quest'}`,
+            placeholder: 'Enter new title...',
+            defaultValue: item.title,
+            icon: 'ri-edit-line'
+        }, (newTitle) => {
+            if (!newTitle || !newTitle.trim()) return;
 
-        item.title = newTitle.trim();
-
-        // For side quests, also allow editing description and priority
-        if (type === 'side') {
-            const newDescription = prompt('Edit description (optional):', item.description || '');
-            if (newDescription !== null) {
-                item.description = newDescription.trim();
+            // For weekly/monthly/yearly, show priority selection
+            if (type === 'weekly' || type === 'monthly' || type === 'yearly') {
+                const currentPriority = item.priority && ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
+                this.showPriorityModal(currentPriority, (newPriority) => {
+                    item.title = newTitle.trim();
+                    item.priority = newPriority;
+                    this.saveData();
+                    this.render();
+                    this.showAchievement('✏️ Quest updated!', 'daily');
+                });
+                return;
             }
 
-            const newPriority = prompt('Edit priority (high/medium/low):', item.priority);
-            if (newPriority !== null && ['high', 'medium', 'low'].includes(newPriority.toLowerCase())) {
-                item.priority = newPriority.toLowerCase();
-            }
-        }
+            item.title = newTitle.trim();
 
-        // For habits, allow editing frequency
-        if (type === 'habit') {
-            const newFrequency = prompt('Edit frequency (daily/weekly/monthly):', item.frequency);
-            if (newFrequency !== null && ['daily', 'weekly', 'monthly'].includes(newFrequency.toLowerCase())) {
-                item.frequency = newFrequency.toLowerCase();
+            // For side quests, also allow editing description and priority
+            if (type === 'side') {
+                this.showInputModal({
+                    title: 'Edit Description',
+                    placeholder: 'Description (optional)...',
+                    defaultValue: item.description || '',
+                    icon: 'ri-file-text-line',
+                    inputType: 'textarea',
+                    optional: true
+                }, (newDescription) => {
+                    item.description = (newDescription || '').trim();
+                    this.showPriorityModal(item.priority || 'medium', (newPriority) => {
+                        item.priority = newPriority;
+                        this.saveData();
+                        this.render();
+                        this.showAchievement('✏️ Quest updated!', 'daily');
+                    });
+                });
+                return;
             }
-        }
 
-        this.saveData();
-        this.render();
-        this.showAchievement('✏️ Quest updated!', 'daily');
+            this.saveData();
+            this.render();
+            this.showAchievement('✏️ Quest updated!', 'daily');
+        });
     }
 
     render() {
@@ -3799,9 +4013,30 @@ class GoalManager {
             
             // Escape to close modals
             if (e.key === 'Escape') {
+                const inputModal = document.getElementById('input-modal');
+                const selectModal = document.getElementById('select-modal');
+                const multiselectModal = document.getElementById('multiselect-modal');
                 const priorityModal = document.getElementById('priority-modal');
                 const searchModal = document.getElementById('search-modal');
                 const quickAddModal = document.getElementById('quick-add-modal');
+                
+                if (inputModal) {
+                    e.preventDefault();
+                    this.closeInputModal();
+                    return;
+                }
+                
+                if (selectModal) {
+                    e.preventDefault();
+                    this.closeSelectModal();
+                    return;
+                }
+                
+                if (multiselectModal) {
+                    e.preventDefault();
+                    this.closeMultiSelectModal();
+                    return;
+                }
                 
                 if (priorityModal) {
                     e.preventDefault();
@@ -7298,6 +7533,179 @@ class GoalManager {
         const modal = document.getElementById('priority-modal');
         if (modal) modal.remove();
         this.priorityCallback = null;
+    }
+
+    // ==================== CUSTOM INPUT MODAL ====================
+    
+    showInputModal(options, callback) {
+        const {
+            title = 'Enter Value',
+            placeholder = '',
+            defaultValue = '',
+            inputType = 'text',
+            icon = 'ri-edit-line',
+            buttonText = 'Confirm',
+            optional = false
+        } = options;
+
+        const existingModal = document.getElementById('input-modal');
+        if (existingModal) existingModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'input-modal';
+        modal.className = 'fixed inset-0 bg-black/70 z-50 overflow-hidden';
+        modal.style.cssText = 'display: flex; align-items: center; justify-content: center; padding: 24px;';
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down" style="width: 320px; max-width: calc(100vw - 48px);">
+                <h3 class="text-lg font-bold text-amber-300 medieval-title mb-4 text-center">
+                    <i class="${icon} mr-2"></i>${title}
+                </h3>
+                <div class="space-y-4">
+                    ${inputType === 'textarea' ? `
+                        <textarea id="modal-input" 
+                            class="w-full p-3 rounded-lg bg-gray-700/50 border-2 border-amber-600/50 text-white placeholder-gray-400 focus:border-amber-500 focus:outline-none fancy-font resize-none"
+                            placeholder="${placeholder}"
+                            rows="3">${defaultValue}</textarea>
+                    ` : `
+                        <input type="${inputType}" id="modal-input" 
+                            class="w-full p-3 rounded-lg bg-gray-700/50 border-2 border-amber-600/50 text-white placeholder-gray-400 focus:border-amber-500 focus:outline-none fancy-font"
+                            placeholder="${placeholder}"
+                            value="${defaultValue}">
+                    `}
+                    <div class="flex gap-3">
+                        <button onclick="goalManager.closeInputModal()" 
+                            class="flex-1 p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold transition-all fancy-font">
+                            Cancel
+                        </button>
+                        <button onclick="goalManager.submitInputModal()" 
+                            class="flex-1 p-3 rounded-lg bg-amber-700 hover:bg-amber-600 text-amber-100 font-semibold transition-all fancy-font">
+                            ${buttonText}
+                        </button>
+                    </div>
+                    ${optional ? '<p class="text-xs text-gray-400 text-center fancy-font">Leave empty to skip</p>' : ''}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        this.inputCallback = callback;
+        this.inputOptional = optional;
+
+        // Focus and select input
+        setTimeout(() => {
+            const input = document.getElementById('modal-input');
+            if (input) {
+                input.focus();
+                if (inputType !== 'textarea') input.select();
+            }
+        }, 100);
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeInputModal();
+            }
+        });
+
+        // Handle Enter key
+        const input = modal.querySelector('#modal-input');
+        if (input && inputType !== 'textarea') {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.submitInputModal();
+                }
+            });
+        }
+    }
+
+    submitInputModal() {
+        const input = document.getElementById('modal-input');
+        const value = input ? input.value : '';
+        const callback = this.inputCallback;
+        const optional = this.inputOptional;
+        
+        this.closeInputModal();
+        
+        if (callback) {
+            if (value.trim() || optional) {
+                callback(value);
+            }
+        }
+    }
+
+    closeInputModal() {
+        const modal = document.getElementById('input-modal');
+        if (modal) modal.remove();
+        this.inputCallback = null;
+        this.inputOptional = false;
+    }
+
+    // ==================== CUSTOM SELECT MODAL ====================
+    
+    showSelectModal(options, callback) {
+        const {
+            title = 'Select Option',
+            icon = 'ri-list-check',
+            choices = [] // [{value: 'x', label: 'X', icon: '🔥', description: '...'}]
+        } = options;
+
+        const existingModal = document.getElementById('select-modal');
+        if (existingModal) existingModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'select-modal';
+        modal.className = 'fixed inset-0 bg-black/70 z-50 overflow-hidden';
+        modal.style.cssText = 'display: flex; align-items: center; justify-content: center; padding: 24px;';
+        
+        const choicesHtml = choices.map(c => `
+            <button onclick="goalManager.selectOption('${c.value}')" 
+                class="w-full p-3 rounded-lg border-2 transition-all hover:scale-102 flex items-center gap-3 bg-gray-700/50 border-gray-600 hover:bg-gray-600 hover:border-amber-500">
+                ${c.icon ? `<span class="text-xl">${c.icon}</span>` : ''}
+                <div class="text-left flex-1">
+                    <div class="font-semibold text-gray-200">${c.label}</div>
+                    ${c.description ? `<div class="text-xs text-gray-400">${c.description}</div>` : ''}
+                </div>
+            </button>
+        `).join('');
+
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down" style="width: 320px; max-width: calc(100vw - 48px); max-height: calc(100vh - 48px); overflow-y: auto;">
+                <h3 class="text-lg font-bold text-amber-300 medieval-title mb-4 text-center">
+                    <i class="${icon} mr-2"></i>${title}
+                </h3>
+                <div class="space-y-2">
+                    ${choicesHtml}
+                </div>
+                <button onclick="goalManager.closeSelectModal()" 
+                    class="w-full mt-4 p-2 text-gray-400 hover:text-white text-sm fancy-font">
+                    Cancel
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        this.selectCallback = callback;
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeSelectModal();
+            }
+        });
+    }
+
+    selectOption(value) {
+        const callback = this.selectCallback;
+        this.closeSelectModal();
+        if (callback) {
+            callback(value);
+        }
+    }
+
+    closeSelectModal() {
+        const modal = document.getElementById('select-modal');
+        if (modal) modal.remove();
+        this.selectCallback = null;
     }
 
     // Notification System
