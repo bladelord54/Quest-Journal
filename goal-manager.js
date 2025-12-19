@@ -76,6 +76,19 @@ class GoalManager {
         this.currentTutorialStep = 0;
         this.tutorialActive = false;
         
+        // Premium System
+        this.isPremium = false;
+        this.premiumPurchaseDate = null;
+        this.premiumFeatures = {
+            themes: true,           // 8+ premium themes
+            achievements: true,     // Achievement badge system
+            bossBasttles: true,     // Weekly/Monthly boss battles
+            advancedStats: true,    // Detailed analytics
+            customIcons: true,      // Custom goal/task icons
+            enchantments: true,     // Enchantment system
+            fullSpellbook: true     // All 15+ spells (vs 3 free)
+        };
+        
         // Period Transition Tracking
         this.lastVisitDate = null;
         this.lastWeekNumber = null;
@@ -154,6 +167,10 @@ class GoalManager {
                 this.lastMonth = data.lastMonth || null;
                 this.lastYear = data.lastYear || null;
                 
+                // Premium System
+                this.isPremium = data.isPremium || false;
+                this.premiumPurchaseDate = data.premiumPurchaseDate || null;
+                
                 // Add dueDate to existing tasks that don't have one
                 this.dailyTasks.forEach(task => {
                     if (!task.dueDate) {
@@ -225,7 +242,9 @@ class GoalManager {
                 lastVisitDate: this.lastVisitDate,
                 lastWeekNumber: this.lastWeekNumber,
                 lastMonth: this.lastMonth,
-                lastYear: this.lastYear
+                lastYear: this.lastYear,
+                isPremium: this.isPremium,
+                premiumPurchaseDate: this.premiumPurchaseDate
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
         } catch (error) {
@@ -298,6 +317,8 @@ class GoalManager {
     }
 
     initializeSpells() {
+        // Free spells: lucky_draw, instant_archive, focus_mode (3 free)
+        // Premium spells: all others
         return {
             arcane_surge: {
                 id: 'arcane_surge',
@@ -307,7 +328,8 @@ class GoalManager {
                 rarity: 'rare',
                 effect: 'xp_multiplier',
                 multiplier: 2,
-                duration: 86400000 // 24 hours
+                duration: 86400000, // 24 hours
+                premium: true
             },
             golden_touch: {
                 id: 'golden_touch',
@@ -317,7 +339,8 @@ class GoalManager {
                 rarity: 'rare',
                 effect: 'gold_multiplier',
                 multiplier: 2,
-                duration: 86400000 // 24 hours
+                duration: 86400000, // 24 hours
+                premium: true
             },
             streak_shield: {
                 id: 'streak_shield',
@@ -326,7 +349,8 @@ class GoalManager {
                 description: 'Protect your habit streak for 1 day',
                 rarity: 'epic',
                 effect: 'streak_protection',
-                duration: 86400000 // 24 hours
+                duration: 86400000, // 24 hours
+                premium: true
             },
             lucky_draw: {
                 id: 'lucky_draw',
@@ -336,7 +360,8 @@ class GoalManager {
                 rarity: 'uncommon',
                 effect: 'chest_boost',
                 multiplier: 1,
-                duration: -1 // Active until next chest opened
+                duration: -1, // Active until next chest opened
+                premium: false
             },
             inferno_focus: {
                 id: 'inferno_focus',
@@ -346,7 +371,8 @@ class GoalManager {
                 rarity: 'rare',
                 effect: 'xp_boost',
                 multiplier: 1.25,
-                duration: 86400000
+                duration: 86400000,
+                premium: true
             },
             time_freeze: {
                 id: 'time_freeze',
@@ -355,7 +381,8 @@ class GoalManager {
                 description: 'Prevent daily quest reset for 1 day',
                 rarity: 'legendary',
                 effect: 'pause_reset',
-                duration: 86400000
+                duration: 86400000,
+                premium: true
             },
             moonlight_blessing: {
                 id: 'moonlight_blessing',
@@ -365,7 +392,8 @@ class GoalManager {
                 rarity: 'legendary',
                 effect: 'xp_boost',
                 multiplier: 1.5,
-                duration: 86400000
+                duration: 86400000,
+                premium: true
             },
             quest_doubler: {
                 id: 'quest_doubler',
@@ -374,7 +402,8 @@ class GoalManager {
                 description: 'Duplicate any task instantly',
                 rarity: 'epic',
                 effect: 'duplicate_task',
-                duration: 0 // Instant use
+                duration: 0, // Instant use
+                premium: true
             },
             instant_archive: {
                 id: 'instant_archive',
@@ -383,7 +412,8 @@ class GoalManager {
                 description: 'Bulk archive all completed tasks',
                 rarity: 'uncommon',
                 effect: 'bulk_archive',
-                duration: 0 // Instant use
+                duration: 0, // Instant use
+                premium: false
             },
             smart_sort: {
                 id: 'smart_sort',
@@ -392,7 +422,8 @@ class GoalManager {
                 description: 'AI-suggested task priority order',
                 rarity: 'rare',
                 effect: 'auto_sort',
-                duration: 0 // Instant use
+                duration: 0, // Instant use
+                premium: true
             },
             focus_mode: {
                 id: 'focus_mode',
@@ -401,7 +432,8 @@ class GoalManager {
                 description: 'Distraction-free view for 1 hour',
                 rarity: 'uncommon',
                 effect: 'focus_view',
-                duration: 3600000 // 1 hour
+                duration: 3600000, // 1 hour
+                premium: false
             },
             double_xp_weekend: {
                 id: 'double_xp_weekend',
@@ -411,7 +443,8 @@ class GoalManager {
                 rarity: 'legendary',
                 effect: 'xp_multiplier',
                 multiplier: 2,
-                duration: 172800000 // 48 hours
+                duration: 172800000, // 48 hours
+                premium: true
             },
             berserker_rage: {
                 id: 'berserker_rage',
@@ -421,7 +454,8 @@ class GoalManager {
                 rarity: 'epic',
                 effect: 'boss_double_damage',
                 multiplier: 2,
-                duration: -1 // Active until next boss damage
+                duration: -1, // Active until next boss damage
+                premium: true
             },
             critical_strike: {
                 id: 'critical_strike',
@@ -431,7 +465,8 @@ class GoalManager {
                 rarity: 'rare',
                 effect: 'boss_crit_chance',
                 multiplier: 1.5,
-                duration: 86400000 // 24 hours
+                duration: 86400000, // 24 hours
+                premium: true
             },
             boss_slayer: {
                 id: 'boss_slayer',
@@ -441,7 +476,8 @@ class GoalManager {
                 rarity: 'legendary',
                 effect: 'boss_damage_boost',
                 multiplier: 1.25,
-                duration: 604800000 // 7 days
+                duration: 604800000, // 7 days
+                premium: true
             },
             execute: {
                 id: 'execute',
@@ -450,7 +486,8 @@ class GoalManager {
                 description: 'Instantly defeat ONE boss below 25% HP',
                 rarity: 'legendary',
                 effect: 'boss_execute',
-                duration: -1 // Active until used
+                duration: -1, // Active until used
+                premium: true
             }
         };
     }
@@ -2988,6 +3025,7 @@ class GoalManager {
             this.renderThemeSelector();
             this.renderRecurringTasks();
             this.renderReminderSettings();
+            this.renderPremiumCard();
             this.updateProgress();
             
             // Render calendar if on calendar view
@@ -3490,12 +3528,13 @@ class GoalManager {
                 };
                 const color = rarityColors[spell.rarity] || 'gray';
                 const isActive = this.activeSpells.some(s => s.spellId === spellEntry.spellId);
+                const isPremiumLocked = spell.premium && !this.isPremium;
                 
                 return `
-                    <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl border-3 border-${color}-600">
+                    <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl border-3 border-${color}-600 ${isPremiumLocked ? 'opacity-75' : ''}">
                         <div class="text-5xl mb-2 text-center">${spell.icon}</div>
                         <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                        <p class="text-${color}-300 text-xs mb-2 text-center capitalize">${spell.rarity}</p>
+                        <p class="text-${color}-300 text-xs mb-2 text-center capitalize">${spell.rarity}${isPremiumLocked ? ' • 👑 Premium' : ''}</p>
                         <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
                         <div class="text-center mb-3">
                             <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${spellEntry.charges}</span>
@@ -3504,6 +3543,11 @@ class GoalManager {
                             <div class="bg-green-500/20 border-2 border-green-400 rounded-lg px-3 py-2 text-green-300 text-sm font-bold text-center">
                                 ✓ Active
                             </div>
+                        ` : isPremiumLocked ? `
+                            <button onclick="goalManager.showPremiumPurchaseModal()" 
+                                class="w-full bg-yellow-700 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
+                                👑 Unlock Premium
+                            </button>
                         ` : spellEntry.charges > 0 ? `
                             <button onclick="goalManager.castSpell('${spell.id}')" 
                                 class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
@@ -3543,17 +3587,24 @@ class GoalManager {
         }
         this.isCastingSpell = true;
 
-        const spellEntry = this.spellbook.find(s => s.spellId === spellId);
-        if (!spellEntry || spellEntry.charges <= 0) {
-            this.isCastingSpell = false;
-            alert('No charges remaining for this spell!');
-            return;
-        }
-
         const spell = this.spellDefinitions[spellId];
         if (!spell) {
             this.isCastingSpell = false;
             console.warn('Spell definition not found:', spellId);
+            return;
+        }
+        
+        // Premium gate for premium spells
+        if (spell.premium && !this.isPremium) {
+            this.isCastingSpell = false;
+            this.showPremiumPurchaseModal();
+            return;
+        }
+
+        const spellEntry = this.spellbook.find(s => s.spellId === spellId);
+        if (!spellEntry || spellEntry.charges <= 0) {
+            this.isCastingSpell = false;
+            alert('No charges remaining for this spell!');
             return;
         }
         
@@ -3756,15 +3807,17 @@ class GoalManager {
     }
 
     // Color Theme System
+    // Free themes: default, forest (2 free themes)
+    // Premium themes: all others require premium
     themeDefinitions = {
-        default: { name: 'Medieval Kingdom', icon: '🏰', color: '#b45309', unlockLevel: 0 },
-        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 5 },
-        desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10 },
-        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15 },
-        volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20 },
-        mystic: { name: 'Mystic Realm', icon: '✨', color: '#7c3aed', unlockLevel: 25 },
-        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: '100 completed' },
-        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: '5 life goals' }
+        default: { name: 'Medieval Kingdom', icon: '🏰', color: '#b45309', unlockLevel: 0, premium: false },
+        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 5, premium: false },
+        desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10, premium: true },
+        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15, premium: true },
+        volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20, premium: true },
+        mystic: { name: 'Mystic Realm', icon: '✨', color: '#7c3aed', unlockLevel: 25, premium: true },
+        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: '100 completed', premium: true },
+        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: '5 life goals', premium: true }
     };
 
     applyColorTheme() {
@@ -3781,6 +3834,14 @@ class GoalManager {
     }
 
     selectTheme(themeId) {
+        const theme = this.themeDefinitions[themeId];
+        
+        // Check premium requirement first
+        if (theme && theme.premium && !this.isPremium) {
+            this.showPremiumPurchaseModal();
+            return;
+        }
+        
         if (!this.unlockedThemes.includes(themeId)) {
             // Show a toast notification instead of achievement
             this.showLockedNotification('Theme locked! Keep leveling up to unlock.');
@@ -3792,7 +3853,6 @@ class GoalManager {
         this.saveData();
         this.renderThemeSelector();
         
-        const theme = this.themeDefinitions[themeId];
         if (theme) {
             this.showAchievement(`🎨 ${theme.name} theme activated!`, 'daily');
         }
@@ -3805,17 +3865,25 @@ class GoalManager {
         container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
             const isUnlocked = this.unlockedThemes.includes(id);
             const isSelected = this.currentTheme === id;
-            const lockReason = !isUnlocked ? 
-                (theme.special ? theme.special : `Level ${theme.unlockLevel}`) : '';
+            const isPremiumTheme = theme.premium && !this.isPremium;
+            
+            let lockReason = '';
+            if (isPremiumTheme) {
+                lockReason = '👑 Premium';
+            } else if (!isUnlocked) {
+                lockReason = theme.special ? theme.special : `Level ${theme.unlockLevel}`;
+            }
+            
+            const isLocked = isPremiumTheme || !isUnlocked;
 
             return `
                 <div onclick="goalManager.selectTheme('${id}')" 
-                    class="theme-option p-3 rounded-lg text-center transition-all ${isSelected ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}"
+                    class="theme-option p-3 rounded-lg text-center transition-all cursor-pointer ${isSelected ? 'selected ring-2 ring-yellow-400' : ''} ${isLocked ? 'opacity-70' : ''}"
                     style="background: linear-gradient(135deg, ${theme.color}, ${this.darkenColor(theme.color, 30)})"
-                    title="${isUnlocked ? 'Click to apply' : 'Locked: ' + lockReason}">
+                    title="${!isLocked ? 'Click to apply' : 'Locked: ' + lockReason}">
                     <div class="text-3xl mb-1">${theme.icon}</div>
                     <div class="text-xs font-bold text-white truncate">${theme.name}</div>
-                    ${!isUnlocked ? `<div class="text-xs text-white/70 mt-1">🔒 ${lockReason}</div>` : ''}
+                    ${isLocked ? `<div class="text-xs text-white/70 mt-1">🔒 ${lockReason}</div>` : ''}
                     ${isSelected ? '<div class="text-xs text-yellow-300 mt-1">✓ Active</div>' : ''}
                 </div>
             `;
@@ -5031,6 +5099,254 @@ class GoalManager {
         }
     }
 
+    // ==================== PREMIUM SYSTEM ====================
+    
+    checkPremiumFeature(feature) {
+        if (this.isPremium) return true;
+        
+        // Free features that don't require premium
+        const freeFeatures = ['focusTimer', 'basicSpells'];
+        if (freeFeatures.includes(feature)) return true;
+        
+        return false;
+    }
+
+    unlockPremium() {
+        this.isPremium = true;
+        this.premiumPurchaseDate = new Date().toISOString();
+        this.saveData();
+        this.renderPremiumCard();
+        this.showAchievement('👑 Premium Unlocked! Welcome to the inner circle!', 'weekly');
+    }
+
+    renderPremiumCard() {
+        const container = document.getElementById('premium-content');
+        if (!container) return;
+
+        if (this.isPremium) {
+            // Premium user view
+            const purchaseDate = this.premiumPurchaseDate 
+                ? new Date(this.premiumPurchaseDate).toLocaleDateString() 
+                : 'Unknown';
+            
+            container.innerHTML = `
+                <div class="text-center">
+                    <div class="text-6xl mb-4">👑</div>
+                    <h3 class="text-2xl font-bold text-yellow-200 medieval-title mb-2">Premium Adventurer</h3>
+                    <p class="text-yellow-100 fancy-font mb-4">Thank you for your support!</p>
+                    <div class="bg-black/20 rounded-lg p-4 mb-4">
+                        <p class="text-yellow-200 text-sm fancy-font">Member since: ${purchaseDate}</p>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-2xl mb-1">🐉</div>
+                            <div class="text-xs text-yellow-200">Boss Battles</div>
+                        </div>
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-2xl mb-1">🎨</div>
+                            <div class="text-xs text-yellow-200">All Themes</div>
+                        </div>
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-2xl mb-1">🏆</div>
+                            <div class="text-xs text-yellow-200">Achievements</div>
+                        </div>
+                        <div class="bg-black/20 rounded-lg p-3">
+                            <div class="text-2xl mb-1">📊</div>
+                            <div class="text-xs text-yellow-200">Stats</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Free user view - show upgrade prompt
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row gap-6 items-center">
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold text-yellow-200 medieval-title mb-2 flex items-center">
+                            <i class="ri-vip-crown-2-line mr-2"></i> Upgrade to Premium
+                        </h3>
+                        <p class="text-yellow-100 fancy-font mb-4 text-sm">Unlock the full power of your Quest Journal!</p>
+                        
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
+                                <span class="text-lg">🐉</span> Boss Battles
+                            </div>
+                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
+                                <span class="text-lg">🎨</span> 8+ Themes
+                            </div>
+                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
+                                <span class="text-lg">🏆</span> Achievements
+                            </div>
+                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
+                                <span class="text-lg">📖</span> Full Spellbook
+                            </div>
+                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
+                                <span class="text-lg">✨</span> Enchantments
+                            </div>
+                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
+                                <span class="text-lg">📊</span> Advanced Stats
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="text-5xl mb-2">👑</div>
+                        <div class="text-3xl font-bold text-yellow-200 medieval-title mb-1">$3.99</div>
+                        <div class="text-yellow-300 text-sm fancy-font mb-3">One-time purchase</div>
+                        <button onclick="goalManager.showPremiumPurchaseModal()" 
+                            class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-8 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
+                            <i class="ri-vip-crown-2-fill mr-2"></i> Go Premium
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    showPremiumPurchaseModal() {
+        const existingModal = document.getElementById('premium-purchase-modal');
+        if (existingModal) existingModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'premium-purchase-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center overflow-hidden';
+        modal.style.cssText = 'padding: 16px;';
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-yellow-800 to-amber-950 rounded-xl shadow-2xl border-4 border-yellow-500 overflow-hidden" style="width: 100%; max-width: min(500px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto;">
+                <div class="bg-black/30 p-6 text-center border-b-2 border-yellow-600">
+                    <div class="text-6xl mb-2">👑</div>
+                    <h2 class="text-2xl font-bold text-yellow-200 medieval-title">Quest Journal Premium</h2>
+                    <p class="text-yellow-300 fancy-font">Unlock your full potential</p>
+                </div>
+                
+                <div class="p-6">
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
+                            <span class="text-2xl">🐉</span>
+                            <div>
+                                <div class="font-bold text-yellow-200">Boss Battles</div>
+                                <div class="text-xs text-yellow-300/70">Fight weekly & monthly bosses by completing tasks</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
+                            <span class="text-2xl">🎨</span>
+                            <div>
+                                <div class="font-bold text-yellow-200">8+ Premium Themes</div>
+                                <div class="text-xs text-yellow-300/70">Forest, Ocean, Royal Purple, Crimson & more</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
+                            <span class="text-2xl">🏆</span>
+                            <div>
+                                <div class="font-bold text-yellow-200">30+ Achievement Badges</div>
+                                <div class="text-xs text-yellow-300/70">Unlock badges for your accomplishments</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
+                            <span class="text-2xl">📖</span>
+                            <div>
+                                <div class="font-bold text-yellow-200">Full Spellbook (15+ Spells)</div>
+                                <div class="text-xs text-yellow-300/70">Powerful spells to boost your productivity</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
+                            <span class="text-2xl">✨</span>
+                            <div>
+                                <div class="font-bold text-yellow-200">Enchantments System</div>
+                                <div class="text-xs text-yellow-300/70">Apply permanent buffs to your profile</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
+                            <span class="text-2xl">📊</span>
+                            <div>
+                                <div class="font-bold text-yellow-200">Advanced Statistics</div>
+                                <div class="text-xs text-yellow-300/70">Detailed analytics and productivity insights</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-4">
+                        <div class="text-4xl font-bold text-yellow-200 medieval-title">$3.99</div>
+                        <div class="text-yellow-300 text-sm fancy-font">One-time purchase • Lifetime access</div>
+                    </div>
+                    
+                    <button onclick="goalManager.initiatePremiumPurchase()" 
+                        class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-6 py-4 rounded-lg font-bold text-lg shadow-lg transition-all hover:scale-105 border-2 border-yellow-400 mb-3">
+                        <i class="ri-shopping-cart-2-fill mr-2"></i> Purchase Premium
+                    </button>
+                    
+                    <button onclick="this.closest('.fixed').remove()" 
+                        class="w-full bg-transparent hover:bg-black/20 text-yellow-300 px-4 py-2 rounded-lg font-semibold transition-all fancy-font">
+                        Maybe Later
+                    </button>
+                    
+                    <p class="text-xs text-yellow-400/50 text-center mt-4 fancy-font">
+                        Secure payment via Google Play
+                    </p>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    initiatePremiumPurchase() {
+        // This will be replaced with actual Play Store billing integration
+        // For now, show a placeholder message
+        
+        // Check if running in TWA/Android environment
+        if (window.Android && window.Android.purchasePremium) {
+            // Call Android billing
+            window.Android.purchasePremium();
+        } else {
+            // Web fallback - for testing or alternative payment
+            this.showSelectModal({
+                title: 'Purchase Options',
+                icon: 'ri-shopping-cart-2-line',
+                choices: [
+                    { value: 'restore', label: 'Restore Purchase', icon: '🔄', description: 'Already purchased? Restore here' },
+                    { value: 'demo', label: 'Demo Premium (Dev)', icon: '🧪', description: 'Preview premium features' }
+                ]
+            }, (choice) => {
+                if (choice === 'demo') {
+                    this.unlockPremium();
+                    const modal = document.getElementById('premium-purchase-modal');
+                    if (modal) modal.remove();
+                } else if (choice === 'restore') {
+                    this.showAchievement('🔄 Checking for previous purchase...', 'daily');
+                    // In production, this would check Play Store purchase history
+                }
+            });
+        }
+    }
+
+    // Called from Android TWA when purchase is successful
+    onPremiumPurchaseSuccess() {
+        this.unlockPremium();
+        const modal = document.getElementById('premium-purchase-modal');
+        if (modal) modal.remove();
+    }
+
+    showPremiumPrompt(feature) {
+        // Soft prompt when user tries to access premium feature
+        this.showInputModal({
+            title: `${feature} is Premium`,
+            placeholder: '',
+            defaultValue: '',
+            icon: 'ri-vip-crown-2-line',
+            buttonText: 'View Premium',
+            optional: true
+        }, () => {
+            this.showPremiumPurchaseModal();
+        });
+    }
+
     // Data Export/Import
     exportData() {
         try {
@@ -6164,6 +6480,39 @@ class GoalManager {
 
     // Analytics Dashboard
     renderAnalytics() {
+        // Premium gate for advanced analytics (keep basic stats free)
+        if (!this.isPremium) {
+            // Render basic stats for free users
+            this.renderQuickStats();
+            
+            // Show premium prompt for advanced analytics
+            const heatmapContainer = document.getElementById('activity-heatmap');
+            if (heatmapContainer) {
+                heatmapContainer.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="text-6xl mb-4">📊</div>
+                        <h3 class="text-xl font-bold text-emerald-300 medieval-title mb-2">Activity Heatmap</h3>
+                        <p class="text-emerald-200/70 text-sm mb-4 fancy-font">See your daily activity patterns</p>
+                        <button onclick="goalManager.showPremiumPurchaseModal()" 
+                            class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-4 py-2 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400 text-sm">
+                            <i class="ri-vip-crown-2-fill mr-1"></i> Premium
+                        </button>
+                    </div>
+                `;
+            }
+            
+            const xpContainer = document.getElementById('xp-timeline');
+            if (xpContainer) xpContainer.innerHTML = '<div class="text-center py-4 text-gray-400 fancy-font">Premium feature</div>';
+            
+            const breakdownContainer = document.getElementById('task-breakdown');
+            if (breakdownContainer) breakdownContainer.innerHTML = '<div class="text-center py-4 text-gray-400 fancy-font">Premium feature</div>';
+            
+            const patternContainer = document.getElementById('productivity-pattern');
+            if (patternContainer) patternContainer.innerHTML = '<div class="text-center py-4 text-gray-400 fancy-font">Premium feature</div>';
+            
+            return;
+        }
+        
         this.renderQuickStats();
         this.renderActivityHeatmap();
         this.renderXPTimeline();
@@ -6456,6 +6805,30 @@ class GoalManager {
 
     // Boss Battles System
     renderBossBattles() {
+        // Premium gate for boss battles
+        if (!this.isPremium) {
+            const container = document.getElementById('active-bosses-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-12">
+                        <div class="text-8xl mb-4">🐉</div>
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2">Boss Battles</h3>
+                        <p class="text-amber-200 fancy-font mb-4">Transform your goals into epic boss fights!</p>
+                        <p class="text-amber-300/70 text-sm mb-6 fancy-font">Complete tasks to deal damage and defeat bosses for bonus rewards.</p>
+                        <button onclick="goalManager.showPremiumPurchaseModal()" 
+                            class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
+                            <i class="ri-vip-crown-2-fill mr-2"></i> Unlock with Premium
+                        </button>
+                    </div>
+                `;
+            }
+            const defeatedContainer = document.getElementById('defeated-bosses-container');
+            if (defeatedContainer) defeatedContainer.innerHTML = '';
+            const conversionContainer = document.getElementById('boss-conversion-container');
+            if (conversionContainer) conversionContainer.innerHTML = '';
+            return;
+        }
+        
         this.renderActiveBosses();
         this.renderDefeatedBosses();
         this.renderBossConversionList();
@@ -7234,6 +7607,28 @@ class GoalManager {
 
     // Enchantments Rendering
     renderEnchantments() {
+        // Premium gate for enchantments
+        if (!this.isPremium) {
+            const activeContainer = document.getElementById('active-enchantments-container');
+            if (activeContainer) {
+                activeContainer.innerHTML = `
+                    <div class="col-span-3 text-center py-12">
+                        <div class="text-8xl mb-4">✨</div>
+                        <h3 class="text-2xl font-bold text-pink-300 medieval-title mb-2">Enchantments</h3>
+                        <p class="text-pink-200 fancy-font mb-4">Apply magical buffs to boost your productivity!</p>
+                        <p class="text-pink-300/70 text-sm mb-6 fancy-font">Earn Focus Crystals and activate powerful enchantments.</p>
+                        <button onclick="goalManager.showPremiumPurchaseModal()" 
+                            class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
+                            <i class="ri-vip-crown-2-fill mr-2"></i> Unlock with Premium
+                        </button>
+                    </div>
+                `;
+            }
+            const shopContainer = document.getElementById('enchantments-shop-container');
+            if (shopContainer) shopContainer.innerHTML = '';
+            return;
+        }
+        
         // Update crystal display in enchantments view
         const enchantmentsCrystals = document.getElementById('enchantments-crystals');
         if (enchantmentsCrystals) {
