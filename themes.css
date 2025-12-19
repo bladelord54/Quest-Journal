@@ -186,17 +186,36 @@ body.theme-shadow {
 
 /* ===== COMMON THEME OVERRIDES ===== */
 
-/* Note: Each theme defines its own unique background with radial gradients above */
+/* Ensure body background is fixed and covers viewport */
+body[class*="theme-"] {
+    background-attachment: fixed !important;
+    min-height: 100vh;
+}
 
+/* Make all container layers transparent to show body background */
+body[class*="theme-"] > div,
+body[class*="theme-"] .flex.min-h-screen,
+body[class*="theme-"] main,
+body[class*="theme-"] #main-content {
+    background: transparent !important;
+}
+
+/* Sidebar - semi-transparent with blur for depth */
 body[class*="theme-"] #main-sidebar {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+    background: linear-gradient(to bottom, 
+        rgba(0, 0, 0, 0.3), 
+        rgba(0, 0, 0, 0.5)) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-color: var(--theme-border) !important;
 }
 
-/* Main content area */
-body[class*="theme-"] main,
-body[class*="theme-"] #main-content {
-    background: linear-gradient(to bottom, var(--theme-bg-mid), var(--theme-bg-end)) !important;
+/* Override the hardcoded amber gradient on sidebar */
+body[class*="theme-"] #main-sidebar.bg-gradient-to-b,
+body[class*="theme-"] [class*="bg-gradient-to-b"][class*="from-amber-900"] {
+    background: linear-gradient(to bottom, 
+        rgba(0, 0, 0, 0.3), 
+        rgba(0, 0, 0, 0.5)) !important;
 }
 
 /* All cards */
