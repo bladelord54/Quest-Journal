@@ -245,15 +245,83 @@ body.theme-shadow .text-amber-400 {
 }
 
 /* ===== COMMON THEME OVERRIDES ===== */
+
+/* Main app background */
+body[class*="theme-"] {
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
 body[class*="theme-"] #main-sidebar {
     background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
     border-color: var(--theme-border) !important;
 }
 
-body[class*="theme-"] .medieval-title {
+/* Main content area */
+body[class*="theme-"] main,
+body[class*="theme-"] #main-content {
+    background: linear-gradient(to bottom, var(--theme-bg-mid), var(--theme-bg-end)) !important;
+}
+
+/* All cards */
+body[class*="theme-"] .quest-card,
+body[class*="theme-"] [class*="bg-gradient-to-br"][class*="from-amber"],
+body[class*="theme-"] [class*="bg-gradient-to-br"][class*="from-yellow"] {
+    background: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
+    border-color: var(--theme-border) !important;
+}
+
+/* Card borders */
+body[class*="theme-"] [class*="border-amber"],
+body[class*="theme-"] [class*="border-yellow"] {
+    border-color: var(--theme-border) !important;
+}
+
+/* Primary text */
+body[class*="theme-"] .medieval-title,
+body[class*="theme-"] [class*="text-amber-300"],
+body[class*="theme-"] [class*="text-amber-400"],
+body[class*="theme-"] [class*="text-yellow-300"],
+body[class*="theme-"] [class*="text-yellow-400"] {
     color: var(--theme-accent) !important;
 }
 
+/* Secondary text */
+body[class*="theme-"] [class*="text-amber-200"],
+body[class*="theme-"] [class*="text-yellow-200"] {
+    color: var(--theme-text) !important;
+}
+
+/* Muted text */
+body[class*="theme-"] [class*="text-amber-100"],
+body[class*="theme-"] [class*="text-yellow-100"] {
+    color: var(--theme-text-muted) !important;
+}
+
+/* Primary buttons */
+body[class*="theme-"] [class*="bg-amber-600"],
+body[class*="theme-"] [class*="bg-amber-700"],
+body[class*="theme-"] [class*="bg-yellow-600"],
+body[class*="theme-"] [class*="bg-yellow-700"] {
+    background-color: var(--theme-primary) !important;
+}
+
+body[class*="theme-"] [class*="hover:bg-amber"]:hover,
+body[class*="theme-"] [class*="hover:bg-yellow"]:hover {
+    background-color: var(--theme-primary-light) !important;
+}
+
+/* Gradient buttons */
+body[class*="theme-"] [class*="from-amber"],
+body[class*="theme-"] [class*="from-yellow"] {
+    --tw-gradient-from: var(--theme-primary) !important;
+}
+
+body[class*="theme-"] [class*="to-amber"],
+body[class*="theme-"] [class*="to-yellow"] {
+    --tw-gradient-to: var(--theme-primary-dark) !important;
+}
+
+/* Nav links */
 body[class*="theme-"] .nav-link.active {
     background-color: rgba(255, 255, 255, 0.1) !important;
     border-left-color: var(--theme-accent) !important;
@@ -261,6 +329,97 @@ body[class*="theme-"] .nav-link.active {
 
 body[class*="theme-"] .nav-link:hover {
     background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Stats panel */
+body[class*="theme-"] #stats-panel,
+body[class*="theme-"] [id*="stats"] {
+    background: linear-gradient(to bottom, var(--theme-card-from), var(--theme-card-to)) !important;
+    border-color: var(--theme-border) !important;
+}
+
+/* Input fields */
+body[class*="theme-"] input[type="text"],
+body[class*="theme-"] input[type="number"],
+body[class*="theme-"] textarea,
+body[class*="theme-"] select {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border-color: var(--theme-border) !important;
+    color: var(--theme-text) !important;
+}
+
+body[class*="theme-"] input::placeholder,
+body[class*="theme-"] textarea::placeholder {
+    color: var(--theme-text-muted) !important;
+    opacity: 0.6;
+}
+
+/* Modals */
+body[class*="theme-"] [class*="bg-gradient-to-br"][class*="from-amber-800"],
+body[class*="theme-"] [class*="bg-gradient-to-br"][class*="from-yellow-800"] {
+    background: linear-gradient(to bottom right, var(--theme-secondary), var(--theme-bg-end)) !important;
+}
+
+/* Bottom navigation (mobile) */
+body[class*="theme-"] #bottom-nav {
+    background: linear-gradient(to right, var(--theme-bg-start), var(--theme-secondary)) !important;
+    border-color: var(--theme-border) !important;
+}
+
+body[class*="theme-"] #bottom-nav .nav-btn.active {
+    color: var(--theme-accent) !important;
+}
+
+/* XP bar */
+body[class*="theme-"] #xp-progress,
+body[class*="theme-"] [class*="bg-gradient"][class*="amber"] {
+    background: linear-gradient(to right, var(--theme-primary), var(--theme-accent)) !important;
+}
+
+/* Hover effects on cards */
+body[class*="theme-"] .quest-card:hover {
+    border-color: var(--theme-accent) !important;
+    box-shadow: 0 0 20px rgba(var(--theme-accent), 0.2) !important;
+}
+
+/* Checkboxes and toggles */
+body[class*="theme-"] input[type="checkbox"]:checked {
+    background-color: var(--theme-primary) !important;
+    border-color: var(--theme-accent) !important;
+}
+
+/* Scrollbar theming */
+body[class*="theme-"] ::-webkit-scrollbar-thumb {
+    background-color: var(--theme-primary) !important;
+}
+
+body[class*="theme-"] ::-webkit-scrollbar-track {
+    background-color: var(--theme-bg-end) !important;
+}
+
+/* Achievement notifications */
+body[class*="theme-"] .achievement-notification {
+    background: linear-gradient(to right, var(--theme-card-from), var(--theme-card-to)) !important;
+    border-color: var(--theme-accent) !important;
+}
+
+/* Premium card */
+body[class*="theme-"] #premium-content {
+    background: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
+}
+
+/* Header area */
+body[class*="theme-"] header,
+body[class*="theme-"] .header-section {
+    background: linear-gradient(to right, var(--theme-bg-start), var(--theme-secondary)) !important;
+}
+
+/* Section headers */
+body[class*="theme-"] h2[class*="text-amber"],
+body[class*="theme-"] h3[class*="text-amber"],
+body[class*="theme-"] h2[class*="text-yellow"],
+body[class*="theme-"] h3[class*="text-yellow"] {
+    color: var(--theme-accent) !important;
 }
 
 /* Theme selector styling */
