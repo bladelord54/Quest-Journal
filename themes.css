@@ -200,6 +200,17 @@ body[class*="theme-"] .bg-stone-800 {
     background: var(--theme-bg-mid) !important;
 }
 
+/* View container headers - blend with background */
+body[class*="theme-"] .view-container > header {
+    background: transparent !important;
+}
+
+/* Dashboard header and title banner - blend with background */
+body[class*="theme-"] #dashboard-view > header,
+body[class*="theme-"] #current-title-banner {
+    background: transparent !important;
+}
+
 /* All cards */
 body[class*="theme-"] .quest-card,
 body[class*="theme-"] [class*="bg-gradient-to-br"][class*="from-amber"],
