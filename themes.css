@@ -196,7 +196,15 @@ body[class*="theme-"] {
 body[class*="theme-"] > div,
 body[class*="theme-"] .flex.min-h-screen,
 body[class*="theme-"] main,
-body[class*="theme-"] #main-content {
+body[class*="theme-"] #main-content,
+body[class*="theme-"] .flex-1.overflow-y-auto,
+body[class*="theme-"] .bg-stone-800 {
+    background: transparent !important;
+}
+
+/* View container headers - transparent */
+body[class*="theme-"] .view-container,
+body[class*="theme-"] .view-container > header {
     background: transparent !important;
 }
 
