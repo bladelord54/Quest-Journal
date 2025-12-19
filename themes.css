@@ -32,31 +32,12 @@ body.theme-forest {
     --theme-border: #059669;
     --theme-text: #d1fae5;
     --theme-text-muted: #6ee7b7;
-}
-
-body.theme-forest .bg-gradient-to-b.from-amber-900 {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
-
-body.theme-forest .border-amber-700,
-body.theme-forest .border-r-4.border-amber-700 {
-    border-color: var(--theme-border) !important;
-}
-
-body.theme-forest .text-amber-300,
-body.theme-forest .text-amber-400 {
-    color: var(--theme-accent) !important;
-}
-
-body.theme-forest .bg-amber-600,
-body.theme-forest .bg-amber-700 {
-    background-color: var(--theme-primary) !important;
-}
-
-body.theme-forest .from-amber-600,
-body.theme-forest .to-amber-700 {
-    --tw-gradient-from: var(--theme-primary) !important;
-    --tw-gradient-to: var(--theme-primary-dark) !important;
+    /* Forest: Leafy pattern overlay */
+    background: 
+        radial-gradient(ellipse at 20% 30%, rgba(52, 211, 153, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(5, 150, 105, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(6, 78, 59, 0.3) 0%, transparent 70%),
+        linear-gradient(to bottom, #064e3b, #022c22, #0f1510) !important;
 }
 
 /* ===== DESERT OASIS ===== */
@@ -74,19 +55,12 @@ body.theme-desert {
     --theme-border: #ea580c;
     --theme-text: #ffedd5;
     --theme-text-muted: #fdba74;
-}
-
-body.theme-desert .bg-gradient-to-b.from-amber-900 {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
-
-body.theme-desert .border-amber-700 {
-    border-color: var(--theme-border) !important;
-}
-
-body.theme-desert .text-amber-300,
-body.theme-desert .text-amber-400 {
-    color: var(--theme-accent) !important;
+    /* Desert: Sun rays and sand dunes */
+    background: 
+        radial-gradient(ellipse at 50% 0%, rgba(253, 186, 116, 0.2) 0%, transparent 60%),
+        radial-gradient(ellipse at 30% 100%, rgba(194, 65, 12, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 100%, rgba(154, 52, 18, 0.2) 0%, transparent 40%),
+        linear-gradient(to bottom, #7c2d12, #431407, #1a0f0a) !important;
 }
 
 /* ===== ICE CITADEL ===== */
@@ -104,24 +78,13 @@ body.theme-ice {
     --theme-border: #0284c7;
     --theme-text: #e0f2fe;
     --theme-text-muted: #7dd3fc;
-}
-
-body.theme-ice .bg-gradient-to-b.from-amber-900 {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
-
-body.theme-ice .border-amber-700 {
-    border-color: var(--theme-border) !important;
-}
-
-body.theme-ice .text-amber-300,
-body.theme-ice .text-amber-400 {
-    color: var(--theme-accent) !important;
-}
-
-body.theme-ice .bg-amber-600,
-body.theme-ice .bg-amber-700 {
-    background-color: var(--theme-primary) !important;
+    /* Ice: Frozen crystals and aurora */
+    background: 
+        radial-gradient(ellipse at 10% 20%, rgba(125, 211, 252, 0.15) 0%, transparent 40%),
+        radial-gradient(ellipse at 90% 30%, rgba(56, 189, 248, 0.1) 0%, transparent 35%),
+        radial-gradient(ellipse at 50% 80%, rgba(14, 165, 233, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 10%, rgba(186, 230, 253, 0.08) 0%, transparent 30%),
+        linear-gradient(to bottom, #0c4a6e, #082f49, #0a1929) !important;
 }
 
 /* ===== VOLCANIC FORGE ===== */
@@ -139,19 +102,13 @@ body.theme-volcanic {
     --theme-border: #ef4444;
     --theme-text: #fee2e2;
     --theme-text-muted: #fca5a5;
-}
-
-body.theme-volcanic .bg-gradient-to-b.from-amber-900 {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
-
-body.theme-volcanic .border-amber-700 {
-    border-color: var(--theme-border) !important;
-}
-
-body.theme-volcanic .text-amber-300,
-body.theme-volcanic .text-amber-400 {
-    color: var(--theme-accent) !important;
+    /* Volcanic: Lava glow and embers */
+    background: 
+        radial-gradient(ellipse at 30% 90%, rgba(239, 68, 68, 0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 85%, rgba(220, 38, 38, 0.2) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 100%, rgba(252, 165, 165, 0.15) 0%, transparent 40%),
+        radial-gradient(ellipse at 20% 50%, rgba(185, 28, 28, 0.1) 0%, transparent 35%),
+        linear-gradient(to bottom, #7f1d1d, #450a0a, #1a0505) !important;
 }
 
 /* ===== MYSTIC REALM ===== */
@@ -169,19 +126,14 @@ body.theme-mystic {
     --theme-border: #8b5cf6;
     --theme-text: #ede9fe;
     --theme-text-muted: #c4b5fd;
-}
-
-body.theme-mystic .bg-gradient-to-b.from-amber-900 {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
-
-body.theme-mystic .border-amber-700 {
-    border-color: var(--theme-border) !important;
-}
-
-body.theme-mystic .text-amber-300,
-body.theme-mystic .text-amber-400 {
-    color: var(--theme-accent) !important;
+    /* Mystic: Magical orbs and starfield */
+    background: 
+        radial-gradient(ellipse at 25% 25%, rgba(139, 92, 246, 0.2) 0%, transparent 40%),
+        radial-gradient(ellipse at 75% 20%, rgba(196, 181, 253, 0.15) 0%, transparent 35%),
+        radial-gradient(ellipse at 60% 70%, rgba(124, 58, 237, 0.18) 0%, transparent 45%),
+        radial-gradient(ellipse at 15% 80%, rgba(167, 139, 250, 0.12) 0%, transparent 30%),
+        radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.1) 0%, transparent 25%),
+        linear-gradient(to bottom, #5b21b6, #3b0764, #1a0533) !important;
 }
 
 /* ===== GOLDEN EMPIRE ===== */
@@ -199,19 +151,13 @@ body.theme-golden {
     --theme-border: #eab308;
     --theme-text: #fef9c3;
     --theme-text-muted: #fde047;
-}
-
-body.theme-golden .bg-gradient-to-b.from-amber-900 {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
-
-body.theme-golden .border-amber-700 {
-    border-color: var(--theme-border) !important;
-}
-
-body.theme-golden .text-amber-300,
-body.theme-golden .text-amber-400 {
-    color: var(--theme-accent) !important;
+    /* Golden: Royal shimmer and treasure glow */
+    background: 
+        radial-gradient(ellipse at 50% 10%, rgba(253, 224, 71, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 60%, rgba(234, 179, 8, 0.15) 0%, transparent 40%),
+        radial-gradient(ellipse at 80% 40%, rgba(202, 138, 4, 0.18) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 90%, rgba(161, 98, 7, 0.12) 0%, transparent 35%),
+        linear-gradient(to bottom, #854d0e, #422006, #1a0f03) !important;
 }
 
 /* ===== SHADOW REALM ===== */
@@ -229,27 +175,18 @@ body.theme-shadow {
     --theme-border: #4b5563;
     --theme-text: #e5e7eb;
     --theme-text-muted: #9ca3af;
-}
-
-body.theme-shadow .bg-gradient-to-b.from-amber-900 {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
-
-body.theme-shadow .border-amber-700 {
-    border-color: var(--theme-border) !important;
-}
-
-body.theme-shadow .text-amber-300,
-body.theme-shadow .text-amber-400 {
-    color: var(--theme-accent) !important;
+    /* Shadow: Dark mist and void wisps */
+    background: 
+        radial-gradient(ellipse at 40% 30%, rgba(75, 85, 99, 0.15) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 60%, rgba(55, 65, 81, 0.12) 0%, transparent 40%),
+        radial-gradient(ellipse at 20% 80%, rgba(107, 114, 128, 0.08) 0%, transparent 35%),
+        radial-gradient(ellipse at 90% 20%, rgba(75, 85, 99, 0.1) 0%, transparent 30%),
+        linear-gradient(to bottom, #1f2937, #111827, #030712) !important;
 }
 
 /* ===== COMMON THEME OVERRIDES ===== */
 
-/* Main app background */
-body[class*="theme-"] {
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
-}
+/* Note: Each theme defines its own unique background with radial gradients above */
 
 body[class*="theme-"] #main-sidebar {
     background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid), var(--theme-bg-end)) !important;
