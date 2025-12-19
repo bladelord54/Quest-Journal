@@ -95,6 +95,10 @@ class GoalManager {
         this.lastMonth = null;
         this.lastYear = null;
         
+        // Daily Login Bonus
+        this.lastLoginBonusDate = null;
+        this.loginStreak = 0;
+        
         this.loadData();
         this.requestNotificationPermission();
         this.checkHabitReset();
@@ -108,6 +112,9 @@ class GoalManager {
         
         // Check for period transitions after a short delay to let UI render first
         setTimeout(() => this.checkPeriodTransitions(), 1000);
+        
+        // Check for daily login bonus
+        setTimeout(() => this.checkDailyLoginBonus(), 1500);
     }
 
     loadData() {
@@ -170,6 +177,10 @@ class GoalManager {
                 // Premium System
                 this.isPremium = data.isPremium || false;
                 this.premiumPurchaseDate = data.premiumPurchaseDate || null;
+                
+                // Daily Login Bonus
+                this.lastLoginBonusDate = data.lastLoginBonusDate || null;
+                this.loginStreak = data.loginStreak || 0;
                 
                 // Add dueDate to existing tasks that don't have one
                 this.dailyTasks.forEach(task => {
@@ -244,7 +255,9 @@ class GoalManager {
                 lastMonth: this.lastMonth,
                 lastYear: this.lastYear,
                 isPremium: this.isPremium,
-                premiumPurchaseDate: this.premiumPurchaseDate
+                premiumPurchaseDate: this.premiumPurchaseDate,
+                lastLoginBonusDate: this.lastLoginBonusDate,
+                loginStreak: this.loginStreak
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
         } catch (error) {
@@ -1567,10 +1580,10 @@ class GoalManager {
                 
                 // Award small XP for completing checklist item
                 if (item.completed) {
-                    this.addXP(5, 'checklist');
-                    this.showAchievement('✓ Checklist item complete! +5 XP', 'daily');
+                    this.addXP(8, 'checklist');
+                    this.showAchievement('✓ Checklist item complete! +8 XP', 'daily');
                 } else {
-                    this.xp = Math.max(0, this.xp - 5);
+                    this.xp = Math.max(0, this.xp - 8);
                 }
                 
                 // Update parent task progress
@@ -1747,6 +1760,53 @@ class GoalManager {
                 this.saveData();
             }
         }
+    }
+    
+    // Daily Login Bonus System
+    checkDailyLoginBonus() {
+        const today = this.getTodayDateString();
+        
+        // Already claimed today
+        if (this.lastLoginBonusDate === today) {
+            return;
+        }
+        
+        // Calculate streak
+        if (this.lastLoginBonusDate) {
+            const lastDate = new Date(this.lastLoginBonusDate);
+            const todayDate = new Date(today);
+            const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+            
+            if (dayDiff === 1) {
+                // Consecutive day - increase streak
+                this.loginStreak = (this.loginStreak || 0) + 1;
+            } else if (dayDiff > 1) {
+                // Missed days - reset streak
+                this.loginStreak = 1;
+            }
+        } else {
+            // First login ever
+            this.loginStreak = 1;
+        }
+        
+        // Calculate bonus based on streak (base 25, max 75 at 7+ day streak)
+        const streakBonus = Math.min(this.loginStreak - 1, 6) * 8; // +8 per streak day, max +48
+        const baseBonus = 25;
+        const totalBonus = baseBonus + streakBonus;
+        
+        // Award the bonus
+        this.goldCoins += totalBonus;
+        this.lastLoginBonusDate = today;
+        this.saveData();
+        
+        // Show achievement with streak info
+        if (this.loginStreak > 1) {
+            this.showAchievement(`☀️ Daily Login Bonus! +${totalBonus} Gold (${this.loginStreak}-day streak!)`, 'daily');
+        } else {
+            this.showAchievement(`☀️ Daily Login Bonus! +${totalBonus} Gold`, 'daily');
+        }
+        
+        this.render();
     }
     
     getWeekString(date) {
@@ -2030,7 +2090,7 @@ class GoalManager {
 
     // Treasure Chest System
     openTreasureChest(type) {
-        const costs = { bronze: 500, silver: 1500, gold: 3500, royal: 10000 };
+        const costs = { bronze: 200, silver: 600, gold: 1500, royal: 5000 };
         if (this.goldCoins < costs[type]) {
             alert(`Not enough gold! Need ${costs[type]} coins.`);
             return;
@@ -2075,6 +2135,9 @@ class GoalManager {
         const rewards = [];
         const multiplier = luckyDrawActive ? 1.5 : 1;
         const bonusItems = luckyDrawActive ? 2 : 0;
+        
+        // Free spells that non-premium users can earn
+        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode'];
         
         // Define loot tables with weights
         const lootTables = {
@@ -2143,9 +2206,20 @@ class GoalManager {
         const xpAmount = Math.floor((Math.random() * (table.guaranteedXP[1] - table.guaranteedXP[0]) + table.guaranteedXP[0]) * multiplier);
         rewards.push({ type: 'xp', amount: xpAmount });
         
+        // Filter spells based on premium status
+        // Free users only get charges for free spells, premium users get all spells
+        let availableSpells = table.spells;
+        if (!this.isPremium) {
+            availableSpells = table.spells.filter(s => freeSpellIds.includes(s.id));
+            // If no free spells in this chest tier, give extra gold instead
+            if (availableSpells.length === 0) {
+                availableSpells = [{ id: 'lucky_draw', weight: 50, charges: 1 }, { id: 'focus_mode', weight: 30, charges: 1 }, { id: 'instant_archive', weight: 20, charges: 1 }];
+            }
+        }
+        
         // Random spells based on weighted selection
         for (let i = 0; i < table.itemCount; i++) {
-            const spell = this.weightedRandomSelect(table.spells);
+            const spell = this.weightedRandomSelect(availableSpells);
             if (spell) {
                 rewards.push({ type: 'spell', spellId: spell.id, charges: spell.charges });
             }
@@ -2295,7 +2369,7 @@ class GoalManager {
                 }
                 
                 // Add XP for habit
-                this.addXP(5, 'habit');
+                this.addXP(10, 'habit');
                 
                 // Special achievements for streaks
                 if (habit.streak === 7) {
@@ -2344,8 +2418,8 @@ class GoalManager {
         this.recalculateHabitStreak(habit);
         
         // Award XP for retroactive completion
-        this.addXP(5, 'habit');
-        this.showAchievement(`✓ Marked complete for ${dateStr}! +5 XP`, 'daily');
+        this.addXP(10, 'habit');
+        this.showAchievement(`✓ Marked complete for ${dateStr}! +10 XP`, 'daily');
         
         this.saveData();
         this.render();
@@ -2687,8 +2761,8 @@ class GoalManager {
             
             task.completed = !task.completed;
             if (task.completed) {
-                this.addXP(10, 'daily');
-                this.showAchievement('Quest Task Completed! +10 XP ⚔️', 'daily');
+                this.addXP(15, 'daily');
+                this.showAchievement('Quest Task Completed! +15 XP ⚔️', 'daily');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
             } else {
@@ -3298,10 +3372,10 @@ class GoalManager {
         if (!container) return;
 
         const chestTypes = [
-            { type: 'bronze', name: 'Bronze Chest', cost: 500, color: 'orange', icon: '🎁' },
-            { type: 'silver', name: 'Silver Chest', cost: 1500, color: 'gray', icon: '💎' },
-            { type: 'gold', name: 'Gold Chest', cost: 3500, color: 'yellow', icon: '👑' },
-            { type: 'royal', name: 'Royal Chest', cost: 10000, color: 'purple', icon: '⭐' }
+            { type: 'bronze', name: 'Bronze Chest', cost: 200, color: 'orange', icon: '🎁' },
+            { type: 'silver', name: 'Silver Chest', cost: 600, color: 'gray', icon: '💎' },
+            { type: 'gold', name: 'Gold Chest', cost: 1500, color: 'yellow', icon: '👑' },
+            { type: 'royal', name: 'Royal Chest', cost: 5000, color: 'purple', icon: '⭐' }
         ];
 
         container.innerHTML = chestTypes.map(chest => {
@@ -3497,71 +3571,114 @@ class GoalManager {
         const container = document.getElementById('spellbook-container');
         if (!container) return;
 
-        if (this.spellbook.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-4 text-center py-12 text-purple-200">
-                    <div class="text-8xl mb-4">📖</div>
-                    <p class="fancy-font text-lg mb-4">Your spellbook is empty...</p>
-                    <p class="text-purple-300 text-sm">Discover spells by opening treasure chests and legendary loot!</p>
+        // Show ALL spells from definitions (3 free + 12 premium)
+        // Free spells shown first, then premium spells
+        const allSpells = Object.entries(this.spellDefinitions);
+        const freeSpells = allSpells.filter(([id, spell]) => !spell.premium);
+        const premiumSpells = allSpells.filter(([id, spell]) => spell.premium);
+        const sortedSpells = [...freeSpells, ...premiumSpells];
+        
+        const rarityColors = {
+            common: 'gray',
+            uncommon: 'green',
+            rare: 'blue',
+            epic: 'purple',
+            legendary: 'yellow'
+        };
+        
+        // Section header for free spells
+        let html = `
+            <div class="col-span-4 mb-2">
+                <h3 class="text-lg font-bold text-green-300 medieval-title flex items-center gap-2">
+                    <span>✨</span> Free Spells <span class="text-sm font-normal text-green-400">(${freeSpells.length} available)</span>
+                </h3>
+            </div>
+        `;
+        
+        // Render free spells
+        html += freeSpells.map(([spellId, spell]) => {
+            const spellEntry = this.spellbook.find(s => s.spellId === spellId);
+            const charges = spellEntry ? spellEntry.charges : 0;
+            const color = rarityColors[spell.rarity] || 'gray';
+            const isActive = this.activeSpells.some(s => s.spellId === spellId);
+            
+            return `
+                <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl border-3 border-${color}-600">
+                    <div class="text-5xl mb-2 text-center">${spell.icon}</div>
+                    <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
+                    <p class="text-${color}-300 text-xs mb-2 text-center capitalize">${spell.rarity}</p>
+                    <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
+                    <div class="text-center mb-3">
+                        <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${charges}</span>
+                    </div>
+                    ${isActive ? `
+                        <div class="bg-green-500/20 border-2 border-green-400 rounded-lg px-3 py-2 text-green-300 text-sm font-bold text-center">
+                            ✓ Active
+                        </div>
+                    ` : charges > 0 ? `
+                        <button onclick="goalManager.castSpell('${spell.id}')" 
+                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
+                            Cast Spell
+                        </button>
+                    ` : `
+                        <div class="bg-${color}-950 border-2 border-${color}-800 rounded-lg px-3 py-2 text-${color}-500 text-sm font-bold text-center">
+                            Open chests for charges
+                        </div>
+                    `}
                 </div>
             `;
-        } else {
-            // Filter out any spells that no longer exist in definitions (e.g., removed spells)
-            const validSpells = this.spellbook.filter(spellEntry => {
-                return this.spellDefinitions[spellEntry.spellId] !== undefined;
-            });
+        }).join('');
+        
+        // Section header for premium spells
+        html += `
+            <div class="col-span-4 mt-6 mb-2">
+                <h3 class="text-lg font-bold text-yellow-300 medieval-title flex items-center gap-2">
+                    <span>👑</span> Premium Spells <span class="text-sm font-normal text-yellow-400">(${premiumSpells.length} spells)</span>
+                </h3>
+            </div>
+        `;
+        
+        // Render premium spells
+        html += premiumSpells.map(([spellId, spell]) => {
+            const spellEntry = this.spellbook.find(s => s.spellId === spellId);
+            const charges = spellEntry ? spellEntry.charges : 0;
+            const color = rarityColors[spell.rarity] || 'gray';
+            const isActive = this.activeSpells.some(s => s.spellId === spellId);
+            const isPremiumLocked = !this.isPremium;
             
-            // Update spellbook if any invalid spells were found
-            if (validSpells.length !== this.spellbook.length) {
-                this.spellbook = validSpells;
-                this.saveData();
-            }
-            
-            container.innerHTML = validSpells.map(spellEntry => {
-                const spell = this.spellDefinitions[spellEntry.spellId];
-                const rarityColors = {
-                    common: 'gray',
-                    uncommon: 'green',
-                    rare: 'blue',
-                    epic: 'purple',
-                    legendary: 'yellow'
-                };
-                const color = rarityColors[spell.rarity] || 'gray';
-                const isActive = this.activeSpells.some(s => s.spellId === spellEntry.spellId);
-                const isPremiumLocked = spell.premium && !this.isPremium;
-                
-                return `
-                    <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl border-3 border-${color}-600 ${isPremiumLocked ? 'opacity-75' : ''}">
-                        <div class="text-5xl mb-2 text-center">${spell.icon}</div>
-                        <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                        <p class="text-${color}-300 text-xs mb-2 text-center capitalize">${spell.rarity}${isPremiumLocked ? ' • 👑 Premium' : ''}</p>
-                        <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
-                        <div class="text-center mb-3">
-                            <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${spellEntry.charges}</span>
-                        </div>
-                        ${isActive ? `
-                            <div class="bg-green-500/20 border-2 border-green-400 rounded-lg px-3 py-2 text-green-300 text-sm font-bold text-center">
-                                ✓ Active
-                            </div>
-                        ` : isPremiumLocked ? `
-                            <button onclick="goalManager.showPremiumPurchaseModal()" 
-                                class="w-full bg-yellow-700 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
-                                👑 Unlock Premium
-                            </button>
-                        ` : spellEntry.charges > 0 ? `
-                            <button onclick="goalManager.castSpell('${spell.id}')" 
-                                class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
-                                Cast Spell
-                            </button>
-                        ` : `
-                            <div class="bg-${color}-950 border-2 border-${color}-800 rounded-lg px-3 py-2 text-${color}-500 text-sm font-bold text-center">
-                                No Charges
-                            </div>
-                        `}
+            return `
+                <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl border-3 border-${color}-600 ${isPremiumLocked ? 'opacity-60' : ''}">
+                    <div class="text-5xl mb-2 text-center">${spell.icon}</div>
+                    <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
+                    <p class="text-${color}-300 text-xs mb-2 text-center capitalize">${spell.rarity}${isPremiumLocked ? ' • 🔒' : ''}</p>
+                    <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
+                    <div class="text-center mb-3">
+                        <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${charges}</span>
                     </div>
-                `;
-            }).join('');
-        }
+                    ${isPremiumLocked ? `
+                        <button onclick="goalManager.showPremiumPurchaseModal()" 
+                            class="w-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
+                            👑 Unlock Premium
+                        </button>
+                    ` : isActive ? `
+                        <div class="bg-green-500/20 border-2 border-green-400 rounded-lg px-3 py-2 text-green-300 text-sm font-bold text-center">
+                            ✓ Active
+                        </div>
+                    ` : charges > 0 ? `
+                        <button onclick="goalManager.castSpell('${spell.id}')" 
+                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
+                            Cast Spell
+                        </button>
+                    ` : `
+                        <div class="bg-${color}-950 border-2 border-${color}-800 rounded-lg px-3 py-2 text-${color}-500 text-sm font-bold text-center">
+                            Open chests for charges
+                        </div>
+                    `}
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = html;
     }
 
     addSpellToBook(spellId, charges = 1) {
@@ -5114,9 +5231,65 @@ class GoalManager {
     unlockPremium() {
         this.isPremium = true;
         this.premiumPurchaseDate = new Date().toISOString();
+        
+        // Welcome gift: Unlock Mystic Realm theme
+        if (!this.unlockedThemes.includes('mystic')) {
+            this.unlockedThemes.push('mystic');
+            setTimeout(() => {
+                this.showAchievement('🎁 Bonus: Mystic Realm theme unlocked!', 'daily');
+            }, 2000);
+        }
+        
         this.saveData();
         this.renderPremiumCard();
         this.showAchievement('👑 Premium Unlocked! Welcome to the inner circle!', 'weekly');
+    }
+
+    // Dev Tools - Unlock all themes for testing
+    devUnlockAllThemes() {
+        const allThemeIds = Object.keys(this.themeDefinitions);
+        allThemeIds.forEach(themeId => {
+            if (!this.unlockedThemes.includes(themeId)) {
+                this.unlockedThemes.push(themeId);
+            }
+        });
+        this.saveData();
+        this.renderThemeSelector();
+        this.showAchievement('🧪 Dev: All themes unlocked!', 'daily');
+    }
+
+    // Dev Tools - Add charges to all spells for testing
+    devUnlockAllSpells() {
+        const allSpellIds = Object.keys(this.spellDefinitions);
+        allSpellIds.forEach(spellId => {
+            const existingSpell = this.spellbook.find(s => s.spellId === spellId);
+            if (existingSpell) {
+                existingSpell.charges += 5;
+            } else {
+                this.spellbook.push({ spellId, charges: 5 });
+            }
+        });
+        this.saveData();
+        this.renderSpellbook();
+        this.showAchievement('🧪 Dev: +5 charges to all spells!', 'daily');
+    }
+
+    // Dev Tools - Reset premium status
+    devResetPremium() {
+        this.isPremium = false;
+        this.premiumPurchaseDate = null;
+        this.saveData();
+        this.renderPremiumCard();
+        this.render();
+        this.showAchievement('🧪 Dev: Premium reset to free user', 'daily');
+    }
+
+    // Dev Tools - Give gold for testing
+    devGiveGold(amount = 1000) {
+        this.goldCoins += amount;
+        this.saveData();
+        this.render();
+        this.showAchievement(`🧪 Dev: +${amount} Gold added!`, 'daily');
     }
 
     renderPremiumCard() {
@@ -5153,6 +5326,29 @@ class GoalManager {
                         <div class="bg-black/20 rounded-lg p-3">
                             <div class="text-2xl mb-1">📊</div>
                             <div class="text-xs text-yellow-200">Stats</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dev Tools -->
+                    <div class="mt-6 pt-4 border-t border-yellow-600/30">
+                        <p class="text-xs text-yellow-400/60 mb-3 font-mono">🧪 Dev Tools</p>
+                        <div class="flex flex-wrap gap-2 justify-center">
+                            <button onclick="goalManager.devGiveGold(1000)" 
+                                class="bg-yellow-700 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                                💰 +1000 Gold
+                            </button>
+                            <button onclick="goalManager.devUnlockAllThemes()" 
+                                class="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                                🎨 Unlock Themes
+                            </button>
+                            <button onclick="goalManager.devUnlockAllSpells()" 
+                                class="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                                📖 +5 All Spells
+                            </button>
+                            <button onclick="goalManager.devResetPremium()" 
+                                class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                                🔄 Reset Premium
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -5196,6 +5392,29 @@ class GoalManager {
                         <button onclick="goalManager.showPremiumPurchaseModal()" 
                             class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-8 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
                             <i class="ri-vip-crown-2-fill mr-2"></i> Go Premium
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Dev Tools -->
+                <div class="mt-6 pt-4 border-t border-yellow-600/30">
+                    <p class="text-xs text-yellow-400/60 mb-3 font-mono">🧪 Dev Tools</p>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                        <button onclick="goalManager.devGiveGold(1000)" 
+                            class="bg-yellow-700 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                            💰 +1000 Gold
+                        </button>
+                        <button onclick="goalManager.unlockPremium()" 
+                            class="bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                            👑 Demo Premium
+                        </button>
+                        <button onclick="goalManager.devUnlockAllThemes()" 
+                            class="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                            🎨 Unlock Themes
+                        </button>
+                        <button onclick="goalManager.devUnlockAllSpells()" 
+                            class="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold">
+                            📖 +5 All Spells
                         </button>
                     </div>
                 </div>
