@@ -29,7 +29,9 @@ class GoalManager {
         this.unlockedTitles = [];
         this.currentTitle = null;
         this.treasureChests = [];
-        this.companion = null;
+        this.companion = null; // Legacy - will migrate to companions array
+        this.companions = []; // Collection of unlocked companions
+        this.activeCompanionId = null; // Currently active companion type id
         this.companionLevel = 1;
         this.questPath = null;
         this.pathProgress = { warrior: 0, sage: 0, merchant: 0 };
@@ -143,7 +145,15 @@ class GoalManager {
                 this.currentTitle = data.currentTitle || null;
                 this.treasureChests = data.treasureChests || [];
                 this.companion = data.companion || null;
+                this.companions = data.companions || [];
+                this.activeCompanionId = data.activeCompanionId || null;
                 this.companionLevel = data.companionLevel || 1;
+                
+                // Migrate legacy single companion to collection
+                if (this.companion && this.companions.length === 0) {
+                    this.companions.push(this.companion);
+                    this.activeCompanionId = this.companion.type;
+                }
                 this.questPath = data.questPath || null;
                 this.pathProgress = data.pathProgress || { warrior: 0, sage: 0, merchant: 0 };
                 this.upgrades = data.upgrades || [];
@@ -234,6 +244,8 @@ class GoalManager {
                 currentTitle: this.currentTitle,
                 treasureChests: this.treasureChests,
                 companion: this.companion,
+                companions: this.companions,
+                activeCompanionId: this.activeCompanionId,
                 companionLevel: this.companionLevel,
                 questPath: this.questPath,
                 pathProgress: this.pathProgress,
@@ -427,16 +439,6 @@ class GoalManager {
                 effect: 'bulk_archive',
                 duration: 0, // Instant use
                 premium: false
-            },
-            smart_sort: {
-                id: 'smart_sort',
-                name: 'Smart Sort',
-                icon: '🧠',
-                description: 'AI-suggested task priority order',
-                rarity: 'rare',
-                effect: 'auto_sort',
-                duration: 0, // Instant use
-                premium: true
             },
             focus_mode: {
                 id: 'focus_mode',
@@ -1721,20 +1723,45 @@ class GoalManager {
             // Daily habit reset
             if (lastReset && lastReset !== today) {
                 // Reset all habits for new day
+                const activeCompanion = this.getActiveCompanion();
                 this.habits.forEach(habit => {
                     if (habit.completedToday) {
                         habit.completedToday = false;
                         habit.lastCompleted = lastReset;
                         habit.streak = habit.streak || 0;
-                        // If skipped a day, reset streak
+                        // If skipped a day, reset streak (unless companion protects it)
                         const lastDate = new Date(lastReset);
                         const todayDate = new Date(today);
                         const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
                         if (dayDiff > 1) {
-                            habit.streak = 0;
+                            // Check for streak protection companion
+                            const maxProtections = activeCompanion?.bonusAmount || 0;
+                            const usedProtections = activeCompanion?.protectionsUsedThisWeek || 0;
+                            
+                            if (activeCompanion && 
+                                activeCompanion.bonusType === 'streak_protection' && 
+                                usedProtections < maxProtections &&
+                                habit.streak > 0) {
+                                // Companion protects the streak!
+                                activeCompanion.protectionsUsedThisWeek = usedProtections + 1;
+                                this.showAchievement(`${activeCompanion.icon} ${activeCompanion.name.toUpperCase()} PROTECTS! Your ${habit.title} streak of ${habit.streak} days was saved! (${maxProtections - usedProtections - 1} protections left this week)`, 'life');
+                            } else {
+                                habit.streak = 0;
+                            }
                         }
                     }
                 });
+                
+                // Reset companion protection weekly
+                if (activeCompanion && activeCompanion.bonusType === 'streak_protection') {
+                    const lastProtectionReset = activeCompanion.lastProtectionReset;
+                    const currentWeek = this.getWeekString(new Date());
+                    if (lastProtectionReset !== currentWeek) {
+                        activeCompanion.protectionsUsedThisWeek = 0;
+                        activeCompanion.lastProtectionReset = currentWeek;
+                    }
+                }
+                
                 this.saveData();
             }
             
@@ -1874,7 +1901,9 @@ class GoalManager {
         const xpMultiplier = this.getActiveSpellMultiplier('xp_multiplier') * this.getActiveSpellMultiplier('xp_boost');
         // Apply enchantment multipliers
         const enchantmentMultiplier = this.getEnchantmentMultiplier('xp');
-        const finalXP = Math.floor(amount * xpMultiplier * enchantmentMultiplier);
+        // Apply companion bonus (Owl: +10% XP)
+        const companionBonus = 1 + this.getCompanionBonus('xp');
+        const finalXP = Math.floor(amount * xpMultiplier * enchantmentMultiplier * companionBonus);
         
         this.xp += finalXP;
         const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
@@ -1939,7 +1968,9 @@ class GoalManager {
         const goldMultiplier = this.getActiveSpellMultiplier('gold_multiplier');
         // Apply enchantment multipliers
         const enchantmentMultiplier = this.getEnchantmentMultiplier('gold');
-        const finalGold = Math.floor(amount * goldMultiplier * enchantmentMultiplier);
+        // Apply companion bonus (Dragon: +15% gold)
+        const companionBonus = 1 + this.getCompanionBonus('gold');
+        const finalGold = Math.floor(amount * goldMultiplier * enchantmentMultiplier * companionBonus);
         
         this.goldCoins += finalGold;
         this.checkRewardUnlocks();
@@ -2151,6 +2182,11 @@ class GoalManager {
                     { id: 'time_freeze', weight: 15, charges: 1 },
                     { id: 'quest_doubler', weight: 10, charges: 1 }
                 ],
+                companions: [
+                    { id: 'cat', weight: 50 },
+                    { id: 'rabbit', weight: 50 }
+                ],
+                companionChance: 0.05,
                 itemCount: 1 + bonusItems
             },
             silver: {
@@ -2163,6 +2199,14 @@ class GoalManager {
                     { id: 'critical_strike', weight: 15, charges: 1 },
                     { id: 'quest_doubler', weight: 10, charges: 1 }
                 ],
+                companions: [
+                    { id: 'cat', weight: 20 },
+                    { id: 'rabbit', weight: 20 },
+                    { id: 'owl', weight: 25 },
+                    { id: 'fox', weight: 25 },
+                    { id: 'turtle', weight: 10 }
+                ],
+                companionChance: 0.10,
                 themeChance: 0.3,
                 itemCount: 2 + bonusItems
             },
@@ -2176,6 +2220,15 @@ class GoalManager {
                     { id: 'streak_shield', weight: 15, charges: 1 },
                     { id: 'moonlight_blessing', weight: 10, charges: 1 }
                 ],
+                companions: [
+                    { id: 'owl', weight: 15 },
+                    { id: 'fox', weight: 15 },
+                    { id: 'turtle', weight: 10 },
+                    { id: 'wolf', weight: 25 },
+                    { id: 'eagle', weight: 20 },
+                    { id: 'bear', weight: 15 }
+                ],
+                companionChance: 0.20,
                 themeChance: 0.5,
                 itemCount: 3 + bonusItems
             },
@@ -2190,8 +2243,17 @@ class GoalManager {
                     { id: 'double_xp_weekend', weight: 10, charges: 1 },
                     { id: 'time_freeze', weight: 10, charges: 2 }
                 ],
+                companions: [
+                    { id: 'wolf', weight: 10 },
+                    { id: 'eagle', weight: 10 },
+                    { id: 'bear', weight: 15 },
+                    { id: 'dragon', weight: 25 },
+                    { id: 'unicorn', weight: 20 },
+                    { id: 'phoenix', weight: 10 },
+                    { id: 'lion', weight: 10 }
+                ],
+                companionChance: 0.40,
                 themeChance: 0.7,
-                companionChance: 0.4,
                 itemCount: 4 + bonusItems
             }
         };
@@ -2230,9 +2292,12 @@ class GoalManager {
             rewards.push({ type: 'theme', value: 'random' });
         }
         
-        // Random companion unlock
-        if (table.companionChance && Math.random() < table.companionChance) {
-            rewards.push({ type: 'companion', value: 'legendary' });
+        // Random companion unlock from pool
+        if (table.companionChance && table.companions && Math.random() < table.companionChance) {
+            const companion = this.weightedRandomSelect(table.companions);
+            if (companion) {
+                rewards.push({ type: 'companion', value: companion.id });
+            }
         }
         
         return rewards;
@@ -2252,11 +2317,15 @@ class GoalManager {
     }
 
     showChestRewards(type, rewards) {
+        const companions = this.getCompanionDefinitions();
         const rewardText = rewards.map(r => {
             if (r.type === 'coins') return `+${r.amount} 💰 Gold`;
             if (r.type === 'xp') return `+${r.amount} XP (+${r.amount} 💰)`;
             if (r.type === 'theme') return `🎨 Theme`;
-            if (r.type === 'companion') return `🐉 Companion`;
+            if (r.type === 'companion') {
+                const companion = companions[r.value];
+                return companion ? `${companion.icon} ${companion.name}` : '🐾 Companion';
+            }
             if (r.type === 'spell') {
                 const spellName = this.spellDefinitions[r.spellId]?.name || 'Unknown Spell';
                 return `🔮 ${spellName} x${r.charges}`;
@@ -2269,19 +2338,192 @@ class GoalManager {
     }
 
     // Companion System
-    unlockCompanion(companionType) {
-        if (!this.companion) {
-            const companions = {
-                dragon: { name: 'Baby Dragon', icon: '🐉', bonus: 0.1 },
-                wolf: { name: 'Loyal Wolf', icon: '🐺', bonus: 0.08 },
-                owl: { name: 'Wise Owl', icon: '🦉', bonus: 0.05 },
-                phoenix: { name: 'Phoenix', icon: '🔥', bonus: 0.15 }
-            };
+    getCompanionDefinitions() {
+        return {
+            // COMMON - Bronze chest (5% chance)
+            cat: { 
+                name: 'Lucky Cat', 
+                icon: '🐱', 
+                rarity: 'common',
+                bonusType: 'gold', 
+                bonusAmount: 0.05,
+                description: '+5% Gold from all sources'
+            },
+            rabbit: { 
+                name: 'Swift Rabbit', 
+                icon: '🐰', 
+                rarity: 'common',
+                bonusType: 'xp', 
+                bonusAmount: 0.05,
+                description: '+5% XP from all tasks'
+            },
             
-            const selected = companionType === 'legendary' ? 'dragon' : 'wolf';
-            this.companion = { ...companions[selected], level: 1, xp: 0 };
-            this.showAchievement(`🎉 Companion Unlocked: ${this.companion.name}!`, 'life');
+            // UNCOMMON - Silver chest (10% chance)
+            owl: { 
+                name: 'Wise Owl', 
+                icon: '🦉', 
+                rarity: 'uncommon',
+                bonusType: 'xp', 
+                bonusAmount: 0.10,
+                description: '+10% XP from all tasks'
+            },
+            fox: { 
+                name: 'Clever Fox', 
+                icon: '🦊', 
+                rarity: 'uncommon',
+                bonusType: 'gold', 
+                bonusAmount: 0.10,
+                description: '+10% Gold from all sources'
+            },
+            turtle: { 
+                name: 'Ancient Turtle', 
+                icon: '🐢', 
+                rarity: 'uncommon',
+                bonusType: 'streak_protection', 
+                bonusAmount: 1,
+                description: 'Protects one streak per week from breaking'
+            },
+            
+            // RARE - Gold chest (20% chance)
+            wolf: { 
+                name: 'Loyal Wolf', 
+                icon: '🐺', 
+                rarity: 'rare',
+                bonusType: 'attack', 
+                bonusAmount: 0.15,
+                description: '+15% Boss damage'
+            },
+            eagle: { 
+                name: 'Golden Eagle', 
+                icon: '🦅', 
+                rarity: 'rare',
+                bonusType: 'xp', 
+                bonusAmount: 0.15,
+                description: '+15% XP from all tasks'
+            },
+            bear: { 
+                name: 'Mighty Bear', 
+                icon: '🐻', 
+                rarity: 'rare',
+                bonusType: 'attack', 
+                bonusAmount: 0.20,
+                description: '+20% Boss damage'
+            },
+            
+            // EPIC - Royal chest (30% chance)
+            dragon: { 
+                name: 'Baby Dragon', 
+                icon: '🐉', 
+                rarity: 'epic',
+                bonusType: 'gold', 
+                bonusAmount: 0.20,
+                description: '+20% Gold from all sources'
+            },
+            unicorn: { 
+                name: 'Mystic Unicorn', 
+                icon: '🦄', 
+                rarity: 'epic',
+                bonusType: 'xp', 
+                bonusAmount: 0.20,
+                description: '+20% XP from all tasks'
+            },
+            
+            // LEGENDARY - Royal chest (10% chance)
+            phoenix: { 
+                name: 'Phoenix', 
+                icon: '🔥', 
+                rarity: 'legendary',
+                bonusType: 'streak_protection', 
+                bonusAmount: 2,
+                description: 'Protects TWO streaks per week from breaking'
+            },
+            lion: { 
+                name: 'Legendary Lion', 
+                icon: '🦁', 
+                rarity: 'legendary',
+                bonusType: 'attack', 
+                bonusAmount: 0.30,
+                description: '+30% Boss damage'
+            }
+        };
+    }
+    
+    unlockCompanion(companionType) {
+        const companionDefs = this.getCompanionDefinitions();
+        const selected = companionType || 'cat';
+        const companionData = companionDefs[selected];
+        
+        if (!companionData) return;
+        
+        // Check if already have this companion
+        const alreadyHave = this.companions.find(c => c.type === selected);
+        
+        if (alreadyHave) {
+            // Already have this companion - give bonus gold
+            const bonusGold = { common: 50, uncommon: 100, rare: 200, epic: 400, legendary: 800 }[companionData.rarity];
+            this.goldCoins += bonusGold;
+            this.showAchievement(`Already have ${companionData.name}! +${bonusGold} Gold instead`, 'daily');
+        } else {
+            // New companion - add to collection
+            const newCompanion = { 
+                ...companionData, 
+                type: selected, 
+                level: 1, 
+                xp: 0, 
+                streakProtectionUsed: false, 
+                protectionsUsedThisWeek: 0,
+                unlockedAt: new Date().toISOString()
+            };
+            this.companions.push(newCompanion);
+            
+            // Auto-set as active if first companion or higher rarity than current
+            const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+            const activeCompanion = this.getActiveCompanion();
+            
+            if (!activeCompanion) {
+                this.activeCompanionId = selected;
+                this.showAchievement(`🎉 First Companion: ${companionData.name}! ${companionData.description}`, 'life');
+            } else {
+                const currentRarity = rarityOrder.indexOf(activeCompanion.rarity);
+                const newRarity = rarityOrder.indexOf(companionData.rarity);
+                
+                if (newRarity > currentRarity) {
+                    this.activeCompanionId = selected;
+                    this.showAchievement(`🎉 NEW COMPANION: ${companionData.name}! Auto-equipped (higher rarity)`, 'life');
+                } else {
+                    this.showAchievement(`🎉 NEW COMPANION: ${companionData.name}! Check your collection to equip.`, 'life');
+                }
+            }
+            
+            // Keep legacy companion in sync for backwards compatibility
+            this.companion = this.getActiveCompanion();
         }
+        this.saveData();
+    }
+    
+    getActiveCompanion() {
+        if (!this.activeCompanionId || this.companions.length === 0) return null;
+        return this.companions.find(c => c.type === this.activeCompanionId) || null;
+    }
+    
+    setActiveCompanion(companionType) {
+        const companion = this.companions.find(c => c.type === companionType);
+        if (companion) {
+            this.activeCompanionId = companionType;
+            this.companion = companion; // Keep legacy in sync
+            this.saveData();
+            this.render();
+            this.showAchievement(`${companion.icon} ${companion.name} is now active! ${companion.description}`, 'daily');
+        }
+    }
+    
+    getCompanionBonus(type) {
+        const activeCompanion = this.getActiveCompanion();
+        if (!activeCompanion) return 0;
+        if (activeCompanion.bonusType === type) {
+            return activeCompanion.bonusAmount;
+        }
+        return 0;
     }
 
     levelUp() {
@@ -3475,32 +3717,93 @@ class GoalManager {
         const container = document.getElementById('companion-container');
         if (!container) return;
 
-        if (!this.companion) {
+        const activeCompanion = this.getActiveCompanion();
+        const rarityColors = {
+            common: { bg: 'gray', border: 'gray', text: 'gray' },
+            uncommon: { bg: 'green', border: 'green', text: 'green' },
+            rare: { bg: 'blue', border: 'blue', text: 'blue' },
+            epic: { bg: 'purple', border: 'purple', text: 'purple' },
+            legendary: { bg: 'amber', border: 'amber', text: 'amber' }
+        };
+
+        if (this.companions.length === 0) {
             container.innerHTML = `
                 <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-8 rounded-xl shadow-2xl border-4 border-green-600 text-center">
                     <div class="text-8xl mb-4">🥚</div>
-                    <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Companion Yet</h4>
-                    <p class="text-green-200 fancy-font text-lg mb-4">Open a Royal Chest (10,000 gold) to unlock your loyal companion!</p>
-                    <p class="text-green-300 text-sm">Companions grant XP bonuses and fight alongside you in your quest!</p>
+                    <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Companions Yet</h4>
+                    <p class="text-green-200 fancy-font text-lg mb-4">Open chests to discover loyal companions!</p>
+                    <p class="text-green-300 text-sm">Each chest tier has different companions with unique bonuses!</p>
                 </div>
             `;
         } else {
-            container.innerHTML = `
-                <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-8 rounded-xl shadow-2xl border-4 border-green-600">
-                    <div class="flex items-center gap-6">
-                        <div class="text-9xl">${this.companion.icon}</div>
-                        <div class="flex-1">
-                            <h4 class="text-3xl font-bold text-amber-300 medieval-title mb-2">${this.companion.name}</h4>
-                            <p class="text-green-200 text-xl mb-3">Level ${this.companion.level}</p>
-                            <p class="text-green-300 fancy-font mb-4">+${(this.companion.bonus * 100).toFixed(0)}% XP Bonus</p>
-                            <div class="w-full bg-green-950 rounded-full h-4 border-2 border-green-700">
-                                <div class="bg-gradient-to-r from-green-500 to-green-400 h-4 rounded-full" style="width: ${(this.companion.xp % 100)}%"></div>
+            // Active companion display
+            const colors = rarityColors[activeCompanion?.rarity || 'common'];
+            let html = '';
+            
+            if (activeCompanion) {
+                html += `
+                    <div class="quest-card bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl border-4 border-${colors.border}-500 mb-6">
+                        <div class="flex items-center gap-6">
+                            <div class="text-8xl">${activeCompanion.icon}</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs px-2 py-1 rounded bg-${colors.bg}-700 text-${colors.text}-200 uppercase font-bold">${activeCompanion.rarity}</span>
+                                    <span class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 font-bold">ACTIVE</span>
+                                </div>
+                                <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">${activeCompanion.name}</h4>
+                                <p class="text-${colors.text}-200 fancy-font text-lg mb-2">${activeCompanion.description}</p>
+                                <p class="text-${colors.text}-300 text-sm">Level ${activeCompanion.level}</p>
                             </div>
-                            <p class="text-green-200 text-sm mt-2">${this.companion.xp % 100}/100 XP to next level</p>
                         </div>
                     </div>
-                </div>
+                `;
+            }
+            
+            // Companion collection
+            html += `
+                <h4 class="text-xl font-bold text-amber-300 medieval-title mb-3 flex items-center gap-2">
+                    <span>📚</span> Your Collection <span class="text-sm font-normal text-amber-400">(${this.companions.length} companions)</span>
+                </h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             `;
+            
+            // Sort companions by rarity
+            const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+            const sortedCompanions = [...this.companions].sort((a, b) => 
+                rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity)
+            );
+            
+            sortedCompanions.forEach(comp => {
+                const cColors = rarityColors[comp.rarity];
+                const isActive = comp.type === this.activeCompanionId;
+                
+                html += `
+                    <div class="quest-card bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-4 rounded-lg border-2 ${isActive ? 'border-green-400 ring-2 ring-green-400' : `border-${cColors.border}-700`} text-center cursor-pointer hover:scale-105 transition-transform"
+                         onclick="goalManager.setActiveCompanion('${comp.type}')">
+                        <div class="text-5xl mb-2">${comp.icon}</div>
+                        <h5 class="font-bold text-amber-200 text-sm mb-1">${comp.name}</h5>
+                        <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-700 text-${cColors.text}-200 uppercase">${comp.rarity}</span>
+                        ${isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>'}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            // Show all possible companions hint
+            const allCompanions = this.getCompanionDefinitions();
+            const unlockedTypes = this.companions.map(c => c.type);
+            const lockedCount = Object.keys(allCompanions).length - unlockedTypes.length;
+            
+            if (lockedCount > 0) {
+                html += `
+                    <div class="mt-4 text-center text-gray-400 text-sm">
+                        <span class="opacity-70">🔒 ${lockedCount} more companions to discover from chests!</span>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
         }
     }
 
@@ -7455,6 +7758,13 @@ class GoalManager {
         let totalDamage = baseDamage;
         let damageMessages = [];
         let isCrit = false;
+
+        // Check for Wolf companion bonus (+20% attack damage)
+        const wolfBonus = this.getCompanionBonus('attack');
+        if (wolfBonus > 0) {
+            totalDamage *= (1 + wolfBonus);
+            damageMessages.push('🐺 WOLF PACK! +20% Damage!');
+        }
 
         // Check for Boss Slayer Enchantment (+50% damage)
         const enchantmentBonus = this.getEnchantmentMultiplier('boss_damage');
