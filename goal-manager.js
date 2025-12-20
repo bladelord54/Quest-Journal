@@ -3769,21 +3769,26 @@ class GoalManager {
         } else {
             // Active companion display
             const colors = rarityColors[activeCompanion?.rarity] || defaultColors;
+            const companionDefs = this.getCompanionDefinitions();
             let html = '';
             
             if (activeCompanion) {
+                // Get description from definitions if not on companion object
+                const description = activeCompanion.description || companionDefs[activeCompanion.type]?.description || 'Loyal companion';
+                const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
+                
                 html += `
                     <div class="quest-card bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl border-4 border-${colors.border}-500 mb-6">
                         <div class="flex items-center gap-6">
-                            <div class="text-8xl">${activeCompanion.icon}</div>
+                            <div class="text-8xl">${icon}</div>
                             <div class="flex-1">
                                 <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs px-2 py-1 rounded bg-${colors.bg}-700 text-${colors.text}-200 uppercase font-bold">${activeCompanion.rarity}</span>
+                                    <span class="text-xs px-2 py-1 rounded bg-${colors.bg}-700 text-${colors.text}-200 uppercase font-bold">${activeCompanion.rarity || 'rare'}</span>
                                     <span class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 font-bold">ACTIVE</span>
                                 </div>
                                 <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">${activeCompanion.name}</h4>
-                                <p class="text-${colors.text}-200 fancy-font text-lg mb-2">${activeCompanion.description}</p>
-                                <p class="text-${colors.text}-300 text-sm">Level ${activeCompanion.level}</p>
+                                <p class="text-${colors.text}-200 fancy-font text-lg mb-2">${description}</p>
+                                <p class="text-${colors.text}-300 text-sm">Level ${activeCompanion.level || 1}</p>
                             </div>
                         </div>
                     </div>
@@ -3807,13 +3812,15 @@ class GoalManager {
             sortedCompanions.forEach(comp => {
                 const cColors = rarityColors[comp.rarity] || defaultColors;
                 const isActive = comp.type === this.activeCompanionId;
+                const compIcon = comp.icon || companionDefs[comp.type]?.icon || '🐾';
+                const compName = comp.name || companionDefs[comp.type]?.name || 'Companion';
                 
                 html += `
                     <div class="quest-card bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-4 rounded-lg border-2 ${isActive ? 'border-green-400 ring-2 ring-green-400' : `border-${cColors.border}-700`} text-center cursor-pointer hover:scale-105 transition-transform"
                          onclick="goalManager.setActiveCompanion('${comp.type}')">
-                        <div class="text-5xl mb-2">${comp.icon}</div>
-                        <h5 class="font-bold text-amber-200 text-sm mb-1">${comp.name}</h5>
-                        <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-700 text-${cColors.text}-200 uppercase">${comp.rarity}</span>
+                        <div class="text-5xl mb-2">${compIcon}</div>
+                        <h5 class="font-bold text-amber-200 text-sm mb-1">${compName}</h5>
+                        <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-700 text-${cColors.text}-200 uppercase">${comp.rarity || 'rare'}</span>
                         ${isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>'}
                     </div>
                 `;
