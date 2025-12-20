@@ -117,6 +117,10 @@ class GoalManager {
         
         // Check for daily login bonus
         setTimeout(() => this.checkDailyLoginBonus(), 1500);
+        
+        // Check for expired spells on load and periodically
+        setTimeout(() => this.checkExpiredSpells(), 500);
+        setInterval(() => this.checkExpiredSpells(), 60000); // Check every minute
     }
 
     loadData() {
@@ -4110,12 +4114,22 @@ class GoalManager {
 
     checkExpiredSpells() {
         const now = Date.now();
-        const expiredSpells = this.activeSpells.filter(s => s.expiresAt <= now);
+        // Find expired spells (exclude -1 which means "until triggered")
+        const expiredSpells = this.activeSpells.filter(s => s.expiresAt !== -1 && s.expiresAt <= now);
         
         if (expiredSpells.length > 0) {
-            this.activeSpells = this.activeSpells.filter(s => s.expiresAt > now);
+            // Show expiration messages
+            expiredSpells.forEach(expired => {
+                const spell = this.spellDefinitions[expired.spellId];
+                if (spell) {
+                    this.showAchievement(`⏱️ ${spell.icon} ${spell.name} has expired`, 'daily');
+                }
+            });
+            
+            // Remove expired spells (keep -1 and future expiry)
+            this.activeSpells = this.activeSpells.filter(s => s.expiresAt === -1 || s.expiresAt > now);
             this.saveData();
-            this.render();
+            this.renderSpellbook();
         }
     }
 
@@ -4124,7 +4138,8 @@ class GoalManager {
         const now = Date.now();
         
         this.activeSpells.forEach(activeSpell => {
-            if (activeSpell.expiresAt > now) {
+            // Check if spell is still active (not expired, or -1 means until triggered)
+            if (activeSpell.expiresAt === -1 || activeSpell.expiresAt > now) {
                 const spell = this.spellDefinitions[activeSpell.spellId];
                 // Skip if spell no longer exists in definitions
                 if (spell && spell.effect === effectType && spell.multiplier) {
