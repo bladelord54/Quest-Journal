@@ -3725,6 +3725,7 @@ class GoalManager {
             epic: { bg: 'purple', border: 'purple', text: 'purple' },
             legendary: { bg: 'amber', border: 'amber', text: 'amber' }
         };
+        const defaultColors = { bg: 'green', border: 'green', text: 'green' };
 
         if (this.companions.length === 0) {
             container.innerHTML = `
@@ -3737,7 +3738,7 @@ class GoalManager {
             `;
         } else {
             // Active companion display
-            const colors = rarityColors[activeCompanion?.rarity || 'common'];
+            const colors = rarityColors[activeCompanion?.rarity] || defaultColors;
             let html = '';
             
             if (activeCompanion) {
@@ -3774,7 +3775,7 @@ class GoalManager {
             );
             
             sortedCompanions.forEach(comp => {
-                const cColors = rarityColors[comp.rarity];
+                const cColors = rarityColors[comp.rarity] || defaultColors;
                 const isActive = comp.type === this.activeCompanionId;
                 
                 html += `
