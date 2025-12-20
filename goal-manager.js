@@ -374,7 +374,7 @@ class GoalManager {
     }
 
     initializeSpells() {
-        // Free spells: lucky_draw, instant_archive, focus_mode (3 free)
+        // Free spells: lucky_draw, instant_archive, focus_mode, minor_wisdom, copper_blessing (5 free)
         // Premium spells: all others
         return {
             arcane_surge: {
@@ -481,6 +481,50 @@ class GoalManager {
                 effect: 'focus_boost',
                 duration: 3600000, // 1 hour
                 premium: false
+            },
+            minor_wisdom: {
+                id: 'minor_wisdom',
+                name: 'Minor Wisdom',
+                icon: '📚',
+                description: '+15% XP for the entire day',
+                rarity: 'common',
+                effect: 'xp_boost',
+                multiplier: 1.15,
+                duration: 86400000, // 24 hours
+                premium: false
+            },
+            copper_blessing: {
+                id: 'copper_blessing',
+                name: 'Copper Blessing',
+                icon: '🪙',
+                description: '+15% Gold for the entire day',
+                rarity: 'common',
+                effect: 'gold_multiplier',
+                multiplier: 1.15,
+                duration: 86400000, // 24 hours
+                premium: false
+            },
+            silver_blessing: {
+                id: 'silver_blessing',
+                name: 'Silver Blessing',
+                icon: '🥈',
+                description: '+25% Gold for the entire day',
+                rarity: 'uncommon',
+                effect: 'gold_multiplier',
+                multiplier: 1.25,
+                duration: 86400000, // 24 hours
+                premium: true
+            },
+            gold_blessing: {
+                id: 'gold_blessing',
+                name: 'Gold Blessing',
+                icon: '🥇',
+                description: '+50% Gold for the entire day',
+                rarity: 'rare',
+                effect: 'gold_multiplier',
+                multiplier: 1.5,
+                duration: 86400000, // 24 hours
+                premium: true
             },
             double_xp_weekend: {
                 id: 'double_xp_weekend',
@@ -2332,7 +2376,7 @@ class GoalManager {
         const bonusItems = luckyDrawActive ? 2 : 0;
         
         // Free spells that non-premium users can earn
-        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode'];
+        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing'];
         
         // Define loot tables with weights
         const lootTables = {
@@ -2439,7 +2483,7 @@ class GoalManager {
             availableSpells = table.spells.filter(s => freeSpellIds.includes(s.id));
             // If no free spells in this chest tier, give extra gold instead
             if (availableSpells.length === 0) {
-                availableSpells = [{ id: 'lucky_draw', weight: 50, charges: 1 }, { id: 'focus_mode', weight: 30, charges: 1 }, { id: 'instant_archive', weight: 20, charges: 1 }];
+                availableSpells = [{ id: 'minor_wisdom', weight: 25, charges: 1 }, { id: 'copper_blessing', weight: 25, charges: 1 }, { id: 'lucky_draw', weight: 20, charges: 1 }, { id: 'focus_mode', weight: 15, charges: 1 }, { id: 'instant_archive', weight: 15, charges: 1 }];
             }
         }
         
