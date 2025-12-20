@@ -476,9 +476,9 @@ class GoalManager {
                 id: 'focus_mode',
                 name: 'Focus Mode',
                 icon: '🎯',
-                description: 'Distraction-free view for 1 hour',
+                description: '2x Focus Crystals & +50 XP per session for 1 hour',
                 rarity: 'uncommon',
-                effect: 'focus_view',
+                effect: 'focus_boost',
                 duration: 3600000, // 1 hour
                 premium: false
             },
@@ -2824,22 +2824,39 @@ class GoalManager {
         
         // Award crystals
         const bonusCrystal = this.hasActiveEnchantment('bonus_crystal');
-        const crystalsEarned = bonusCrystal ? 2 : 1;
+        let crystalsEarned = bonusCrystal ? 2 : 1;
+        
+        // Check for Focus Mode spell (2x crystals)
+        const focusModeActive = this.activeSpells.some(s => 
+            s.spellId === 'focus_mode' && (s.expiresAt === -1 || s.expiresAt > Date.now())
+        );
+        if (focusModeActive) {
+            crystalsEarned *= 2;
+        }
         
         this.focusCrystals += crystalsEarned;
         this.totalFocusTime += sessionLength;
+        
+        // Award XP bonus if Focus Mode is active
+        let xpBonus = 0;
+        if (focusModeActive) {
+            xpBonus = 50;
+            this.addXP(xpBonus, 'daily');
+        }
         
         // Play notification sound if available
         this.playNotificationSound();
         
         // Send browser notification
+        const xpText = xpBonus > 0 ? ` +${xpBonus} XP!` : '';
         this.showNotification(
             '🎯 Focus Session Complete!',
-            `Great work! You earned ${crystalsEarned} Focus Crystal${crystalsEarned > 1 ? 's' : ''}! 💎`,
+            `Great work! You earned ${crystalsEarned} Focus Crystal${crystalsEarned > 1 ? 's' : ''}!${xpText} 💎`,
             '🎯'
         );
         
-        this.showAchievement(`✨ Focus session complete! +${crystalsEarned} Focus Crystal${crystalsEarned > 1 ? 's' : ''}! 💎`, 'weekly');
+        const focusModeText = focusModeActive ? ' (🎯 Focus Mode!)' : '';
+        this.showAchievement(`✨ Focus session complete! +${crystalsEarned} 💎${xpText}${focusModeText}`, 'weekly');
         
         this.saveData();
         this.render();
