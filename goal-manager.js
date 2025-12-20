@@ -456,10 +456,10 @@ class GoalManager {
                 id: 'quest_doubler',
                 name: 'Quest Doubler',
                 icon: '📋',
-                description: 'Duplicate any task instantly',
+                description: '2x XP & Gold on next quest completed',
                 rarity: 'epic',
-                effect: 'duplicate_task',
-                duration: 0, // Instant use
+                effect: 'double_reward',
+                duration: -1, // Active until next quest completed
                 premium: true
             },
             instant_archive: {
@@ -1754,6 +1754,24 @@ class GoalManager {
             
             // Daily habit reset
             if (lastReset && lastReset !== today) {
+                // Check for Time Freeze spell - skip the entire reset if active
+                const timeFreezeActive = this.activeSpells.some(s => 
+                    s.spellId === 'time_freeze' && (s.expiresAt === -1 || s.expiresAt > Date.now())
+                );
+                
+                if (timeFreezeActive) {
+                    // Time Freeze prevents habit reset - consume the spell
+                    this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'time_freeze');
+                    this.showAchievement('❄️ TIME FREEZE! Daily reset was prevented!', 'life');
+                    this.saveData();
+                    return; // Skip the entire reset
+                }
+                
+                // Check for Streak Shield spell
+                const streakShieldActive = this.activeSpells.some(s => 
+                    s.spellId === 'streak_shield' && (s.expiresAt === -1 || s.expiresAt > Date.now())
+                );
+                
                 // Reset all habits for new day
                 const activeCompanion = this.getActiveCompanion();
                 this.habits.forEach(habit => {
@@ -1761,24 +1779,31 @@ class GoalManager {
                         habit.completedToday = false;
                         habit.lastCompleted = lastReset;
                         habit.streak = habit.streak || 0;
-                        // If skipped a day, reset streak (unless companion protects it)
+                        // If skipped a day, reset streak (unless protected)
                         const lastDate = new Date(lastReset);
                         const todayDate = new Date(today);
                         const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
                         if (dayDiff > 1) {
-                            // Check for streak protection companion
-                            const maxProtections = activeCompanion?.bonusAmount || 0;
-                            const usedProtections = activeCompanion?.protectionsUsedThisWeek || 0;
-                            
-                            if (activeCompanion && 
-                                activeCompanion.bonusType === 'streak_protection' && 
-                                usedProtections < maxProtections &&
-                                habit.streak > 0) {
-                                // Companion protects the streak!
-                                activeCompanion.protectionsUsedThisWeek = usedProtections + 1;
-                                this.showAchievement(`${activeCompanion.icon} ${activeCompanion.name.toUpperCase()} PROTECTS! Your ${habit.title} streak of ${habit.streak} days was saved! (${maxProtections - usedProtections - 1} protections left this week)`, 'life');
-                            } else {
-                                habit.streak = 0;
+                            // Check for Streak Shield spell first
+                            if (streakShieldActive && habit.streak > 0) {
+                                this.showAchievement(`🛡️ STREAK SHIELD! Your ${habit.title} streak of ${habit.streak} days was protected!`, 'life');
+                                // Don't reset - spell protects all streaks for its duration
+                            }
+                            // Then check for streak protection companion
+                            else {
+                                const maxProtections = activeCompanion?.bonusAmount || 0;
+                                const usedProtections = activeCompanion?.protectionsUsedThisWeek || 0;
+                                
+                                if (activeCompanion && 
+                                    activeCompanion.bonusType === 'streak_protection' && 
+                                    usedProtections < maxProtections &&
+                                    habit.streak > 0) {
+                                    // Companion protects the streak!
+                                    activeCompanion.protectionsUsedThisWeek = usedProtections + 1;
+                                    this.showAchievement(`${activeCompanion.icon} ${activeCompanion.name.toUpperCase()} PROTECTS! Your ${habit.title} streak of ${habit.streak} days was saved! (${maxProtections - usedProtections - 1} protections left this week)`, 'life');
+                                } else {
+                                    habit.streak = 0;
+                                }
                             }
                         }
                     }
@@ -1935,7 +1960,18 @@ class GoalManager {
         const enchantmentMultiplier = this.getEnchantmentMultiplier('xp');
         // Apply companion bonus (Owl: +10% XP)
         const companionBonus = 1 + this.getCompanionBonus('xp');
-        const finalXP = Math.floor(amount * xpMultiplier * enchantmentMultiplier * companionBonus);
+        
+        // Check for Quest Doubler spell (2x reward on next quest)
+        let questDoublerMultiplier = 1;
+        const questDoublerActive = this.activeSpells.find(s => s.spellId === 'quest_doubler');
+        if (questDoublerActive) {
+            questDoublerMultiplier = 2;
+            // Consume the spell after use
+            this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'quest_doubler');
+            this.showAchievement('📋 QUEST DOUBLER! 2x XP & Gold earned!', 'weekly');
+        }
+        
+        const finalXP = Math.floor(amount * xpMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         this.xp += finalXP;
         const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
@@ -1943,8 +1979,8 @@ class GoalManager {
         // Trigger XP bar animation
         this.animateXPGain(finalXP);
         
-        // Also award gold coins (XP = Coins for simplicity)
-        this.addGold(amount, source);
+        // Also award gold coins (XP = Coins for simplicity) - pass questDoublerMultiplier
+        this.addGold(amount, source, questDoublerMultiplier);
         
         if (this.xp >= xpForNextLevel) {
             this.levelUp();
@@ -1995,14 +2031,14 @@ class GoalManager {
     }
 
     // Gold Coin System
-    addGold(amount, source) {
+    addGold(amount, source, questDoublerMultiplier = 1) {
         // Apply spell multipliers
         const goldMultiplier = this.getActiveSpellMultiplier('gold_multiplier');
         // Apply enchantment multipliers
         const enchantmentMultiplier = this.getEnchantmentMultiplier('gold');
         // Apply companion bonus (Dragon: +15% gold)
         const companionBonus = 1 + this.getCompanionBonus('gold');
-        const finalGold = Math.floor(amount * goldMultiplier * enchantmentMultiplier * companionBonus);
+        const finalGold = Math.floor(amount * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         this.goldCoins += finalGold;
         this.checkRewardUnlocks();
@@ -4117,7 +4153,15 @@ class GoalManager {
         this.celebrateSpellCast(spell);
 
         // Apply instant effects
-        // (Removed instant_complete to prevent cheating - tasks should be done in real life!)
+        if (spell.effect === 'bulk_archive') {
+            // Instant Archive - bulk archive all completed tasks
+            const archivedCount = this.bulkArchiveCompleted();
+            if (archivedCount > 0) {
+                this.showAchievement(`📦 INSTANT ARCHIVE! ${archivedCount} completed tasks archived!`, 'weekly');
+            } else {
+                this.showAchievement('📦 No completed tasks to archive!', 'daily');
+            }
+        }
 
         this.saveData();
         this.render();
@@ -4529,6 +4573,63 @@ class GoalManager {
             this.render();
             this.showAchievement('📦 Archived!', 'daily');
         }
+    }
+
+    bulkArchiveCompleted() {
+        let archivedCount = 0;
+        const now = new Date().toISOString();
+        
+        // Archive completed daily tasks
+        const completedDaily = this.dailyTasks.filter(t => t.completed);
+        completedDaily.forEach(task => {
+            task.archivedAt = now;
+            task.type = 'daily';
+            this.archivedGoals.push(task);
+            archivedCount++;
+        });
+        this.dailyTasks = this.dailyTasks.filter(t => !t.completed);
+        
+        // Archive completed weekly goals
+        const completedWeekly = this.weeklyGoals.filter(g => g.completed);
+        completedWeekly.forEach(goal => {
+            goal.archivedAt = now;
+            goal.type = 'weekly';
+            this.archivedGoals.push(goal);
+            archivedCount++;
+        });
+        this.weeklyGoals = this.weeklyGoals.filter(g => !g.completed);
+        
+        // Archive completed monthly goals
+        const completedMonthly = this.monthlyGoals.filter(g => g.completed);
+        completedMonthly.forEach(goal => {
+            goal.archivedAt = now;
+            goal.type = 'monthly';
+            this.archivedGoals.push(goal);
+            archivedCount++;
+        });
+        this.monthlyGoals = this.monthlyGoals.filter(g => !g.completed);
+        
+        // Archive completed yearly goals
+        const completedYearly = this.yearlyGoals.filter(g => g.completed);
+        completedYearly.forEach(goal => {
+            goal.archivedAt = now;
+            goal.type = 'yearly';
+            this.archivedGoals.push(goal);
+            archivedCount++;
+        });
+        this.yearlyGoals = this.yearlyGoals.filter(g => !g.completed);
+        
+        // Archive completed life goals
+        const completedLife = this.lifeGoals.filter(g => g.completed);
+        completedLife.forEach(goal => {
+            goal.archivedAt = now;
+            goal.type = 'life';
+            this.archivedGoals.push(goal);
+            archivedCount++;
+        });
+        this.lifeGoals = this.lifeGoals.filter(g => !g.completed);
+        
+        return archivedCount;
     }
 
     restoreGoal(id) {
