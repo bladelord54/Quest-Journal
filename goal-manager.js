@@ -151,9 +151,37 @@ class GoalManager {
                 
                 // Migrate legacy single companion to collection
                 if (this.companion && this.companions.length === 0) {
+                    // Ensure legacy companion has required fields
+                    if (!this.companion.type) {
+                        // Try to infer type from name or assign a default
+                        const nameToType = {
+                            'Baby Dragon': 'dragon',
+                            'Wise Owl': 'owl',
+                            'Loyal Wolf': 'wolf',
+                            'Phoenix': 'phoenix'
+                        };
+                        this.companion.type = nameToType[this.companion.name] || 'wolf';
+                    }
+                    if (!this.companion.rarity) {
+                        this.companion.rarity = 'rare'; // Default legacy companions to rare
+                    }
                     this.companions.push(this.companion);
                     this.activeCompanionId = this.companion.type;
                 }
+                
+                // Ensure all companions in collection have type and rarity
+                this.companions.forEach(comp => {
+                    if (!comp.rarity) comp.rarity = 'rare';
+                    if (!comp.type && comp.name) {
+                        const nameToType = {
+                            'Baby Dragon': 'dragon', 'Wise Owl': 'owl', 'Loyal Wolf': 'wolf', 
+                            'Phoenix': 'phoenix', 'Lucky Cat': 'cat', 'Swift Rabbit': 'rabbit',
+                            'Clever Fox': 'fox', 'Ancient Turtle': 'turtle', 'Golden Eagle': 'eagle',
+                            'Mighty Bear': 'bear', 'Mystic Unicorn': 'unicorn', 'Legendary Lion': 'lion'
+                        };
+                        comp.type = nameToType[comp.name] || 'wolf';
+                    }
+                });
                 this.questPath = data.questPath || null;
                 this.pathProgress = data.pathProgress || { warrior: 0, sage: 0, merchant: 0 };
                 this.upgrades = data.upgrades || [];
@@ -2512,8 +2540,10 @@ class GoalManager {
             this.activeCompanionId = companionType;
             this.companion = companion; // Keep legacy in sync
             this.saveData();
-            this.render();
+            this.renderCompanion(); // Directly update companion UI
             this.showAchievement(`${companion.icon} ${companion.name} is now active! ${companion.description}`, 'daily');
+        } else {
+            console.warn('Companion not found:', companionType, 'Available:', this.companions.map(c => c.type));
         }
     }
     
