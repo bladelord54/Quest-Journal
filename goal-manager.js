@@ -3866,7 +3866,7 @@ class GoalManager {
             container.innerHTML = `
                 <div class="col-span-3 text-center py-12 text-purple-200">
                     <div class="text-6xl mb-4">✨</div>
-                    <p class="fancy-font text-lg">No active enchantments. Cast a spell from your spellbook!</p>
+                    <p class="fancy-font text-lg">No active spell effects. Cast a spell from your spellbook!</p>
                 </div>
             `;
         } else {
