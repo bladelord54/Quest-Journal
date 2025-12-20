@@ -340,9 +340,15 @@
         width: 100% !important;
     }
 
-    /* Spellbook Grid */
+    /* Spellbook Grid - vertical scroll on mobile */
     #spellbook-container {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+    
+    #spellbook-container > div {
+        width: 100% !important;
     }
 
     /* Boss Battle Cards */
