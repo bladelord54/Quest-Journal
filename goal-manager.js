@@ -941,15 +941,111 @@ class GoalManager {
     }
 
     showAchievement(text, level = 'daily', playSound = true) {
+        // For backwards compatibility, map old calls to new toast system
+        // Determine notification type based on text content
+        let type = 'info';
+        if (text.includes('Unlocked') || text.includes('Level Up') || text.includes('LEVEL')) {
+            type = 'achievement';
+        } else if (text.includes('PROTECTS') || text.includes('SHIELD') || text.includes('FREEZE') || text.includes('protected')) {
+            type = 'protection';
+        } else if (text.includes('DOUBLER') || text.includes('2x') || text.includes('BONUS') || text.includes('Bonus')) {
+            type = 'bonus';
+        } else if (text.includes('CHEST') || text.includes('LOOT') || text.includes('Lucky Draw')) {
+            type = 'loot';
+        } else if (text.includes('⚠️') || text.includes('Warning') || text.includes('first!')) {
+            type = 'warning';
+        } else if (text.includes('Complete') || text.includes('complete') || text.includes('+') && text.includes('XP')) {
+            type = 'success';
+        } else if (text.includes('COMPANION') || text.includes('is now active')) {
+            type = 'companion';
+        } else if (text.includes('Archive') || text.includes('Archived')) {
+            type = 'info';
+        }
+        
+        this.showToast(text, type, playSound ? level : null);
+    }
+    
+    showToast(text, type = 'info', soundLevel = null) {
         const toast = document.getElementById('achievement-toast');
+        const toastContainer = document.getElementById('toast-container');
+        const toastIcon = document.getElementById('toast-icon');
+        const toastTitle = document.getElementById('toast-title');
         const achievementText = document.getElementById('achievement-text');
         
+        // Define toast styles for different notification types
+        const toastStyles = {
+            achievement: {
+                gradient: 'from-yellow-600 via-amber-500 to-yellow-700',
+                border: 'border-yellow-400',
+                icon: '⚔️',
+                title: 'Achievement Unlocked!',
+                animate: true
+            },
+            success: {
+                gradient: 'from-green-600 via-emerald-500 to-green-700',
+                border: 'border-green-400',
+                icon: '✨',
+                title: 'Quest Complete!',
+                animate: false
+            },
+            bonus: {
+                gradient: 'from-purple-600 via-violet-500 to-purple-700',
+                border: 'border-purple-400',
+                icon: '🎯',
+                title: 'Bonus Activated!',
+                animate: true
+            },
+            loot: {
+                gradient: 'from-amber-600 via-orange-500 to-amber-700',
+                border: 'border-orange-400',
+                icon: '🎁',
+                title: 'Treasure Found!',
+                animate: true
+            },
+            protection: {
+                gradient: 'from-blue-600 via-cyan-500 to-blue-700',
+                border: 'border-cyan-400',
+                icon: '🛡️',
+                title: 'Protection Active!',
+                animate: true
+            },
+            warning: {
+                gradient: 'from-red-600 via-rose-500 to-red-700',
+                border: 'border-red-400',
+                icon: '⚠️',
+                title: 'Warning',
+                animate: false
+            },
+            companion: {
+                gradient: 'from-teal-600 via-emerald-500 to-teal-700',
+                border: 'border-teal-400',
+                icon: '🐾',
+                title: 'Companion Update!',
+                animate: false
+            },
+            info: {
+                gradient: 'from-slate-600 via-gray-500 to-slate-700',
+                border: 'border-slate-400',
+                icon: '📜',
+                title: 'Notice',
+                animate: false
+            }
+        };
+        
+        const style = toastStyles[type] || toastStyles.info;
+        
+        // Update toast appearance
+        toastContainer.className = `bg-gradient-to-br ${style.gradient} text-white p-6 rounded-lg shadow-2xl border-4 ${style.border} quest-card`;
+        toastIcon.textContent = style.icon;
+        toastIcon.className = style.animate ? 'text-6xl animate-bounce' : 'text-6xl';
+        toastTitle.textContent = style.title;
         achievementText.textContent = text;
+        
         toast.classList.remove('hidden', 'scale-0');
         toast.classList.add('scale-100');
         
-        if (playSound) {
-            this.playAchievementSound(level);
+        if (soundLevel) {
+            this.playAchievementSound(soundLevel);
         }
         
         setTimeout(() => {

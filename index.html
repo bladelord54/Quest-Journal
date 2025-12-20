@@ -118,13 +118,13 @@
         </div>
     </div>
 
-    <!-- Achievement Toast -->
+    <!-- Notification Toast -->
     <div id="achievement-toast" class="hidden fixed top-8 right-8 z-50 transform transition-all duration-300 scale-0">
-        <div class="bg-gradient-to-br from-yellow-600 via-amber-500 to-yellow-700 text-white p-6 rounded-lg shadow-2xl border-4 border-yellow-400 quest-card">
+        <div id="toast-container" class="bg-gradient-to-br from-yellow-600 via-amber-500 to-yellow-700 text-white p-6 rounded-lg shadow-2xl border-4 border-yellow-400 quest-card">
             <div class="flex items-center space-x-4">
-                <div class="text-6xl animate-bounce">⚔️</div>
+                <div id="toast-icon" class="text-6xl animate-bounce">⚔️</div>
                 <div>
-                    <div class="text-2xl font-bold medieval-font">Achievement Unlocked!</div>
+                    <div id="toast-title" class="text-2xl font-bold medieval-font">Achievement Unlocked!</div>
                     <div id="achievement-text" class="text-sm mt-1">Quest Completed</div>
                 </div>
             </div>
