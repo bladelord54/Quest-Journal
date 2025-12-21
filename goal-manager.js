@@ -4043,10 +4043,28 @@ class GoalManager {
     }
 
     selectTitle(titleId) {
+        const title = this.unlockedTitles.find(t => t.id === titleId);
         this.currentTitle = titleId;
         this.saveData();
-        this.render();
-        this.showAchievement('🎖️ Title equipped!', 'daily');
+        this.renderTitles(); // Update titles display immediately
+        this.updateTitleBanner(); // Update the title banner on dashboard
+        
+        if (title) {
+            this.showAchievement(`🎖️ Now displaying: "${title.name}"`, 'daily');
+        }
+    }
+    
+    updateTitleBanner() {
+        const banner = document.getElementById('current-title-banner');
+        if (!banner) return;
+        
+        const title = this.unlockedTitles.find(t => t.id === this.currentTitle);
+        if (title) {
+            banner.innerHTML = `<span class="text-amber-300 font-bold">"${title.name}"</span>`;
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
     }
 
     // Spellbook System
