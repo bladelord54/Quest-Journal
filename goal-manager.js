@@ -4109,12 +4109,15 @@ class GoalManager {
         const container = document.getElementById('spellbook-container');
         if (!container) return;
 
-        // Show ALL spells from definitions (3 free + 12 premium)
+        // Show ALL spells from definitions
         // Free spells shown first, then premium spells
+        // Within each section, sort by rarity: common -> uncommon -> rare -> epic -> legendary
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        const sortByRarity = (a, b) => rarityOrder.indexOf(a[1].rarity) - rarityOrder.indexOf(b[1].rarity);
+        
         const allSpells = Object.entries(this.spellDefinitions);
-        const freeSpells = allSpells.filter(([id, spell]) => !spell.premium);
-        const premiumSpells = allSpells.filter(([id, spell]) => spell.premium);
-        const sortedSpells = [...freeSpells, ...premiumSpells];
+        const freeSpells = allSpells.filter(([id, spell]) => !spell.premium).sort(sortByRarity);
+        const premiumSpells = allSpells.filter(([id, spell]) => spell.premium).sort(sortByRarity);
         
         const rarityColors = {
             common: 'gray',
@@ -4526,6 +4529,7 @@ class GoalManager {
         this.applyColorTheme();
         this.saveData();
         this.renderThemeSelector();
+        this.renderThemes(); // Update the themes display in Rewards section
         
         if (theme) {
             this.showAchievement(`🎨 ${theme.name} theme activated!`, 'daily');
