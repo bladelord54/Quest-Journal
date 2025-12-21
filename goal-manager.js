@@ -5392,6 +5392,7 @@ class GoalManager {
                             class="mt-1">
                         <div class="flex-1">
                             <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h3>
+                            ${goal.description ? `<p class="text-sm text-red-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
                             <p class="text-sm text-red-200 mb-3 fancy-font">Created: ${new Date(goal.created).toLocaleDateString()}</p>
                             
                             ${linkedYearly.length > 0 ? `
@@ -5477,6 +5478,7 @@ class GoalManager {
                             onchange="goalManager.toggleYearlyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-xl text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
+                            ${goal.description ? `<p class="text-sm text-purple-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
                             <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
@@ -5642,6 +5644,7 @@ class GoalManager {
                             onchange="goalManager.toggleMonthlyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
+                            ${goal.description ? `<p class="text-sm text-blue-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
                             <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
@@ -5790,6 +5793,7 @@ class GoalManager {
                             onchange="goalManager.toggleWeeklyGoal(${goal.id}, event)">
                         <div class="flex-1">
                             <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
+                            ${goal.description ? `<p class="text-sm text-green-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
                             <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
@@ -5900,6 +5904,9 @@ class GoalManager {
                             class="mt-1">
                         <div class="ml-4 flex-1">
                             <span class="text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
+                            ${task.description ? `
+                                <p class="text-sm text-amber-700/80 mt-1 fancy-font">${task.description}</p>
+                            ` : ''}
                             ${parentNames.length > 0 ? `
                                 <div class="mt-1 flex flex-wrap gap-1">
                                     ${parentNames.map(name => `
