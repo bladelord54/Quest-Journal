@@ -429,7 +429,7 @@ class GoalManager {
                 id: 'lucky_draw',
                 name: 'Lucky Draw',
                 icon: '🎲',
-                description: 'Guaranteed rare loot on next chest opened',
+                description: 'Guaranteed uncommon+ loot on next chest opened',
                 rarity: 'uncommon',
                 effect: 'chest_boost',
                 multiplier: 1,
@@ -2507,13 +2507,11 @@ class GoalManager {
         // Consume Lucky Draw spell if active
         if (luckyDrawActive) {
             this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'lucky_draw');
-            this.showAchievement('🎲 Lucky Draw activated! Bonus rewards!', 'rare');
+            this.showAchievement('🎲 Lucky Draw! Guaranteed rare loot!', 'rare');
         }
         
-        // Apply rewards
+        // Apply rewards (spells, companions, themes only - no gold/XP from chests)
         rewards.forEach(reward => {
-            if (reward.type === 'coins') this.goldCoins += reward.amount;
-            if (reward.type === 'xp') this.xp += reward.amount;
             if (reward.type === 'theme') this.tryUnlockRandomTheme();
             if (reward.type === 'companion') this.unlockCompanion(reward.value);
             if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
@@ -2525,118 +2523,121 @@ class GoalManager {
 
     generateChestRewards(type, luckyDrawActive = false) {
         const rewards = [];
-        const multiplier = luckyDrawActive ? 1.5 : 1;
-        const bonusItems = luckyDrawActive ? 2 : 0;
         
         // Free spells that non-premium users can earn
         const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing'];
         
-        // Define loot tables with weights
+        // Spell rarity definitions for Lucky Draw
+        const rareOrBetterSpells = ['arcane_surge', 'golden_touch', 'time_freeze', 'inferno_focus', 
+            'berserker_rage', 'critical_strike', 'streak_shield', 'moonlight_blessing', 
+            'boss_slayer', 'execute', 'double_xp_weekend', 'silver_blessing', 'gold_blessing'];
+        
+        // Define loot tables with weights (no gold/XP - earn those through tasks!)
         const lootTables = {
             bronze: {
-                guaranteedCoins: [200, 400],
-                guaranteedXP: [50, 150],
                 spells: [
-                    { id: 'lucky_draw', weight: 30, charges: 1 },
-                    { id: 'arcane_surge', weight: 25, charges: 1 },
-                    { id: 'golden_touch', weight: 20, charges: 1 },
-                    { id: 'time_freeze', weight: 15, charges: 1 },
-                    { id: 'quest_doubler', weight: 10, charges: 1 }
+                    { id: 'lucky_draw', weight: 30, charges: 1, rarity: 'common' },
+                    { id: 'minor_wisdom', weight: 25, charges: 1, rarity: 'common' },
+                    { id: 'copper_blessing', weight: 25, charges: 1, rarity: 'common' },
+                    { id: 'arcane_surge', weight: 15, charges: 1, rarity: 'rare' },
+                    { id: 'golden_touch', weight: 5, charges: 1, rarity: 'rare' }
                 ],
                 companions: [
-                    { id: 'cat', weight: 50 },
-                    { id: 'rabbit', weight: 50 }
+                    { id: 'cat', weight: 50, rarity: 'common' },
+                    { id: 'rabbit', weight: 50, rarity: 'common' }
                 ],
                 companionChance: 0.05,
-                itemCount: 1 + bonusItems
+                itemCount: 1
             },
             silver: {
-                guaranteedCoins: [600, 1000],
-                guaranteedXP: [200, 400],
                 spells: [
-                    { id: 'arcane_surge', weight: 25, charges: 2 },
-                    { id: 'golden_touch', weight: 20, charges: 1 },
-                    { id: 'inferno_focus', weight: 20, charges: 1 },
-                    { id: 'critical_strike', weight: 15, charges: 1 },
-                    { id: 'quest_doubler', weight: 10, charges: 1 }
+                    { id: 'arcane_surge', weight: 25, charges: 2, rarity: 'rare' },
+                    { id: 'golden_touch', weight: 20, charges: 1, rarity: 'rare' },
+                    { id: 'silver_blessing', weight: 20, charges: 1, rarity: 'uncommon' },
+                    { id: 'inferno_focus', weight: 20, charges: 1, rarity: 'rare' },
+                    { id: 'critical_strike', weight: 15, charges: 1, rarity: 'rare' }
                 ],
                 companions: [
-                    { id: 'cat', weight: 20 },
-                    { id: 'rabbit', weight: 20 },
-                    { id: 'owl', weight: 25 },
-                    { id: 'fox', weight: 25 },
-                    { id: 'turtle', weight: 10 }
+                    { id: 'cat', weight: 20, rarity: 'common' },
+                    { id: 'rabbit', weight: 20, rarity: 'common' },
+                    { id: 'owl', weight: 25, rarity: 'uncommon' },
+                    { id: 'fox', weight: 25, rarity: 'uncommon' },
+                    { id: 'turtle', weight: 10, rarity: 'uncommon' }
                 ],
                 companionChance: 0.10,
                 themeChance: 0.3,
-                itemCount: 2 + bonusItems
+                itemCount: 2
             },
             gold: {
-                guaranteedCoins: [1500, 2500],
-                guaranteedXP: [600, 1000],
                 spells: [
-                    { id: 'inferno_focus', weight: 30, charges: 2 },
-                    { id: 'berserker_rage', weight: 25, charges: 1 },
-                    { id: 'critical_strike', weight: 20, charges: 2 },
-                    { id: 'streak_shield', weight: 15, charges: 1 },
-                    { id: 'moonlight_blessing', weight: 10, charges: 1 }
+                    { id: 'inferno_focus', weight: 30, charges: 2, rarity: 'rare' },
+                    { id: 'berserker_rage', weight: 25, charges: 1, rarity: 'epic' },
+                    { id: 'critical_strike', weight: 20, charges: 2, rarity: 'rare' },
+                    { id: 'streak_shield', weight: 15, charges: 1, rarity: 'epic' },
+                    { id: 'moonlight_blessing', weight: 10, charges: 1, rarity: 'legendary' }
                 ],
                 companions: [
-                    { id: 'owl', weight: 15 },
-                    { id: 'fox', weight: 15 },
-                    { id: 'turtle', weight: 10 },
-                    { id: 'wolf', weight: 25 },
-                    { id: 'eagle', weight: 20 },
-                    { id: 'bear', weight: 15 }
+                    { id: 'owl', weight: 15, rarity: 'uncommon' },
+                    { id: 'fox', weight: 15, rarity: 'uncommon' },
+                    { id: 'turtle', weight: 10, rarity: 'uncommon' },
+                    { id: 'wolf', weight: 25, rarity: 'rare' },
+                    { id: 'eagle', weight: 20, rarity: 'rare' },
+                    { id: 'bear', weight: 15, rarity: 'rare' }
                 ],
                 companionChance: 0.20,
                 themeChance: 0.5,
-                itemCount: 3 + bonusItems
+                itemCount: 3
             },
             royal: {
-                guaranteedCoins: [4000, 8000],
-                guaranteedXP: [1500, 2500],
                 spells: [
-                    { id: 'boss_slayer', weight: 25, charges: 1 },
-                    { id: 'execute', weight: 20, charges: 1 },
-                    { id: 'moonlight_blessing', weight: 20, charges: 2 },
-                    { id: 'berserker_rage', weight: 15, charges: 2 },
-                    { id: 'double_xp_weekend', weight: 10, charges: 1 },
-                    { id: 'time_freeze', weight: 10, charges: 2 }
+                    { id: 'boss_slayer', weight: 25, charges: 1, rarity: 'epic' },
+                    { id: 'execute', weight: 20, charges: 1, rarity: 'epic' },
+                    { id: 'moonlight_blessing', weight: 20, charges: 2, rarity: 'legendary' },
+                    { id: 'berserker_rage', weight: 15, charges: 2, rarity: 'epic' },
+                    { id: 'double_xp_weekend', weight: 10, charges: 1, rarity: 'legendary' },
+                    { id: 'time_freeze', weight: 10, charges: 2, rarity: 'legendary' }
                 ],
                 companions: [
-                    { id: 'wolf', weight: 10 },
-                    { id: 'eagle', weight: 10 },
-                    { id: 'bear', weight: 15 },
-                    { id: 'dragon', weight: 25 },
-                    { id: 'unicorn', weight: 20 },
-                    { id: 'phoenix', weight: 10 },
-                    { id: 'lion', weight: 10 }
+                    { id: 'wolf', weight: 10, rarity: 'rare' },
+                    { id: 'eagle', weight: 10, rarity: 'rare' },
+                    { id: 'bear', weight: 15, rarity: 'rare' },
+                    { id: 'dragon', weight: 25, rarity: 'legendary' },
+                    { id: 'unicorn', weight: 20, rarity: 'epic' },
+                    { id: 'phoenix', weight: 10, rarity: 'legendary' },
+                    { id: 'lion', weight: 10, rarity: 'legendary' }
                 ],
                 companionChance: 0.40,
                 themeChance: 0.7,
-                itemCount: 4 + bonusItems
+                itemCount: 4
             }
         };
         
         const table = lootTables[type];
-        
-        // Guaranteed coins (random amount in range)
-        const coinAmount = Math.floor((Math.random() * (table.guaranteedCoins[1] - table.guaranteedCoins[0]) + table.guaranteedCoins[0]) * multiplier);
-        rewards.push({ type: 'coins', amount: coinAmount });
-        
-        // Guaranteed XP (random amount in range) - Note: This also gives gold via addXP function
-        const xpAmount = Math.floor((Math.random() * (table.guaranteedXP[1] - table.guaranteedXP[0]) + table.guaranteedXP[0]) * multiplier);
-        rewards.push({ type: 'xp', amount: xpAmount });
         
         // Filter spells based on premium status
         // Free users only get charges for free spells, premium users get all spells
         let availableSpells = table.spells;
         if (!this.isPremium) {
             availableSpells = table.spells.filter(s => freeSpellIds.includes(s.id));
-            // If no free spells in this chest tier, give extra gold instead
+            // If no free spells in this chest tier, use default free spells
             if (availableSpells.length === 0) {
-                availableSpells = [{ id: 'minor_wisdom', weight: 25, charges: 1 }, { id: 'copper_blessing', weight: 25, charges: 1 }, { id: 'lucky_draw', weight: 20, charges: 1 }, { id: 'focus_mode', weight: 15, charges: 1 }, { id: 'instant_archive', weight: 15, charges: 1 }];
+                availableSpells = [
+                    { id: 'minor_wisdom', weight: 25, charges: 1, rarity: 'common' }, 
+                    { id: 'copper_blessing', weight: 25, charges: 1, rarity: 'common' }, 
+                    { id: 'lucky_draw', weight: 20, charges: 1, rarity: 'uncommon' }, 
+                    { id: 'focus_mode', weight: 15, charges: 1, rarity: 'uncommon' }, 
+                    { id: 'instant_archive', weight: 15, charges: 1, rarity: 'common' }
+                ];
+            }
+        }
+        
+        // Lucky Draw: Filter to only uncommon+ loot (no common drops)
+        const uncommonOrBetter = ['uncommon', 'rare', 'epic', 'legendary'];
+        if (luckyDrawActive) {
+            // Filter spells to uncommon or better
+            const goodSpells = availableSpells.filter(s => uncommonOrBetter.includes(s.rarity));
+            if (goodSpells.length > 0) {
+                availableSpells = goodSpells;
             }
         }
         
@@ -2648,14 +2649,24 @@ class GoalManager {
             }
         }
         
-        // Random theme unlock
-        if (table.themeChance && Math.random() < table.themeChance) {
-            rewards.push({ type: 'theme', value: 'random' });
+        // Random theme unlock (Lucky Draw guarantees theme if available)
+        if (table.themeChance) {
+            if (luckyDrawActive || Math.random() < table.themeChance) {
+                rewards.push({ type: 'theme', value: 'random' });
+            }
         }
         
         // Random companion unlock from pool
-        if (table.companionChance && table.companions && Math.random() < table.companionChance) {
-            const companion = this.weightedRandomSelect(table.companions);
+        let companionPool = table.companions;
+        if (luckyDrawActive && companionPool) {
+            // Lucky Draw: Filter to uncommon+ companions and guarantee a drop
+            const goodCompanions = companionPool.filter(c => uncommonOrBetter.includes(c.rarity));
+            if (goodCompanions.length > 0) {
+                const companion = this.weightedRandomSelect(goodCompanions);
+                rewards.push({ type: 'companion', value: companion.id });
+            }
+        } else if (table.companionChance && companionPool && Math.random() < table.companionChance) {
+            const companion = this.weightedRandomSelect(companionPool);
             if (companion) {
                 rewards.push({ type: 'companion', value: companion.id });
             }
@@ -2680,8 +2691,6 @@ class GoalManager {
     showChestRewards(type, rewards) {
         const companions = this.getCompanionDefinitions();
         const rewardText = rewards.map(r => {
-            if (r.type === 'coins') return `+${r.amount} 💰 Gold`;
-            if (r.type === 'xp') return `+${r.amount} XP (+${r.amount} 💰)`;
             if (r.type === 'theme') return `🎨 Theme`;
             if (r.type === 'companion') {
                 const companion = companions[r.value];
