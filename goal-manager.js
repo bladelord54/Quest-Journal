@@ -51,6 +51,12 @@ class GoalManager {
         // Spell casting lock to prevent double-casting
         this.isCastingSpell = false;
         
+        // Stats tracking for titles
+        this.chestsOpened = 0;
+        this.bossesDefeated = 0;
+        this.focusSessionsCompleted = 0;
+        this.spellsCast = 0;
+        
         // Render optimization
         this.renderTimeout = null;
         this.isRendering = false;
@@ -224,6 +230,12 @@ class GoalManager {
                 this.lastLoginBonusDate = data.lastLoginBonusDate || null;
                 this.loginStreak = data.loginStreak || 0;
                 
+                // Stats tracking for titles
+                this.chestsOpened = data.chestsOpened || 0;
+                this.bossesDefeated = data.bossesDefeated || 0;
+                this.focusSessionsCompleted = data.focusSessionsCompleted || 0;
+                this.spellsCast = data.spellsCast || 0;
+                
                 // Add dueDate to existing tasks that don't have one
                 this.dailyTasks.forEach(task => {
                     if (!task.dueDate) {
@@ -301,7 +313,11 @@ class GoalManager {
                 isPremium: this.isPremium,
                 premiumPurchaseDate: this.premiumPurchaseDate,
                 lastLoginBonusDate: this.lastLoginBonusDate,
-                loginStreak: this.loginStreak
+                loginStreak: this.loginStreak,
+                chestsOpened: this.chestsOpened,
+                bossesDefeated: this.bossesDefeated,
+                focusSessionsCompleted: this.focusSessionsCompleted,
+                spellsCast: this.spellsCast
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
         } catch (error) {
@@ -2241,31 +2257,167 @@ class GoalManager {
 
     // Title System
     checkTitleUnlocks() {
-        const completedTasks = this.dailyTasks.filter(t => t.completed).length;
+        // Gather stats for title checks
+        const totalCompletedTasks = this.archivedGoals.filter(g => g.type === 'daily').length + 
+            this.dailyTasks.filter(t => t.completed).length;
         const maxStreak = Math.max(...this.habits.map(h => h.streak || 0), 0);
-        const completedLifeGoals = this.lifeGoals.filter(g => g.completed).length;
+        const completedLifeGoals = this.lifeGoals.filter(g => g.completed).length + 
+            this.archivedGoals.filter(g => g.type === 'life').length;
+        const completedWeeklyGoals = this.weeklyGoals.filter(g => g.completed).length +
+            this.archivedGoals.filter(g => g.type === 'weekly').length;
+        const completedMonthlyGoals = this.monthlyGoals.filter(g => g.completed).length +
+            this.archivedGoals.filter(g => g.type === 'monthly').length;
+        const completedYearlyGoals = this.yearlyGoals.filter(g => g.completed).length +
+            this.archivedGoals.filter(g => g.type === 'yearly').length;
+        const totalChestsOpened = this.chestsOpened || 0;
+        const totalBossesDefeated = this.bossesDefeated || 0;
+        const totalFocusSessions = this.focusSessionsCompleted || 0;
+        const totalSpellsCast = this.spellsCast || 0;
         
         // Unlock titles based on achievements
         const hasTitle = (id) => Array.isArray(this.unlockedTitles) &&
             this.unlockedTitles.some(t => (t && typeof t === 'object') ? t.id === id : t === id);
 
-        if (completedTasks >= 10 && !hasTitle('determined')) {
+        // === EARLY GAME TITLES ===
+        if (totalCompletedTasks >= 1 && !hasTitle('beginner')) {
+            this.unlockTitle('beginner', 'The Beginner', 'Complete your first task');
+        }
+        if (this.habits.length >= 1 && !hasTitle('habit_starter')) {
+            this.unlockTitle('habit_starter', 'Habit Starter', 'Create your first habit');
+        }
+        if (this.level >= 5 && !hasTitle('apprentice')) {
+            this.unlockTitle('apprentice', 'The Apprentice', 'Reach Level 5');
+        }
+        
+        // === TASK MILESTONE TITLES ===
+        if (totalCompletedTasks >= 10 && !hasTitle('determined')) {
             this.unlockTitle('determined', 'The Determined', 'Complete 10 tasks');
+        }
+        if (totalCompletedTasks >= 50 && !hasTitle('dedicated')) {
+            this.unlockTitle('dedicated', 'The Dedicated', 'Complete 50 tasks');
+        }
+        if (totalCompletedTasks >= 100 && !hasTitle('centurion')) {
+            this.unlockTitle('centurion', 'Centurion', 'Complete 100 tasks');
+        }
+        if (totalCompletedTasks >= 250 && !hasTitle('relentless')) {
+            this.unlockTitle('relentless', 'The Relentless', 'Complete 250 tasks');
+        }
+        if (totalCompletedTasks >= 500 && !hasTitle('quest_master')) {
+            this.unlockTitle('quest_master', 'Quest Master', 'Complete 500 quests');
+        }
+        if (totalCompletedTasks >= 1000 && !hasTitle('grand_master')) {
+            this.unlockTitle('grand_master', 'Grand Master', 'Complete 1000 quests');
+        }
+        
+        // === STREAK TITLES ===
+        if (maxStreak >= 3 && !hasTitle('consistent')) {
+            this.unlockTitle('consistent', 'The Consistent', 'Maintain a 3-day streak');
         }
         if (maxStreak >= 7 && !hasTitle('disciplined')) {
             this.unlockTitle('disciplined', 'The Disciplined', 'Maintain a 7-day streak');
         }
+        if (maxStreak >= 14 && !hasTitle('devoted')) {
+            this.unlockTitle('devoted', 'The Devoted', 'Maintain a 14-day streak');
+        }
         if (maxStreak >= 30 && !hasTitle('unstoppable')) {
             this.unlockTitle('unstoppable', 'The Unstoppable', 'Maintain a 30-day streak');
         }
-        if (completedLifeGoals >= 1 && !hasTitle('legendary')) {
-            this.unlockTitle('legendary', 'The Legendary', 'Complete a life goal');
-        }
-        if (completedTasks >= 500 && !hasTitle('quest_master')) {
-            this.unlockTitle('quest_master', 'Quest Master', 'Complete 500 quests');
+        if (maxStreak >= 60 && !hasTitle('iron_will')) {
+            this.unlockTitle('iron_will', 'Iron Will', 'Maintain a 60-day streak');
         }
         if (maxStreak >= 100 && !hasTitle('habit_king')) {
             this.unlockTitle('habit_king', 'Habit King', 'Maintain a 100-day streak');
+        }
+        if (maxStreak >= 365 && !hasTitle('eternal')) {
+            this.unlockTitle('eternal', 'The Eternal', 'Maintain a 365-day streak');
+        }
+        
+        // === LEVEL TITLES ===
+        if (this.level >= 10 && !hasTitle('journeyman')) {
+            this.unlockTitle('journeyman', 'Journeyman', 'Reach Level 10');
+        }
+        if (this.level >= 25 && !hasTitle('veteran')) {
+            this.unlockTitle('veteran', 'Veteran', 'Reach Level 25');
+        }
+        if (this.level >= 50 && !hasTitle('elite')) {
+            this.unlockTitle('elite', 'Elite', 'Reach Level 50');
+        }
+        if (this.level >= 100 && !hasTitle('legendary_hero')) {
+            this.unlockTitle('legendary_hero', 'Legendary Hero', 'Reach Level 100');
+        }
+        
+        // === GOAL TYPE TITLES ===
+        if (completedLifeGoals >= 1 && !hasTitle('legendary')) {
+            this.unlockTitle('legendary', 'The Legendary', 'Complete a life goal');
+        }
+        if (completedLifeGoals >= 5 && !hasTitle('dream_chaser')) {
+            this.unlockTitle('dream_chaser', 'Dream Chaser', 'Complete 5 life goals');
+        }
+        if (completedWeeklyGoals >= 10 && !hasTitle('weekly_warrior')) {
+            this.unlockTitle('weekly_warrior', 'Weekly Warrior', 'Complete 10 weekly goals');
+        }
+        if (completedMonthlyGoals >= 6 && !hasTitle('monthly_champion')) {
+            this.unlockTitle('monthly_champion', 'Monthly Champion', 'Complete 6 monthly goals');
+        }
+        if (completedYearlyGoals >= 1 && !hasTitle('visionary')) {
+            this.unlockTitle('visionary', 'The Visionary', 'Complete a yearly goal');
+        }
+        
+        // === WEALTH TITLES ===
+        if (this.goldCoins >= 1000 && !hasTitle('wealthy')) {
+            this.unlockTitle('wealthy', 'The Wealthy', 'Accumulate 1,000 gold');
+        }
+        if (this.goldCoins >= 10000 && !hasTitle('rich')) {
+            this.unlockTitle('rich', 'The Rich', 'Accumulate 10,000 gold');
+        }
+        if (this.goldCoins >= 100000 && !hasTitle('tycoon')) {
+            this.unlockTitle('tycoon', 'Tycoon', 'Accumulate 100,000 gold');
+        }
+        
+        // === FEATURE TITLES ===
+        if (totalChestsOpened >= 1 && !hasTitle('treasure_hunter')) {
+            this.unlockTitle('treasure_hunter', 'Treasure Hunter', 'Open your first chest');
+        }
+        if (totalChestsOpened >= 25 && !hasTitle('loot_seeker')) {
+            this.unlockTitle('loot_seeker', 'Loot Seeker', 'Open 25 chests');
+        }
+        if (totalChestsOpened >= 100 && !hasTitle('chest_master')) {
+            this.unlockTitle('chest_master', 'Chest Master', 'Open 100 chests');
+        }
+        if (totalFocusSessions >= 1 && !hasTitle('focused')) {
+            this.unlockTitle('focused', 'The Focused', 'Complete your first focus session');
+        }
+        if (totalFocusSessions >= 25 && !hasTitle('zen_master')) {
+            this.unlockTitle('zen_master', 'Zen Master', 'Complete 25 focus sessions');
+        }
+        if (totalFocusSessions >= 100 && !hasTitle('meditation_guru')) {
+            this.unlockTitle('meditation_guru', 'Meditation Guru', 'Complete 100 focus sessions');
+        }
+        if (totalSpellsCast >= 1 && !hasTitle('spellcaster')) {
+            this.unlockTitle('spellcaster', 'Spellcaster', 'Cast your first spell');
+        }
+        if (totalSpellsCast >= 50 && !hasTitle('archmage')) {
+            this.unlockTitle('archmage', 'Archmage', 'Cast 50 spells');
+        }
+        if (totalBossesDefeated >= 1 && !hasTitle('boss_slayer')) {
+            this.unlockTitle('boss_slayer', 'Boss Slayer', 'Defeat your first boss');
+        }
+        if (totalBossesDefeated >= 10 && !hasTitle('champion')) {
+            this.unlockTitle('champion', 'Champion', 'Defeat 10 bosses');
+        }
+        if (totalBossesDefeated >= 50 && !hasTitle('dragon_slayer')) {
+            this.unlockTitle('dragon_slayer', 'Dragon Slayer', 'Defeat 50 bosses');
+        }
+        
+        // === COMPANION TITLES ===
+        if (this.companions.length >= 1 && !hasTitle('beast_friend')) {
+            this.unlockTitle('beast_friend', 'Beast Friend', 'Obtain your first companion');
+        }
+        if (this.companions.length >= 5 && !hasTitle('beast_master')) {
+            this.unlockTitle('beast_master', 'Beast Master', 'Collect 5 companions');
+        }
+        if (this.companions.length >= 10 && !hasTitle('menagerie_keeper')) {
+            this.unlockTitle('menagerie_keeper', 'Menagerie Keeper', 'Collect 10 companions');
         }
     }
 
@@ -2336,6 +2488,7 @@ class GoalManager {
         }
         
         this.goldCoins -= costs[type];
+        this.chestsOpened++; // Track for titles
         
         // Record the purchase
         this.treasureChests.push({
@@ -3012,6 +3165,7 @@ class GoalManager {
         
         this.focusCrystals += crystalsEarned;
         this.totalFocusTime += sessionLength;
+        this.focusSessionsCompleted++; // Track for titles
         
         // Award XP bonus if Focus Mode is active
         let xpBonus = 0;
@@ -4293,6 +4447,7 @@ class GoalManager {
 
         // Use a charge
         spellEntry.charges--;
+        this.spellsCast++; // Track for titles
 
         // Apply spell effect
         if (spell.duration > 0) {
@@ -8215,6 +8370,7 @@ class GoalManager {
 
     defeatBoss(boss) {
         const isLife = this.lifeGoals.includes(boss);
+        this.bossesDefeated++; // Track for titles
         
         // Epic celebration
         this.createConfetti();
