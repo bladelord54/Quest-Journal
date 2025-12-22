@@ -2527,16 +2527,11 @@ class GoalManager {
         // Free spells that non-premium users can earn
         const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing'];
         
-        // Spell rarity definitions for Lucky Draw
-        const rareOrBetterSpells = ['arcane_surge', 'golden_touch', 'time_freeze', 'inferno_focus', 
-            'berserker_rage', 'critical_strike', 'streak_shield', 'moonlight_blessing', 
-            'boss_slayer', 'execute', 'double_xp_weekend', 'silver_blessing', 'gold_blessing'];
-        
         // Define loot tables with weights (no gold/XP - earn those through tasks!)
         const lootTables = {
             bronze: {
                 spells: [
-                    { id: 'lucky_draw', weight: 30, charges: 1, rarity: 'common' },
+                    { id: 'lucky_draw', weight: 30, charges: 1, rarity: 'uncommon' },
                     { id: 'minor_wisdom', weight: 25, charges: 1, rarity: 'common' },
                     { id: 'copper_blessing', weight: 25, charges: 1, rarity: 'common' },
                     { id: 'arcane_surge', weight: 15, charges: 1, rarity: 'rare' },
@@ -2626,7 +2621,7 @@ class GoalManager {
                     { id: 'copper_blessing', weight: 25, charges: 1, rarity: 'common' }, 
                     { id: 'lucky_draw', weight: 20, charges: 1, rarity: 'uncommon' }, 
                     { id: 'focus_mode', weight: 15, charges: 1, rarity: 'uncommon' }, 
-                    { id: 'instant_archive', weight: 15, charges: 1, rarity: 'common' }
+                    { id: 'instant_archive', weight: 15, charges: 1, rarity: 'uncommon' }
                 ];
             }
         }
