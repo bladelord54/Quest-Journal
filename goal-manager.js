@@ -9972,22 +9972,64 @@ class GoalManager {
             action: null
         },
         {
-            title: "Daily Tasks ⚔️",
-            content: "Your daily quests! Each task you complete earns XP and gold. Click the checkbox to mark tasks complete. Try pressing 'N' to quick-add a task!",
-            element: "a[href='#daily'].nav-link",
-            action: () => this.switchView('daily')
+            title: "Epic Quests 🚩",
+            content: "Your life's grandest goals! Epic Quests are long-term life goals that can span years. Break them down into Yearly Campaigns for manageable progress.",
+            element: "a[href='#life-goals'].nav-link",
+            action: () => this.switchView('life-goals')
         },
         {
-            title: "Weekly & Monthly Goals 📅",
-            content: "Plan bigger campaigns! Weekly and monthly goals help you tackle larger projects. Link daily tasks to these goals to track progress.",
+            title: "Yearly Campaigns 📜",
+            content: "Year-long objectives! These connect to your Epic Quests above and break down into Monthly Raids. Perfect for big annual goals!",
+            element: "a[href='#yearly'].nav-link",
+            action: () => this.switchView('yearly')
+        },
+        {
+            title: "Monthly & Weekly Goals 📅",
+            content: "Plan bigger campaigns! Monthly Raids and Weekly Battles help you tackle larger projects. Link daily tasks to these goals to track progress.",
             element: "a[href='#weekly'].nav-link",
             action: () => this.switchView('weekly')
         },
         {
+            title: "Daily Skirmishes ⚔️",
+            content: "Your daily quests! Each task you complete earns XP and gold. You'll also find Daily Rituals (habits) and Recurring Tasks here!",
+            element: "a[href='#daily'].nav-link",
+            action: () => this.switchView('daily')
+        },
+        {
+            title: "Recurring Tasks 🔄",
+            content: "Tasks that repeat automatically! Set up weekly or monthly recurring tasks and they'll appear on the right days. Find them in Daily Skirmishes!",
+            element: null,
+            action: null
+        },
+        {
             title: "Daily Rituals 🕯️",
-            content: "Build streaks with daily habits! Complete them every day to build powerful streaks. The heat map shows your consistency over time. Habits are found in your Dashboard!",
-            element: "#dashboard-view .mb-8:first-of-type h3.medieval-title",
-            action: () => this.switchView('dashboard')
+            content: "Build streaks with daily habits! Complete them every day to build powerful streaks. The heat map shows your consistency over time.",
+            element: null,
+            action: null
+        },
+        {
+            title: "Quest Calendar 📆",
+            content: "See all your quests on a calendar! View tasks by day, plan ahead, and never miss a deadline. Click any day to see what's due.",
+            element: "a[href='#calendar'].nav-link",
+            action: () => this.switchView('calendar')
+        },
+        {
+            title: "Side Quests 🧭",
+            content: "Quick tasks without deadlines! Perfect for ideas, someday-maybes, or tasks that don't fit a specific timeline. Tackle them whenever you're ready!",
+            element: "a[href='#sidequests'].nav-link",
+            action: () => this.switchView('sidequests')
+        },
+        {
+            title: "Treasury & Rewards 🏆",
+            content: "Spend your gold here! Open treasure chests for spells, themes, and companions. Unlock kingdom themes to customize your look, and equip earned titles!",
+            element: "a[href='#rewards'].nav-link",
+            action: () => this.switchView('rewards')
+        },
+        {
+            title: "Spellbook 📖",
+            content: "Collect powerful spells from treasure chests! Cast spells for helpful effects like bonus XP, gold boosts, or guaranteed rare loot.",
+            element: "a[href='#spellbook'].nav-link",
+            action: () => this.switchView('spellbook')
         },
         {
             title: "Focus Timer 🎯",
@@ -10002,13 +10044,7 @@ class GoalManager {
             action: () => this.switchView('enchantments')
         },
         {
-            title: "Spellbook 📖",
-            content: "Collect powerful spells from completing tasks! Cast spells for helpful effects like double XP, gold boosts, or streak protection.",
-            element: "a[href='#spellbook'].nav-link",
-            action: () => this.switchView('spellbook')
-        },
-        {
-            title: "Boss Battles ⚔️",
+            title: "Boss Battles 💀",
             content: "Epic challenges! Turn your life goals into boss fights. Deal damage by completing sub-goals and defeat them for legendary rewards!",
             element: "a[href='#bossbattles'].nav-link",
             action: () => this.switchView('bossbattles')
@@ -10018,6 +10054,12 @@ class GoalManager {
             content: "Multi-step adventures! Quest Chains are guided storylines with multiple chapters. Complete sequential tasks to unlock the next chapter and earn epic rewards!",
             element: "a[href='#questchains'].nav-link",
             action: () => this.switchView('questchains')
+        },
+        {
+            title: "Analytics 📈",
+            content: "Track your progress over time! See charts of your productivity, completion rates, and streaks. Identify patterns and optimize your quest strategy!",
+            element: "a[href='#analytics'].nav-link",
+            action: () => this.switchView('analytics')
         },
         {
             title: "Global Search 🔍",
