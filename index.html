@@ -614,6 +614,22 @@
                     <div id="habits-container" class="space-y-3 mb-6"></div>
                 </div>
 
+                <!-- Recurring Tasks Section -->
+                <div class="mb-8 max-w-4xl mx-auto">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 text-center md:text-left">
+                        <div class="mb-3 md:mb-0">
+                            <h3 class="text-xl md:text-2xl font-bold text-cyan-300 medieval-title flex items-center justify-center md:justify-start">
+                                <i class="ri-repeat-2-line mr-2"></i>Recurring Tasks
+                            </h3>
+                            <p class="text-cyan-200 fancy-font text-sm mt-1">Tasks that repeat weekly or monthly</p>
+                        </div>
+                        <button onclick="goalManager.addRecurringTask()" class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg hover:scale-105 transition-transform w-full md:w-auto border-2 border-cyan-500">
+                            <i class="ri-add-line mr-1"></i>New Recurring
+                        </button>
+                    </div>
+                    <div id="recurring-tasks-container" class="space-y-3"></div>
+                </div>
+
                 <div class="max-w-4xl mx-auto text-center md:text-left">
                     <h3 class="text-xl md:text-2xl font-bold text-amber-300 medieval-title mb-4">Today's Tasks</h3>
                     <div id="daily-tasks-container" class="space-y-3"></div>
@@ -1034,20 +1050,6 @@
                     <div id="premium-card" class="quest-card bg-gradient-to-br from-yellow-700 to-amber-900 p-6 rounded-xl shadow-2xl border-4 border-yellow-500 md:col-span-2">
                         <div id="premium-content">
                             <!-- Will be populated by JavaScript based on premium status -->
-                        </div>
-                    </div>
-
-                    <!-- Recurring Tasks -->
-                    <div class="quest-card bg-gradient-to-br from-cyan-800 to-cyan-900 p-6 rounded-xl shadow-2xl border-4 border-cyan-600">
-                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
-                            <i class="ri-repeat-2-line mr-2"></i> Recurring Tasks
-                        </h3>
-                        <p class="text-cyan-200 fancy-font mb-4 text-sm">Schedule tasks that repeat weekly or monthly</p>
-                        <button onclick="goalManager.addRecurringTask()" class="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-cyan-500 mb-4">
-                            <i class="ri-add-line mr-2"></i> Add Recurring Task
-                        </button>
-                        <div id="recurring-tasks-container" class="space-y-2 max-h-48 overflow-y-auto">
-                            <!-- Will be populated by JavaScript -->
                         </div>
                     </div>
 
