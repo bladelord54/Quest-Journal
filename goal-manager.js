@@ -1627,8 +1627,8 @@ class GoalManager {
                         <div class="text-cyan-300/70 text-xs">${scheduleText}</div>
                     </div>
                     <button onclick="goalManager.deleteRecurringTask(${rt.id})" 
-                        class="text-red-400 hover:text-red-300 p-1">
-                        <i class="ri-delete-bin-line"></i>
+                        class="text-red-400 hover:text-red-300 p-1" aria-label="Delete recurring task">
+                        <i class="ri-delete-bin-line" aria-hidden="true"></i>
                     </button>
                 </div>
             `;
@@ -3902,11 +3902,11 @@ class GoalManager {
                                 Total: ${habit.totalCompletions || 0} completions
                             </div>
                         </div>
-                        <button onclick="goalManager.editGoal('habit', ${habit.id})" class="text-blue-600 hover:text-blue-800 text-xl mr-2" title="Edit habit">
-                            <i class="ri-edit-line"></i>
+                        <button onclick="goalManager.editGoal('habit', ${habit.id})" class="text-blue-600 hover:text-blue-800 text-xl mr-2" title="Edit habit" aria-label="Edit habit">
+                            <i class="ri-edit-line" aria-hidden="true"></i>
                         </button>
-                        <button onclick="goalManager.deleteGoal('habit', ${habit.id})" class="text-amber-600 hover:text-amber-800 text-xl" title="Delete habit">
-                            <i class="ri-delete-bin-line"></i>
+                        <button onclick="goalManager.deleteGoal('habit', ${habit.id})" class="text-amber-600 hover:text-amber-800 text-xl" title="Delete habit" aria-label="Delete habit">
+                            <i class="ri-delete-bin-line" aria-hidden="true"></i>
                         </button>
                     </div>
                     
@@ -3972,11 +3972,11 @@ class GoalManager {
                                 </div>
                             </div>
                             <div class="flex flex-col gap-2">
-                                <button onclick="goalManager.restoreGoal(${goal.id})" class="text-${color}-400 hover:text-${color}-200 text-xl" title="Restore">
-                                    <i class="ri-refresh-line"></i>
+                                <button onclick="goalManager.restoreGoal(${goal.id})" class="text-${color}-400 hover:text-${color}-200 text-xl" title="Restore" aria-label="Restore archived goal">
+                                    <i class="ri-refresh-line" aria-hidden="true"></i>
                                 </button>
-                                <button onclick="if(confirm('Permanently delete?')) { goalManager.archivedGoals = goalManager.archivedGoals.filter(g => g.id !== ${goal.id}); goalManager.saveData(); goalManager.render(); }" class="text-red-500 hover:text-red-300 text-xl" title="Delete Forever">
-                                    <i class="ri-delete-bin-line"></i>
+                                <button onclick="if(confirm('Permanently delete?')) { goalManager.archivedGoals = goalManager.archivedGoals.filter(g => g.id !== ${goal.id}); goalManager.saveData(); goalManager.render(); }" class="text-red-500 hover:text-red-300 text-xl" title="Delete Forever" aria-label="Permanently delete goal">
+                                    <i class="ri-delete-bin-line" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -5421,11 +5421,11 @@ class GoalManager {
                             </button>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('life', ${goal.id})" class="text-red-300 hover:text-red-100 text-xl" title="Edit quest">
-                                <i class="ri-edit-line"></i>
+                            <button onclick="goalManager.editGoal('life', ${goal.id})" class="text-red-300 hover:text-red-100 text-xl" title="Edit quest" aria-label="Edit life goal">
+                                <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('life', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest">
-                                <i class="ri-delete-bin-line"></i>
+                            <button onclick="goalManager.deleteGoal('life', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete life goal">
+                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -5517,11 +5517,11 @@ class GoalManager {
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('yearly', ${goal.id})" class="text-purple-300 hover:text-purple-100 text-xl" title="Edit quest">
-                                <i class="ri-edit-line"></i>
+                            <button onclick="goalManager.editGoal('yearly', ${goal.id})" class="text-purple-300 hover:text-purple-100 text-xl" title="Edit quest" aria-label="Edit yearly goal">
+                                <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('yearly', ${goal.id})" class="text-purple-400 hover:text-purple-200 text-xl" title="Delete quest">
-                                <i class="ri-delete-bin-line"></i>
+                            <button onclick="goalManager.deleteGoal('yearly', ${goal.id})" class="text-purple-400 hover:text-purple-200 text-xl" title="Delete quest" aria-label="Delete yearly goal">
+                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -5683,11 +5683,11 @@ class GoalManager {
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('monthly', ${goal.id})" class="text-blue-300 hover:text-blue-100 text-xl" title="Edit quest">
-                                <i class="ri-edit-line"></i>
+                            <button onclick="goalManager.editGoal('monthly', ${goal.id})" class="text-blue-300 hover:text-blue-100 text-xl" title="Edit quest" aria-label="Edit monthly goal">
+                                <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('monthly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Delete quest">
-                                <i class="ri-delete-bin-line"></i>
+                            <button onclick="goalManager.deleteGoal('monthly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Delete quest" aria-label="Delete monthly goal">
+                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -5834,11 +5834,11 @@ class GoalManager {
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('weekly', ${goal.id})" class="text-green-300 hover:text-green-100 text-xl" title="Edit quest">
-                                <i class="ri-edit-line"></i>
+                            <button onclick="goalManager.editGoal('weekly', ${goal.id})" class="text-green-300 hover:text-green-100 text-xl" title="Edit quest" aria-label="Edit weekly goal">
+                                <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('weekly', ${goal.id})" class="text-green-400 hover:text-green-200 text-xl" title="Delete quest">
-                                <i class="ri-delete-bin-line"></i>
+                            <button onclick="goalManager.deleteGoal('weekly', ${goal.id})" class="text-green-400 hover:text-green-200 text-xl" title="Delete quest" aria-label="Delete weekly goal">
+                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -5914,14 +5914,14 @@ class GoalManager {
                             ${this.renderChecklistHTML(task, 'daily')}
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="goalManager.manageParentConnections('daily', ${task.id})" class="text-green-600 hover:text-green-800 text-xl" title="Manage connections">
-                                <i class="ri-links-line"></i>
+                            <button onclick="goalManager.manageParentConnections('daily', ${task.id})" class="text-green-600 hover:text-green-800 text-xl" title="Manage connections" aria-label="Manage task connections">
+                                <i class="ri-links-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.editGoal('daily', ${task.id})" class="text-blue-600 hover:text-blue-800 text-xl" title="Edit quest">
-                                <i class="ri-edit-line"></i>
+                            <button onclick="goalManager.editGoal('daily', ${task.id})" class="text-blue-600 hover:text-blue-800 text-xl" title="Edit quest" aria-label="Edit daily task">
+                                <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-600 hover:text-red-800 text-xl" title="Delete quest">
-                                <i class="ri-delete-bin-line"></i>
+                            <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-600 hover:text-red-800 text-xl" title="Delete quest" aria-label="Delete daily task">
+                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -6579,11 +6579,11 @@ class GoalManager {
                         ${this.renderChecklistHTML(quest, 'sidequest')}
                     </div>
                     <div class="flex flex-col gap-2">
-                        <button onclick="goalManager.editGoal('side', ${quest.id})" class="text-${color}-300 hover:text-${color}-100 text-xl" title="Edit quest">
-                            <i class="ri-edit-line"></i>
+                        <button onclick="goalManager.editGoal('side', ${quest.id})" class="text-${color}-300 hover:text-${color}-100 text-xl" title="Edit quest" aria-label="Edit side quest">
+                            <i class="ri-edit-line" aria-hidden="true"></i>
                         </button>
-                        <button onclick="goalManager.deleteGoal('side', ${quest.id})" class="text-${color}-400 hover:text-${color}-200 text-xl" title="Delete quest">
-                            <i class="ri-delete-bin-line"></i>
+                        <button onclick="goalManager.deleteGoal('side', ${quest.id})" class="text-${color}-400 hover:text-${color}-200 text-xl" title="Delete quest" aria-label="Delete side quest">
+                            <i class="ri-delete-bin-line" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -9476,8 +9476,8 @@ class GoalManager {
                             class="flex-1 bg-indigo-800/50 text-white px-4 py-3 rounded-lg border-2 border-indigo-500 focus:border-indigo-400 outline-none fancy-font text-lg"
                             oninput="goalManager.performSearch(this.value)"
                             autofocus>
-                        <button onclick="document.getElementById('search-modal').remove()" class="text-indigo-300 hover:text-white p-2">
-                            <i class="ri-close-line text-2xl"></i>
+                        <button onclick="document.getElementById('search-modal').remove()" class="text-indigo-300 hover:text-white p-2" aria-label="Close search">
+                            <i class="ri-close-line text-2xl" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="flex gap-2 mt-3">

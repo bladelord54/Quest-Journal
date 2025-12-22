@@ -267,8 +267,8 @@
         <!-- Medieval Sidebar -->
         <div id="main-sidebar" class="w-72 bg-gradient-to-b from-amber-900 via-amber-950 to-stone-950 text-amber-100 shadow-2xl border-r-4 border-amber-700 relative overflow-hidden">
             <!-- Mobile Nav Toggle Button (shown only on mobile via CSS) -->
-            <button id="mobile-nav-toggle" onclick="toggleMobileNav()" class="hidden md:hidden">
-                <i class="ri-arrow-down-s-line"></i>
+            <button id="mobile-nav-toggle" onclick="toggleMobileNav()" class="hidden md:hidden" aria-label="Toggle navigation menu">
+                <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
             </button>
             <!-- Decorative corner ornaments -->
             <div class="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-amber-600 opacity-30"></div>
@@ -356,8 +356,9 @@
             <div id="stats-panel" class="fixed top-4 right-4 z-50" style="transition: transform 0.3s ease-in-out;">
                 <!-- Toggle Button -->
                 <button onclick="if(window.goalManager) { window.goalManager.toggleStatsPanel(); } else { alert('GoalManager not loaded yet!'); }" 
-                    class="absolute -left-12 top-2 bg-purple-700 hover:bg-purple-600 text-white p-3 rounded-l-lg shadow-xl border-2 border-purple-500 transition-all z-10">
-                    <i id="stats-toggle-icon" class="ri-arrow-right-s-line text-xl"></i>
+                    class="absolute -left-12 top-2 bg-purple-700 hover:bg-purple-600 text-white p-3 rounded-l-lg shadow-xl border-2 border-purple-500 transition-all z-10"
+                    aria-label="Toggle stats panel">
+                    <i id="stats-toggle-icon" class="ri-arrow-right-s-line text-xl" aria-hidden="true"></i>
                 </button>
                 
                 <!-- Stats Content -->
@@ -414,17 +415,17 @@
                     
                     <!-- Badges & Theme Buttons -->
                     <div class="flex gap-2">
-                        <button onclick="goalManager.switchView('tools')" class="flex-1 text-sm bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-500">
+                        <button onclick="goalManager.switchView('tools')" class="flex-1 text-sm bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-500" aria-label="View badges and tools">
                             🏆 <span id="badge-count">0</span>
                         </button>
-                        <button onclick="goalManager.toggleDarkMode()" id="theme-toggle" class="flex-1 text-sm bg-stone-700 hover:bg-stone-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-stone-500">
-                            🌙
+                        <button onclick="goalManager.toggleDarkMode()" id="theme-toggle" class="flex-1 text-sm bg-stone-700 hover:bg-stone-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-stone-500" aria-label="Toggle dark mode">
+                            <span aria-hidden="true">🌙</span>
                         </button>
                     </div>
                     
                     <!-- Search Button -->
-                    <button onclick="goalManager.openSearchModal()" class="w-full mt-2 text-sm bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-indigo-500 flex items-center justify-center">
-                        <i class="ri-search-line mr-2"></i> Search Quests
+                    <button onclick="goalManager.openSearchModal()" class="w-full mt-2 text-sm bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-indigo-500 flex items-center justify-center" aria-label="Search quests">
+                        <i class="ri-search-line mr-2" aria-hidden="true"></i> Search Quests
                     </button>
                 </div>
             </div>
