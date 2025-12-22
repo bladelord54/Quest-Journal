@@ -4306,7 +4306,7 @@ class GoalManager {
         // Section header for free spells
         let html = `
             <div class="w-full mb-2">
-                <h3 class="text-lg font-bold text-green-300 medieval-title flex items-center gap-2">
+                <h3 class="text-lg font-bold text-green-300 medieval-title flex items-center justify-center md:justify-start gap-2">
                     <span>✨</span> Free Spells <span class="text-sm font-normal text-green-400">(${freeSpells.length} available)</span>
                 </h3>
             </div>
@@ -4349,7 +4349,7 @@ class GoalManager {
         // Section header for premium spells
         html += `
             <div class="w-full mt-6 mb-2">
-                <h3 class="text-lg font-bold text-yellow-300 medieval-title flex items-center gap-2">
+                <h3 class="text-lg font-bold text-yellow-300 medieval-title flex items-center justify-center md:justify-start gap-2">
                     <span>👑</span> Premium Spells <span class="text-sm font-normal text-yellow-400">(${premiumSpells.length} spells)</span>
                 </h3>
             </div>
