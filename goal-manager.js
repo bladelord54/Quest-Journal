@@ -6047,53 +6047,6 @@ class GoalManager {
         this.showAchievement('👑 Premium Unlocked! Welcome to the inner circle!', 'weekly');
     }
 
-    // Dev Tools - Unlock all themes for testing
-    devUnlockAllThemes() {
-        const allThemeIds = Object.keys(this.themeDefinitions);
-        allThemeIds.forEach(themeId => {
-            if (!this.unlockedThemes.includes(themeId)) {
-                this.unlockedThemes.push(themeId);
-            }
-        });
-        this.saveData();
-        this.renderThemeSelector();
-        this.showAchievement('🧪 Dev: All themes unlocked!', 'daily');
-    }
-
-    // Dev Tools - Add charges to all spells for testing
-    devUnlockAllSpells() {
-        const allSpellIds = Object.keys(this.spellDefinitions);
-        allSpellIds.forEach(spellId => {
-            const existingSpell = this.spellbook.find(s => s.spellId === spellId);
-            if (existingSpell) {
-                existingSpell.charges += 5;
-            } else {
-                this.spellbook.push({ spellId, charges: 5 });
-            }
-        });
-        this.saveData();
-        this.renderSpellbook();
-        this.showAchievement('🧪 Dev: +5 charges to all spells!', 'daily');
-    }
-
-    // Dev Tools - Reset premium status
-    devResetPremium() {
-        this.isPremium = false;
-        this.premiumPurchaseDate = null;
-        this.saveData();
-        this.renderPremiumCard();
-        this.render();
-        this.showAchievement('🧪 Dev: Premium reset to free user', 'daily');
-    }
-
-    // Dev Tools - Give gold for testing
-    devGiveGold(amount = 1000) {
-        this.goldCoins += amount;
-        this.saveData();
-        this.render();
-        this.showAchievement(`🧪 Dev: +${amount} Gold added!`, 'daily');
-    }
-
     renderPremiumCard() {
         const container = document.getElementById('premium-content');
         if (!container) return;
@@ -6131,28 +6084,6 @@ class GoalManager {
                         </div>
                     </div>
                     
-                    <!-- Dev Tools -->
-                    <div class="mt-6 pt-4 border-t border-yellow-600/30">
-                        <p class="text-xs text-yellow-400/60 mb-3 font-mono">🧪 Dev Tools</p>
-                        <div class="flex flex-wrap gap-2 justify-center">
-                            <button onclick="goalManager.devGiveGold(1000)" 
-                                class="bg-yellow-700 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                                💰 +1000 Gold
-                            </button>
-                            <button onclick="goalManager.devUnlockAllThemes()" 
-                                class="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                                🎨 Unlock Themes
-                            </button>
-                            <button onclick="goalManager.devUnlockAllSpells()" 
-                                class="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                                📖 +5 All Spells
-                            </button>
-                            <button onclick="goalManager.devResetPremium()" 
-                                class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                                🔄 Reset Premium
-                            </button>
-                        </div>
-                    </div>
                 </div>
             `;
         } else {
@@ -6194,29 +6125,6 @@ class GoalManager {
                         <button onclick="goalManager.showPremiumPurchaseModal()" 
                             class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-8 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
                             <i class="ri-vip-crown-2-fill mr-2"></i> Go Premium
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Dev Tools -->
-                <div class="mt-6 pt-4 border-t border-yellow-600/30">
-                    <p class="text-xs text-yellow-400/60 mb-3 font-mono">🧪 Dev Tools</p>
-                    <div class="flex flex-wrap gap-2 justify-center">
-                        <button onclick="goalManager.devGiveGold(1000)" 
-                            class="bg-yellow-700 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                            💰 +1000 Gold
-                        </button>
-                        <button onclick="goalManager.unlockPremium()" 
-                            class="bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                            👑 Demo Premium
-                        </button>
-                        <button onclick="goalManager.devUnlockAllThemes()" 
-                            class="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                            🎨 Unlock Themes
-                        </button>
-                        <button onclick="goalManager.devUnlockAllSpells()" 
-                            class="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold">
-                            📖 +5 All Spells
                         </button>
                     </div>
                 </div>
@@ -6332,21 +6240,19 @@ class GoalManager {
             // Legacy Android bridge fallback
             window.Android.purchasePremium();
         } else {
-            // Web fallback - for testing or web users
+            // Web fallback - show restore option for users who purchased on Android
             this.showSelectModal({
-                title: 'Purchase Options',
+                title: 'Premium Purchase',
                 icon: 'ri-shopping-cart-2-line',
                 choices: [
-                    { value: 'restore', label: 'Restore Purchase', icon: '🔄', description: 'Already purchased? Restore here' },
-                    { value: 'demo', label: 'Demo Premium (Dev)', icon: '🧪', description: 'Preview premium features' }
+                    { value: 'restore', label: 'Restore Purchase', icon: '🔄', description: 'Already purchased on Android? Restore here' },
+                    { value: 'info', label: 'Get Premium', icon: '📱', description: 'Purchase available in the Android app' }
                 ]
             }, async (choice) => {
-                if (choice === 'demo') {
-                    this.unlockPremium();
-                    const modal = document.getElementById('premium-purchase-modal');
-                    if (modal) modal.remove();
-                } else if (choice === 'restore') {
+                if (choice === 'restore') {
                     await this.restorePurchases();
+                } else if (choice === 'info') {
+                    this.showAchievement('📱 Premium is available in the Google Play app!', 'daily');
                 }
             });
         }
