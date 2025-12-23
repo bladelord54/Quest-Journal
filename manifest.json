@@ -68,7 +68,43 @@
     }
   ],
   "categories": ["productivity", "lifestyle"],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "screenshots/dashboard.jpg",
+      "sizes": "540x1200",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Dashboard - Your command center"
+    },
+    {
+      "src": "screenshots/side-quests.jpg",
+      "sizes": "540x1200",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Side Quests - Optional adventures"
+    },
+    {
+      "src": "screenshots/calendar.jpg",
+      "sizes": "540x1200",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Quest Calendar - Track your adventures"
+    },
+    {
+      "src": "screenshots/epic-quests.jpg",
+      "sizes": "540x1200",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Epic Quests - Life goals"
+    },
+    {
+      "src": "screenshots/stats.jpg",
+      "sizes": "540x1200",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Level up and earn rewards"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Add Daily Task",
