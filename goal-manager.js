@@ -6317,16 +6317,22 @@ class GoalManager {
         });
     }
 
-    initiatePremiumPurchase() {
-        // This will be replaced with actual Play Store billing integration
-        // For now, show a placeholder message
-        
-        // Check if running in TWA/Android environment
-        if (window.Android && window.Android.purchasePremium) {
-            // Call Android billing
+    // Google Play Digital Goods API for in-app purchases
+    async initiatePremiumPurchase() {
+        // Check if Digital Goods API is available (TWA on Android)
+        if ('getDigitalGoodsService' in window) {
+            try {
+                await this.purchaseWithDigitalGoods();
+                return;
+            } catch (error) {
+                console.error('Digital Goods API error:', error);
+                this.showAchievement('❌ Purchase failed. Please try again.', 'daily');
+            }
+        } else if (window.Android && window.Android.purchasePremium) {
+            // Legacy Android bridge fallback
             window.Android.purchasePremium();
         } else {
-            // Web fallback - for testing or alternative payment
+            // Web fallback - for testing or web users
             this.showSelectModal({
                 title: 'Purchase Options',
                 icon: 'ri-shopping-cart-2-line',
@@ -6334,24 +6340,106 @@ class GoalManager {
                     { value: 'restore', label: 'Restore Purchase', icon: '🔄', description: 'Already purchased? Restore here' },
                     { value: 'demo', label: 'Demo Premium (Dev)', icon: '🧪', description: 'Preview premium features' }
                 ]
-            }, (choice) => {
+            }, async (choice) => {
                 if (choice === 'demo') {
                     this.unlockPremium();
                     const modal = document.getElementById('premium-purchase-modal');
                     if (modal) modal.remove();
                 } else if (choice === 'restore') {
-                    this.showAchievement('🔄 Checking for previous purchase...', 'daily');
-                    // In production, this would check Play Store purchase history
+                    await this.restorePurchases();
                 }
             });
         }
     }
 
-    // Called from Android TWA when purchase is successful
-    onPremiumPurchaseSuccess() {
+    // Purchase using Digital Goods API (Google Play Billing)
+    async purchaseWithDigitalGoods() {
+        const PREMIUM_SKU = 'quest_journal_premium'; // Set this in Google Play Console
+        
+        // Get the Digital Goods service
+        const service = await window.getDigitalGoodsService('https://play.google.com/billing');
+        
+        // Get product details
+        const details = await service.getDetails([PREMIUM_SKU]);
+        if (!details || details.length === 0) {
+            throw new Error('Product not found');
+        }
+        
+        const product = details[0];
+        
+        // Create payment request
+        const paymentMethods = [{
+            supportedMethods: 'https://play.google.com/billing',
+            data: {
+                sku: PREMIUM_SKU
+            }
+        }];
+        
+        const paymentDetails = {
+            total: {
+                label: product.title || 'Quest Journal Premium',
+                amount: { currency: product.price.currency, value: product.price.value }
+            }
+        };
+        
+        const request = new PaymentRequest(paymentMethods, paymentDetails);
+        
+        // Show payment UI
+        const response = await request.show();
+        
+        // Acknowledge the purchase
+        const { purchaseToken } = response.details;
+        await service.acknowledge(purchaseToken, 'onetime');
+        
+        // Complete the payment
+        await response.complete('success');
+        
+        // Unlock premium
+        this.onPremiumPurchaseSuccess(purchaseToken);
+        
+        return true;
+    }
+
+    // Restore previous purchases
+    async restorePurchases() {
+        this.showAchievement('🔄 Checking for previous purchases...', 'daily');
+        
+        if ('getDigitalGoodsService' in window) {
+            try {
+                const service = await window.getDigitalGoodsService('https://play.google.com/billing');
+                const purchases = await service.listPurchases();
+                
+                const premiumPurchase = purchases.find(p => p.itemId === 'quest_journal_premium');
+                if (premiumPurchase) {
+                    this.onPremiumPurchaseSuccess(premiumPurchase.purchaseToken);
+                    this.showAchievement('✅ Premium restored successfully!', 'weekly');
+                } else {
+                    this.showAchievement('❌ No previous purchase found', 'daily');
+                }
+            } catch (error) {
+                console.error('Restore error:', error);
+                this.showAchievement('❌ Could not restore purchases', 'daily');
+            }
+        } else {
+            // Check localStorage for web purchases
+            if (this.isPremium) {
+                this.showAchievement('✅ Premium is already active!', 'weekly');
+            } else {
+                this.showAchievement('❌ No previous purchase found', 'daily');
+            }
+        }
+    }
+
+    // Called when purchase is successful
+    onPremiumPurchaseSuccess(purchaseToken = null) {
         this.unlockPremium();
+        if (purchaseToken) {
+            this.premiumPurchaseToken = purchaseToken;
+            this.saveData();
+        }
         const modal = document.getElementById('premium-purchase-modal');
         if (modal) modal.remove();
+        this.showAchievement('👑 Premium unlocked! Welcome to the inner circle!', 'weekly');
     }
 
     showPremiumPrompt(feature) {
