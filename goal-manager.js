@@ -6189,7 +6189,7 @@ class GoalManager {
                     
                     <div class="text-center">
                         <div class="text-5xl mb-2">👑</div>
-                        <div class="text-3xl font-bold text-yellow-200 medieval-title mb-1">$3.99</div>
+                        <div class="text-3xl font-bold text-yellow-200 medieval-title mb-1">$4.99</div>
                         <div class="text-yellow-300 text-sm fancy-font mb-3">One-time purchase</div>
                         <button onclick="goalManager.showPremiumPurchaseModal()" 
                             class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-8 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
@@ -6287,7 +6287,7 @@ class GoalManager {
                     </div>
                     
                     <div class="text-center mb-4">
-                        <div class="text-4xl font-bold text-yellow-200 medieval-title">$3.99</div>
+                        <div class="text-4xl font-bold text-yellow-200 medieval-title">$4.99</div>
                         <div class="text-yellow-300 text-sm fancy-font">One-time purchase • Lifetime access</div>
                     </div>
                     
