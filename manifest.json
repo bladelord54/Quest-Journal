@@ -1,6 +1,6 @@
 {
   "name": "Life Quest Journal",
-  "short_name": "Life Quest",
+  "short_name": "Life Quest Journal",
   "description": "Transform your life goals into epic quests. Track habits, earn rewards, and level up your life!",
   "id": "/Quest-Journal/",
   "start_url": "./index.html",
