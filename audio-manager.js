@@ -1,4 +1,4 @@
-// Audio Manager for Quest Journal
+// Audio Manager for Life Quest Journal
 // Handles loading and playing custom sound files
 
 class AudioManager {

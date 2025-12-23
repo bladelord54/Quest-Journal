@@ -82,7 +82,7 @@ window.addEventListener('appinstalled', () => {
   
   // Show success message
   if (typeof goalManager !== 'undefined' && goalManager.showAchievement) {
-    goalManager.showAchievement('📱 Quest Journal installed! Welcome, hero!', 'yearly');
+    goalManager.showAchievement('📱 Life Quest Journal installed! Welcome, hero!', 'yearly');
   }
 });
 

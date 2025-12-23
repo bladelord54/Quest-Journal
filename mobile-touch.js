@@ -1,4 +1,4 @@
-// Mobile Touch Enhancements for Quest Journal
+// Mobile Touch Enhancements for Life Quest Journal
 // Handles swipe gestures, haptic feedback, and mobile-specific interactions
 
 class MobileTouchHandler {

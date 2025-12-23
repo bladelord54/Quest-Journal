@@ -6094,7 +6094,7 @@ class GoalManager {
                         <h3 class="text-2xl font-bold text-yellow-200 medieval-title mb-2 flex items-center">
                             <i class="ri-vip-crown-2-line mr-2"></i> Upgrade to Premium
                         </h3>
-                        <p class="text-yellow-100 fancy-font mb-4 text-sm">Unlock the full power of your Quest Journal!</p>
+                        <p class="text-yellow-100 fancy-font mb-4 text-sm">Unlock the full power of your Life Quest Journal!</p>
                         
                         <div class="grid grid-cols-2 gap-3 mb-4">
                             <div class="flex items-center gap-2 text-yellow-100 text-sm">
@@ -6144,7 +6144,7 @@ class GoalManager {
             <div class="bg-gradient-to-br from-yellow-800 to-amber-950 rounded-xl shadow-2xl border-4 border-yellow-500 overflow-hidden" style="width: 100%; max-width: min(500px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto;">
                 <div class="bg-black/30 p-6 text-center border-b-2 border-yellow-600">
                     <div class="text-6xl mb-2">👑</div>
-                    <h2 class="text-2xl font-bold text-yellow-200 medieval-title">Quest Journal Premium</h2>
+                    <h2 class="text-2xl font-bold text-yellow-200 medieval-title">Life Quest Journal Premium</h2>
                     <p class="text-yellow-300 fancy-font">Unlock your full potential</p>
                 </div>
                 
@@ -6283,7 +6283,7 @@ class GoalManager {
         
         const paymentDetails = {
             total: {
-                label: product.title || 'Quest Journal Premium',
+                label: product.title || 'Life Quest Journal Premium',
                 amount: { currency: product.price.currency, value: product.price.value }
             }
         };
@@ -6417,9 +6417,9 @@ class GoalManager {
             try {
                 const data = JSON.parse(e.target.result);
                 
-                // Validate it's a Quest Journal backup
+                // Validate it's a Life Quest Journal backup
                 if (!data.version && !data.lifeGoals && !data.dailyTasks) {
-                    this.showErrorNotification('This doesn\'t appear to be a valid Quest Journal backup file.');
+                    this.showErrorNotification('This doesn\'t appear to be a valid Life Quest Journal backup file.');
                     return;
                 }
                 
@@ -9948,7 +9948,7 @@ class GoalManager {
 
     tutorialSteps = [
         {
-            title: "Welcome to Quest Journal! ⚔️",
+            title: "Welcome to Life Quest Journal! ⚔️",
             content: "Welcome, brave adventurer! This RPG-themed task manager will help you level up in real life. Let me show you around!",
             element: null,
             action: () => this.switchView('dashboard')
