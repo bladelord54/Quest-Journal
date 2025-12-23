@@ -355,7 +355,7 @@
             <!-- Player Stats Panel - Top Right -->
             <div id="stats-panel" class="fixed top-4 right-4 z-50" style="transition: transform 0.3s ease-in-out;">
                 <!-- Toggle Button -->
-                <button onclick="if(window.goalManager) { window.goalManager.toggleStatsPanel(); } else { alert('GoalManager not loaded yet!'); }" 
+                <button onclick="if(window.goalManager) { window.goalManager.toggleStatsPanel(); }" 
                     class="absolute -left-12 top-2 bg-purple-700 hover:bg-purple-600 text-white p-3 rounded-l-lg shadow-xl border-2 border-purple-500 transition-all z-10"
                     aria-label="Toggle stats panel">
                     <i id="stats-toggle-icon" class="ri-arrow-right-s-line text-xl" aria-hidden="true"></i>
@@ -1331,7 +1331,19 @@
                 console.log('✅ GoalManager created successfully!', goalManager);
             } catch (err) {
                 console.error('❌ Error creating GoalManager:', err);
-                alert('Error loading app: ' + err.message);
+                document.body.innerHTML = `
+                    <div class="min-h-screen bg-stone-900 flex items-center justify-center p-8">
+                        <div class="bg-red-900/50 border-2 border-red-500 rounded-xl p-8 max-w-md text-center">
+                            <div class="text-6xl mb-4">⚠️</div>
+                            <h2 class="text-2xl font-bold text-red-300 mb-4">Quest Journal Error</h2>
+                            <p class="text-red-200 mb-4">Sorry, the app couldn't load properly.</p>
+                            <p class="text-red-300/70 text-sm mb-6">${err.message}</p>
+                            <button onclick="location.reload()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold">
+                                🔄 Reload App
+                            </button>
+                        </div>
+                    </div>
+                `;
             }
         });
         

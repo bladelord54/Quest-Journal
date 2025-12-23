@@ -2483,7 +2483,7 @@ class GoalManager {
     openTreasureChest(type) {
         const costs = { bronze: 200, silver: 600, gold: 1500, royal: 5000 };
         if (this.goldCoins < costs[type]) {
-            alert(`Not enough gold! Need ${costs[type]} coins.`);
+            this.showAchievement(`💰 Not enough gold! Need ${costs[type]} coins.`, 'daily');
             return;
         }
         
@@ -4438,14 +4438,14 @@ class GoalManager {
         const spellEntry = this.spellbook.find(s => s.spellId === spellId);
         if (!spellEntry || spellEntry.charges <= 0) {
             this.isCastingSpell = false;
-            alert('No charges remaining for this spell!');
+            this.showAchievement('⚡ No charges remaining for this spell!', 'daily');
             return;
         }
         
         // Check if spell is already active
         if (this.activeSpells.some(s => s.spellId === spellId)) {
             this.isCastingSpell = false;
-            alert('This spell is already active!');
+            this.showAchievement('✨ This spell is already active!', 'daily');
             return;
         }
 
@@ -4833,7 +4833,7 @@ class GoalManager {
             this.render();
             this.showAchievement('↩️ Undone!', 'daily');
         } else {
-            alert('Nothing to undo!');
+            this.showAchievement('📝 Nothing to undo!', 'daily');
         }
     }
 
@@ -4845,7 +4845,7 @@ class GoalManager {
             this.render();
             this.showAchievement('↪️ Redone!', 'daily');
         } else {
-            alert('Nothing to redo!');
+            this.showAchievement('📝 Nothing to redo!', 'daily');
         }
     }
 
