@@ -6234,7 +6234,18 @@ class GoalManager {
                 return;
             } catch (error) {
                 console.error('Digital Goods API error:', error);
-                this.showAchievement('❌ Purchase failed. Please try again.', 'daily');
+                // Show more specific error message for debugging
+                let errorMsg = '❌ Purchase failed: ';
+                if (error.message.includes('not found')) {
+                    errorMsg += 'Product not found in Play Store';
+                } else if (error.message.includes('canceled') || error.name === 'AbortError') {
+                    errorMsg += 'Purchase was canceled';
+                } else if (error.message.includes('not supported')) {
+                    errorMsg += 'Billing not supported';
+                } else {
+                    errorMsg += error.message || 'Unknown error';
+                }
+                this.showAchievement(errorMsg, 'daily');
             }
         } else if (window.Android && window.Android.purchasePremium) {
             // Legacy Android bridge fallback
@@ -6262,13 +6273,18 @@ class GoalManager {
     async purchaseWithDigitalGoods() {
         const PREMIUM_SKU = 'quest_journal_premium'; // Set this in Google Play Console
         
+        console.log('Starting Digital Goods purchase flow...');
+        
         // Get the Digital Goods service
         const service = await window.getDigitalGoodsService('https://play.google.com/billing');
+        console.log('Digital Goods service obtained:', service);
         
         // Get product details
         const details = await service.getDetails([PREMIUM_SKU]);
+        console.log('Product details:', details);
+        
         if (!details || details.length === 0) {
-            throw new Error('Product not found');
+            throw new Error('Product not found - check SKU: ' + PREMIUM_SKU);
         }
         
         const product = details[0];
