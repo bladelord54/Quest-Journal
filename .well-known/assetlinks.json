@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.lifequestjournal.app",
+        "sha256_cert_fingerprints": ["92:9F:22:69:11:13:9F:D7:F4:74:7A:FE:4B:6A:76:4F:84:7D:1B:49:8B:62:81:0C:2C:F1:DF:DD:1B:F4:3C:BF"]
+      }
+    }]
