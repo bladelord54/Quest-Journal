@@ -6274,10 +6274,21 @@ class GoalManager {
         const PREMIUM_SKU = 'quest_journal_premium'; // Set this in Google Play Console
         
         console.log('Starting Digital Goods purchase flow...');
+        console.log('getDigitalGoodsService available:', 'getDigitalGoodsService' in window);
         
         // Get the Digital Goods service
-        const service = await window.getDigitalGoodsService('https://play.google.com/billing');
-        console.log('Digital Goods service obtained:', service);
+        let service;
+        try {
+            service = await window.getDigitalGoodsService('https://play.google.com/billing');
+            console.log('Digital Goods service obtained:', service);
+        } catch (serviceError) {
+            console.error('Failed to get Digital Goods service:', serviceError);
+            throw new Error('Billing service unavailable: ' + serviceError.message);
+        }
+        
+        if (!service) {
+            throw new Error('Digital Goods service returned null - billing not supported');
+        }
         
         // Get product details
         const details = await service.getDetails([PREMIUM_SKU]);
