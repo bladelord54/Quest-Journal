@@ -2471,11 +2471,20 @@ class GoalManager {
 
     tryUnlockRandomTheme() {
         // Use centralized themeDefinitions - exclude 'default' since it's always unlocked
-        const allThemes = Object.keys(this.themeDefinitions).filter(t => t !== 'default');
+        // Also exclude premium themes if user doesn't have premium
+        const allThemes = Object.keys(this.themeDefinitions).filter(t => {
+            if (t === 'default') return false;
+            if (!this.isPremium && this.themeDefinitions[t].premium) return false;
+            return true;
+        });
         const lockedThemes = allThemes.filter(t => !this.unlockedThemes.includes(t));
         if (lockedThemes.length > 0) {
             const randomTheme = lockedThemes[Math.floor(Math.random() * lockedThemes.length)];
             this.unlockTheme(randomTheme, this.themeDefinitions[randomTheme].name);
+        } else if (!this.isPremium) {
+            // No free themes left to unlock, give bonus gold instead
+            this.goldCoins += 100;
+            this.showAchievement('💰 All free themes unlocked! +100 gold bonus!', 'daily');
         }
     }
 
