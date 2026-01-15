@@ -54,13 +54,13 @@
         display: none; /* Chrome/Safari */
     }
 
-    /* Scroll indicator - fade gradient edges */
-    #main-sidebar {
+    /* Scroll indicator - fade gradient edges (using nav element, not sidebar) */
+    #main-sidebar > nav {
         position: relative;
     }
 
-    #main-sidebar::before,
-    #main-sidebar::after {
+    #main-sidebar > nav::before,
+    #main-sidebar > nav::after {
         content: '';
         position: absolute;
         top: 0;
@@ -72,24 +72,24 @@
         transition: opacity 0.3s ease;
     }
 
-    #main-sidebar::before {
+    #main-sidebar > nav::before {
         left: 0;
         background: linear-gradient(to right, var(--theme-bg-start, rgba(120, 53, 15, 0.95)), transparent);
     }
 
-    #main-sidebar::after {
+    #main-sidebar > nav::after {
         right: 0;
         background: linear-gradient(to left, var(--theme-bg-start, rgba(120, 53, 15, 0.95)), transparent);
     }
 
     /* Show right fade by default (more content to the right) */
-    #main-sidebar.scroll-right::after,
-    #main-sidebar:not(.scroll-checked)::after {
+    #main-sidebar.scroll-right > nav::after,
+    #main-sidebar:not(.scroll-checked) > nav::after {
         opacity: 1;
     }
 
     /* Show left fade when scrolled */
-    #main-sidebar.scroll-left::before {
+    #main-sidebar.scroll-left > nav::before {
         opacity: 1;
     }
 
