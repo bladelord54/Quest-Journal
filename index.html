@@ -454,20 +454,18 @@
                     </div>
                 </header>
 
-                <!-- Period Summaries -->
-                <div class="mb-8 flex justify-center gap-4 flex-wrap">
-                    <button onclick="goalManager.showPeriodSummary('week')" 
-                        class="bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-green-500">
-                        <i class="ri-shield-line mr-2"></i>Week Summary
-                    </button>
-                    <button onclick="goalManager.showPeriodSummary('month')" 
-                        class="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-blue-500">
-                        <i class="ri-book-3-line mr-2"></i>Month Summary
-                    </button>
-                    <button onclick="goalManager.showPeriodSummary('year')" 
-                        class="bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-purple-500">
-                        <i class="ri-file-paper-2-line mr-2"></i>Year Summary
-                    </button>
+                <!-- Today's Quests (moved to top for quick access) -->
+                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 rounded-xl shadow-2xl p-8 border-4 border-amber-600 mb-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-amber-900 medieval-title">📜 Today's Quests</h3>
+                        <button onclick="addDailyTask()" class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg hover:scale-105 transition-transform border-2 border-amber-700">
+                            <i class="ri-add-line mr-2"></i>New Quest
+                        </button>
+                    </div>
+                    
+                    <div id="today-tasks-list" class="space-y-3">
+                        <div class="text-amber-800 text-center py-8 fancy-font">No quests for today. Begin your adventure!</div>
+                    </div>
                 </div>
 
                 <!-- Stats Grid -->
@@ -517,18 +515,20 @@
                     </div>
                 </div>
 
-                <!-- Today's Quests -->
-                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 rounded-xl shadow-2xl p-8 border-4 border-amber-600">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-2xl font-bold text-amber-900 medieval-title">📜 Today's Quests</h3>
-                        <button onclick="addDailyTask()" class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg hover:scale-105 transition-transform border-2 border-amber-700">
-                            <i class="ri-add-line mr-2"></i>New Quest
-                        </button>
-                    </div>
-                    
-                    <div id="today-tasks-list" class="space-y-3">
-                        <div class="text-amber-800 text-center py-8 fancy-font">No quests for today. Begin your adventure!</div>
-                    </div>
+                <!-- Period Summaries (moved to bottom) -->
+                <div class="flex justify-center gap-4 flex-wrap">
+                    <button onclick="goalManager.showPeriodSummary('week')" 
+                        class="bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-green-500">
+                        <i class="ri-shield-line mr-2"></i>Week Summary
+                    </button>
+                    <button onclick="goalManager.showPeriodSummary('month')" 
+                        class="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-blue-500">
+                        <i class="ri-book-3-line mr-2"></i>Month Summary
+                    </button>
+                    <button onclick="goalManager.showPeriodSummary('year')" 
+                        class="bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-purple-500">
+                        <i class="ri-file-paper-2-line mr-2"></i>Year Summary
+                    </button>
                 </div>
             </div>
 
@@ -1367,7 +1367,48 @@
                 const sidebar = document.getElementById('main-sidebar');
                 if (sidebar) sidebar.classList.add('nav-collapsed');
             }
+            
+            // Mobile nav scroll indicator
+            setupMobileNavScrollIndicator();
         });
+        
+        // Mobile nav scroll indicator - shows fade gradients based on scroll position
+        function setupMobileNavScrollIndicator() {
+            const sidebar = document.getElementById('main-sidebar');
+            const nav = sidebar ? sidebar.querySelector('nav') : null;
+            
+            if (!nav || !sidebar) return;
+            
+            function updateScrollIndicators() {
+                const scrollLeft = nav.scrollLeft;
+                const maxScroll = nav.scrollWidth - nav.clientWidth;
+                
+                sidebar.classList.add('scroll-checked');
+                
+                // Show left fade if scrolled right
+                if (scrollLeft > 10) {
+                    sidebar.classList.add('scroll-left');
+                } else {
+                    sidebar.classList.remove('scroll-left');
+                }
+                
+                // Show right fade if more content to scroll
+                if (scrollLeft < maxScroll - 10) {
+                    sidebar.classList.add('scroll-right');
+                } else {
+                    sidebar.classList.remove('scroll-right');
+                }
+            }
+            
+            // Initial check
+            updateScrollIndicators();
+            
+            // Update on scroll
+            nav.addEventListener('scroll', updateScrollIndicators);
+            
+            // Update on resize
+            window.addEventListener('resize', updateScrollIndicators);
+        }
         
         // ===== Loading Overlay Functions =====
         function showLoading(text = 'Loading...') {

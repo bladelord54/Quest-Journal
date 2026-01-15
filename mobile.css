@@ -45,10 +45,52 @@
         gap: 0;
         scrollbar-width: none; /* Firefox */
         -ms-overflow-style: none; /* IE/Edge */
+        /* Add padding for partial tab peek effect */
+        padding-left: 8px;
+        padding-right: 8px;
     }
 
     body > .flex > div:first-child > nav::-webkit-scrollbar {
         display: none; /* Chrome/Safari */
+    }
+
+    /* Scroll indicator - fade gradient edges */
+    #main-sidebar {
+        position: relative;
+    }
+
+    #main-sidebar::before,
+    #main-sidebar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 30px;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    #main-sidebar::before {
+        left: 0;
+        background: linear-gradient(to right, var(--theme-bg-start, rgba(120, 53, 15, 0.95)), transparent);
+    }
+
+    #main-sidebar::after {
+        right: 0;
+        background: linear-gradient(to left, var(--theme-bg-start, rgba(120, 53, 15, 0.95)), transparent);
+    }
+
+    /* Show right fade by default (more content to the right) */
+    #main-sidebar.scroll-right::after,
+    #main-sidebar:not(.scroll-checked)::after {
+        opacity: 1;
+    }
+
+    /* Show left fade when scrolled */
+    #main-sidebar.scroll-left::before {
+        opacity: 1;
     }
 
     /* Mobile Nav Items - Icons Only */
