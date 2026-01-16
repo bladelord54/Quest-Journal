@@ -4739,7 +4739,7 @@ class GoalManager {
             volcanic: { class: 'particle-ember', duration: [6, 10], spawnRate: 800, initialCount: 6, maxParticles: 25 },
             mystic: { class: 'particle-magic', duration: [8, 12], spawnRate: 1200, initialCount: 5, maxParticles: 20 },
             golden: { class: 'particle-gold', duration: [8, 12], spawnRate: 1500, initialCount: 5, maxParticles: 20 },
-            shadow: { class: 'particle-shadow', duration: [10, 14], spawnRate: 2500, initialCount: 3, maxParticles: 12 }
+            shadow: { class: 'particle-shadow', duration: [12, 16], spawnRate: 1500, initialCount: 5, maxParticles: 18 }
         };
         
         return configs[this.currentTheme] || configs.default;
