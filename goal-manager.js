@@ -4706,14 +4706,17 @@ class GoalManager {
         }
         
         const container = document.getElementById('theme-particles');
-        if (!container) return;
+        if (!container) {
+            console.log('Theme particles container not found');
+            return;
+        }
         
         // Clear existing particles
         container.innerHTML = '';
         
         // Get particle config based on theme
         const particleConfig = this.getParticleConfig();
-        if (!particleConfig) return;
+        console.log('Theme particles init:', this.currentTheme, particleConfig);
         
         // Spawn particles at interval
         this.particleInterval = setInterval(() => {
@@ -4749,15 +4752,20 @@ class GoalManager {
         const particle = document.createElement('div');
         particle.className = `theme-particle ${config.class}`;
         
-        // Random position
+        // Random horizontal position
         particle.style.left = `${Math.random() * 100}%`;
+        
+        // Set starting vertical position based on animation direction
+        const risingParticles = ['particle-ember', 'particle-magic', 'particle-shadow'];
+        if (risingParticles.includes(config.class)) {
+            particle.style.bottom = '0';
+        } else {
+            particle.style.top = '0';
+        }
         
         // Random duration within range
         const duration = config.duration[0] + Math.random() * (config.duration[1] - config.duration[0]);
         particle.style.animationDuration = `${duration}s`;
-        
-        // Random delay for variety
-        particle.style.animationDelay = `${Math.random() * 2}s`;
         
         container.appendChild(particle);
         
