@@ -45,9 +45,19 @@ body {
 input[type="checkbox"] {
     cursor: pointer;
     transition: all 0.2s ease;
-    min-width: 22px;
-    min-height: 22px;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
     flex-shrink: 0;
+    appearance: auto;
+    -webkit-appearance: checkbox;
+}
+
+/* Ensure checkbox + text alignment in flex containers */
+.flex.items-center input[type="checkbox"] + span,
+.flex.items-center input[type="checkbox"] ~ span {
+    margin-left: 0.5rem;
 }
 
 input[type="checkbox"]:checked {
