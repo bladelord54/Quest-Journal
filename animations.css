@@ -581,7 +581,7 @@ input[type="checkbox"]:checked {
 /* Floating ember animation (Volcanic) */
 @keyframes ember-rise {
     0% {
-        transform: translateY(100vh) scale(1);
+        transform: translateY(0) scale(1);
         opacity: 0;
     }
     10% {
@@ -591,7 +591,7 @@ input[type="checkbox"]:checked {
         opacity: 0.8;
     }
     100% {
-        transform: translateY(-20px) scale(0.3);
+        transform: translateY(-100vh) scale(0.3);
         opacity: 0;
     }
 }
@@ -671,18 +671,18 @@ input[type="checkbox"]:checked {
 /* Magic sparkle animation (Arcane) */
 @keyframes magic-float {
     0% {
-        transform: translateY(100vh) scale(0);
+        transform: translateY(0) scale(0.5);
         opacity: 0;
     }
     20% {
         opacity: 1;
-        transform: translateY(80vh) scale(1);
+        transform: translateY(-20vh) scale(1);
     }
     80% {
         opacity: 0.8;
     }
     100% {
-        transform: translateY(-20px) scale(0.5);
+        transform: translateY(-100vh) scale(0.5);
         opacity: 0;
     }
 }
@@ -730,27 +730,30 @@ input[type="checkbox"]:checked {
 /* Shadow wisp animation (Shadow Realm) */
 @keyframes shadow-drift {
     0% {
-        transform: translateY(100vh) scale(1) rotate(0deg);
+        transform: translateY(0) scale(1) rotate(0deg);
         opacity: 0;
     }
     20% {
-        opacity: 0.4;
+        opacity: 0.5;
     }
     80% {
-        opacity: 0.3;
+        opacity: 0.4;
     }
     100% {
-        transform: translateY(-20px) scale(1.5) rotate(45deg);
+        transform: translateY(-100vh) scale(1.5) rotate(45deg);
         opacity: 0;
     }
 }
 
 .particle-shadow {
-    width: 25px;
-    height: 25px;
-    background: radial-gradient(circle, rgba(156, 163, 175, 0.5) 0%, rgba(75, 85, 99, 0.3) 50%, transparent 70%);
+    width: 30px;
+    height: 30px;
+    background: #6b7280;
     border-radius: 50%;
     animation: shadow-drift linear forwards;
+    box-shadow: 
+        0 0 15px rgba(107, 114, 128, 0.8),
+        0 0 30px rgba(75, 85, 99, 0.5);
 }
 
 /* Coin sparkle animation (Default Medieval) */
