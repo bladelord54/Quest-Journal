@@ -4694,6 +4694,79 @@ class GoalManager {
         if (this.currentTheme && this.currentTheme !== 'default') {
             body.classList.add(`theme-${this.currentTheme}`);
         }
+        
+        // Update theme particles
+        this.initThemeParticles();
+    }
+    
+    initThemeParticles() {
+        // Clear existing particle interval
+        if (this.particleInterval) {
+            clearInterval(this.particleInterval);
+        }
+        
+        const container = document.getElementById('theme-particles');
+        if (!container) return;
+        
+        // Clear existing particles
+        container.innerHTML = '';
+        
+        // Get particle config based on theme
+        const particleConfig = this.getParticleConfig();
+        if (!particleConfig) return;
+        
+        // Spawn particles at interval
+        this.particleInterval = setInterval(() => {
+            if (document.hidden) return; // Don't spawn when tab not visible
+            this.spawnParticle(container, particleConfig);
+        }, particleConfig.spawnRate);
+        
+        // Initial burst of particles
+        for (let i = 0; i < particleConfig.initialCount; i++) {
+            setTimeout(() => this.spawnParticle(container, particleConfig), i * 200);
+        }
+    }
+    
+    getParticleConfig() {
+        const configs = {
+            default: { class: 'particle-coin', duration: [8, 12], spawnRate: 3000, initialCount: 3, maxParticles: 15 },
+            forest: { class: 'particle-leaf', duration: [10, 15], spawnRate: 2000, initialCount: 5, maxParticles: 20 },
+            desert: { class: 'particle-sand', duration: [10, 15], spawnRate: 500, initialCount: 10, maxParticles: 40 },
+            ice: { class: 'particle-snow', duration: [12, 18], spawnRate: 1000, initialCount: 8, maxParticles: 30 },
+            volcanic: { class: 'particle-ember', duration: [6, 10], spawnRate: 800, initialCount: 6, maxParticles: 25 },
+            mystic: { class: 'particle-magic', duration: [8, 12], spawnRate: 1200, initialCount: 5, maxParticles: 20 },
+            golden: { class: 'particle-gold', duration: [8, 12], spawnRate: 1500, initialCount: 5, maxParticles: 20 },
+            shadow: { class: 'particle-shadow', duration: [10, 14], spawnRate: 2500, initialCount: 3, maxParticles: 12 }
+        };
+        
+        return configs[this.currentTheme] || configs.default;
+    }
+    
+    spawnParticle(container, config) {
+        // Limit max particles for performance
+        if (container.children.length >= config.maxParticles) return;
+        
+        const particle = document.createElement('div');
+        particle.className = `theme-particle ${config.class}`;
+        
+        // Random position
+        particle.style.left = `${Math.random() * 100}%`;
+        
+        // Random duration within range
+        const duration = config.duration[0] + Math.random() * (config.duration[1] - config.duration[0]);
+        particle.style.animationDuration = `${duration}s`;
+        
+        // Random delay for variety
+        particle.style.animationDelay = `${Math.random() * 2}s`;
+        
+        container.appendChild(particle);
+        
+        // Remove after animation completes
+        setTimeout(() => {
+            if (particle.parentNode) {
+                particle.remove();
+            }
+        }, (duration + 2) * 1000);
     }
 
     selectTheme(themeId) {
