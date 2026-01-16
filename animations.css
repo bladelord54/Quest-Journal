@@ -569,10 +569,13 @@ input[type="checkbox"]:checked {
 .particle-leaf {
     width: 14px;
     height: 14px;
-    background: linear-gradient(135deg, #6ee7b7 0%, #34d399 50%, #059669 100%);
+    background: #34d399;
     border-radius: 0 50% 50% 50%;
     animation: leaf-fall linear forwards;
-    box-shadow: 0 0 8px rgba(52, 211, 153, 0.6), 0 0 15px rgba(16, 185, 129, 0.3);
+    box-shadow: 
+        inset 0 0 4px #6ee7b7,
+        0 0 8px #34d399,
+        0 0 15px rgba(52, 211, 153, 0.6);
 }
 
 /* Floating ember animation (Volcanic) */
@@ -596,10 +599,14 @@ input[type="checkbox"]:checked {
 .particle-ember {
     width: 8px;
     height: 8px;
-    background: radial-gradient(circle, #fef3c7 0%, #fbbf24 30%, #ef4444 70%, #dc2626 100%);
+    background: #fbbf24;
     border-radius: 50%;
     animation: ember-rise linear forwards;
-    box-shadow: 0 0 12px #fbbf24, 0 0 25px #ef4444, 0 0 35px rgba(239, 68, 68, 0.5);
+    box-shadow: 
+        inset 0 0 3px #fef3c7,
+        0 0 10px #fbbf24,
+        0 0 20px #ef4444,
+        0 0 30px rgba(239, 68, 68, 0.7);
 }
 
 /* Snowflake animation (Ice/Frozen) */
@@ -623,10 +630,13 @@ input[type="checkbox"]:checked {
 .particle-snow {
     width: 10px;
     height: 10px;
-    background: radial-gradient(circle, #ffffff 0%, #e0f2fe 50%, #7dd3fc 100%);
+    background: #ffffff;
     border-radius: 50%;
     animation: snow-fall linear forwards;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(125, 211, 252, 0.5);
+    box-shadow: 
+        0 0 8px #ffffff,
+        0 0 15px rgba(255, 255, 255, 0.8),
+        0 0 25px rgba(125, 211, 252, 0.5);
 }
 
 /* Autumn leaf animation */
@@ -680,10 +690,14 @@ input[type="checkbox"]:checked {
 .particle-magic {
     width: 6px;
     height: 6px;
-    background: radial-gradient(circle, #f5f3ff 0%, #c4b5fd 50%, #a78bfa 100%);
+    background: #c4b5fd;
     border-radius: 50%;
     animation: magic-float linear forwards;
-    box-shadow: 0 0 12px #c4b5fd, 0 0 25px #a78bfa, 0 0 40px rgba(139, 92, 246, 0.6);
+    box-shadow: 
+        inset 0 0 3px #f5f3ff,
+        0 0 10px #c4b5fd,
+        0 0 20px #a78bfa,
+        0 0 35px rgba(139, 92, 246, 0.7);
 }
 
 /* Sand drift animation (Desert) */
@@ -705,12 +719,12 @@ input[type="checkbox"]:checked {
 }
 
 .particle-sand {
-    width: 4px;
-    height: 4px;
-    background: radial-gradient(circle, #fef9c3 0%, #fde047 100%);
+    width: 5px;
+    height: 5px;
+    background: #fde047;
     border-radius: 50%;
     animation: sand-drift linear forwards;
-    box-shadow: 0 0 6px rgba(253, 224, 71, 0.6);
+    box-shadow: 0 0 6px #fde047, 0 0 12px rgba(253, 224, 71, 0.6);
 }
 
 /* Shadow wisp animation (Shadow Realm) */
@@ -761,12 +775,16 @@ input[type="checkbox"]:checked {
 }
 
 .particle-coin {
-    width: 10px;
-    height: 10px;
-    background: radial-gradient(circle, #fef3c7 0%, #fbbf24 40%, #f59e0b 100%);
+    width: 12px;
+    height: 12px;
+    background: #fcd34d;
     border-radius: 50%;
     animation: coin-sparkle linear forwards;
-    box-shadow: 0 0 10px #fbbf24, 0 0 20px #f59e0b, 0 0 30px rgba(251, 191, 36, 0.5);
+    box-shadow: 
+        inset 0 0 4px #fef3c7,
+        0 0 8px #fcd34d,
+        0 0 15px #fbbf24,
+        0 0 25px rgba(251, 191, 36, 0.8);
 }
 
 /* Gold shimmer animation (Golden Empire) */
@@ -789,9 +807,9 @@ input[type="checkbox"]:checked {
 }
 
 .particle-gold {
-    width: 6px;
-    height: 6px;
-    background: radial-gradient(circle, #fef08a 0%, #eab308 50%, #ca8a04 100%);
+    width: 8px;
+    height: 8px;
+    background: #fde047;
     border-radius: 50%;
     animation: gold-shimmer linear forwards;
     box-shadow: 0 0 8px #fde047, 0 0 15px #eab308;
