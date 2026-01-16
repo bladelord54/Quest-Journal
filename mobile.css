@@ -1,5 +1,16 @@
 /* Mobile-Responsive Styles for PWA */
 
+/* Global touch target minimum (44px recommended, 48px ideal) */
+@media (max-width: 768px) {
+    button, 
+    [role="button"],
+    a.nav-link,
+    .clickable {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
 /* Mobile Navigation - Bottom Tab Bar */
 @media (max-width: 768px) {
     /* Hide desktop sidebar */
@@ -96,7 +107,8 @@
     /* Mobile Nav Items - Icons Only */
     body > .flex > div:first-child > nav > a {
         flex: 0 0 auto;
-        min-width: 55px;
+        min-width: 48px;
+        min-height: 48px;
         text-align: center;
         padding: 0.75rem 0.5rem;
         display: flex;
@@ -134,11 +146,11 @@
     #mobile-nav-toggle {
         display: flex !important;
         position: absolute;
-        top: -32px;
+        top: -44px;
         left: 50%;
         transform: translateX(-50%);
         width: 70px;
-        height: 32px;
+        height: 44px;
         background: linear-gradient(to bottom, #92400e, #78350f);
         border: 3px solid #fbbf24;
         border-bottom: none;
