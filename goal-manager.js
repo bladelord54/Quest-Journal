@@ -4732,12 +4732,12 @@ class GoalManager {
     
     getParticleConfig() {
         const configs = {
-            default: { class: 'particle-coin', duration: [8, 12], spawnRate: 3000, initialCount: 3, maxParticles: 15 },
-            forest: { class: 'particle-leaf', duration: [10, 15], spawnRate: 2000, initialCount: 5, maxParticles: 20 },
+            default: { class: 'particle-gif', gif: 'icons/coin.gif', duration: [8, 12], spawnRate: 3000, initialCount: 3, maxParticles: 15, size: 40 },
+            forest: { class: 'particle-gif', gif: 'icons/leaf.gif', duration: [10, 15], spawnRate: 2000, initialCount: 5, maxParticles: 20, size: 35 },
             desert: { class: 'particle-sand', duration: [10, 15], spawnRate: 500, initialCount: 10, maxParticles: 40 },
-            ice: { class: 'particle-snow', duration: [12, 18], spawnRate: 1000, initialCount: 8, maxParticles: 30 },
+            ice: { class: 'particle-gif', gif: 'icons/snow.gif', duration: [12, 18], spawnRate: 1000, initialCount: 8, maxParticles: 30, size: 30 },
             volcanic: { class: 'particle-ember', duration: [6, 10], spawnRate: 800, initialCount: 6, maxParticles: 25 },
-            mystic: { class: 'particle-magic', duration: [8, 12], spawnRate: 1200, initialCount: 5, maxParticles: 20 },
+            mystic: { class: 'particle-gif particle-gif-rise', gif: 'icons/shine.gif', duration: [8, 12], spawnRate: 1200, initialCount: 5, maxParticles: 20, size: 35 },
             golden: { class: 'particle-gold', duration: [8, 12], spawnRate: 1500, initialCount: 5, maxParticles: 20 },
             shadow: { class: 'particle-shadow', duration: [12, 16], spawnRate: 1500, initialCount: 5, maxParticles: 18 }
         };
@@ -4749,15 +4749,27 @@ class GoalManager {
         // Limit max particles for performance
         if (container.children.length >= config.maxParticles) return;
         
-        const particle = document.createElement('div');
-        particle.className = `theme-particle ${config.class}`;
+        let particle;
+        
+        // Check if this is a GIF-based particle
+        if (config.gif) {
+            particle = document.createElement('img');
+            particle.src = config.gif;
+            particle.className = 'theme-particle particle-gif';
+            particle.style.width = `${config.size || 30}px`;
+            particle.style.height = 'auto';
+        } else {
+            particle = document.createElement('div');
+            particle.className = `theme-particle ${config.class}`;
+        }
         
         // Random horizontal position
         particle.style.left = `${Math.random() * 100}%`;
         
         // Set starting vertical position based on animation direction
-        const risingParticles = ['particle-ember', 'particle-magic', 'particle-shadow'];
-        if (risingParticles.includes(config.class)) {
+        const risingParticles = ['particle-ember', 'particle-magic', 'particle-shadow', 'particle-gif-rise'];
+        const isRising = risingParticles.some(p => config.class.includes(p));
+        if (isRising) {
             particle.style.bottom = '0';
         } else {
             particle.style.top = '0';
