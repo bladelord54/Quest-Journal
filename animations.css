@@ -1006,6 +1006,23 @@ input[type="checkbox"]:checked {
     filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.8));
 }
 
+/* Theme Video Background */
+#theme-video-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+#theme-video-bg.active {
+    display: block;
+}
+
 /* Gold shimmer animation (Golden Empire) */
 @keyframes gold-shimmer {
     0% {

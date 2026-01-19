@@ -4697,6 +4697,33 @@ class GoalManager {
         
         // Update theme particles
         this.initThemeParticles();
+        
+        // Update theme video background
+        this.updateThemeVideoBackground();
+    }
+    
+    updateThemeVideoBackground() {
+        const video = document.getElementById('theme-video-bg');
+        if (!video) return;
+        
+        // Define which themes have video backgrounds
+        const videoBackgrounds = {
+            volcanic: 'icons/volcanic-bg.mp4'
+        };
+        
+        const videoSrc = videoBackgrounds[this.currentTheme];
+        
+        if (videoSrc) {
+            video.src = videoSrc;
+            video.classList.remove('hidden');
+            video.classList.add('active');
+            video.play().catch(e => console.log('Video autoplay prevented:', e));
+        } else {
+            video.classList.add('hidden');
+            video.classList.remove('active');
+            video.pause();
+            video.src = '';
+        }
     }
     
     initThemeParticles() {
