@@ -60,6 +60,11 @@ class GoalManager {
         // Render optimization
         this.renderTimeout = null;
         this.isRendering = false;
+        this.saveTimeout = null;
+        this.currentView = 'dashboard';
+        
+        // DOM element cache for frequently accessed elements
+        this.domCache = {};
         
         // Focus Timer & Enchantments
         this.focusCrystals = 0;
@@ -126,7 +131,29 @@ class GoalManager {
         
         // Check for expired spells on load and periodically
         setTimeout(() => this.checkExpiredSpells(), 500);
-        setInterval(() => this.checkExpiredSpells(), 60000); // Check every minute
+        this.spellCheckInterval = setInterval(() => this.checkExpiredSpells(), 60000); // Check every minute
+        
+        // Cleanup intervals on page unload to prevent memory leaks
+        window.addEventListener('beforeunload', () => this.cleanup());
+    }
+    
+    cleanup() {
+        // Clear all intervals
+        if (this.spellCheckInterval) {
+            clearInterval(this.spellCheckInterval);
+        }
+        if (this.particleInterval) {
+            clearInterval(this.particleInterval);
+        }
+        if (this.focusTimer) {
+            clearInterval(this.focusTimer);
+        }
+        
+        // Force save any pending data
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+            this._doSave();
+        }
     }
 
     loadData() {
@@ -267,6 +294,17 @@ class GoalManager {
     }
 
     saveData() {
+        // Debounce saves to prevent excessive localStorage writes
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+        }
+        
+        this.saveTimeout = setTimeout(() => {
+            this._doSave();
+        }, 100); // 100ms debounce
+    }
+    
+    _doSave() {
         try {
             const dataToSave = JSON.stringify({
                 lifeGoals: this.lifeGoals,
@@ -950,6 +988,9 @@ class GoalManager {
     }
 
     switchView(viewName) {
+        // Track current view for optimized rendering
+        this.currentView = viewName;
+        
         document.querySelectorAll('.view-container').forEach(view => {
             view.classList.add('hidden');
         });
@@ -963,10 +1004,8 @@ class GoalManager {
             }
         });
         
-        // Render calendar when switching to calendar view
-        if (viewName === 'calendar') {
-            this.renderCalendar();
-        }
+        // Render the new view immediately
+        this.render();
     }
 
     playAchievementSound(level = 'daily') {
@@ -3714,42 +3753,69 @@ class GoalManager {
         this.isRendering = true;
         
         try {
-            this.renderDashboard();
-            this.renderLifeGoals();
-            this.renderYearlyGoals();
-            this.renderMonthlyGoals();
-            this.renderWeeklyGoals();
-            this.renderDailyTasks();
-            this.renderSideQuests();
-            this.renderHabits();
+            // Always update global UI elements
             this.renderXPDisplay();
-            this.renderBadges();
-            this.renderArchives();
-            this.renderRewards();
-            this.renderSpellbook();
-            this.renderAnalytics();
-            this.renderBossBattles();
-            this.renderQuestChains();
-            this.renderFocusTimer();
-            this.renderEnchantments();
-            this.renderThemeSelector();
-            this.renderRecurringTasks();
-            this.renderReminderSettings();
-            this.renderPremiumCard();
             this.updateProgress();
             
-            // Render calendar if on calendar view
-            if (document.getElementById('calendar-view') && !document.getElementById('calendar-view').classList.contains('hidden')) {
-                this.renderCalendar();
-                if (this.selectedDate) {
-                    this.renderCalendarTasks(this.selectedDate);
+            // Only render the active view for performance
+            const activeView = this.currentView || 'dashboard';
+            
+            // Map view names to render methods
+            const viewRenderMap = {
+                'dashboard': () => this.renderDashboard(),
+                'life-goals': () => this.renderLifeGoals(),
+                'yearly': () => this.renderYearlyGoals(),
+                'monthly': () => this.renderMonthlyGoals(),
+                'weekly': () => this.renderWeeklyGoals(),
+                'daily': () => this.renderDailyTasks(),
+                'sidequests': () => this.renderSideQuests(),
+                'calendar': () => {
+                    this.renderCalendar();
+                    if (this.selectedDate) {
+                        this.renderCalendarTasks(this.selectedDate);
+                    }
+                },
+                'rewards': () => {
+                    this.renderRewards();
+                    this.renderBadges();
+                },
+                'spellbook': () => this.renderSpellbook(),
+                'analytics': () => this.renderAnalytics(),
+                'bossbattles': () => this.renderBossBattles(),
+                'questchains': () => this.renderQuestChains(),
+                'focus': () => this.renderFocusTimer(),
+                'enchantments': () => this.renderEnchantments(),
+                'tools': () => {
+                    this.renderThemeSelector();
+                    this.renderRecurringTasks();
+                    this.renderReminderSettings();
+                    this.renderArchives();
+                    this.renderPremiumCard();
                 }
+            };
+            
+            // Render active view
+            if (viewRenderMap[activeView]) {
+                viewRenderMap[activeView]();
+            }
+            
+            // Dashboard also needs habits for the daily view section
+            if (activeView === 'dashboard') {
+                this.renderHabits();
             }
         } finally {
             this.isRendering = false;
         }
     }
 
+    getElement(id) {
+        // Cache DOM elements to avoid repeated lookups
+        if (!this.domCache[id]) {
+            this.domCache[id] = document.getElementById(id);
+        }
+        return this.domCache[id];
+    }
+    
     renderXPDisplay() {
         const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
         const title = titles[Math.min(this.level - 1, titles.length - 1)];
@@ -3760,13 +3826,22 @@ class GoalManager {
         const xpNeededForLevel = nextLevelXP - currentLevelXP;
         const xpProgress = (xpIntoCurrentLevel / xpNeededForLevel) * 100;
         
-        document.getElementById('player-level').textContent = this.level;
-        document.getElementById('player-title').textContent = title;
-        document.getElementById('player-xp').textContent = this.xp;
-        document.getElementById('xp-progress').style.width = Math.max(0, Math.min(100, xpProgress)) + '%';
-        document.getElementById('xp-to-next').textContent = `${nextLevelXP - this.xp} XP`;
-        document.getElementById('badge-count').textContent = this.badges.length;
-        document.getElementById('gold-coins').textContent = this.goldCoins;
+        // Use cached DOM elements for better performance
+        const playerLevel = this.getElement('player-level');
+        const playerTitle = this.getElement('player-title');
+        const playerXp = this.getElement('player-xp');
+        const xpProgressEl = this.getElement('xp-progress');
+        const xpToNext = this.getElement('xp-to-next');
+        const badgeCount = this.getElement('badge-count');
+        const goldCoins = this.getElement('gold-coins');
+        
+        if (playerLevel) playerLevel.textContent = this.level;
+        if (playerTitle) playerTitle.textContent = title;
+        if (playerXp) playerXp.textContent = this.xp;
+        if (xpProgressEl) xpProgressEl.style.width = Math.max(0, Math.min(100, xpProgress)) + '%';
+        if (xpToNext) xpToNext.textContent = `${nextLevelXP - this.xp} XP`;
+        if (badgeCount) badgeCount.textContent = this.badges.length;
+        if (goldCoins) goldCoins.textContent = this.goldCoins;
         
         // Show current title/prefix
         const prefixEl = document.getElementById('current-prefix');
