@@ -1053,6 +1053,28 @@ body.has-theme-bg.theme-volcanic {
     background: linear-gradient(to bottom, rgba(127, 29, 29, 0.7), rgba(69, 10, 10, 0.8), rgba(26, 5, 5, 0.9)) !important;
 }
 
+/* Ensure panels/cards stay solid when animated bg is active */
+body.has-theme-bg .quest-card,
+body.has-theme-bg [class*="bg-gradient-to-br"],
+body.has-theme-bg #stats-panel,
+body.has-theme-bg [id*="stats"],
+body.has-theme-bg .achievement-notification,
+body.has-theme-bg #premium-content,
+body.has-theme-bg main > div,
+body.has-theme-bg .sidebar,
+body.has-theme-bg nav,
+body.has-theme-bg aside {
+    position: relative;
+    z-index: 2;
+}
+
+body.has-theme-bg.theme-volcanic .quest-card,
+body.has-theme-bg.theme-volcanic [class*="bg-gradient-to-br"],
+body.has-theme-bg.theme-volcanic #stats-panel,
+body.has-theme-bg.theme-volcanic main > div {
+    background: linear-gradient(to bottom right, #991b1b, #450a0a) !important;
+}
+
 /* Gold shimmer animation (Golden Empire) */
 @keyframes gold-shimmer {
     0% {
