@@ -1043,9 +1043,14 @@ body.has-theme-bg::before {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    opacity: 0.3;
-    z-index: 0;
+    opacity: 0.5;
+    z-index: 1;
     pointer-events: none;
+}
+
+/* Override theme backgrounds when animated bg is active */
+body.has-theme-bg.theme-volcanic {
+    background: linear-gradient(to bottom, rgba(127, 29, 29, 0.7), rgba(69, 10, 10, 0.8), rgba(26, 5, 5, 0.9)) !important;
 }
 
 /* Gold shimmer animation (Golden Empire) */
