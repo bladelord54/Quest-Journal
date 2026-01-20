@@ -1048,22 +1048,20 @@ body.has-theme-bg::before {
     pointer-events: none;
 }
 
-/* Ensure panels/cards stay solid when animated bg is active */
-body.has-theme-bg .quest-card,
-body.has-theme-bg .achievement-notification,
-body.has-theme-bg #premium-content,
-body.has-theme-bg #stats-panel #stats-content > div,
-body.has-theme-bg .view-container > div,
-body.has-theme-bg [class*="bg-gradient-to-br"] {
-    background: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
+/* When animated bg is active, make main content area transparent so GIF shows */
+/* This selector is more specific than themes.css to override the !important */
+body.has-theme-bg.theme-volcanic .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-volcanic .bg-stone-800 {
+    background: transparent !important;
 }
 
-body.has-theme-bg.theme-volcanic .quest-card,
-body.has-theme-bg.theme-volcanic .achievement-notification,
-body.has-theme-bg.theme-volcanic #premium-content,
-body.has-theme-bg.theme-volcanic #stats-panel #stats-content > div,
-body.has-theme-bg.theme-volcanic .view-container > div,
-body.has-theme-bg.theme-volcanic [class*="bg-gradient-to-br"] {
+/* Keep sidebar solid */
+body.has-theme-bg.theme-volcanic #main-sidebar {
+    background: linear-gradient(to bottom, #7f1d1d, #450a0a, #1a0505) !important;
+}
+
+/* Ensure all cards stay solid when animated bg is active */
+body.has-theme-bg.theme-volcanic .quest-card {
     background: linear-gradient(to bottom right, #991b1b, #450a0a) !important;
 }
 
