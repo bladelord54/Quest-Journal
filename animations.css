@@ -1006,7 +1006,7 @@ input[type="checkbox"]:checked {
     filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.8));
 }
 
-/* Theme Video Background */
+/* Theme Video Background - LOWEST layer */
 #theme-video-bg {
     position: fixed;
     top: 0;
@@ -1017,7 +1017,7 @@ input[type="checkbox"]:checked {
     min-height: 100%;
     object-fit: cover;
     z-index: 0;
-    opacity: 0.3;
+    opacity: 1;
     pointer-events: none;
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
@@ -1031,7 +1031,7 @@ input[type="checkbox"]:checked {
     display: block !important;
 }
 
-/* Mobile GIF background fallback */
+/* Mobile GIF background fallback - LOWEST layer */
 body.has-theme-bg::before {
     content: '';
     position: fixed;
@@ -1043,26 +1043,42 @@ body.has-theme-bg::before {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    opacity: 0.5;
-    z-index: 1;
+    opacity: 1;
+    z-index: 0;
     pointer-events: none;
 }
 
-/* Override theme backgrounds when animated bg is active */
+/* Make body background transparent so GIF shows through */
 body.has-theme-bg.theme-volcanic {
-    background: linear-gradient(to bottom, rgba(127, 29, 29, 0.7), rgba(69, 10, 10, 0.8), rgba(26, 5, 5, 0.9)) !important;
+    background: transparent !important;
+}
+
+/* Main content container - solid background on top of GIF */
+body.has-theme-bg .flex-1.overflow-y-auto,
+body.has-theme-bg main,
+body.has-theme-bg #main-sidebar {
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid, var(--theme-bg-start)), var(--theme-bg-end)) !important;
+}
+
+body.has-theme-bg.theme-volcanic .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-volcanic main {
+    background: linear-gradient(to bottom, #7f1d1d, #450a0a, #1a0505) !important;
 }
 
 /* Ensure panels/cards stay solid when animated bg is active */
 body.has-theme-bg .quest-card,
 body.has-theme-bg .achievement-notification,
-body.has-theme-bg #premium-content {
+body.has-theme-bg #premium-content,
+body.has-theme-bg #stats-panel #stats-content > div {
     background: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
 }
 
 body.has-theme-bg.theme-volcanic .quest-card,
 body.has-theme-bg.theme-volcanic .achievement-notification,
-body.has-theme-bg.theme-volcanic #premium-content {
+body.has-theme-bg.theme-volcanic #premium-content,
+body.has-theme-bg.theme-volcanic #stats-panel #stats-content > div {
     background: linear-gradient(to bottom right, #991b1b, #450a0a) !important;
 }
 
