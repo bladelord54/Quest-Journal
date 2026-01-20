@@ -1048,37 +1048,22 @@ body.has-theme-bg::before {
     pointer-events: none;
 }
 
-/* Make body background transparent so GIF shows through */
-body.has-theme-bg.theme-volcanic {
-    background: transparent !important;
-}
-
-/* Main content container - solid background on top of GIF */
-body.has-theme-bg .flex-1.overflow-y-auto,
-body.has-theme-bg main,
-body.has-theme-bg #main-sidebar {
-    position: relative;
-    z-index: 1;
-    background: linear-gradient(to bottom, var(--theme-bg-start), var(--theme-bg-mid, var(--theme-bg-start)), var(--theme-bg-end)) !important;
-}
-
-body.has-theme-bg.theme-volcanic .flex-1.overflow-y-auto,
-body.has-theme-bg.theme-volcanic main {
-    background: linear-gradient(to bottom, #7f1d1d, #450a0a, #1a0505) !important;
-}
-
 /* Ensure panels/cards stay solid when animated bg is active */
 body.has-theme-bg .quest-card,
 body.has-theme-bg .achievement-notification,
 body.has-theme-bg #premium-content,
-body.has-theme-bg #stats-panel #stats-content > div {
+body.has-theme-bg #stats-panel #stats-content > div,
+body.has-theme-bg .view-container > div,
+body.has-theme-bg [class*="bg-gradient-to-br"] {
     background: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
 }
 
 body.has-theme-bg.theme-volcanic .quest-card,
 body.has-theme-bg.theme-volcanic .achievement-notification,
 body.has-theme-bg.theme-volcanic #premium-content,
-body.has-theme-bg.theme-volcanic #stats-panel #stats-content > div {
+body.has-theme-bg.theme-volcanic #stats-panel #stats-content > div,
+body.has-theme-bg.theme-volcanic .view-container > div,
+body.has-theme-bg.theme-volcanic [class*="bg-gradient-to-br"] {
     background: linear-gradient(to bottom right, #991b1b, #450a0a) !important;
 }
 
