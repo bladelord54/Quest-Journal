@@ -270,6 +270,24 @@
         font-size: 2rem !important;
     }
 
+    /* Stats Panel - Mobile positioning */
+    #stats-panel {
+        top: 0.5rem !important;
+        right: 0.5rem !important;
+        left: auto !important;
+        max-width: calc(100vw - 4rem) !important;
+    }
+    
+    #stats-panel #stats-content {
+        width: 100% !important;
+        max-width: 280px !important;
+    }
+    
+    /* Ensure collapse button is visible */
+    #stats-panel > button:first-child {
+        left: -48px !important;
+    }
+
     /* Achievement Toast - Adjust position */
     #achievement-toast {
         top: 1rem !important;

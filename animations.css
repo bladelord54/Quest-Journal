@@ -1055,16 +1055,12 @@ body.has-theme-bg.theme-volcanic {
 
 /* Ensure panels/cards stay solid when animated bg is active */
 body.has-theme-bg .quest-card,
-body.has-theme-bg #stats-panel,
 body.has-theme-bg .achievement-notification,
 body.has-theme-bg #premium-content {
-    position: relative;
-    z-index: 2;
     background: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
 }
 
 body.has-theme-bg.theme-volcanic .quest-card,
-body.has-theme-bg.theme-volcanic #stats-panel,
 body.has-theme-bg.theme-volcanic .achievement-notification,
 body.has-theme-bg.theme-volcanic #premium-content {
     background: linear-gradient(to bottom right, #991b1b, #450a0a) !important;
