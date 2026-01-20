@@ -4706,8 +4706,12 @@ class GoalManager {
         const video = document.getElementById('theme-video-bg');
         if (!video) return;
         
-        // Check if mobile device
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+        // Check if mobile device or Android WebView/TWA (Google Play app)
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isWebView = /(wv|WebView)/i.test(navigator.userAgent);
+        const isTWA = document.referrer.includes('android-app://') || window.matchMedia('(display-mode: standalone)').matches;
+        const isMobile = isAndroid || isWebView || isTWA 
+                         || /webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
                          || window.innerWidth <= 768;
         
         // Define which themes have video/gif backgrounds

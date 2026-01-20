@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v135';
+const CACHE_NAME = 'life-quest-journal-v136';
 const urlsToCache = [
   './',
   './index.html',
@@ -11,6 +11,13 @@ const urlsToCache = [
   './mobile.css',
   './themes.css',
   './manifest.json',
+  // Theme background assets
+  './icons/volcanic-bg.gif',
+  './icons/volcanic-bg.mp4',
+  './icons/coin.gif',
+  './icons/leaf.gif',
+  './icons/snow.gif',
+  './icons/shine.gif',
   // Sound files (optional - will cache when first played)
   './sounds/achievement-daily.wav',
   './sounds/achievement-weekly.wav',
