@@ -4706,23 +4706,44 @@ class GoalManager {
         const video = document.getElementById('theme-video-bg');
         if (!video) return;
         
-        // Define which themes have video backgrounds
+        // Check if mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                         || window.innerWidth <= 768;
+        
+        // Define which themes have video/gif backgrounds
         const videoBackgrounds = {
-            volcanic: 'icons/volcanic-bg.mp4'
+            volcanic: {
+                video: 'icons/volcanic-bg.mp4',
+                gif: 'icons/volcanic-bg.gif'
+            }
         };
         
-        const videoSrc = videoBackgrounds[this.currentTheme];
+        const bgConfig = videoBackgrounds[this.currentTheme];
         
-        if (videoSrc) {
-            video.src = videoSrc;
-            video.classList.remove('hidden');
-            video.classList.add('active');
-            video.play().catch(e => console.log('Video autoplay prevented:', e));
+        if (bgConfig) {
+            if (isMobile) {
+                // Use GIF for mobile (more reliable than video)
+                video.style.display = 'none';
+                document.body.style.setProperty('--theme-bg-image', `url('${bgConfig.gif}')`);
+                document.body.classList.add('has-theme-bg');
+            } else {
+                // Use video for desktop
+                document.body.classList.remove('has-theme-bg');
+                document.body.style.removeProperty('--theme-bg-image');
+                video.src = bgConfig.video;
+                video.load();
+                video.classList.remove('hidden');
+                video.classList.add('active');
+                video.play().catch(e => console.log('Video autoplay prevented:', e));
+            }
         } else {
+            // No background for this theme
             video.classList.add('hidden');
             video.classList.remove('active');
             video.pause();
             video.src = '';
+            document.body.classList.remove('has-theme-bg');
+            document.body.style.removeProperty('--theme-bg-image');
         }
     }
     
