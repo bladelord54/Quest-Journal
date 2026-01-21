@@ -3002,6 +3002,19 @@ class GoalManager {
         // Planner badge
         const futureTasks = this.dailyTasks.filter(t => t.dueDate > new Date().toISOString().split('T')[0]).length;
         if (futureTasks >= 30) this.unlockBadge('planner', 'Master Planner', 'Scheduled 30+ future tasks', '📅');
+        
+        // Treasure hunter badges
+        if (this.chestsOpened >= 10) this.unlockBadge('treasure_hunter', 'Treasure Hunter', 'Opened 10 chests', '🎁');
+        if (this.chestsOpened >= 50) this.unlockBadge('treasure_master', 'Treasure Master', 'Opened 50 chests', '👑');
+        
+        // Boss hunter badge
+        if (this.bossesDefeated >= 5) this.unlockBadge('boss_hunter', 'Boss Hunter', 'Defeated 5 bosses', '💀');
+        
+        // Spell caster badge
+        if (this.spellsCast >= 20) this.unlockBadge('spell_caster', 'Spell Caster', 'Cast 20 spells', '✨');
+        
+        // Focus master badge
+        if (this.focusSessionsCompleted >= 25) this.unlockBadge('focus_master', 'Focus Master', 'Completed 25 focus sessions', '🎯');
     }
 
     toggleHabit(habitId) {
@@ -3858,22 +3871,130 @@ class GoalManager {
         }
     }
 
+    getAchievementDefinitions() {
+        return [
+            { id: 'first_quest', name: 'First Quest', description: 'Complete your first quest', icon: '🎖️', type: 'tasks', target: 1 },
+            { id: 'novice', name: 'Novice', description: 'Complete 10 quests', icon: '🥉', type: 'tasks', target: 10 },
+            { id: 'adept', name: 'Adept', description: 'Complete 50 quests', icon: '🥈', type: 'tasks', target: 50 },
+            { id: 'century', name: 'Century', description: 'Complete 100 quests', icon: '🥇', type: 'tasks', target: 100 },
+            { id: 'master', name: 'Master', description: 'Complete 500 quests', icon: '💎', type: 'tasks', target: 500 },
+            { id: 'week_warrior', name: 'Week Warrior', description: '7-day habit streak', icon: '🔥', type: 'streak', target: 7 },
+            { id: 'month_master', name: 'Month Master', description: '30-day habit streak', icon: '⚡', type: 'streak', target: 30 },
+            { id: 'centurion', name: 'Centurion', description: '100-day habit streak', icon: '👑', type: 'streak', target: 100 },
+            { id: 'legend', name: 'Legend', description: 'Complete a life goal', icon: '🌟', type: 'life_goals', target: 1 },
+            { id: 'mythic', name: 'Mythic', description: 'Complete 5 life goals', icon: '💫', type: 'life_goals', target: 5 },
+            { id: 'planner', name: 'Master Planner', description: 'Schedule 30+ future tasks', icon: '📅', type: 'future_tasks', target: 30 },
+            { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open 10 chests', icon: '🎁', type: 'chests', target: 10 },
+            { id: 'treasure_master', name: 'Treasure Master', description: 'Open 50 chests', icon: '👑', type: 'chests', target: 50 },
+            { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 5 bosses', icon: '💀', type: 'bosses', target: 5 },
+            { id: 'spell_caster', name: 'Spell Caster', description: 'Cast 20 spells', icon: '✨', type: 'spells', target: 20 },
+            { id: 'focus_master', name: 'Focus Master', description: 'Complete 25 focus sessions', icon: '🎯', type: 'focus', target: 25 }
+        ];
+    }
+    
+    getAchievementProgress() {
+        const totalTasks = this.dailyTasks.filter(t => t.completed).length +
+                          this.weeklyGoals.filter(g => g.completed).length +
+                          this.monthlyGoals.filter(g => g.completed).length;
+        const maxStreak = Math.max(...this.habits.map(h => h.streak || 0), 0);
+        const completedLifeGoals = this.lifeGoals.filter(g => g.completed).length;
+        const futureTasks = this.dailyTasks.filter(t => t.dueDate > new Date().toISOString().split('T')[0]).length;
+        
+        return {
+            tasks: totalTasks,
+            streak: maxStreak,
+            life_goals: completedLifeGoals,
+            future_tasks: futureTasks,
+            chests: this.chestsOpened || 0,
+            bosses: this.bossesDefeated || 0,
+            spells: this.spellsCast || 0,
+            focus: this.focusSessionsCompleted || 0
+        };
+    }
+    
     renderBadges() {
         const container = document.getElementById('badges-container');
         if (!container) return;
         
-        if (this.badges.length === 0) {
-            container.innerHTML = '<p class="col-span-4 text-center text-amber-200 py-8 fancy-font">Complete quests to unlock badges!</p>';
-        } else {
-            container.innerHTML = this.badges.map(badge => `
-                <div class="bg-amber-950/60 p-4 rounded-lg border-2 border-amber-700 text-center hover:scale-105 transition-all">
-                    <div class="text-4xl mb-2">${badge.icon}</div>
-                    <div class="text-amber-300 font-bold fancy-font text-sm">${badge.name}</div>
-                    <div class="text-amber-200 text-xs mt-1">${badge.description}</div>
-                    <div class="text-amber-400 text-xs mt-2">${new Date(badge.unlockedAt).toLocaleDateString()}</div>
-                </div>
-            `).join('');
+        const achievements = this.getAchievementDefinitions();
+        const progress = this.getAchievementProgress();
+        const unlockedIds = this.badges.map(b => b.id);
+        
+        // Separate unlocked and locked achievements
+        const unlocked = achievements.filter(a => unlockedIds.includes(a.id));
+        const locked = achievements.filter(a => !unlockedIds.includes(a.id));
+        
+        // Sort locked by closest to completion
+        locked.sort((a, b) => {
+            const progressA = (progress[a.type] || 0) / a.target;
+            const progressB = (progress[b.type] || 0) / b.target;
+            return progressB - progressA;
+        });
+        
+        let html = '';
+        
+        // Unlocked badges section
+        if (unlocked.length > 0) {
+            html += '<div class="col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">🏆 Unlocked</h4></div>';
+            html += unlocked.map(achievement => {
+                const badge = this.badges.find(b => b.id === achievement.id);
+                return `
+                    <div class="bg-amber-950/60 p-4 rounded-lg border-2 border-amber-500 text-center hover:scale-105 transition-all">
+                        <div class="text-4xl mb-2">${achievement.icon}</div>
+                        <div class="text-amber-300 font-bold fancy-font text-sm">${achievement.name}</div>
+                        <div class="text-amber-200 text-xs mt-1">${achievement.description}</div>
+                        <div class="text-green-400 text-xs mt-2">✓ ${badge ? new Date(badge.unlockedAt).toLocaleDateString() : 'Unlocked'}</div>
+                    </div>
+                `;
+            }).join('');
         }
+        
+        // In-progress achievements section
+        if (locked.length > 0) {
+            html += '<div class="col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">📊 In Progress</h4></div>';
+            html += locked.map(achievement => {
+                const current = progress[achievement.type] || 0;
+                const target = achievement.target;
+                const percent = Math.min(100, Math.round((current / target) * 100));
+                const remaining = target - current;
+                
+                // Color based on progress
+                let progressColor = 'bg-gray-600';
+                let borderColor = 'border-gray-600';
+                if (percent >= 75) {
+                    progressColor = 'bg-green-500';
+                    borderColor = 'border-green-600';
+                } else if (percent >= 50) {
+                    progressColor = 'bg-yellow-500';
+                    borderColor = 'border-yellow-600';
+                } else if (percent >= 25) {
+                    progressColor = 'bg-orange-500';
+                    borderColor = 'border-orange-600';
+                }
+                
+                return `
+                    <div class="bg-gray-900/60 p-4 rounded-lg border-2 ${borderColor} text-center transition-all opacity-80 hover:opacity-100">
+                        <div class="text-3xl mb-2 grayscale-[50%]">${achievement.icon}</div>
+                        <div class="text-gray-300 font-bold fancy-font text-sm">${achievement.name}</div>
+                        <div class="text-gray-400 text-xs mt-1">${achievement.description}</div>
+                        <div class="mt-2">
+                            <div class="w-full bg-gray-700 rounded-full h-2">
+                                <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                            </div>
+                            <div class="text-xs mt-1 ${percent >= 75 ? 'text-green-400' : 'text-gray-400'}">
+                                ${current}/${target} ${percent >= 75 ? `(${remaining} to go!)` : `(${percent}%)`}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        if (html === '') {
+            html = '<p class="col-span-4 text-center text-amber-200 py-8 fancy-font">Complete quests to unlock badges!</p>';
+        }
+        
+        container.innerHTML = html;
     }
 
     generateHabitHeatMap(habit) {
