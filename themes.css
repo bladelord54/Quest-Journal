@@ -396,3 +396,35 @@ body[class*="theme-"] h3[class*="text-yellow"] {
 .theme-option.locked:hover {
     transform: none;
 }
+
+/* ===== ANIMATED BACKGROUND OVERRIDES ===== */
+/* These MUST be at the end to override theme backgrounds */
+
+/* Make body background transparent when animated bg is active */
+body.has-theme-bg.theme-forest,
+body.has-theme-bg.theme-desert,
+body.has-theme-bg.theme-ice,
+body.has-theme-bg.theme-volcanic,
+body.has-theme-bg.theme-mystic,
+body.has-theme-bg.theme-golden,
+body.has-theme-bg.theme-shadow {
+    background: transparent !important;
+}
+
+/* Make main content area transparent so GIF shows through */
+body.has-theme-bg.theme-forest .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-forest .bg-stone-800,
+body.has-theme-bg.theme-desert .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-desert .bg-stone-800,
+body.has-theme-bg.theme-ice .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-ice .bg-stone-800,
+body.has-theme-bg.theme-volcanic .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-volcanic .bg-stone-800,
+body.has-theme-bg.theme-mystic .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-mystic .bg-stone-800,
+body.has-theme-bg.theme-golden .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-golden .bg-stone-800,
+body.has-theme-bg.theme-shadow .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-shadow .bg-stone-800 {
+    background: transparent !important;
+}
