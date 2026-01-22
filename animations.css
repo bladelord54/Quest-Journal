@@ -1247,3 +1247,166 @@ body .bg-stone-800 {
     animation: theme-particle-burst 0.8s ease-out forwards;
     pointer-events: none;
 }
+
+/* ===== ENHANCED CARD HOVER EFFECTS ===== */
+
+/* Base card hover setup */
+.quest-card {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease,
+                border-color 0.3s ease !important;
+    overflow: hidden;
+}
+
+/* Lift and enhanced shadow on hover */
+.quest-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    z-index: 10;
+}
+
+/* Shimmer overlay effect */
+.quest-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    transition: left 0.5s ease;
+    pointer-events: none;
+}
+
+.quest-card:hover::after {
+    left: 100%;
+}
+
+/* Icon bounce on hover */
+@keyframes icon-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.quest-card:hover .text-2xl,
+.quest-card:hover .text-3xl,
+.quest-card:hover .text-4xl {
+    animation: icon-bounce 0.5s ease;
+}
+
+/* XP badge pulse */
+@keyframes xp-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+.quest-card:hover [class*="bg-green"],
+.quest-card:hover [class*="bg-amber"] {
+    animation: xp-pulse 0.6s ease infinite;
+}
+
+/* Progress bar shimmer */
+@keyframes progress-shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+.quest-card:hover [class*="bg-gradient"][class*="rounded-full"] {
+    background-size: 200% 100%;
+    animation: progress-shimmer 1.5s linear infinite;
+}
+
+/* Action buttons fade in */
+.quest-card .card-actions {
+    opacity: 0.7;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.quest-card:hover .card-actions {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+/* ===== THEME-SPECIFIC HOVER GLOWS ===== */
+
+/* Default/Amber theme */
+.quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3),
+                0 0 20px rgba(251, 191, 36, 0.3);
+}
+
+/* Forest theme */
+body.theme-forest .quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
+                0 0 25px rgba(16, 185, 129, 0.4),
+                inset 0 0 20px rgba(16, 185, 129, 0.1);
+    border-color: #34d399 !important;
+}
+
+/* Desert theme */
+body.theme-desert .quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
+                0 0 25px rgba(251, 146, 60, 0.4),
+                inset 0 0 20px rgba(251, 146, 60, 0.1);
+    border-color: #fb923c !important;
+}
+
+/* Ice theme */
+body.theme-ice .quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
+                0 0 25px rgba(56, 189, 248, 0.4),
+                inset 0 0 20px rgba(56, 189, 248, 0.1);
+    border-color: #38bdf8 !important;
+}
+
+/* Volcanic theme */
+body.theme-volcanic .quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(239, 68, 68, 0.5),
+                inset 0 0 25px rgba(239, 68, 68, 0.15);
+    border-color: #ef4444 !important;
+}
+
+/* Mystic theme */
+body.theme-mystic .quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
+                0 0 25px rgba(167, 139, 250, 0.4),
+                inset 0 0 20px rgba(167, 139, 250, 0.1);
+    border-color: #a78bfa !important;
+}
+
+/* Golden theme */
+body.theme-golden .quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
+                0 0 30px rgba(250, 204, 21, 0.5),
+                inset 0 0 25px rgba(250, 204, 21, 0.15);
+    border-color: #facc15 !important;
+}
+
+/* Shadow theme */
+body.theme-shadow .quest-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6),
+                0 0 25px rgba(148, 163, 184, 0.3),
+                inset 0 0 20px rgba(148, 163, 184, 0.05);
+    border-color: #94a3b8 !important;
+}
+
+/* ===== PRIORITY-BASED HOVER INTENSITY ===== */
+
+/* High priority - more dramatic */
+.quest-card[data-priority="high"]:hover,
+.quest-card.priority-high:hover {
+    transform: translateY(-8px) scale(1.03);
+    filter: brightness(1.1);
+}
+
+/* Low priority - subtle */
+.quest-card[data-priority="low"]:hover,
+.quest-card.priority-low:hover {
+    transform: translateY(-3px) scale(1.01);
+}
