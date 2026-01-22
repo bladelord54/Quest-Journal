@@ -5075,15 +5075,74 @@ class GoalManager {
             return;
         }
         
-        this.currentTheme = themeId;
-        this.applyColorTheme();
-        this.saveData();
-        this.renderThemeSelector();
-        this.renderThemes(); // Update the themes display in Rewards section
+        // Play theme transition animation
+        this.playThemeTransition(theme.color, () => {
+            this.currentTheme = themeId;
+            this.applyColorTheme();
+            this.saveData();
+            this.renderThemeSelector();
+            this.renderThemes();
+        });
         
         if (theme) {
             this.showAchievement(`🎨 ${theme.name} theme activated!`, 'daily');
         }
+    }
+    
+    playThemeTransition(color, callback) {
+        const overlay = document.getElementById('theme-transition-overlay');
+        if (!overlay) {
+            callback();
+            return;
+        }
+        
+        // Create ripple effect from center
+        const ripple = document.createElement('div');
+        ripple.className = 'theme-ripple';
+        ripple.style.cssText = `
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, ${color}dd, ${color}44);
+            transform: translate(-50%, -50%);
+        `;
+        overlay.appendChild(ripple);
+        
+        // Create particle burst
+        for (let i = 0; i < 12; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'theme-particle';
+            const angle = (i / 12) * Math.PI * 2;
+            const distance = 150 + Math.random() * 100;
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance;
+            particle.style.cssText = `
+                top: 50%;
+                left: 50%;
+                background: ${color};
+                --tx: ${tx}px;
+                --ty: ${ty}px;
+                animation-delay: ${i * 0.03}s;
+            `;
+            overlay.appendChild(particle);
+        }
+        
+        // Flash overlay
+        overlay.style.background = `radial-gradient(circle at center, ${color}33, transparent)`;
+        overlay.classList.add('active', 'theme-flash');
+        
+        // Apply theme after brief delay
+        setTimeout(() => {
+            callback();
+        }, 150);
+        
+        // Clean up after animation
+        setTimeout(() => {
+            overlay.classList.remove('active', 'theme-flash');
+            overlay.innerHTML = '';
+            overlay.style.background = '';
+        }, 800);
     }
 
     renderThemeSelector() {
