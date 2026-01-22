@@ -495,6 +495,20 @@
     }
 }
 
+/* ===== MOBILE SCROLLBARS ===== */
+
+/* Thinner scrollbars on mobile */
+@media (max-width: 768px) {
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        border-radius: 3px;
+    }
+}
+
 /* ===== MOBILE TOUCH EFFECTS ===== */
 
 /* Disable hover effects on touch devices */

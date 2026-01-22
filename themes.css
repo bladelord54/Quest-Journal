@@ -428,3 +428,143 @@ body.has-theme-bg.theme-shadow .flex-1.overflow-y-auto,
 body.has-theme-bg.theme-shadow .bg-stone-800 {
     background: transparent !important;
 }
+
+/* ===== CUSTOM SCROLLBARS PER THEME ===== */
+
+/* Default/Amber theme scrollbar */
+body::-webkit-scrollbar,
+body *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+body::-webkit-scrollbar-track,
+body *::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+}
+
+body::-webkit-scrollbar-thumb,
+body *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #f59e0b, #d97706);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+body::-webkit-scrollbar-thumb:hover,
+body *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #fbbf24, #f59e0b);
+}
+
+/* Forest theme scrollbar */
+body.theme-forest::-webkit-scrollbar-track,
+body.theme-forest *::-webkit-scrollbar-track {
+    background: rgba(6, 78, 59, 0.3);
+}
+
+body.theme-forest::-webkit-scrollbar-thumb,
+body.theme-forest *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #10b981, #059669);
+}
+
+body.theme-forest::-webkit-scrollbar-thumb:hover,
+body.theme-forest *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #34d399, #10b981);
+}
+
+/* Desert theme scrollbar */
+body.theme-desert::-webkit-scrollbar-track,
+body.theme-desert *::-webkit-scrollbar-track {
+    background: rgba(124, 45, 18, 0.3);
+}
+
+body.theme-desert::-webkit-scrollbar-thumb,
+body.theme-desert *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #fb923c, #ea580c);
+}
+
+body.theme-desert::-webkit-scrollbar-thumb:hover,
+body.theme-desert *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #fdba74, #fb923c);
+}
+
+/* Ice theme scrollbar */
+body.theme-ice::-webkit-scrollbar-track,
+body.theme-ice *::-webkit-scrollbar-track {
+    background: rgba(12, 74, 110, 0.3);
+}
+
+body.theme-ice::-webkit-scrollbar-thumb,
+body.theme-ice *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+}
+
+body.theme-ice::-webkit-scrollbar-thumb:hover,
+body.theme-ice *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+}
+
+/* Volcanic theme scrollbar */
+body.theme-volcanic::-webkit-scrollbar-track,
+body.theme-volcanic *::-webkit-scrollbar-track {
+    background: rgba(127, 29, 29, 0.3);
+}
+
+body.theme-volcanic::-webkit-scrollbar-thumb,
+body.theme-volcanic *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+}
+
+body.theme-volcanic::-webkit-scrollbar-thumb:hover,
+body.theme-volcanic *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #f87171, #ef4444);
+}
+
+/* Mystic theme scrollbar */
+body.theme-mystic::-webkit-scrollbar-track,
+body.theme-mystic *::-webkit-scrollbar-track {
+    background: rgba(91, 33, 182, 0.3);
+}
+
+body.theme-mystic::-webkit-scrollbar-thumb,
+body.theme-mystic *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #a78bfa, #8b5cf6);
+}
+
+body.theme-mystic::-webkit-scrollbar-thumb:hover,
+body.theme-mystic *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #c4b5fd, #a78bfa);
+}
+
+/* Golden theme scrollbar */
+body.theme-golden::-webkit-scrollbar-track,
+body.theme-golden *::-webkit-scrollbar-track {
+    background: rgba(133, 77, 14, 0.3);
+}
+
+body.theme-golden::-webkit-scrollbar-thumb,
+body.theme-golden *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #facc15, #eab308);
+}
+
+body.theme-golden::-webkit-scrollbar-thumb:hover,
+body.theme-golden *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #fde047, #facc15);
+}
+
+/* Shadow theme scrollbar */
+body.theme-shadow::-webkit-scrollbar-track,
+body.theme-shadow *::-webkit-scrollbar-track {
+    background: rgba(31, 41, 55, 0.4);
+}
+
+body.theme-shadow::-webkit-scrollbar-thumb,
+body.theme-shadow *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6b7280, #4b5563);
+}
+
+body.theme-shadow::-webkit-scrollbar-thumb:hover,
+body.theme-shadow *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9ca3af, #6b7280);
+}
