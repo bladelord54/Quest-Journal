@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v145';
+const CACHE_NAME = 'life-quest-journal-v146';
 const urlsToCache = [
   './',
   './index.html',
@@ -12,8 +12,14 @@ const urlsToCache = [
   './themes.css',
   './manifest.json',
   // Theme background assets
+  './icons/forest-bg.gif',
+  './icons/desert-bg.gif',
+  './icons/ice-bg.gif',
   './icons/volcanic-bg.gif',
   './icons/volcanic-bg.mp4',
+  './icons/mystic-bg.gif',
+  './icons/golden-bg.gif',
+  './icons/shadow-bg.gif',
   './icons/coin.gif',
   './icons/leaf.gif',
   './icons/snow.gif',

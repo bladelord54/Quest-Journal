@@ -4912,9 +4912,27 @@ class GoalManager {
         
         // Define which themes have video/gif backgrounds
         const videoBackgrounds = {
+            forest: {
+                gif: 'icons/forest-bg.gif'
+            },
+            desert: {
+                gif: 'icons/desert-bg.gif'
+            },
+            ice: {
+                gif: 'icons/ice-bg.gif'
+            },
             volcanic: {
                 video: 'icons/volcanic-bg.mp4',
                 gif: 'icons/volcanic-bg.gif'
+            },
+            mystic: {
+                gif: 'icons/mystic-bg.gif'
+            },
+            golden: {
+                gif: 'icons/golden-bg.gif'
+            },
+            shadow: {
+                gif: 'icons/shadow-bg.gif'
             }
         };
         
