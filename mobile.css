@@ -494,3 +494,134 @@
         }
     }
 }
+
+/* ===== MOBILE TOUCH EFFECTS ===== */
+
+/* Disable hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .quest-card:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .quest-card:hover::after {
+        left: -100%;
+    }
+}
+
+/* Touch/Active state for cards */
+@media (max-width: 768px) {
+    .quest-card {
+        -webkit-tap-highlight-color: transparent;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Tap press effect */
+    .quest-card:active {
+        transform: scale(0.97);
+        transition: transform 0.1s ease;
+    }
+    
+    /* Glow flash on tap */
+    .quest-card.touch-active {
+        animation: touch-glow 0.4s ease-out;
+    }
+    
+    @keyframes touch-glow {
+        0% {
+            box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+        }
+        50% {
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+        }
+        100% {
+            box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+        }
+    }
+    
+    /* Touch ripple effect */
+    .touch-ripple {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+        transform: scale(0);
+        animation: ripple-expand 0.6s ease-out forwards;
+        pointer-events: none;
+    }
+    
+    @keyframes ripple-expand {
+        0% {
+            transform: scale(0);
+            opacity: 0.6;
+        }
+        100% {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+    
+    /* Theme-specific touch glows */
+    body.theme-forest .quest-card.touch-active {
+        animation-name: touch-glow-forest;
+    }
+    @keyframes touch-glow-forest {
+        0% { box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+        50% { box-shadow: 0 0 35px rgba(16, 185, 129, 0.7); }
+        100% { box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    
+    body.theme-desert .quest-card.touch-active {
+        animation-name: touch-glow-desert;
+    }
+    @keyframes touch-glow-desert {
+        0% { box-shadow: 0 0 0 rgba(251, 146, 60, 0); }
+        50% { box-shadow: 0 0 35px rgba(251, 146, 60, 0.7); }
+        100% { box-shadow: 0 0 0 rgba(251, 146, 60, 0); }
+    }
+    
+    body.theme-ice .quest-card.touch-active {
+        animation-name: touch-glow-ice;
+    }
+    @keyframes touch-glow-ice {
+        0% { box-shadow: 0 0 0 rgba(56, 189, 248, 0); }
+        50% { box-shadow: 0 0 35px rgba(56, 189, 248, 0.7); }
+        100% { box-shadow: 0 0 0 rgba(56, 189, 248, 0); }
+    }
+    
+    body.theme-volcanic .quest-card.touch-active {
+        animation-name: touch-glow-volcanic;
+    }
+    @keyframes touch-glow-volcanic {
+        0% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+        50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); }
+        100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    
+    body.theme-mystic .quest-card.touch-active {
+        animation-name: touch-glow-mystic;
+    }
+    @keyframes touch-glow-mystic {
+        0% { box-shadow: 0 0 0 rgba(167, 139, 250, 0); }
+        50% { box-shadow: 0 0 35px rgba(167, 139, 250, 0.7); }
+        100% { box-shadow: 0 0 0 rgba(167, 139, 250, 0); }
+    }
+    
+    body.theme-golden .quest-card.touch-active {
+        animation-name: touch-glow-golden;
+    }
+    @keyframes touch-glow-golden {
+        0% { box-shadow: 0 0 0 rgba(250, 204, 21, 0); }
+        50% { box-shadow: 0 0 40px rgba(250, 204, 21, 0.8); }
+        100% { box-shadow: 0 0 0 rgba(250, 204, 21, 0); }
+    }
+    
+    body.theme-shadow .quest-card.touch-active {
+        animation-name: touch-glow-shadow;
+    }
+    @keyframes touch-glow-shadow {
+        0% { box-shadow: 0 0 0 rgba(148, 163, 184, 0); }
+        50% { box-shadow: 0 0 35px rgba(148, 163, 184, 0.5); }
+        100% { box-shadow: 0 0 0 rgba(148, 163, 184, 0); }
+    }
+}

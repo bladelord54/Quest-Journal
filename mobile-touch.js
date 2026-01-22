@@ -20,6 +20,49 @@ class MobileTouchHandler {
         this.setupSwipeGestures();
         this.setupLongPress();
         this.preventDoubleTapZoom();
+        this.setupTouchRipple();
+    }
+    
+    // Touch ripple effect for quest cards
+    setupTouchRipple() {
+        document.addEventListener('touchstart', (e) => {
+            const card = e.target.closest('.quest-card');
+            if (!card) return;
+            
+            // Get touch position relative to card
+            const rect = card.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            // Create ripple element
+            const ripple = document.createElement('div');
+            ripple.className = 'touch-ripple';
+            ripple.style.cssText = `
+                left: ${x}px;
+                top: ${y}px;
+                width: 50px;
+                height: 50px;
+                margin-left: -25px;
+                margin-top: -25px;
+            `;
+            
+            card.appendChild(ripple);
+            card.classList.add('touch-active');
+            
+            // Light haptic feedback
+            this.vibrate(5);
+            
+            // Remove ripple after animation
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+            
+            // Remove touch-active class after glow animation
+            setTimeout(() => {
+                card.classList.remove('touch-active');
+            }, 400);
+        }, { passive: true });
     }
 
     // Haptic Feedback
