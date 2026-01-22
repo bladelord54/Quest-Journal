@@ -4939,13 +4939,9 @@ class GoalManager {
         const bgConfig = videoBackgrounds[this.currentTheme];
         
         if (bgConfig) {
-            if (isMobile) {
-                // Use GIF for mobile (more reliable than video)
-                video.style.display = 'none';
-                document.body.style.setProperty('--theme-bg-image', `url('${bgConfig.gif}')`);
-                document.body.classList.add('has-theme-bg');
-            } else {
-                // Use video for desktop
+            // Use video if available and on desktop, otherwise use GIF
+            if (!isMobile && bgConfig.video) {
+                // Use video for desktop when available
                 document.body.classList.remove('has-theme-bg');
                 document.body.style.removeProperty('--theme-bg-image');
                 video.src = bgConfig.video;
@@ -4953,6 +4949,15 @@ class GoalManager {
                 video.classList.remove('hidden');
                 video.classList.add('active');
                 video.play().catch(e => console.log('Video autoplay prevented:', e));
+            } else {
+                // Use GIF for mobile OR when no video is available
+                video.style.display = 'none';
+                video.classList.add('hidden');
+                video.classList.remove('active');
+                video.pause();
+                video.src = '';
+                document.body.style.setProperty('--theme-bg-image', `url('${bgConfig.gif}')`);
+                document.body.classList.add('has-theme-bg');
             }
         } else {
             // No background for this theme
