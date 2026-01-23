@@ -3935,11 +3935,11 @@ class GoalManager {
         
         // Unlocked badges section
         if (unlocked.length > 0) {
-            html += '<div class="col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">🏆 Unlocked</h4></div>';
+            html += '<div class="col-span-2 md:col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">🏆 Unlocked</h4></div>';
             html += unlocked.map(achievement => {
                 const badge = this.badges.find(b => b.id === achievement.id);
                 return `
-                    <div class="bg-amber-950/60 p-4 rounded-lg border-2 border-amber-500 text-center hover:scale-105 transition-all">
+                    <div class="quest-card bg-amber-950/60 p-4 rounded-lg border-2 border-amber-500 text-center">
                         <div class="text-4xl mb-2">${achievement.icon}</div>
                         <div class="text-amber-300 font-bold fancy-font text-sm">${achievement.name}</div>
                         <div class="text-amber-200 text-xs mt-1">${achievement.description}</div>
@@ -3951,7 +3951,7 @@ class GoalManager {
         
         // In-progress achievements section
         if (locked.length > 0) {
-            html += '<div class="col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">📊 In Progress</h4></div>';
+            html += '<div class="col-span-2 md:col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">📊 In Progress</h4></div>';
             html += locked.map(achievement => {
                 const current = progress[achievement.type] || 0;
                 const target = achievement.target;
@@ -3973,7 +3973,7 @@ class GoalManager {
                 }
                 
                 return `
-                    <div class="bg-gray-900/60 p-4 rounded-lg border-2 ${borderColor} text-center transition-all opacity-80 hover:opacity-100">
+                    <div class="quest-card bg-gray-900/60 p-4 rounded-lg border-2 ${borderColor} text-center opacity-80 hover:opacity-100">
                         <div class="text-3xl mb-2 grayscale-[50%]">${achievement.icon}</div>
                         <div class="text-gray-300 font-bold fancy-font text-sm">${achievement.name}</div>
                         <div class="text-gray-400 text-xs mt-1">${achievement.description}</div>
@@ -3991,7 +3991,7 @@ class GoalManager {
         }
         
         if (html === '') {
-            html = '<p class="col-span-4 text-center text-amber-200 py-8 fancy-font">Complete quests to unlock badges!</p>';
+            html = '<p class="col-span-2 md:col-span-4 text-center text-amber-200 py-8 fancy-font">Complete quests to unlock badges!</p>';
         }
         
         container.innerHTML = html;
