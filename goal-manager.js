@@ -6306,8 +6306,14 @@ class GoalManager {
             container.innerHTML = todaysTasks.map(task => {
                 const parentNames = this.getParentNames(task, 'weeklyGoalIds', this.weeklyGoals);
                 const isSelected = this.selectedItems.has(`daily-${task.id}`);
+                const priority = task.priority && ['low', 'medium', 'high'].includes(task.priority) ? task.priority : 'medium';
+                const priorityBadge = priority === 'high'
+                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
+                    : priority === 'low'
+                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
+                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
                 return `
-                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 p-4 rounded-lg shadow-lg border-3 border-amber-600 task-item hover:shadow-xl transition-all draggable-item ${isSelected ? 'ring-4 ring-purple-500' : ''}"
+                <div class="quest-card bg-gradient-to-br from-amber-900 to-amber-950 p-5 rounded-lg shadow-xl border-3 border-amber-700 task-item mb-4 ${isSelected ? 'ring-4 ring-purple-500' : ''}"
                     draggable="true"
                     ondragstart="goalManager.handleDragStart('daily', ${task.id}, event)"
                     ondragend="goalManager.handleDragEnd(event)"
@@ -6315,7 +6321,7 @@ class GoalManager {
                     ondragenter="goalManager.handleDragEnter(event)"
                     ondragleave="goalManager.handleDragLeave(event)"
                     ondrop="goalManager.handleDrop('daily', ${task.id}, event)">
-                    <div class="flex items-start w-full">
+                    <div class="flex items-start space-x-4">
                         ${this.bulkSelectionMode ? `
                             <input 
                                 type="checkbox" 
@@ -6323,36 +6329,40 @@ class GoalManager {
                                 onchange="goalManager.toggleItemSelection(${task.id}, 'daily')"
                                 class="mt-1 mr-2 w-5 h-5 cursor-pointer">
                         ` : ''}
-                        <i class="ri-draggable drag-handle text-amber-600 mr-2"></i>
                         <input 
                             type="checkbox" 
                             ${task.completed ? 'checked' : ''} 
                             onchange="goalManager.toggleTask(${task.id}, event)"
                             class="mt-1">
-                        <div class="ml-4 flex-1">
-                            <span class="text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
-                            ${task.description ? `
-                                <p class="text-sm text-amber-700/80 mt-1 fancy-font">${task.description}</p>
-                            ` : ''}
+                        <div class="flex-1">
+                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${task.completed ? 'line-through opacity-60' : ''}">${task.title}</h4>
+                            ${task.description ? `<p class="text-sm text-amber-200/80 mb-2 fancy-font">${task.description}</p>` : ''}
+                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
+                            
                             ${parentNames.length > 0 ? `
-                                <div class="mt-1 flex flex-wrap gap-1">
+                                <div class="mb-2 flex flex-wrap gap-1">
                                     ${parentNames.map(name => `
-                                        <span class="text-xs bg-green-700/40 text-green-900 px-2 py-0.5 rounded border border-green-600/40 fancy-font">
+                                        <span class="text-xs bg-green-700/40 text-green-200 px-2 py-1 rounded border border-green-600/40 fancy-font">
                                             🎯 ${name}
                                         </span>
                                     `).join('')}
                                 </div>
                             ` : ''}
+                            
                             ${this.renderChecklistHTML(task, 'daily')}
+                            
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="goalManager.manageParentConnections('daily', ${task.id})" 
+                                    class="text-xs bg-green-800/50 hover:bg-green-700/60 text-green-200 px-3 py-1 rounded border border-green-600 fancy-font">
+                                    🔗 Connections
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="goalManager.manageParentConnections('daily', ${task.id})" class="text-green-600 hover:text-green-800 text-xl" title="Manage connections" aria-label="Manage task connections">
-                                <i class="ri-links-line" aria-hidden="true"></i>
-                            </button>
-                            <button onclick="goalManager.editGoal('daily', ${task.id})" class="text-blue-600 hover:text-blue-800 text-xl" title="Edit quest" aria-label="Edit daily task">
+                        <div class="flex flex-col gap-2">
+                            <button onclick="goalManager.editGoal('daily', ${task.id})" class="text-amber-300 hover:text-amber-100 text-xl" title="Edit quest" aria-label="Edit daily task">
                                 <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-600 hover:text-red-800 text-xl" title="Delete quest" aria-label="Delete daily task">
+                            <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-amber-400 hover:text-amber-200 text-xl" title="Delete quest" aria-label="Delete daily task">
                                 <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>

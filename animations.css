@@ -1293,7 +1293,8 @@ body .bg-stone-800 {
     50% { transform: translateY(-5px); }
 }
 
-.quest-card:hover .text-2xl,
+/* Icon bounce on hover - exclude calendar navigation */
+.quest-card:hover .text-2xl:not([class*="ri-arrow"]),
 .quest-card:hover .text-3xl,
 .quest-card:hover .text-4xl {
     animation: icon-bounce 0.5s ease;
@@ -1305,8 +1306,9 @@ body .bg-stone-800 {
     50% { transform: scale(1.15); }
 }
 
-.quest-card:hover [class*="bg-green"],
-.quest-card:hover [class*="bg-amber"] {
+/* XP badge pulse - exclude calendar days */
+.quest-card:hover [class*="bg-green"]:not(.calendar-day):not(#calendar-days *),
+.quest-card:hover [class*="bg-amber"]:not(.calendar-day):not(#calendar-days *) {
     animation: xp-pulse 0.6s ease infinite;
 }
 
