@@ -4305,7 +4305,7 @@ class GoalManager {
                             </div>
                         ` : `
                             <button onclick="goalManager.selectTitle('${title.id}')" 
-                                class="w-full bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded-lg font-semibold fancy-font shadow-lg transition-transform hover:scale-105">
+                                class="w-full bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold fancy-font shadow-lg transition-transform hover:scale-105">
                                 Equip Title
                             </button>
                         `}
@@ -4551,7 +4551,7 @@ class GoalManager {
                         </div>
                     ` : charges > 0 ? `
                         <button onclick="goalManager.castSpell('${spell.id}')" 
-                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
+                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
                             Cast Spell
                         </button>
                     ` : `
@@ -4591,7 +4591,7 @@ class GoalManager {
                     </div>
                     ${isPremiumLocked ? `
                         <button onclick="goalManager.showPremiumPurchaseModal()" 
-                            class="w-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
+                            class="w-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
                             👑 Unlock Premium
                         </button>
                     ` : isActive ? `
@@ -4600,7 +4600,7 @@ class GoalManager {
                         </div>
                     ` : charges > 0 ? `
                         <button onclick="goalManager.castSpell('${spell.id}')" 
-                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-3 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
+                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
                             Cast Spell
                         </button>
                     ` : `
@@ -10836,10 +10836,10 @@ class GoalManager {
                 </div>
                 
                 <div class="p-4 border-t border-amber-700 flex flex-wrap gap-3 justify-center bg-stone-900/50">
-                    <button onclick="goalManager.addSelectedStarterTasks()" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6 py-2 rounded-lg font-bold transition-all">
+                    <button onclick="goalManager.addSelectedStarterTasks()" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
                         ✅ Add Selected Tasks
                     </button>
-                    <button onclick="goalManager.closeStarterTasksModal()" class="bg-gradient-to-r from-stone-600 to-stone-700 hover:from-stone-500 hover:to-stone-600 text-white px-6 py-2 rounded-lg font-bold transition-all">
+                    <button onclick="goalManager.closeStarterTasksModal()" class="bg-gradient-to-r from-stone-600 to-stone-700 hover:from-stone-500 hover:to-stone-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
                         🚀 Start Fresh
                     </button>
                 </div>
