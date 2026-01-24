@@ -3939,7 +3939,7 @@ class GoalManager {
             html += unlocked.map(achievement => {
                 const badge = this.badges.find(b => b.id === achievement.id);
                 return `
-                    <div class="quest-card bg-amber-950/60 p-4 rounded-lg border-2 border-amber-500 text-center">
+                    <div class="quest-card bg-amber-950/60 p-5 rounded-lg border-2 border-amber-500 text-center">
                         <div class="text-4xl mb-2">${achievement.icon}</div>
                         <div class="text-amber-300 font-bold fancy-font text-sm">${achievement.name}</div>
                         <div class="text-amber-200 text-xs mt-1">${achievement.description}</div>
@@ -3973,7 +3973,7 @@ class GoalManager {
                 }
                 
                 return `
-                    <div class="quest-card bg-gray-900/60 p-4 rounded-lg border-2 ${borderColor} text-center opacity-80 hover:opacity-100">
+                    <div class="quest-card bg-gray-900/60 p-5 rounded-lg border-2 ${borderColor} text-center opacity-80 hover:opacity-100">
                         <div class="text-3xl mb-2 grayscale-[50%]">${achievement.icon}</div>
                         <div class="text-gray-300 font-bold fancy-font text-sm">${achievement.name}</div>
                         <div class="text-gray-400 text-xs mt-1">${achievement.description}</div>
@@ -4079,10 +4079,22 @@ class GoalManager {
         if (!container) return;
         
         if (this.habits.length === 0) {
-            container.innerHTML = '<p class="text-amber-200 text-center py-4 fancy-font text-sm">No daily rituals yet. Create one to build streaks!</p>';
+            container.innerHTML = `
+                <div class="text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">🔥</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Build Your Rituals</h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        Daily rituals forge legendary habits. Start a streak and watch your power grow!
+                    </p>
+                    <button onclick="goalManager.addHabit()" 
+                        class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
+                        <i class="ri-fire-line mr-2"></i>Create Daily Ritual
+                    </button>
+                </div>
+            `;
         } else {
             container.innerHTML = this.habits.map(habit => `
-                <div class="quest-card bg-gradient-to-br from-yellow-100 to-amber-50 p-4 rounded-lg shadow-lg border-3 border-yellow-600 hover:shadow-xl transition-all draggable-item"
+                <div class="quest-card bg-gradient-to-br from-yellow-100 to-amber-50 p-5 rounded-lg shadow-lg border-3 border-yellow-600 hover:shadow-xl transition-all draggable-item"
                     draggable="true"
                     ondragstart="goalManager.handleDragStart('habit', ${habit.id}, event)"
                     ondragend="goalManager.handleDragEnd(event)"
@@ -4107,10 +4119,10 @@ class GoalManager {
                                 Total: ${habit.totalCompletions || 0} completions
                             </div>
                         </div>
-                        <button onclick="goalManager.editGoal('habit', ${habit.id})" class="text-blue-600 hover:text-blue-800 text-xl mr-2" title="Edit habit" aria-label="Edit habit">
+                        <button onclick="goalManager.editGoal('habit', ${habit.id})" class="text-blue-400 hover:text-blue-200 text-xl mr-2" title="Edit habit" aria-label="Edit habit">
                             <i class="ri-edit-line" aria-hidden="true"></i>
                         </button>
-                        <button onclick="goalManager.deleteGoal('habit', ${habit.id})" class="text-amber-600 hover:text-amber-800 text-xl" title="Delete habit" aria-label="Delete habit">
+                        <button onclick="goalManager.deleteGoal('habit', ${habit.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete habit" aria-label="Delete habit">
                             <i class="ri-delete-bin-line" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -4162,7 +4174,7 @@ class GoalManager {
                 const color = typeColors[goal.type] || 'gray';
                 
                 return `
-                    <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-4 rounded-lg shadow-xl border-3 border-${color}-700">
+                    <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700">
                         <div class="flex items-start space-x-4">
                             <div class="text-3xl">${typeIcons[goal.type]}</div>
                             <div class="flex-1">
@@ -4215,7 +4227,7 @@ class GoalManager {
             const timesOpened = this.treasureChests.filter(c => c.type === chest.type).length;
             
             return `
-                <div class="quest-card bg-gradient-to-br from-${chest.color}-900 to-${chest.color}-950 p-6 rounded-xl shadow-xl border-3 border-${chest.color}-600 text-center">
+                <div class="quest-card bg-gradient-to-br from-${chest.color}-900 to-${chest.color}-950 p-5 rounded-xl shadow-xl border-3 border-${chest.color}-600 text-center">
                     <div class="text-6xl mb-3">${chest.icon}</div>
                     <h4 class="text-xl font-bold text-amber-300 medieval-title mb-2">${chest.name}</h4>
                     <p class="text-${chest.color}-200 text-lg font-bold mb-2">${chest.cost} Gold</p>
@@ -4338,7 +4350,7 @@ class GoalManager {
                 const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
                 
                 html += `
-                    <div class="quest-card bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl border-4 border-${colors.border}-500 mb-6">
+                    <div class="quest-card bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-5 rounded-xl shadow-2xl border-4 border-${colors.border}-500 mb-6">
                         <div class="flex items-center gap-6">
                             <div class="text-8xl">${icon}</div>
                             <div class="flex-1">
@@ -4376,7 +4388,7 @@ class GoalManager {
                 const compName = comp.name || companionDefs[comp.type]?.name || 'Companion';
                 
                 html += `
-                    <div class="quest-card bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-4 rounded-lg border-2 ${isActive ? 'border-green-400 ring-2 ring-green-400' : `border-${cColors.border}-700`} text-center cursor-pointer hover:scale-105 transition-transform"
+                    <div class="quest-card bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-5 rounded-lg border-2 ${isActive ? 'border-green-400 ring-2 ring-green-400' : `border-${cColors.border}-700`} text-center cursor-pointer hover:scale-105 transition-transform"
                          onclick="goalManager.setActiveCompanion('${comp.type}')">
                         <div class="text-5xl mb-2">${compIcon}</div>
                         <h5 class="font-bold text-amber-200 text-sm mb-1">${compName}</h5>
@@ -5768,7 +5780,19 @@ class GoalManager {
         const todayTasksList = document.getElementById('today-tasks-list');
         
         if (todaysTasks.length === 0) {
-            todayTasksList.innerHTML = '<div class="text-amber-800 text-center py-8 fancy-font">No quests scheduled for today. Begin your adventure!</div>';
+            todayTasksList.innerHTML = `
+                <div class="text-center py-16 px-8">
+                    <div class="empty-state-icon text-8xl mb-6">🗡️</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Your Quest Awaits</h3>
+                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
+                        No quests scheduled for today. Begin your adventure and conquer new challenges!
+                    </p>
+                    <button onclick="addDailyTask()" 
+                        class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
+                        <i class="ri-sword-line mr-2"></i>Add Today's Quest
+                    </button>
+                </div>
+            `;
         } else {
             todayTasksList.innerHTML = todaysTasks.map(task => `
                 <div class="flex items-center p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-all border-2 border-amber-300 task-item">
@@ -5777,7 +5801,7 @@ class GoalManager {
                         ${task.completed ? 'checked' : ''} 
                         onchange="goalManager.toggleTask(${task.id}, event)">
                     <span class="ml-4 flex-1 fancy-font font-semibold text-lg ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
-                    <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-600 hover:text-red-800 text-xl">
+                    <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
                         <i class="ri-delete-bin-line"></i>
                     </button>
                 </div>
@@ -5810,7 +5834,7 @@ class GoalManager {
                 });
                 const progress = linkedYearly.length > 0 ? goal.progress || 0 : 0;
                 return `
-                <div class="quest-card bg-gradient-to-br from-red-900 to-red-950 p-6 rounded-xl shadow-2xl border-4 border-red-700 goal-item">
+                <div class="quest-card bg-gradient-to-br from-red-900 to-red-950 p-5 rounded-xl shadow-2xl border-4 border-red-700 goal-item">
                     <div class="flex items-start space-x-4">
                         <input 
                             type="checkbox" 
@@ -5853,7 +5877,7 @@ class GoalManager {
                             </button>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('life', ${goal.id})" class="text-red-300 hover:text-red-100 text-xl" title="Edit quest" aria-label="Edit life goal">
+                            <button onclick="goalManager.editGoal('life', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit life goal">
                                 <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
                             <button onclick="goalManager.deleteGoal('life', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete life goal">
@@ -5949,10 +5973,10 @@ class GoalManager {
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('yearly', ${goal.id})" class="text-purple-300 hover:text-purple-100 text-xl" title="Edit quest" aria-label="Edit yearly goal">
+                            <button onclick="goalManager.editGoal('yearly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit yearly goal">
                                 <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('yearly', ${goal.id})" class="text-purple-400 hover:text-purple-200 text-xl" title="Delete quest" aria-label="Delete yearly goal">
+                            <button onclick="goalManager.deleteGoal('yearly', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete yearly goal">
                                 <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
@@ -6006,7 +6030,7 @@ class GoalManager {
                 });
                 
                 html += `
-                <div class="col-span-2 quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-6 rounded-xl shadow-xl border-3 border-blue-700 goal-item mb-4">
+                <div class="col-span-2 quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-5 rounded-xl shadow-xl border-3 border-blue-700 goal-item mb-4">
                     <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3">📅 This Month's Scheduled Tasks</h4>
                     <p class="text-xs text-blue-200 mb-3 fancy-font">${thisMonthsTasks.filter(t => t.completed).length}/${thisMonthsTasks.length} tasks complete</p>
                     
@@ -6056,7 +6080,7 @@ class GoalManager {
                         ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
                         : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
                 return `
-                <div class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-6 rounded-xl shadow-xl border-3 border-blue-700 goal-item ${isSelected ? 'ring-4 ring-purple-500' : ''}">
+                <div class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-5 rounded-xl shadow-xl border-3 border-blue-700 goal-item ${isSelected ? 'ring-4 ring-purple-500' : ''}">
                     <div class="flex items-start space-x-4">
                         ${this.bulkSelectionMode ? `
                             <input 
@@ -6115,10 +6139,10 @@ class GoalManager {
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('monthly', ${goal.id})" class="text-blue-300 hover:text-blue-100 text-xl" title="Edit quest" aria-label="Edit monthly goal">
+                            <button onclick="goalManager.editGoal('monthly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit monthly goal">
                                 <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('monthly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Delete quest" aria-label="Delete monthly goal">
+                            <button onclick="goalManager.deleteGoal('monthly', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete monthly goal">
                                 <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
@@ -6266,10 +6290,10 @@ class GoalManager {
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('weekly', ${goal.id})" class="text-green-300 hover:text-green-100 text-xl" title="Edit quest" aria-label="Edit weekly goal">
+                            <button onclick="goalManager.editGoal('weekly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit weekly goal">
                                 <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('weekly', ${goal.id})" class="text-green-400 hover:text-green-200 text-xl" title="Delete quest" aria-label="Delete weekly goal">
+                            <button onclick="goalManager.deleteGoal('weekly', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete weekly goal">
                                 <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
@@ -6359,10 +6383,10 @@ class GoalManager {
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('daily', ${task.id})" class="text-amber-300 hover:text-amber-100 text-xl" title="Edit quest" aria-label="Edit daily task">
+                            <button onclick="goalManager.editGoal('daily', ${task.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit daily task">
                                 <i class="ri-edit-line" aria-hidden="true"></i>
                             </button>
-                            <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-amber-400 hover:text-amber-200 text-xl" title="Delete quest" aria-label="Delete daily task">
+                            <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete daily task">
                                 <i class="ri-delete-bin-line" aria-hidden="true"></i>
                             </button>
                         </div>
@@ -7028,7 +7052,7 @@ class GoalManager {
         };
         
         return `
-            <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-4 rounded-lg shadow-xl border-3 border-${color}-700 hover:shadow-2xl transition-all draggable-item"
+            <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700 hover:shadow-2xl transition-all draggable-item"
                 draggable="true"
                 ondragstart="goalManager.handleDragStart('side', ${quest.id}, event)"
                 ondragend="goalManager.handleDragEnd(event)"
@@ -7055,10 +7079,10 @@ class GoalManager {
                         ${this.renderChecklistHTML(quest, 'sidequest')}
                     </div>
                     <div class="flex flex-col gap-2">
-                        <button onclick="goalManager.editGoal('side', ${quest.id})" class="text-${color}-300 hover:text-${color}-100 text-xl" title="Edit quest" aria-label="Edit side quest">
+                        <button onclick="goalManager.editGoal('side', ${quest.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit side quest">
                             <i class="ri-edit-line" aria-hidden="true"></i>
                         </button>
-                        <button onclick="goalManager.deleteGoal('side', ${quest.id})" class="text-${color}-400 hover:text-${color}-200 text-xl" title="Delete quest" aria-label="Delete side quest">
+                        <button onclick="goalManager.deleteGoal('side', ${quest.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete side quest">
                             <i class="ri-delete-bin-line" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -7221,13 +7245,13 @@ class GoalManager {
             `;
         } else {
             container.innerHTML = tasksForDay.map(task => `
-                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 p-4 rounded-lg shadow-lg flex items-center border-3 border-amber-600 task-item hover:shadow-xl transition-all">
+                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 p-5 rounded-lg shadow-lg flex items-center border-3 border-amber-600 task-item hover:shadow-xl transition-all">
                     <input 
                         type="checkbox" 
                         ${task.completed ? 'checked' : ''} 
                         onchange="goalManager.toggleTask(${task.id}, event)">
                     <span class="ml-4 flex-1 text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
-                    <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-600 hover:text-red-800 text-xl">
+                    <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
                         <i class="ri-delete-bin-line"></i>
                     </button>
                 </div>
