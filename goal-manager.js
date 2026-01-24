@@ -32,10 +32,6 @@ class GoalManager {
         this.companion = null; // Legacy - will migrate to companions array
         this.companions = []; // Collection of unlocked companions
         this.activeCompanionId = null; // Currently active companion type id
-        this.companionLevel = 1;
-        this.questPath = null;
-        this.pathProgress = { warrior: 0, sage: 0, merchant: 0 };
-        this.upgrades = [];
         this.statsPanelCollapsed = false;
         
         // Spellbook System
@@ -95,7 +91,7 @@ class GoalManager {
         this.premiumFeatures = {
             themes: true,           // 8+ premium themes
             achievements: true,     // Achievement badge system
-            bossBasttles: true,     // Weekly/Monthly boss battles
+            bossBattles: true,      // Weekly/Monthly boss battles
             advancedStats: true,    // Detailed analytics
             customIcons: true,      // Custom goal/task icons
             enchantments: true,     // Enchantment system
@@ -184,7 +180,6 @@ class GoalManager {
                 this.companion = data.companion || null;
                 this.companions = data.companions || [];
                 this.activeCompanionId = data.activeCompanionId || null;
-                this.companionLevel = data.companionLevel || 1;
                 
                 // Migrate legacy single companion to collection
                 if (this.companion && this.companions.length === 0) {
@@ -219,9 +214,6 @@ class GoalManager {
                         comp.type = nameToType[comp.name] || 'wolf';
                     }
                 });
-                this.questPath = data.questPath || null;
-                this.pathProgress = data.pathProgress || { warrior: 0, sage: 0, merchant: 0 };
-                this.upgrades = data.upgrades || [];
                 
                 // Spellbook System
                 this.spellbook = data.spellbook || [];
@@ -328,10 +320,6 @@ class GoalManager {
                 companion: this.companion,
                 companions: this.companions,
                 activeCompanionId: this.activeCompanionId,
-                companionLevel: this.companionLevel,
-                questPath: this.questPath,
-                pathProgress: this.pathProgress,
-                upgrades: this.upgrades,
                 spellbook: this.spellbook,
                 activeSpells: this.activeSpells,
                 activeQuestChains: this.activeQuestChains,
@@ -1065,11 +1053,11 @@ class GoalManager {
     }
     
     showToast(text, type = 'info', soundLevel = null) {
-        const toast = document.getElementById('achievement-toast');
-        const toastContainer = document.getElementById('toast-container');
-        const toastIcon = document.getElementById('toast-icon');
-        const toastTitle = document.getElementById('toast-title');
-        const achievementText = document.getElementById('achievement-text');
+        const toast = this.getElement('achievement-toast');
+        const toastContainer = this.getElement('toast-container');
+        const toastIcon = this.getElement('toast-icon');
+        const toastTitle = this.getElement('toast-title');
+        const achievementText = this.getElement('achievement-text');
         
         // Define toast styles for different notification types
         const toastStyles = {
@@ -3000,7 +2988,7 @@ class GoalManager {
         if (completedLifeGoals >= 5) this.unlockBadge('mythic', 'Mythic', 'Completed 5 life goals', '💫');
         
         // Planner badge
-        const futureTasks = this.dailyTasks.filter(t => t.dueDate > new Date().toISOString().split('T')[0]).length;
+        const futureTasks = this.dailyTasks.filter(t => t.dueDate > this.getCachedToday()).length;
         if (futureTasks >= 30) this.unlockBadge('planner', 'Master Planner', 'Scheduled 30+ future tasks', '📅');
         
         // Treasure hunter badges
@@ -3258,7 +3246,7 @@ class GoalManager {
     }
 
     updateFocusTimerDisplay() {
-        const timerElement = document.getElementById('focus-timer-display');
+        const timerElement = this.getElement('focus-timer-display');
         if (!timerElement) return;
         
         const minutes = Math.floor(this.focusTimeRemaining / 60);
@@ -3266,7 +3254,7 @@ class GoalManager {
         timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
         // Update progress bar
-        const progressBar = document.getElementById('focus-timer-progress');
+        const progressBar = this.getElement('focus-timer-progress');
         if (progressBar) {
             const extendedFocus = this.hasActiveEnchantment('extended_focus');
             const sessionLength = extendedFocus ? 35 : 25;
@@ -3766,6 +3754,9 @@ class GoalManager {
         this.isRendering = true;
         
         try {
+            // Refresh date cache at start of render cycle for performance
+            this.refreshDateCache();
+            
             // Always update global UI elements
             this.renderXPDisplay();
             this.updateProgress();
@@ -3827,6 +3818,23 @@ class GoalManager {
             this.domCache[id] = document.getElementById(id);
         }
         return this.domCache[id];
+    }
+    
+    // Cached date helpers - call refreshDateCache() at start of render cycle
+    refreshDateCache() {
+        const now = new Date();
+        this._cachedToday = now.toISOString().split('T')[0];
+        this._cachedNow = now;
+    }
+    
+    getCachedToday() {
+        if (!this._cachedToday) this.refreshDateCache();
+        return this._cachedToday;
+    }
+    
+    getCachedNow() {
+        if (!this._cachedNow) this.refreshDateCache();
+        return this._cachedNow;
     }
     
     renderXPDisplay() {
@@ -3898,7 +3906,7 @@ class GoalManager {
                           this.monthlyGoals.filter(g => g.completed).length;
         const maxStreak = Math.max(...this.habits.map(h => h.streak || 0), 0);
         const completedLifeGoals = this.lifeGoals.filter(g => g.completed).length;
-        const futureTasks = this.dailyTasks.filter(t => t.dueDate > new Date().toISOString().split('T')[0]).length;
+        const futureTasks = this.dailyTasks.filter(t => t.dueDate > this.getCachedToday()).length;
         
         return {
             tasks: totalTasks,
@@ -4960,7 +4968,7 @@ class GoalManager {
                 video.load();
                 video.classList.remove('hidden');
                 video.classList.add('active');
-                video.play().catch(e => console.log('Video autoplay prevented:', e));
+                video.play().catch(() => {});
             } else {
                 // Use GIF for mobile OR when no video is available
                 video.style.display = 'none';
@@ -4989,17 +4997,13 @@ class GoalManager {
         }
         
         const container = document.getElementById('theme-particles');
-        if (!container) {
-            console.log('Theme particles container not found');
-            return;
-        }
+        if (!container) return;
         
         // Clear existing particles
         container.innerHTML = '';
         
         // Get particle config based on theme
         const particleConfig = this.getParticleConfig();
-        console.log('Theme particles init:', this.currentTheme, particleConfig);
         
         // Spawn particles at interval
         this.particleInterval = setInterval(() => {
@@ -6752,14 +6756,11 @@ class GoalManager {
     async purchaseWithDigitalGoods() {
         const PREMIUM_SKU = 'quest_journal_premium'; // Set this in Google Play Console
         
-        console.log('Starting Digital Goods purchase flow...');
-        console.log('getDigitalGoodsService available:', 'getDigitalGoodsService' in window);
         
         // Get the Digital Goods service
         let service;
         try {
             service = await window.getDigitalGoodsService('https://play.google.com/billing');
-            console.log('Digital Goods service obtained:', service);
         } catch (serviceError) {
             console.error('Failed to get Digital Goods service:', serviceError);
             throw new Error('Billing service unavailable: ' + serviceError.message);
@@ -6771,7 +6772,6 @@ class GoalManager {
         
         // Get product details
         const details = await service.getDetails([PREMIUM_SKU]);
-        console.log('Product details:', details);
         
         if (!details || details.length === 0) {
             throw new Error('Product not found - check SKU: ' + PREMIUM_SKU);
@@ -9638,9 +9638,6 @@ class GoalManager {
         if ('Notification' in window) {
             const permission = await Notification.requestPermission();
             this.notificationsEnabled = permission === 'granted';
-            if (this.notificationsEnabled) {
-                console.log('✅ Notifications enabled');
-            }
         }
     }
 
@@ -9658,7 +9655,7 @@ class GoalManager {
                 requireInteraction: false
             });
         } catch (error) {
-            console.log('Notification error:', error);
+            // Notification failed silently
         }
     }
 
@@ -10635,7 +10632,6 @@ class GoalManager {
                             this.positionTooltip(rect, tooltip);
                         }, 400);
                     } else {
-                        console.log('Tutorial: Element not found:', step.element);
                         spotlight.style.display = 'none';
                         this.centerTooltip(tooltip);
                     }
