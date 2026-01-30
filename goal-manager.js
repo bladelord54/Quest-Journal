@@ -6717,14 +6717,25 @@ class GoalManager {
                 return;
             } catch (error) {
                 console.error('Digital Goods API error:', error);
-                // Show more specific error message for debugging
+                // Check if this is an unsupported context (web browser, not Play Store TWA)
+                const isUnsupportedContext = error.message && (
+                    error.message.includes('unsupported context') || 
+                    error.message.includes('not supported') ||
+                    error.message.includes('service unavailable')
+                );
+                
+                if (isUnsupportedContext) {
+                    // Fall through to web fallback - don't show error
+                    this.showWebPurchaseFallback();
+                    return;
+                }
+                
+                // Show specific error for other issues
                 let errorMsg = '❌ Purchase failed: ';
                 if (error.message.includes('not found')) {
                     errorMsg += 'Product not found in Play Store';
                 } else if (error.message.includes('canceled') || error.name === 'AbortError') {
                     errorMsg += 'Purchase was canceled';
-                } else if (error.message.includes('not supported')) {
-                    errorMsg += 'Billing not supported';
                 } else {
                     errorMsg += error.message || 'Unknown error';
                 }
@@ -6735,21 +6746,26 @@ class GoalManager {
             window.Android.purchasePremium();
         } else {
             // Web fallback - show restore option for users who purchased on Android
-            this.showSelectModal({
-                title: 'Premium Purchase',
-                icon: 'ri-shopping-cart-2-line',
-                choices: [
-                    { value: 'restore', label: 'Restore Purchase', icon: '🔄', description: 'Already purchased on Android? Restore here' },
-                    { value: 'info', label: 'Get Premium', icon: '📱', description: 'Purchase available in the Android app' }
-                ]
-            }, async (choice) => {
-                if (choice === 'restore') {
-                    await this.restorePurchases();
-                } else if (choice === 'info') {
-                    this.showAchievement('📱 Premium is available in the Google Play app!', 'daily');
-                }
-            });
+            this.showWebPurchaseFallback();
         }
+    }
+    
+    // Show web fallback for premium purchase
+    showWebPurchaseFallback() {
+        this.showSelectModal({
+            title: 'Premium Purchase',
+            icon: 'ri-shopping-cart-2-line',
+            choices: [
+                { value: 'restore', label: 'Restore Purchase', icon: '🔄', description: 'Already purchased? Restore here' },
+                { value: 'info', label: 'How to Get Premium', icon: '📱', description: 'Install from Google Play Store' }
+            ]
+        }, async (choice) => {
+            if (choice === 'restore') {
+                await this.restorePurchases();
+            } else if (choice === 'info') {
+                this.showAchievement('📱 Install from Google Play Store to purchase Premium!', 'daily');
+            }
+        });
     }
 
     // Purchase using Digital Goods API (Google Play Billing)
