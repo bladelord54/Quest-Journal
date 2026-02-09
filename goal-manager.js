@@ -244,6 +244,7 @@ class GoalManager {
                 // Premium System
                 this.isPremium = data.isPremium || false;
                 this.premiumPurchaseDate = data.premiumPurchaseDate || null;
+                this.premiumPurchaseToken = data.premiumPurchaseToken || null;
                 
                 // Daily Login Bonus
                 this.lastLoginBonusDate = data.lastLoginBonusDate || null;
@@ -338,6 +339,7 @@ class GoalManager {
                 lastYear: this.lastYear,
                 isPremium: this.isPremium,
                 premiumPurchaseDate: this.premiumPurchaseDate,
+                premiumPurchaseToken: this.premiumPurchaseToken || null,
                 lastLoginBonusDate: this.lastLoginBonusDate,
                 loginStreak: this.loginStreak,
                 chestsOpened: this.chestsOpened,
