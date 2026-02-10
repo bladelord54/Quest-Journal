@@ -6719,29 +6719,24 @@ class GoalManager {
                 return;
             } catch (error) {
                 console.error('Digital Goods API error:', error);
-                // Check if this is an unsupported context (web browser, not Play Store TWA)
-                const isUnsupportedContext = error.message && (
-                    error.message.includes('unsupported context') || 
-                    error.message.includes('not supported') ||
-                    error.message.includes('service unavailable')
-                );
+                const msg = (error.message || '').toLowerCase();
                 
-                if (isUnsupportedContext) {
-                    // Fall through to web fallback - don't show error
-                    this.showWebPurchaseFallback();
+                // User explicitly canceled - show brief message
+                if (msg.includes('canceled') || msg.includes('cancelled') || error.name === 'AbortError') {
+                    this.showAchievement('Purchase was canceled', 'daily');
                     return;
                 }
                 
-                // Show specific error for other issues
-                let errorMsg = '❌ Purchase failed: ';
-                if (error.message.includes('not found')) {
-                    errorMsg += 'Product not found in Play Store';
-                } else if (error.message.includes('canceled') || error.name === 'AbortError') {
-                    errorMsg += 'Purchase was canceled';
-                } else {
-                    errorMsg += error.message || 'Unknown error';
+                // Product not found in Play Store - show specific error
+                if (msg.includes('not found') && msg.includes('sku')) {
+                    this.showAchievement('❌ Product not available yet. Please try again later.', 'daily');
+                    return;
                 }
-                this.showAchievement(errorMsg, 'daily');
+                
+                // All other failures (unsupported context, service unavailable, 
+                // billing not supported, etc.) - fall through to web fallback
+                console.warn('Digital Goods not available, showing fallback. Reason:', error.message);
+                this.showWebPurchaseFallback();
             }
         } else if (window.Android && window.Android.purchasePremium) {
             // Legacy Android bridge fallback
@@ -6758,14 +6753,17 @@ class GoalManager {
             title: 'Premium Purchase',
             icon: 'ri-shopping-cart-2-line',
             choices: [
+                { value: 'retry', label: 'Try Again', icon: '🔁', description: 'Retry the purchase (reopen app if needed)' },
                 { value: 'restore', label: 'Restore Purchase', icon: '🔄', description: 'Already purchased? Restore here' },
-                { value: 'info', label: 'How to Get Premium', icon: '📱', description: 'Install from Google Play Store' }
+                { value: 'info', label: 'Need Help?', icon: '❓', description: 'Troubleshooting tips' }
             ]
         }, async (choice) => {
-            if (choice === 'restore') {
+            if (choice === 'retry') {
+                await this.initiatePremiumPurchase();
+            } else if (choice === 'restore') {
                 await this.restorePurchases();
             } else if (choice === 'info') {
-                this.showAchievement('📱 Install from Google Play Store to purchase Premium!', 'daily');
+                this.showAchievement('💡 Try closing and reopening the app, or check for app updates.', 'daily');
             }
         });
     }
