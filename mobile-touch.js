@@ -16,7 +16,6 @@ class MobileTouchHandler {
     }
 
     init() {
-        console.log('📱 Mobile touch enhancements initialized');
         this.setupSwipeGestures();
         this.setupLongPress();
         this.preventDoubleTapZoom();
@@ -199,7 +198,6 @@ class MobileTouchHandler {
     }
 
     handleLongPress(element) {
-        console.log('Long press detected on:', element);
         
         // Add a visual pulse effect
         element.classList.add('scale-105');
@@ -281,7 +279,6 @@ class MobileTouchHandler {
 
             if (diff > 100) {
                 // Show pull to refresh indicator
-                console.log('Pull to refresh triggered');
             }
         }, { passive: true });
 

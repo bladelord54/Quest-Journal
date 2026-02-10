@@ -88,15 +88,6 @@ class GoalManager {
         // Premium System
         this.isPremium = false;
         this.premiumPurchaseDate = null;
-        this.premiumFeatures = {
-            themes: true,           // 8+ premium themes
-            achievements: true,     // Achievement badge system
-            bossBattles: true,      // Weekly/Monthly boss battles
-            advancedStats: true,    // Detailed analytics
-            customIcons: true,      // Custom goal/task icons
-            enchantments: true,     // Enchantment system
-            fullSpellbook: true     // All 15+ spells (vs 3 free)
-        };
         
         // Period Transition Tracking
         this.lastVisitDate = null;
@@ -6492,16 +6483,6 @@ class GoalManager {
 
     // ==================== PREMIUM SYSTEM ====================
     
-    checkPremiumFeature(feature) {
-        if (this.isPremium) return true;
-        
-        // Free features that don't require premium
-        const freeFeatures = ['focusTimer', 'basicSpells'];
-        if (freeFeatures.includes(feature)) return true;
-        
-        return false;
-    }
-
     unlockPremium() {
         this.isPremium = true;
         this.premiumPurchaseDate = new Date().toISOString();
@@ -6884,20 +6865,6 @@ class GoalManager {
         const modal = document.getElementById('premium-purchase-modal');
         if (modal) modal.remove();
         this.showAchievement('👑 Premium unlocked! Welcome to the inner circle!', 'weekly');
-    }
-
-    showPremiumPrompt(feature) {
-        // Soft prompt when user tries to access premium feature
-        this.showInputModal({
-            title: `${feature} is Premium`,
-            placeholder: '',
-            defaultValue: '',
-            icon: 'ri-vip-crown-2-line',
-            buttonText: 'View Premium',
-            optional: true
-        }, () => {
-            this.showPremiumPurchaseModal();
-        });
     }
 
     // Data Export/Import

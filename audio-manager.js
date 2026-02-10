@@ -37,7 +37,6 @@ class AudioManager {
         this.loadSound('boss-defeated', './sounds/achievement-life.wav');
         this.loadSound('crystal-earn', './sounds/achievement-daily.wav');
         
-        console.log('🔊 Audio Manager initialized');
     }
 
     loadSound(id, path) {
@@ -46,11 +45,7 @@ class AudioManager {
         audio.preload = 'auto';
         audio.volume = this.volume;
         
-        // Handle load errors gracefully (file might not exist yet)
-        audio.addEventListener('error', () => {
-            console.log(`⚠️ Sound file not found: ${path} (using fallback)`);
-        });
-        
+        audio.addEventListener('error', () => {}); // Suppress load errors
         this.sounds[id] = audio;
     }
 
@@ -59,7 +54,6 @@ class AudioManager {
         
         const sound = this.sounds[soundId];
         if (!sound) {
-            console.log(`Sound not found: ${soundId}`);
             return;
         }
 
@@ -67,10 +61,7 @@ class AudioManager {
         const clone = sound.cloneNode();
         clone.volume = volumeOverride !== null ? volumeOverride : this.volume;
         
-        // Play the sound
-        clone.play().catch(e => {
-            console.log(`Could not play sound: ${soundId}`, e.message);
-        });
+        clone.play().catch(() => {}); // Suppress autoplay errors
     }
 
     // Play achievement sound based on tier
@@ -239,7 +230,6 @@ function playTestBeep() {
         playTone(659.25, 0.1, 0.15);    // E5
         playTone(783.99, 0.2, 0.25);    // G5
         
-        console.log('🔊 Test beep played (no custom sounds loaded)');
     } catch (e) {
         console.error('Could not play test sound:', e);
         // Show notification that sound couldn't play
@@ -282,7 +272,6 @@ window.addEventListener('load', () => {
 
 // Integrate with goal manager if it exists
 if (typeof goalManager !== 'undefined') {
-    console.log('🎵 Integrating Audio Manager with Goal Manager');
     
     // Replace the old playAchievementSound method
     goalManager.playAchievementSound = function(level) {
