@@ -6497,7 +6497,6 @@ class GoalManager {
         
         this.saveData();
         this.renderPremiumCard();
-        this.showAchievement('👑 Premium Unlocked! Welcome to the inner circle!', 'weekly');
     }
     
     // Debug: Toggle premium status for testing
@@ -6878,15 +6877,40 @@ class GoalManager {
                 dailyTasks: this.dailyTasks,
                 sideQuests: this.sideQuests,
                 habits: this.habits,
+                recurringTasks: this.recurringTasks,
                 xp: this.xp,
                 level: this.level,
+                badges: this.badges,
+                archivedGoals: this.archivedGoals,
                 goldCoins: this.goldCoins,
                 unlockedThemes: this.unlockedThemes,
                 currentTheme: this.currentTheme,
+                unlockedTitles: this.unlockedTitles,
+                currentTitle: this.currentTitle,
+                treasureChests: this.treasureChests,
+                companions: this.companions,
+                activeCompanionId: this.activeCompanionId,
                 spellbook: this.spellbook,
+                activeSpells: this.activeSpells,
+                activeQuestChains: this.activeQuestChains,
+                completedQuestChains: this.completedQuestChains,
                 focusCrystals: this.focusCrystals,
+                totalFocusTime: this.totalFocusTime,
+                activeEnchantments: this.activeEnchantments,
+                timezone: this.timezone,
+                timezoneOffset: this.timezoneOffset,
+                tutorialCompleted: this.tutorialCompleted,
+                isPremium: this.isPremium,
+                premiumPurchaseDate: this.premiumPurchaseDate,
+                premiumPurchaseToken: this.premiumPurchaseToken || null,
+                lastLoginBonusDate: this.lastLoginBonusDate,
+                loginStreak: this.loginStreak,
+                chestsOpened: this.chestsOpened,
+                bossesDefeated: this.bossesDefeated,
+                focusSessionsCompleted: this.focusSessionsCompleted,
+                spellsCast: this.spellsCast,
                 exportDate: new Date().toISOString(),
-                version: '2.0'
+                version: '3.0'
             };
             
             const dataStr = JSON.stringify(data, null, 2);
@@ -6942,11 +6966,38 @@ class GoalManager {
                     this.dailyTasks = data.dailyTasks || [];
                     this.sideQuests = data.sideQuests || [];
                     this.habits = data.habits || this.habits;
+                    this.recurringTasks = data.recurringTasks || this.recurringTasks;
                     this.xp = data.xp || this.xp;
                     this.level = data.level || this.level;
+                    this.badges = data.badges || this.badges;
+                    this.archivedGoals = data.archivedGoals || this.archivedGoals;
                     this.goldCoins = data.goldCoins || this.goldCoins;
+                    this.unlockedThemes = data.unlockedThemes || this.unlockedThemes;
+                    this.currentTheme = data.currentTheme || this.currentTheme;
+                    this.unlockedTitles = data.unlockedTitles || this.unlockedTitles;
+                    this.currentTitle = data.currentTitle || this.currentTitle;
+                    this.treasureChests = data.treasureChests || this.treasureChests;
+                    this.companions = data.companions || this.companions;
+                    this.activeCompanionId = data.activeCompanionId || this.activeCompanionId;
                     this.spellbook = data.spellbook || this.spellbook;
+                    this.activeSpells = data.activeSpells || this.activeSpells;
+                    this.activeQuestChains = data.activeQuestChains || this.activeQuestChains;
+                    this.completedQuestChains = data.completedQuestChains || this.completedQuestChains;
                     this.focusCrystals = data.focusCrystals || this.focusCrystals;
+                    this.totalFocusTime = data.totalFocusTime || this.totalFocusTime;
+                    this.activeEnchantments = data.activeEnchantments || this.activeEnchantments;
+                    this.timezone = data.timezone || this.timezone;
+                    this.timezoneOffset = data.timezoneOffset || this.timezoneOffset;
+                    this.tutorialCompleted = data.tutorialCompleted || this.tutorialCompleted;
+                    this.isPremium = data.isPremium || this.isPremium;
+                    this.premiumPurchaseDate = data.premiumPurchaseDate || this.premiumPurchaseDate;
+                    this.premiumPurchaseToken = data.premiumPurchaseToken || this.premiumPurchaseToken;
+                    this.lastLoginBonusDate = data.lastLoginBonusDate || this.lastLoginBonusDate;
+                    this.loginStreak = data.loginStreak || this.loginStreak;
+                    this.chestsOpened = data.chestsOpened || this.chestsOpened;
+                    this.bossesDefeated = data.bossesDefeated || this.bossesDefeated;
+                    this.focusSessionsCompleted = data.focusSessionsCompleted || this.focusSessionsCompleted;
+                    this.spellsCast = data.spellsCast || this.spellsCast;
                     
                     this.saveData();
                     this.render();
