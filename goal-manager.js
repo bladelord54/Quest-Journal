@@ -6815,15 +6815,31 @@ class GoalManager {
         // Show payment UI
         const response = await request.show();
         
-        // Acknowledge the purchase
-        const { purchaseToken } = response.details;
-        await service.acknowledge(purchaseToken, 'onetime');
+        // Payment succeeded - extract purchase token
+        // response.details may be a JSON string or an object depending on Chrome version
+        let purchaseToken = null;
+        try {
+            const details = typeof response.details === 'string' 
+                ? JSON.parse(response.details) 
+                : response.details;
+            purchaseToken = details.purchaseToken || details.token || null;
+        } catch (parseError) {
+            console.warn('Could not parse purchase details:', parseError);
+        }
         
-        // Complete the payment
-        await response.complete('success');
-        
-        // Unlock premium
+        // Unlock premium FIRST - payment already succeeded at this point
         this.onPremiumPurchaseSuccess(purchaseToken);
+        
+        // Acknowledge and complete - these can fail without affecting the user
+        try {
+            if (purchaseToken) {
+                await service.acknowledge(purchaseToken, 'onetime');
+            }
+            await response.complete('success');
+        } catch (ackError) {
+            console.warn('Post-purchase acknowledge/complete error (premium still activated):', ackError);
+            try { await response.complete('success'); } catch(e) { /* ignore */ }
+        }
         
         return true;
     }
