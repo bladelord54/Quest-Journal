@@ -978,6 +978,14 @@
                                 <i class="ri-upload-line mr-2"></i> Import Data from Backup
                             </button>
                             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="goalManager.importData(event)">
+                            <div class="border-t-2 border-gray-700 pt-3 mt-3">
+                                <button onclick="goalManager.deleteAllData()" class="w-full bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-600">
+                                    <i class="ri-delete-bin-line mr-2"></i> Delete All Data
+                                </button>
+                                <p class="text-xs text-red-400 fancy-font text-center mt-2">
+                                    Permanently erases all quests, progress, and settings
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -1190,6 +1198,11 @@
                             <!-- Will be populated dynamically -->
                         </div>
                     </div>
+                </div>
+
+                <!-- App Version -->
+                <div class="mt-8 text-center">
+                    <p class="text-sm text-gray-500 fancy-font">Life Quest Journal v1.0.0</p>
                 </div>
             </div>
 

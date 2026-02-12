@@ -6970,6 +6970,35 @@ class GoalManager {
         event.target.value = '';
     }
 
+    deleteAllData() {
+        // First confirmation
+        if (!confirm('⚠️ DELETE ALL DATA\n\nThis will permanently erase ALL your quests, progress, levels, spells, companions, and settings.\n\nThis action CANNOT be undone.\n\nWould you like to export a backup first?')) {
+            return;
+        }
+
+        // Offer to export first
+        const wantsBackup = confirm('Would you like to export a backup before deleting?\n\nClick OK to export first, or Cancel to skip.');
+        if (wantsBackup) {
+            this.exportData();
+        }
+
+        // Final confirmation with typed check
+        const confirmation = prompt('To confirm deletion, type DELETE below:');
+        if (confirmation !== 'DELETE') {
+            this.showAchievement('❌ Data deletion cancelled.', 'daily');
+            return;
+        }
+
+        // Clear all app data from localStorage
+        localStorage.removeItem('lifeOrganizeData');
+        localStorage.removeItem('lifeOrganizeData_pre_import_backup');
+        localStorage.removeItem('audioEnabled');
+        localStorage.removeItem('audioVolume');
+
+        // Reload the app fresh
+        window.location.reload();
+    }
+
     // Search functionality
     performSearch(query) {
         const resultsContainer = document.getElementById('search-results');
