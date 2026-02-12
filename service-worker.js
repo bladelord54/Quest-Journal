@@ -1,5 +1,5 @@
-const CACHE_NAME = 'life-quest-journal-v175';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v175';
+const CACHE_NAME = 'life-quest-journal-v176';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v176';
 const urlsToCache = [
   './',
   './index.html',

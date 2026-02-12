@@ -966,6 +966,28 @@ class GoalManager {
         // Calculate progress on load
         this.updateParentProgress();
         this._doRender(); // Initial render - immediate, not debounced
+
+        // Handle manifest shortcut URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        const view = urlParams.get('view');
+        
+        if (view) {
+            setTimeout(() => this.switchView(view), 100);
+        }
+        if (action === 'add-task') {
+            setTimeout(() => {
+                this.switchView('daily');
+                if (typeof addDailyTask === 'function') {
+                    setTimeout(() => addDailyTask(), 200);
+                }
+            }, 100);
+        }
+        
+        // Clean URL parameters after handling
+        if (action || view) {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
     }
 
     switchView(viewName) {
