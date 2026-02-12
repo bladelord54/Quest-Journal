@@ -7296,15 +7296,28 @@ class GoalManager {
             `;
         } else {
             container.innerHTML = tasksForDay.map(task => `
-                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 p-5 rounded-lg shadow-lg flex items-center border-3 border-amber-600 task-item hover:shadow-xl transition-all">
-                    <input 
-                        type="checkbox" 
-                        ${task.completed ? 'checked' : ''} 
-                        onchange="goalManager.toggleTask(${task.id}, event)">
-                    <span class="ml-4 flex-1 text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
-                    <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
-                        <i class="ri-delete-bin-line"></i>
-                    </button>
+                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 p-5 rounded-lg shadow-lg border-3 border-amber-600 task-item hover:shadow-xl transition-all">
+                    <div class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            ${task.completed ? 'checked' : ''} 
+                            onchange="goalManager.toggleTask(${task.id}, event)">
+                        <span class="ml-4 flex-1 text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
+                        <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    </div>
+                    ${task.description ? `<p class="text-sm text-amber-800/80 mt-2 ml-8 fancy-font italic">${task.description}</p>` : ''}
+                    ${task.checklist && task.checklist.length > 0 ? `
+                        <div class="ml-8 mt-2 space-y-1">
+                            ${task.checklist.map((item, i) => `
+                                <div class="flex items-center gap-2 text-sm text-amber-800">
+                                    <span>${item.completed ? '☑' : '☐'}</span>
+                                    <span class="${item.completed ? 'line-through opacity-60' : ''}">${item.text}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
             `).join('') + `
                 <div class="text-center mt-4">
