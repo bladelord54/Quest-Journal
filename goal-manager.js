@@ -2910,7 +2910,7 @@ class GoalManager {
         // Epic celebration animation!
         this.createLevelUpBurst();
         
-        this.showAchievement(`⭐ Level Up! You are now Level ${this.level} - ${title}!`, 'yearly');
+        this.showAchievement(`⭐ Level Up! You are now Level ${this.level} - ${title}!`, 'yearly', false);
         this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐');
         
         // Check if can level up again (in case of large XP gain)
@@ -3205,9 +3205,6 @@ class GoalManager {
             this.addXP(xpBonus, 'daily');
         }
         
-        // Play notification sound if available
-        this.playNotificationSound();
-        
         // Send browser notification
         const xpText = xpBonus > 0 ? ` +${xpBonus} XP!` : '';
         this.showNotification(
@@ -3217,7 +3214,7 @@ class GoalManager {
         );
         
         const focusModeText = focusModeActive ? ' (🎯 Focus Mode!)' : '';
-        this.showAchievement(`✨ Focus session complete! +${crystalsEarned} 💎${xpText}${focusModeText}`, 'weekly');
+        this.showAchievement(`✨ Focus session complete! +${crystalsEarned} 💎${xpText}${focusModeText}`, 'weekly', false);
         
         this.saveData();
         this.render();
@@ -4723,7 +4720,7 @@ class GoalManager {
     celebrateSpellCast(spell) {
         this.createMagicCircle();
         this.playSpellSound();
-        this.showAchievement(`🔮 ${spell.name} cast!`, 'rare');
+        this.showAchievement(`🔮 ${spell.name} cast!`, 'rare', false);
     }
 
     celebrateSpellUnlock(spell) {
@@ -8837,12 +8834,12 @@ class GoalManager {
             let message = `${bossIcon} BOSS HIT! ${totalDamage} DMG dealt to ${boss.title}!`;
             if (isCrit) message = '💥 ' + message;
             
-            this.showAchievement(message, 'life');
+            this.showAchievement(message, 'life', false);
             
             if (damageMessages.length > 0) {
                 setTimeout(() => {
                     damageMessages.forEach(msg => {
-                        this.showAchievement(msg, 'epic');
+                        this.showAchievement(msg, 'epic', false);
                     });
                 }, 500);
             }
@@ -8852,7 +8849,7 @@ class GoalManager {
                 setTimeout(() => {
                     boss.completed = true;
                     boss.completedAt = new Date().toISOString();
-                    this.showAchievement(`💀 ${boss.title} HP DEPLETED! Boss defeated by pure damage!`, 'legendary');
+                    this.showAchievement(`💀 ${boss.title} HP DEPLETED! Boss defeated by pure damage!`, 'legendary', false);
                     this.defeatBoss(boss);
                     this.saveData();
                     this.render();
@@ -8916,7 +8913,8 @@ class GoalManager {
         // Epic achievement
         this.showAchievement(
             `🏆 BOSS DEFEATED! ${boss.title}! +${xpReward} XP +${goldReward} Gold!`,
-            'life'
+            'life',
+            false
         );
 
         // Unlock badge
