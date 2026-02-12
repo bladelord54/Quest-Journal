@@ -990,33 +990,8 @@ class GoalManager {
     }
 
     playAchievementSound(level = 'daily') {
-        try {
-            // Play custom sound file based on achievement level
-            // Tries .wav first, falls back to .mp3
-            const soundName = {
-                'daily': 'achievement-daily',
-                'weekly': 'achievement-weekly',
-                'monthly': 'achievement-monthly',
-                'yearly': 'achievement-yearly',
-                'life': 'achievement-life'
-            }[level] || 'achievement-daily';
-
-            // Try .wav first, then .mp3
-            const audio = new Audio();
-            audio.volume = 0.5;
-            
-            audio.src = `./sounds/${soundName}.wav`;
-            
-            // If .wav fails to load, try .mp3
-            audio.addEventListener('error', () => {
-                audio.src = `./sounds/${soundName}.mp3`;
-            }, { once: true });
-            
-            audio.play().catch(err => {
-                // Silently fail if sound doesn't exist
-            });
-        } catch (err) {
-            // Silently fail - sounds are optional
+        if (window.audioManager) {
+            window.audioManager.playAchievement(level);
         }
     }
 
@@ -2927,6 +2902,11 @@ class GoalManager {
         const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
         const title = titles[Math.min(this.level - 1, titles.length - 1)];
         
+        // Play level up sound
+        if (window.audioManager) {
+            window.audioManager.playLevelUp();
+        }
+        
         // Epic celebration animation!
         this.createLevelUpBurst();
         
@@ -3213,6 +3193,11 @@ class GoalManager {
         this.totalFocusTime += sessionLength;
         this.focusSessionsCompleted++; // Track for titles
         
+        // Play crystal earn sound
+        if (window.audioManager) {
+            window.audioManager.playCrystalEarn();
+        }
+        
         // Award XP bonus if Focus Mode is active
         let xpBonus = 0;
         if (focusModeActive) {
@@ -3258,24 +3243,8 @@ class GoalManager {
     }
 
     playNotificationSound() {
-        try {
-            // Play custom notification sound file
-            // Tries .wav first, falls back to .mp3
-            const audio = new Audio();
-            audio.volume = 0.3;
-            
-            audio.src = './sounds/notification.wav';
-            
-            // If .wav fails to load, try .mp3
-            audio.addEventListener('error', () => {
-                audio.src = './sounds/notification.mp3';
-            }, { once: true });
-            
-            audio.play().catch(err => {
-                // Silently fail if sound doesn't exist
-            });
-        } catch (err) {
-            // Silently fail - sounds are optional
+        if (window.audioManager) {
+            window.audioManager.playNotification();
         }
     }
 
@@ -4824,24 +4793,8 @@ class GoalManager {
     }
 
     playSpellSound() {
-        try {
-            // Play custom spell casting sound file
-            // Tries .wav first, falls back to .mp3
-            const audio = new Audio();
-            audio.volume = 0.5;
-            
-            audio.src = './sounds/spell.wav';
-            
-            // If .wav fails to load, try .mp3
-            audio.addEventListener('error', () => {
-                audio.src = './sounds/spell.mp3';
-            }, { once: true });
-            
-            audio.play().catch(err => {
-                // Silently fail if sound doesn't exist
-            });
-        } catch (err) {
-            // Silently fail - sounds are optional
+        if (window.audioManager) {
+            window.audioManager.playSpell();
         }
     }
 
@@ -8875,6 +8828,11 @@ class GoalManager {
             boss.bossCurrentHP = Math.max(0, boss.bossCurrentHP - totalDamage);
             boss.totalDamageDealt = (boss.totalDamageDealt || 0) + totalDamage;
             
+            // Play boss damage sound
+            if (window.audioManager) {
+                window.audioManager.playBossDamage();
+            }
+            
             const bossIcon = this.getBossIcon(boss);
             let message = `${bossIcon} BOSS HIT! ${totalDamage} DMG dealt to ${boss.title}!`;
             if (isCrit) message = '💥 ' + message;
@@ -8932,6 +8890,11 @@ class GoalManager {
     defeatBoss(boss) {
         const isLife = this.lifeGoals.includes(boss);
         this.bossesDefeated++; // Track for titles
+        
+        // Play boss defeated sound
+        if (window.audioManager) {
+            window.audioManager.playBossDefeated();
+        }
         
         // Epic celebration
         this.createConfetti();

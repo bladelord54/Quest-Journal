@@ -264,31 +264,3 @@ window.addEventListener('load', () => {
     }
 });
 
-// Integrate with goal manager if it exists
-if (typeof goalManager !== 'undefined') {
-    
-    // Replace the old playAchievementSound method
-    goalManager.playAchievementSound = function(level) {
-        window.audioManager.playAchievement(level);
-    };
-    
-    // Replace the old playNotificationSound method
-    goalManager.playNotificationSound = function() {
-        window.audioManager.playNotification();
-    };
-    
-    // Replace the old playSpellSound method
-    goalManager.playSpellSound = function() {
-        window.audioManager.playSpell();
-    };
-    
-    // Add level up sound
-    const originalCheckLevelUp = goalManager.checkLevelUp;
-    goalManager.checkLevelUp = function() {
-        const oldLevel = this.level;
-        originalCheckLevelUp.call(this);
-        if (this.level > oldLevel) {
-            window.audioManager.playLevelUp();
-        }
-    };
-}
