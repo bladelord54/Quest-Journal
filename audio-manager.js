@@ -29,13 +29,12 @@ class AudioManager {
         this.loadSound('achievement-monthly', './sounds/achievement-monthly.wav');
         this.loadSound('achievement-yearly', './sounds/achievement-yearly.wav');
         this.loadSound('achievement-life', './sounds/achievement-life.wav');
-        this.loadSound('notification', './sounds/achievement-daily.wav');
+        this.loadSound('notification', './sounds/notification.wav');
         this.loadSound('spell', './sounds/spells.mp3');
-        this.loadSound('level-up', './sounds/achievement-yearly.wav');
-        this.loadSound('quest-complete', './sounds/achievement-weekly.wav');
-        this.loadSound('boss-damage', './sounds/achievement-daily.wav');
-        this.loadSound('boss-defeated', './sounds/achievement-life.wav');
-        this.loadSound('crystal-earn', './sounds/achievement-daily.wav');
+        this.loadSound('level-up', './sounds/level-up.wav');
+        this.loadSound('boss-damage', './sounds/boss-damage.mp3');
+        this.loadSound('boss-defeated', './sounds/boss-defeated.mp3');
+        this.loadSound('crystal-earn', './sounds/crystal-earn.wav');
         
     }
 
@@ -91,11 +90,6 @@ class AudioManager {
     // Play level up sound
     playLevelUp() {
         this.play('level-up');
-    }
-
-    // Play quest complete sound
-    playQuestComplete() {
-        this.play('quest-complete');
     }
 
     // Play boss damage sound

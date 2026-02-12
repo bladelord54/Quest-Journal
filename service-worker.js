@@ -1,5 +1,5 @@
-const CACHE_NAME = 'life-quest-journal-v169';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v169';
+const CACHE_NAME = 'life-quest-journal-v171';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v171';
 const urlsToCache = [
   './',
   './index.html',
@@ -25,6 +25,11 @@ const urlsToCache = [
   './sounds/achievement-yearly.wav',
   './sounds/achievement-life.wav',
   './sounds/spells.mp3',
+  './sounds/notification.wav',
+  './sounds/level-up.wav',
+  './sounds/crystal-earn.wav',
+  './sounds/boss-damage.mp3',
+  './sounds/boss-defeated.mp3',
   // CDN dependencies for offline support
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css',
