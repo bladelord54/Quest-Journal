@@ -414,6 +414,224 @@
     100% { transform: translateX(-50%) translateY(-30px) scale(0.9); opacity: 0; }
 }
 
+/* ===== ENHANCED LEVEL UP ANIMATIONS ===== */
+
+/* Full-screen golden flash */
+.levelup-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.5), rgba(245, 158, 11, 0.2), transparent 70%);
+    pointer-events: none;
+    z-index: 9996;
+    animation: levelup-flash 1.2s ease-out forwards;
+}
+
+@keyframes levelup-flash {
+    0% { opacity: 0; }
+    15% { opacity: 1; }
+    40% { opacity: 0.6; }
+    100% { opacity: 0; }
+}
+
+/* Big level number */
+.levelup-number {
+    position: fixed;
+    left: 50%;
+    top: 45%;
+    transform: translate(-50%, -50%);
+    font-family: 'MedievalSharp', serif;
+    font-size: 8rem;
+    font-weight: bold;
+    color: #fde68a;
+    text-shadow: 0 0 40px rgba(251, 191, 36, 0.8), 0 0 80px rgba(251, 191, 36, 0.4), 0 4px 8px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 10000;
+    animation: levelup-number-pop 2.2s ease-out forwards;
+}
+
+@keyframes levelup-number-pop {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    12% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
+    20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -55%) scale(0.9); opacity: 0; }
+}
+
+/* "LEVEL UP!" text above the number */
+.levelup-text {
+    position: fixed;
+    left: 50%;
+    top: 32%;
+    transform: translateX(-50%);
+    font-family: 'MedievalSharp', serif;
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #fbbf24;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    text-shadow: 0 0 20px rgba(251, 191, 36, 0.6), 0 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 10000;
+    animation: levelup-text-reveal 2.2s ease-out forwards;
+}
+
+@keyframes levelup-text-reveal {
+    0% { transform: translateX(-50%) scale(0.5); opacity: 0; letter-spacing: 0px; }
+    15% { transform: translateX(-50%) scale(1.1); opacity: 1; letter-spacing: 12px; }
+    25% { transform: translateX(-50%) scale(1); opacity: 1; letter-spacing: 8px; }
+    70% { opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-10px) scale(0.9); opacity: 0; }
+}
+
+/* Title text below the number */
+.levelup-title {
+    position: fixed;
+    left: 50%;
+    top: 58%;
+    transform: translateX(-50%);
+    font-family: 'MedievalSharp', serif;
+    font-size: 1.6rem;
+    color: #fef3c7;
+    text-shadow: 0 0 15px rgba(251, 191, 36, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 10000;
+    white-space: nowrap;
+    animation: levelup-title-fade 2.2s ease-out forwards;
+    animation-delay: 0.3s;
+    opacity: 0;
+}
+
+@keyframes levelup-title-fade {
+    0% { transform: translateX(-50%) translateY(10px); opacity: 0; }
+    20% { transform: translateX(-50%) translateY(0); opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-10px); opacity: 0; }
+}
+
+/* Expanding golden ring burst */
+.levelup-ring {
+    position: fixed;
+    left: 50%;
+    top: 45%;
+    width: 100px;
+    height: 100px;
+    transform: translate(-50%, -50%);
+    border: 3px solid rgba(251, 191, 36, 0.8);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    animation: levelup-ring-expand 1.5s ease-out forwards;
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.2);
+}
+
+.levelup-ring.ring-2 {
+    animation-delay: 0.15s;
+    opacity: 0;
+    border-color: rgba(245, 158, 11, 0.6);
+}
+
+.levelup-ring.ring-3 {
+    animation-delay: 0.3s;
+    opacity: 0;
+    border-color: rgba(217, 119, 6, 0.4);
+}
+
+@keyframes levelup-ring-expand {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    15% { opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(6); opacity: 0; }
+}
+
+/* Star particles */
+.levelup-star {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    font-size: 1.5rem;
+    animation: levelup-star-burst 1.4s ease-out forwards;
+    filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.8));
+}
+
+@keyframes levelup-star-burst {
+    0% {
+        transform: translate(var(--star-start-x, 0), var(--star-start-y, 0)) scale(0) rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+        transform: translate(calc(var(--star-end-x, 0) * 0.3), calc(var(--star-end-y, 0) * 0.3)) scale(1.2) rotate(90deg);
+    }
+    60% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--star-end-x, 0), var(--star-end-y, 0)) scale(0) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+/* Vertical light pillars */
+.levelup-pillar {
+    position: fixed;
+    bottom: 0;
+    width: 60px;
+    height: 0;
+    pointer-events: none;
+    z-index: 9997;
+    animation: levelup-pillar-rise 1.8s ease-out forwards;
+    opacity: 0;
+}
+
+.levelup-pillar.left {
+    left: 30%;
+    background: linear-gradient(to top, rgba(251, 191, 36, 0.3), rgba(251, 191, 36, 0.1), transparent);
+    animation-delay: 0.2s;
+}
+
+.levelup-pillar.right {
+    right: 30%;
+    background: linear-gradient(to top, rgba(245, 158, 11, 0.3), rgba(245, 158, 11, 0.1), transparent);
+    animation-delay: 0.35s;
+}
+
+@keyframes levelup-pillar-rise {
+    0% { height: 0; opacity: 0; }
+    30% { height: 70vh; opacity: 0.8; }
+    60% { height: 100vh; opacity: 0.5; }
+    100% { height: 100vh; opacity: 0; }
+}
+
+/* Gold shimmer particles */
+.levelup-shimmer {
+    position: fixed;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #fbbf24;
+    box-shadow: 0 0 8px #fbbf24, 0 0 16px rgba(251, 191, 36, 0.5);
+    pointer-events: none;
+    z-index: 9998;
+    animation: levelup-shimmer-float 2s ease-out forwards;
+}
+
+@keyframes levelup-shimmer-float {
+    0% {
+        transform: translate(var(--shimmer-x, 0), 0) scale(0);
+        opacity: 0;
+    }
+    15% {
+        opacity: 1;
+        transform: translate(var(--shimmer-x, 0), 0) scale(1);
+    }
+    100% {
+        transform: translate(var(--shimmer-x, 0), var(--shimmer-y, -100px)) scale(0);
+        opacity: 0;
+    }
+}
+
 /* ===== ENHANCED CHEST OPENING ANIMATIONS ===== */
 
 /* Chest tier colors */

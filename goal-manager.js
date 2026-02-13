@@ -3019,9 +3019,12 @@ class GoalManager {
         }
         
         // Epic celebration animation!
-        this.createLevelUpBurst();
+        this.createLevelUpBurst(this.level, title);
         
-        this.showAchievement(`⭐ Level Up! You are now Level ${this.level} - ${title}!`, 'yearly', false);
+        // Delayed toast so it appears after the animation
+        setTimeout(() => {
+            this.showAchievement(`⭐ Level Up! You are now Level ${this.level} - ${title}!`, 'yearly', false);
+        }, 1500);
         this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐');
         
         // Check if can level up again (in case of large XP gain)
@@ -4954,18 +4957,94 @@ class GoalManager {
         setTimeout(() => circle.remove(), 1000);
     }
 
-    createLevelUpBurst() {
-        const burst = document.createElement('div');
-        burst.className = 'level-up-burst';
-        burst.style.left = '50%';
-        burst.style.top = '50%';
-        burst.style.transform = 'translate(-50%, -50%)';
-        document.body.appendChild(burst);
-        
-        // Add confetti
-        this.createConfetti();
-        
-        setTimeout(() => burst.remove(), 1000);
+    createLevelUpBurst(level, title) {
+        // 1. Full-screen golden flash
+        const flash = document.createElement('div');
+        flash.className = 'levelup-flash';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 1200);
+
+        // 2. "LEVEL UP!" text
+        const text = document.createElement('div');
+        text.className = 'levelup-text';
+        text.textContent = '⭐ LEVEL UP! ⭐';
+        document.body.appendChild(text);
+        setTimeout(() => text.remove(), 2200);
+
+        // 3. Big level number
+        const num = document.createElement('div');
+        num.className = 'levelup-number';
+        num.textContent = level || this.level;
+        document.body.appendChild(num);
+        setTimeout(() => num.remove(), 2200);
+
+        // 4. Title text below number
+        if (title) {
+            const titleEl = document.createElement('div');
+            titleEl.className = 'levelup-title';
+            titleEl.textContent = title;
+            document.body.appendChild(titleEl);
+            setTimeout(() => titleEl.remove(), 2500);
+        }
+
+        // 5. Three expanding ring bursts
+        for (let i = 0; i < 3; i++) {
+            const ring = document.createElement('div');
+            ring.className = `levelup-ring ${i > 0 ? 'ring-' + (i + 1) : ''}`;
+            document.body.appendChild(ring);
+            setTimeout(() => ring.remove(), 1800);
+        }
+
+        // 6. Star particles radiating outward
+        const starChars = ['⭐', '✦', '✧', '★'];
+        const starCount = 12;
+        for (let i = 0; i < starCount; i++) {
+            setTimeout(() => {
+                const star = document.createElement('div');
+                star.className = 'levelup-star';
+                star.textContent = starChars[i % starChars.length];
+                const angle = (i / starCount) * Math.PI * 2;
+                const radius = 130 + Math.random() * 80;
+                star.style.left = '50%';
+                star.style.top = '45%';
+                star.style.setProperty('--star-start-x', '0px');
+                star.style.setProperty('--star-start-y', '0px');
+                star.style.setProperty('--star-end-x', `${Math.cos(angle) * radius}px`);
+                star.style.setProperty('--star-end-y', `${Math.sin(angle) * radius}px`);
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 1400);
+            }, 100 + i * 40);
+        }
+
+        // 7. Light pillars on left and right
+        const pillarLeft = document.createElement('div');
+        pillarLeft.className = 'levelup-pillar left';
+        document.body.appendChild(pillarLeft);
+        setTimeout(() => pillarLeft.remove(), 2000);
+
+        const pillarRight = document.createElement('div');
+        pillarRight.className = 'levelup-pillar right';
+        document.body.appendChild(pillarRight);
+        setTimeout(() => pillarRight.remove(), 2000);
+
+        // 8. Gold shimmer particles floating upward
+        const shimmerCount = 24;
+        for (let i = 0; i < shimmerCount; i++) {
+            setTimeout(() => {
+                const shimmer = document.createElement('div');
+                shimmer.className = 'levelup-shimmer';
+                const xPos = 20 + Math.random() * 60;
+                shimmer.style.left = `${xPos}%`;
+                shimmer.style.top = `${50 + Math.random() * 30}%`;
+                shimmer.style.setProperty('--shimmer-x', `${(Math.random() - 0.5) * 40}px`);
+                shimmer.style.setProperty('--shimmer-y', `${-80 - Math.random() * 120}px`);
+                document.body.appendChild(shimmer);
+                setTimeout(() => shimmer.remove(), 2000);
+            }, i * 50);
+        }
+
+        // 9. Confetti burst (delayed to sync with the opening moment)
+        setTimeout(() => this.createConfetti(), 300);
     }
 
     playSpellSound() {
