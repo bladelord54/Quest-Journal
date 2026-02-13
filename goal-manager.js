@@ -1018,6 +1018,7 @@ class GoalManager {
     }
 
     showAchievement(text, level = 'daily', playSound = true) {
+        if (this._suppressRewardSounds) playSound = false;
         // For backwards compatibility, map old calls to new toast system
         // Determine notification type based on text content
         let type = 'info';
@@ -2533,15 +2534,18 @@ class GoalManager {
         // Consume Lucky Draw spell if active
         if (luckyDrawActive) {
             this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'lucky_draw');
-            this.showAchievement('🎲 Lucky Draw! Guaranteed rare loot!', 'rare');
+            this.showAchievement('🎲 Lucky Draw! Guaranteed rare loot!', 'rare', false);
         }
         
         // Apply rewards (spells, companions, themes only - no gold/XP from chests)
+        // Suppress sub-reward sounds so only the chest toast sound plays
+        this._suppressRewardSounds = true;
         rewards.forEach(reward => {
             if (reward.type === 'theme') this.tryUnlockRandomTheme();
             if (reward.type === 'companion') this.unlockCompanion(reward.value);
             if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
         });
+        this._suppressRewardSounds = false;
         
         this.saveData();
         this.render();
