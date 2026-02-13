@@ -2724,8 +2724,93 @@ class GoalManager {
             return '';
         }).filter(r => r).join(', ');
         
-        this.createConfetti();
-        this.showAchievement(`🎁 ${type.toUpperCase()} CHEST! ${rewardText}`, 'life');
+        this.celebrateChestOpen(type, rewards);
+        
+        // Delayed toast so it appears after the animation
+        setTimeout(() => {
+            this.showAchievement(`🎁 ${type.toUpperCase()} CHEST! ${rewardText}`, 'life');
+        }, 1200);
+    }
+
+    celebrateChestOpen(type, rewards) {
+        const chestIcons = { bronze: '🟫', silver: '⬜', gold: '🟨', royal: '🟪' };
+        const chestIcon = chestIcons[type] || '🎁';
+
+        // 1. Full-screen flash
+        const flash = document.createElement('div');
+        flash.className = `chest-open-flash ${type}`;
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 1000);
+
+        // 2. Chest icon (shakes then bursts)
+        const icon = document.createElement('div');
+        icon.className = `chest-open-icon chest-tier-${type}`;
+        icon.textContent = '🎁';
+        document.body.appendChild(icon);
+        setTimeout(() => icon.remove(), 1800);
+
+        // 3. Aura glow ring
+        const aura = document.createElement('div');
+        aura.className = `chest-aura ${type}`;
+        document.body.appendChild(aura);
+        setTimeout(() => aura.remove(), 1800);
+
+        // 4. Light beam shooting upward
+        const beam = document.createElement('div');
+        beam.className = `chest-light-beam ${type}`;
+        document.body.appendChild(beam);
+        setTimeout(() => beam.remove(), 2000);
+
+        // 5. Coin/particle burst outward
+        const particleCount = 20;
+        for (let i = 0; i < particleCount; i++) {
+            setTimeout(() => {
+                const p = document.createElement('div');
+                p.className = `chest-coin-particle ${type}`;
+                const angle = (i / particleCount) * Math.PI * 2;
+                const radius = 100 + Math.random() * 100;
+                p.style.left = '50%';
+                p.style.top = '50%';
+                p.style.setProperty('--coin-start-x', '0px');
+                p.style.setProperty('--coin-start-y', '0px');
+                p.style.setProperty('--coin-end-x', `${Math.cos(angle) * radius}px`);
+                p.style.setProperty('--coin-end-y', `${Math.sin(angle) * radius}px`);
+                document.body.appendChild(p);
+                setTimeout(() => p.remove(), 1000);
+            }, 400 + i * 20);
+        }
+
+        // 6. Loot items pop in around center
+        const companions = this.getCompanionDefinitions();
+        const lootIcons = rewards.map(r => {
+            if (r.type === 'theme') return '🎨';
+            if (r.type === 'companion') return companions[r.value]?.icon || '🐾';
+            if (r.type === 'spell') return this.spellDefinitions[r.spellId]?.icon || '🔮';
+            return '✨';
+        });
+        
+        lootIcons.forEach((lootIcon, i) => {
+            setTimeout(() => {
+                const loot = document.createElement('div');
+                loot.className = 'chest-loot-item';
+                loot.textContent = lootIcon;
+                const spread = lootIcons.length > 1 ? (i / (lootIcons.length - 1) - 0.5) * 200 : 0;
+                loot.style.left = `calc(50% + ${spread}px)`;
+                loot.style.top = '45%';
+                document.body.appendChild(loot);
+                setTimeout(() => loot.remove(), 1500);
+            }, 800 + i * 200);
+        });
+
+        // 7. Tier label
+        const label = document.createElement('div');
+        label.className = `chest-tier-label ${type}`;
+        label.textContent = `${type} Chest`;
+        document.body.appendChild(label);
+        setTimeout(() => label.remove(), 2500);
+
+        // 8. Confetti burst (delayed to sync with opening moment)
+        setTimeout(() => this.createConfetti(), 400);
     }
 
     // Companion System
