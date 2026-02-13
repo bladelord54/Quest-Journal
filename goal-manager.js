@@ -9192,16 +9192,13 @@ class GoalManager {
         if (window.audioManager) {
             window.audioManager.playBossDefeated();
         }
-        
-        // Epic celebration
-        this.createConfetti();
-        setTimeout(() => this.createConfetti(), 500);
-        setTimeout(() => this.createConfetti(), 1000);
 
         // Legendary rewards
         const xpReward = isLife ? 5000 : 2000;
         const goldReward = isLife ? 10000 : 5000;
         
+        // Suppress sub-reward sounds during boss defeat
+        this._suppressRewardSounds = true;
         this.addXP(xpReward, 'boss');
         this.addGold(goldReward, 'boss');
 
@@ -9209,13 +9206,21 @@ class GoalManager {
         const legendarySpells = ['moonlight_blessing', 'double_xp_weekend', 'time_freeze', 'berserker_rage'];
         const randomSpell = legendarySpells[Math.floor(Math.random() * legendarySpells.length)];
         this.addSpellToBook(randomSpell, 3);
+        this._suppressRewardSounds = false;
 
-        // Epic achievement
-        this.showAchievement(
-            `🏆 BOSS DEFEATED! ${boss.title}! +${xpReward} XP +${goldReward} Gold!`,
-            'life',
-            false
-        );
+        // Epic celebration animation!
+        const bossIcon = this.getBossIcon(boss);
+        const spellDef = this.spellDefinitions[randomSpell];
+        this.celebrateBossDefeat(boss, bossIcon, xpReward, goldReward, spellDef);
+
+        // Delayed achievement toast
+        setTimeout(() => {
+            this.showAchievement(
+                `🏆 BOSS DEFEATED! ${boss.title}! +${xpReward} XP +${goldReward} Gold!`,
+                'life',
+                false
+            );
+        }, 1800);
 
         // Unlock badge
         this.unlockBadge(
@@ -9227,6 +9232,106 @@ class GoalManager {
 
         this.saveData();
         this.render();
+    }
+
+    celebrateBossDefeat(boss, bossIcon, xpReward, goldReward, spellDef) {
+        // 1. Screen shake
+        document.body.classList.add('boss-defeat-shake');
+        setTimeout(() => document.body.classList.remove('boss-defeat-shake'), 600);
+
+        // 2. Full-screen dramatic red flash
+        const flash = document.createElement('div');
+        flash.className = 'boss-defeat-flash';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 1500);
+
+        // 3. Boss icon appears, shakes, then shatters
+        const icon = document.createElement('div');
+        icon.className = 'boss-defeat-icon';
+        icon.textContent = bossIcon;
+        document.body.appendChild(icon);
+        setTimeout(() => icon.remove(), 2000);
+
+        // 4. Shockwave rings expanding outward
+        for (let i = 0; i < 3; i++) {
+            const ring = document.createElement('div');
+            ring.className = `boss-defeat-ring ${i > 0 ? 'ring-' + (i + 1) : ''}`;
+            document.body.appendChild(ring);
+            setTimeout(() => ring.remove(), 2200);
+        }
+
+        // 5. "BOSS DEFEATED!" text
+        const text = document.createElement('div');
+        text.className = 'boss-defeat-text';
+        text.textContent = '💀 BOSS DEFEATED! 💀';
+        document.body.appendChild(text);
+        setTimeout(() => text.remove(), 3100);
+
+        // 6. Boss name below
+        const nameEl = document.createElement('div');
+        nameEl.className = 'boss-defeat-name';
+        nameEl.textContent = boss.title;
+        document.body.appendChild(nameEl);
+        setTimeout(() => nameEl.remove(), 3000);
+
+        // 7. Skull/sword particles burst outward
+        const particleChars = ['⚔️', '💀', '🗡️', '🔥', '💥', '⚡'];
+        const particleCount = 14;
+        for (let i = 0; i < particleCount; i++) {
+            setTimeout(() => {
+                const p = document.createElement('div');
+                p.className = 'boss-defeat-particle';
+                p.textContent = particleChars[i % particleChars.length];
+                const angle = (i / particleCount) * Math.PI * 2;
+                const radius = 140 + Math.random() * 80;
+                p.style.left = '50%';
+                p.style.top = '42%';
+                p.style.setProperty('--bp-start-x', '0px');
+                p.style.setProperty('--bp-start-y', '0px');
+                p.style.setProperty('--bp-end-x', `${Math.cos(angle) * radius}px`);
+                p.style.setProperty('--bp-end-y', `${Math.sin(angle) * radius}px`);
+                document.body.appendChild(p);
+                setTimeout(() => p.remove(), 1600);
+            }, 300 + i * 40);
+        }
+
+        // 8. Reward text cascade
+        const rewards = [
+            { text: `+${xpReward} XP`, cls: 'xp', top: '68%' },
+            { text: `+${goldReward} Gold`, cls: 'gold', top: '73%' },
+            { text: `🔮 ${spellDef ? spellDef.name : 'Legendary Spell'} x3`, cls: 'spell', top: '78%' }
+        ];
+        rewards.forEach((r, i) => {
+            setTimeout(() => {
+                const rEl = document.createElement('div');
+                rEl.className = `boss-reward-item ${r.cls}`;
+                rEl.textContent = r.text;
+                rEl.style.top = r.top;
+                document.body.appendChild(rEl);
+                setTimeout(() => rEl.remove(), 2000);
+            }, 1000 + i * 250);
+        });
+
+        // 9. Ember particles rising from bottom
+        const emberColors = ['red', 'orange', 'yellow'];
+        const emberCount = 30;
+        for (let i = 0; i < emberCount; i++) {
+            setTimeout(() => {
+                const ember = document.createElement('div');
+                ember.className = `boss-ember ${emberColors[i % emberColors.length]}`;
+                ember.style.left = `${10 + Math.random() * 80}%`;
+                ember.style.bottom = '0';
+                ember.style.setProperty('--ember-x', `${(Math.random() - 0.5) * 30}px`);
+                ember.style.setProperty('--ember-y', `${-150 - Math.random() * 200}px`);
+                ember.style.setProperty('--ember-drift', `${(Math.random() - 0.5) * 40}px`);
+                document.body.appendChild(ember);
+                setTimeout(() => ember.remove(), 2500);
+            }, i * 60);
+        }
+
+        // 10. Confetti burst (delayed for dramatic timing)
+        setTimeout(() => this.createConfetti(), 500);
+        setTimeout(() => this.createConfetti(), 1200);
     }
 
     // Quest Chains System
