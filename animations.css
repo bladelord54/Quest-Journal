@@ -227,6 +227,193 @@
     background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
 }
 
+/* ===== ENHANCED SPELL CASTING ANIMATIONS ===== */
+
+/* Full-screen flash on cast */
+.spell-cast-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9996;
+    animation: spell-flash 0.8s ease-out forwards;
+}
+
+@keyframes spell-flash {
+    0% { opacity: 0; }
+    15% { opacity: 0.6; }
+    100% { opacity: 0; }
+}
+
+.spell-cast-flash.arcane { background: radial-gradient(circle at 50% 50%, rgba(147, 51, 234, 0.5), rgba(88, 28, 135, 0.2), transparent 70%); }
+.spell-cast-flash.gold { background: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.5), rgba(180, 83, 9, 0.2), transparent 70%); }
+.spell-cast-flash.fire { background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.5), rgba(185, 28, 28, 0.2), transparent 70%); }
+.spell-cast-flash.ice { background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.5), rgba(14, 116, 144, 0.2), transparent 70%); }
+.spell-cast-flash.nature { background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.5), rgba(21, 128, 61, 0.2), transparent 70%); }
+
+/* Enhanced magic circle - outer ring with rune marks */
+.spell-circle-outer {
+    position: fixed;
+    width: 280px;
+    height: 280px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    animation: spell-circle-outer-spin 1.5s ease-out forwards;
+}
+
+.spell-circle-outer::before {
+    content: '✦ ✧ ✦ ✧ ✦ ✧ ✦ ✧';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    letter-spacing: 8px;
+    border-radius: 50%;
+    animation: spell-runes-counter-spin 1.5s ease-out forwards;
+}
+
+.spell-circle-outer.arcane { border: 3px solid rgba(147, 51, 234, 0.8); box-shadow: 0 0 30px rgba(147, 51, 234, 0.5), inset 0 0 30px rgba(147, 51, 234, 0.2); }
+.spell-circle-outer.arcane::before { color: rgba(167, 139, 250, 0.9); }
+.spell-circle-outer.gold { border: 3px solid rgba(251, 191, 36, 0.8); box-shadow: 0 0 30px rgba(251, 191, 36, 0.5), inset 0 0 30px rgba(251, 191, 36, 0.2); }
+.spell-circle-outer.gold::before { color: rgba(253, 224, 71, 0.9); }
+.spell-circle-outer.fire { border: 3px solid rgba(239, 68, 68, 0.8); box-shadow: 0 0 30px rgba(239, 68, 68, 0.5), inset 0 0 30px rgba(239, 68, 68, 0.2); }
+.spell-circle-outer.fire::before { color: rgba(252, 165, 165, 0.9); }
+.spell-circle-outer.ice { border: 3px solid rgba(56, 189, 248, 0.8); box-shadow: 0 0 30px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.2); }
+.spell-circle-outer.ice::before { color: rgba(125, 211, 252, 0.9); }
+.spell-circle-outer.nature { border: 3px solid rgba(34, 197, 94, 0.8); box-shadow: 0 0 30px rgba(34, 197, 94, 0.5), inset 0 0 30px rgba(34, 197, 94, 0.2); }
+.spell-circle-outer.nature::before { color: rgba(134, 239, 172, 0.9); }
+
+@keyframes spell-circle-outer-spin {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.1) rotate(90deg); opacity: 1; }
+    60% { transform: translate(-50%, -50%) scale(1) rotate(200deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.8) rotate(360deg); opacity: 0; }
+}
+
+@keyframes spell-runes-counter-spin {
+    0% { transform: rotate(0deg); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: rotate(-360deg); opacity: 0; }
+}
+
+/* Inner magic circle */
+.spell-circle-inner {
+    position: fixed;
+    width: 160px;
+    height: 160px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    animation: spell-circle-inner-spin 1.5s ease-out forwards;
+}
+
+.spell-circle-inner.arcane { border: 2px dashed rgba(167, 139, 250, 0.7); box-shadow: 0 0 20px rgba(147, 51, 234, 0.4); }
+.spell-circle-inner.gold { border: 2px dashed rgba(253, 224, 71, 0.7); box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+.spell-circle-inner.fire { border: 2px dashed rgba(252, 165, 165, 0.7); box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+.spell-circle-inner.ice { border: 2px dashed rgba(125, 211, 252, 0.7); box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
+.spell-circle-inner.nature { border: 2px dashed rgba(134, 239, 172, 0.7); box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
+
+@keyframes spell-circle-inner-spin {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.2) rotate(-60deg); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1) rotate(-180deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.5) rotate(-360deg); opacity: 0; }
+}
+
+/* Floating spell icon in center */
+.spell-cast-icon {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4rem;
+    pointer-events: none;
+    z-index: 9999;
+    animation: spell-icon-float 1.5s ease-out forwards;
+    filter: drop-shadow(0 0 15px currentColor);
+}
+
+@keyframes spell-icon-float {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.5) rotate(10deg); opacity: 1; }
+    40% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); opacity: 1; }
+    70% { transform: translate(-50%, -60%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -120%) scale(0.6) rotate(0deg); opacity: 0; }
+}
+
+/* Spell energy particles that orbit outward */
+.spell-particle {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    animation: spell-particle-burst 1.2s ease-out forwards;
+}
+
+.spell-particle.arcane { background: #a78bfa; box-shadow: 0 0 8px #a78bfa, 0 0 15px rgba(167, 139, 250, 0.5); }
+.spell-particle.gold { background: #fde047; box-shadow: 0 0 8px #fde047, 0 0 15px rgba(253, 224, 71, 0.5); }
+.spell-particle.fire { background: #fca5a5; box-shadow: 0 0 8px #ef4444, 0 0 15px rgba(239, 68, 68, 0.5); }
+.spell-particle.ice { background: #7dd3fc; box-shadow: 0 0 8px #38bdf8, 0 0 15px rgba(56, 189, 248, 0.5); }
+.spell-particle.nature { background: #86efac; box-shadow: 0 0 8px #22c55e, 0 0 15px rgba(34, 197, 94, 0.5); }
+
+@keyframes spell-particle-burst {
+    0% {
+        transform: translate(var(--start-x), var(--start-y)) scale(1);
+        opacity: 1;
+    }
+    60% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--end-x), var(--end-y)) scale(0);
+        opacity: 0;
+    }
+}
+
+/* Spell name text that fades up */
+.spell-cast-name {
+    position: fixed;
+    left: 50%;
+    top: 55%;
+    transform: translateX(-50%);
+    font-family: 'MedievalSharp', serif;
+    font-size: 1.8rem;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+    animation: spell-name-reveal 2s ease-out forwards;
+    text-shadow: 0 0 20px currentColor, 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.spell-cast-name.arcane { color: #c4b5fd; }
+.spell-cast-name.gold { color: #fde68a; }
+.spell-cast-name.fire { color: #fca5a5; }
+.spell-cast-name.ice { color: #bae6fd; }
+.spell-cast-name.nature { color: #bbf7d0; }
+
+@keyframes spell-name-reveal {
+    0% { transform: translateX(-50%) translateY(0) scale(0.5); opacity: 0; letter-spacing: -5px; }
+    20% { transform: translateX(-50%) translateY(0) scale(1.1); opacity: 1; letter-spacing: 2px; }
+    40% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; letter-spacing: 1px; }
+    80% { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-30px) scale(0.9); opacity: 0; }
+}
+
 /* ===== Onboarding Slides ===== */
 .onboarding-slide {
     transition: opacity 0.5s ease-in-out;

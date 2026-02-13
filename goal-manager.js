@@ -4739,10 +4739,78 @@ class GoalManager {
     }
 
     // Celebration Animations
+    getSpellElement(spell) {
+        const effectMap = {
+            xp_multiplier: 'arcane', xp_boost: 'arcane',
+            gold_multiplier: 'gold', double_reward: 'gold',
+            streak_protection: 'ice', pause_reset: 'ice',
+            boss_double_damage: 'fire', boss_crit_chance: 'fire', boss_damage_boost: 'fire', boss_execute: 'fire',
+            chest_boost: 'nature', bulk_archive: 'nature', focus_boost: 'nature'
+        };
+        return effectMap[spell.effect] || 'arcane';
+    }
+
     celebrateSpellCast(spell) {
-        this.createMagicCircle();
         this.playSpellSound();
-        this.showAchievement(`🔮 ${spell.name} cast!`, 'rare', false);
+        const element = this.getSpellElement(spell);
+        
+        // 1. Full-screen flash
+        const flash = document.createElement('div');
+        flash.className = `spell-cast-flash ${element}`;
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 800);
+        
+        // 2. Outer magic circle with runes
+        const outer = document.createElement('div');
+        outer.className = `spell-circle-outer ${element}`;
+        document.body.appendChild(outer);
+        setTimeout(() => outer.remove(), 1500);
+        
+        // 3. Inner magic circle (counter-rotating)
+        const inner = document.createElement('div');
+        inner.className = `spell-circle-inner ${element}`;
+        document.body.appendChild(inner);
+        setTimeout(() => inner.remove(), 1500);
+        
+        // 4. Spell icon floating up from center
+        const icon = document.createElement('div');
+        icon.className = 'spell-cast-icon';
+        icon.textContent = spell.icon;
+        document.body.appendChild(icon);
+        setTimeout(() => icon.remove(), 1500);
+        
+        // 5. Energy particles bursting outward
+        const particleCount = 16;
+        for (let i = 0; i < particleCount; i++) {
+            setTimeout(() => {
+                const particle = document.createElement('div');
+                particle.className = `spell-particle ${element}`;
+                const angle = (i / particleCount) * Math.PI * 2;
+                const radius = 120 + Math.random() * 80;
+                particle.style.left = '50%';
+                particle.style.top = '50%';
+                particle.style.setProperty('--start-x', '0px');
+                particle.style.setProperty('--start-y', '0px');
+                particle.style.setProperty('--end-x', `${Math.cos(angle) * radius}px`);
+                particle.style.setProperty('--end-y', `${Math.sin(angle) * radius}px`);
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1200);
+            }, i * 30);
+        }
+        
+        // 6. Spell name text
+        setTimeout(() => {
+            const nameEl = document.createElement('div');
+            nameEl.className = `spell-cast-name ${element}`;
+            nameEl.textContent = spell.name;
+            document.body.appendChild(nameEl);
+            setTimeout(() => nameEl.remove(), 2000);
+        }, 200);
+        
+        // 7. Achievement toast (delayed so it doesn't overlap the animation)
+        setTimeout(() => {
+            this.showAchievement(`🔮 ${spell.name} cast!`, 'rare', false);
+        }, 800);
     }
 
     celebrateSpellUnlock(spell) {
