@@ -4899,10 +4899,6 @@ class GoalManager {
             setTimeout(() => nameEl.remove(), 2000);
         }, 200);
         
-        // 7. Achievement toast (delayed so it doesn't overlap the animation)
-        setTimeout(() => {
-            this.showAchievement(`🔮 ${spell.name} cast!`, 'rare', false);
-        }, 800);
     }
 
     celebrateSpellUnlock(spell) {
