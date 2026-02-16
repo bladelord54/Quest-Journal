@@ -3021,10 +3021,6 @@ class GoalManager {
         // Epic celebration animation!
         this.createLevelUpBurst(this.level, title);
         
-        // Delayed toast so it appears after the animation
-        setTimeout(() => {
-            this.showAchievement(`⭐ Level Up! You are now Level ${this.level} - ${title}!`, 'yearly', false);
-        }, 1500);
         this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐');
         
         // Check if can level up again (in case of large XP gain)
@@ -4940,17 +4936,6 @@ class GoalManager {
                 setTimeout(() => sparkle.remove(), 600);
             }, i * 50);
         }
-    }
-
-    createMagicCircle() {
-        const circle = document.createElement('div');
-        circle.className = 'magic-circle-effect';
-        circle.style.left = '50%';
-        circle.style.top = '50%';
-        circle.style.transform = 'translate(-50%, -50%)';
-        document.body.appendChild(circle);
-        
-        setTimeout(() => circle.remove(), 1000);
     }
 
     createLevelUpBurst(level, title) {
@@ -9208,15 +9193,6 @@ class GoalManager {
         const bossIcon = this.getBossIcon(boss);
         const spellDef = this.spellDefinitions[randomSpell];
         this.celebrateBossDefeat(boss, bossIcon, xpReward, goldReward, spellDef);
-
-        // Delayed achievement toast
-        setTimeout(() => {
-            this.showAchievement(
-                `🏆 BOSS DEFEATED! ${boss.title}! +${xpReward} XP +${goldReward} Gold!`,
-                'life',
-                false
-            );
-        }, 1800);
 
         // Unlock badge
         this.unlockBadge(
