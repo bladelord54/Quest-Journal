@@ -247,6 +247,15 @@ class GoalManager {
                 this.focusSessionsCompleted = data.focusSessionsCompleted || 0;
                 this.spellsCast = data.spellsCast || 0;
                 
+                // Migrate tasks with `name` but no `title` (from starter task bug)
+                [this.dailyTasks, this.weeklyGoals, this.monthlyGoals, this.yearlyGoals, this.lifeGoals, this.sideQuests, this.habits].forEach(arr => {
+                    arr.forEach(item => {
+                        if (!item.title && item.name) {
+                            item.title = item.name;
+                        }
+                    });
+                });
+
                 // Add dueDate to existing tasks that don't have one
                 this.dailyTasks.forEach(task => {
                     if (!task.dueDate) {
@@ -11272,9 +11281,13 @@ class GoalManager {
             if (task) {
                 this.dailyTasks.push({
                     id: Date.now() + added,
-                    name: task.name,
+                    title: task.name,
+                    description: '',
+                    weeklyGoalIds: [],
+                    created: new Date().toISOString(),
+                    dueDate: this.getTodayDateString(),
                     completed: false,
-                    createdAt: new Date().toISOString()
+                    checklist: []
                 });
                 added++;
             }
@@ -11286,9 +11299,14 @@ class GoalManager {
             if (task) {
                 this.weeklyGoals.push({
                     id: Date.now() + added,
-                    name: task.name,
+                    title: task.name,
+                    description: '',
+                    monthlyGoalIds: [],
+                    created: new Date().toISOString(),
                     completed: false,
-                    createdAt: new Date().toISOString()
+                    progress: 0,
+                    checklist: [],
+                    priority: 'medium'
                 });
                 added++;
             }
@@ -11300,9 +11318,13 @@ class GoalManager {
             if (task) {
                 this.monthlyGoals.push({
                     id: Date.now() + added,
-                    name: task.name,
+                    title: task.name,
+                    description: '',
+                    yearlyGoalIds: [],
+                    created: new Date().toISOString(),
                     completed: false,
-                    createdAt: new Date().toISOString()
+                    progress: 0,
+                    priority: 'medium'
                 });
                 added++;
             }
@@ -11324,19 +11346,20 @@ class GoalManager {
             const task = this.starterTaskPresets[type][index];
 
             if (task) {
-                const newTask = {
+                const baseTask = {
                     id: Date.now() + added,
-                    name: task.name,
-                    completed: false,
-                    createdAt: new Date().toISOString()
+                    title: task.name,
+                    description: '',
+                    created: new Date().toISOString(),
+                    completed: false
                 };
 
                 if (type === 'daily') {
-                    this.dailyTasks.push(newTask);
+                    this.dailyTasks.push({ ...baseTask, weeklyGoalIds: [], dueDate: this.getTodayDateString(), checklist: [] });
                 } else if (type === 'weekly') {
-                    this.weeklyGoals.push(newTask);
+                    this.weeklyGoals.push({ ...baseTask, monthlyGoalIds: [], progress: 0, checklist: [], priority: 'medium' });
                 } else if (type === 'monthly') {
-                    this.monthlyGoals.push(newTask);
+                    this.monthlyGoals.push({ ...baseTask, yearlyGoalIds: [], progress: 0, priority: 'medium' });
                 }
                 added++;
             }
