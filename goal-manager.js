@@ -10043,16 +10043,27 @@ class GoalManager {
             return;
         }
 
-        try {
-            new Notification(title, {
-                body: body,
-                icon: '/favicon.ico',
-                badge: '/favicon.ico',
-                tag: 'quest-journal',
-                requireInteraction: false
+        // Use Service Worker notification API (required for Android PWAs)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(title, {
+                    body: body,
+                    icon: './icons/icon-192.png',
+                    badge: './icons/icon-96.png',
+                    tag: 'quest-journal-' + Date.now(),
+                    renotify: true,
+                    vibrate: [200, 100, 200],
+                    data: { url: './' }
+                });
+            }).catch(() => {
+                // Fallback to basic Notification for desktop
+                try { new Notification(title, { body: body }); } catch (e) {}
             });
-        } catch (error) {
-            // Notification failed silently
+        } else {
+            // Fallback for browsers without service worker
+            try {
+                new Notification(title, { body: body, icon: './icons/icon-192.png' });
+            } catch (error) {}
         }
     }
 
@@ -10077,12 +10088,72 @@ class GoalManager {
         // Schedule daily reminders
         this.scheduleDailyReminders();
         
+        // Send reminder settings to service worker for background notifications
+        this.syncReminderSettingsToSW();
+        
+        // Re-schedule reminders when app returns to foreground (Android kills timers when backgrounded)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                this.scheduleDailyReminders();
+                this.checkOverdueTasks();
+            }
+        });
+        
+        // Register periodic background sync for Android (fires even when app is closed)
+        this.registerPeriodicSync();
+        
         // Check for overdue tasks periodically
         this.checkOverdueTasks();
         setInterval(() => this.checkOverdueTasks(), 30 * 60 * 1000); // Every 30 minutes
     }
+    
+    syncReminderSettingsToSW() {
+        // Send current reminder settings and task counts to the service worker
+        // so it can fire notifications even when the page is not active
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                const todayStr = this.getTodayDateString();
+                const todayTasks = this.dailyTasks.filter(t => t.dueDate === todayStr && !t.completed);
+                const incompleteHabits = this.habits.filter(h => !h.completedToday);
+                const overdueTasks = this.dailyTasks.filter(t => !t.completed && t.dueDate < todayStr);
+                
+                registration.active?.postMessage({
+                    type: 'SYNC_REMINDERS',
+                    settings: this.reminderSettings,
+                    taskCounts: {
+                        todayTasks: todayTasks.length,
+                        incompleteHabits: incompleteHabits.length,
+                        overdueTasks: overdueTasks.length
+                    }
+                });
+            }).catch(() => {});
+        }
+    }
+    
+    registerPeriodicSync() {
+        // Periodic Background Sync lets the service worker wake up periodically
+        // even when the app is closed - ideal for Android notifications
+        if ('serviceWorker' in navigator && 'periodicSync' in (navigator.serviceWorker.ready || {})) {
+            navigator.serviceWorker.ready.then(async registration => {
+                try {
+                    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+                    if (status.state === 'granted' && registration.periodicSync) {
+                        await registration.periodicSync.register('check-reminders', {
+                            minInterval: 60 * 60 * 1000 // Check at least every hour
+                        });
+                    }
+                } catch (e) {
+                    // Periodic sync not supported - fall back to page-based timers
+                }
+            });
+        }
+    }
 
     scheduleDailyReminders() {
+        // Clear any existing reminder timers
+        if (this._morningTimer) clearTimeout(this._morningTimer);
+        if (this._eveningTimer) clearTimeout(this._eveningTimer);
+        
         if (!this.reminderSettings.enabled) return;
         
         const now = new Date();
@@ -10095,7 +10166,7 @@ class GoalManager {
             
             if (morningTime > now) {
                 const delay = morningTime - now;
-                setTimeout(() => {
+                this._morningTimer = setTimeout(() => {
                     this.sendMorningReminder();
                     // Reschedule for next day
                     setTimeout(() => this.scheduleDailyReminders(), 1000);
@@ -10111,7 +10182,7 @@ class GoalManager {
             
             if (eveningTime > now) {
                 const delay = eveningTime - now;
-                setTimeout(() => {
+                this._eveningTimer = setTimeout(() => {
                     this.sendEveningReminder();
                 }, delay);
             }
@@ -10182,6 +10253,9 @@ class GoalManager {
         if (setting === 'morningTime' || setting === 'eveningTime' || setting === 'enabled') {
             this.scheduleDailyReminders();
         }
+        
+        // Keep service worker in sync for background notifications
+        this.syncReminderSettingsToSW();
     }
 
     renderReminderSettings() {

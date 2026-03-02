@@ -1,5 +1,5 @@
-const CACHE_NAME = 'life-quest-journal-v187';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v187';
+const CACHE_NAME = 'life-quest-journal-v188';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v188';
 const urlsToCache = [
   './',
   './index.html',
@@ -120,8 +120,104 @@ self.addEventListener('fetch', event => {
 });
 
 // Handle messages from main thread
+let reminderSettings = null;
+let lastTaskCounts = null;
+
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  // Receive reminder settings and task counts from the app
+  if (event.data && event.data.type === 'SYNC_REMINDERS') {
+    reminderSettings = event.data.settings;
+    lastTaskCounts = event.data.taskCounts;
+  }
 });
+
+// Handle notification click - open/focus the app
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // Focus existing window if available
+      for (const client of clientList) {
+        if (client.url.includes('index.html') || client.url.endsWith('/')) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      return clients.openWindow(event.notification.data?.url || './');
+    })
+  );
+});
+
+// Periodic Background Sync - fires even when app is closed (Android Chrome)
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'check-reminders') {
+    event.waitUntil(checkAndSendReminders());
+  }
+});
+
+// Check if any reminders should fire based on stored settings
+async function checkAndSendReminders() {
+  if (!reminderSettings || !reminderSettings.enabled) return;
+  
+  const now = new Date();
+  const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+  
+  // Check morning reminder (within a 30-min window since periodic sync is imprecise)
+  if (reminderSettings.morningReminder) {
+    const morningTime = reminderSettings.morningTime;
+    if (isWithinWindow(currentTime, morningTime, 30)) {
+      await sendReminderNotification('morning');
+    }
+  }
+  
+  // Check evening reminder
+  if (reminderSettings.eveningReminder) {
+    const eveningTime = reminderSettings.eveningTime;
+    if (isWithinWindow(currentTime, eveningTime, 30)) {
+      await sendReminderNotification('evening');
+    }
+  }
+}
+
+// Check if currentTime is within minuteWindow of targetTime
+function isWithinWindow(currentTime, targetTime, minuteWindow) {
+  const [ch, cm] = currentTime.split(':').map(Number);
+  const [th, tm] = targetTime.split(':').map(Number);
+  const currentMins = ch * 60 + cm;
+  const targetMins = th * 60 + tm;
+  return currentMins >= targetMins && currentMins < targetMins + minuteWindow;
+}
+
+async function sendReminderNotification(type) {
+  const counts = lastTaskCounts || { todayTasks: 0, incompleteHabits: 0, overdueTasks: 0 };
+  
+  let title, body;
+  if (type === 'morning') {
+    title = '🌅 Good Morning, Adventurer!';
+    body = '';
+    if (counts.todayTasks > 0) body += `📋 ${counts.todayTasks} task${counts.todayTasks !== 1 ? 's' : ''} for today`;
+    if (counts.incompleteHabits > 0) body += (body ? ' • ' : '') + `🔄 ${counts.incompleteHabits} habit${counts.incompleteHabits !== 1 ? 's' : ''} to complete`;
+    if (!body) body = 'Ready for a new day of quests!';
+  } else {
+    title = '🌙 Evening Quest Report';
+    body = '';
+    if (counts.todayTasks > 0) body += `📋 ${counts.todayTasks} task${counts.todayTasks !== 1 ? 's' : ''} remaining`;
+    if (counts.overdueTasks > 0) body += (body ? ' • ' : '') + `⚠️ ${counts.overdueTasks} overdue`;
+    if (!body) body = 'All quests completed! Well done!';
+  }
+  
+  return self.registration.showNotification(title, {
+    body: body,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-96.png',
+    tag: 'quest-reminder-' + type,
+    renotify: true,
+    vibrate: [200, 100, 200],
+    data: { url: './' }
+  });
+}
