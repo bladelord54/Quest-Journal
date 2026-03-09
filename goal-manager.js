@@ -10053,7 +10053,26 @@ class GoalManager {
             if (this.notificationsEnabled) {
                 // Sync settings to service worker now that we have permission
                 this.syncReminderSettingsToSW();
+                
+                // Send a confirmation notification immediately - this creates the
+                // Android notification channel so the app appears in system settings
+                this.sendConfirmationNotification();
             }
+        }
+    }
+    
+    sendConfirmationNotification() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification('⚔️ Quest Reminders Enabled!', {
+                    body: 'You will now receive notifications for your daily quests and reminders.',
+                    icon: './icons/icon-192.png',
+                    badge: './icons/icon-96.png',
+                    tag: 'quest-journal-setup',
+                    vibrate: [200, 100, 200],
+                    data: { url: './' }
+                });
+            }).catch(() => {});
         }
     }
 
@@ -10375,7 +10394,13 @@ class GoalManager {
                         class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
                         Enable Browser Notifications
                     </button>
-                    ` : ''}
+                    <p class="text-amber-400/60 text-xs mt-2 text-center">If notifications were previously denied, go to your device Settings → Apps → Life Quest Journal → Notifications to re-enable them.</p>
+                    ` : `
+                    <button onclick="goalManager.sendConfirmationNotification()"
+                        class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
+                        🔔 Send Test Notification
+                    </button>
+                    `}
                 </div>
             </div>
         `;
