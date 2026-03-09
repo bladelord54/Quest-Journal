@@ -100,7 +100,7 @@ class GoalManager {
         this.loginStreak = 0;
         
         this.loadData();
-        this.requestNotificationPermission();
+        this.checkNotificationPermission();
         this.checkHabitReset();
         this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
         this.initializeReminders(); // Set up task reminders
@@ -10031,11 +10031,59 @@ class GoalManager {
     }
 
     // Notification System
+    checkNotificationPermission() {
+        // Passively check current permission state without prompting
+        // (Android blocks permission requests that aren't from a user gesture)
+        if ('Notification' in window) {
+            this.notificationsEnabled = Notification.permission === 'granted';
+            
+            // If permission hasn't been asked yet, show a prompt after a short delay
+            if (Notification.permission === 'default' && !localStorage.getItem('notificationPromptDismissed')) {
+                setTimeout(() => this.showNotificationPrompt(), 3000);
+            }
+        }
+    }
+
     async requestNotificationPermission() {
+        // Must be called from a user gesture (button tap) on Android
         if ('Notification' in window) {
             const permission = await Notification.requestPermission();
             this.notificationsEnabled = permission === 'granted';
+            
+            if (this.notificationsEnabled) {
+                // Sync settings to service worker now that we have permission
+                this.syncReminderSettingsToSW();
+            }
         }
+    }
+
+    showNotificationPrompt() {
+        // Don't show if already granted or if user is in the middle of tutorial
+        if (this.notificationsEnabled || !this.tutorialCompleted) return;
+        
+        const prompt = document.createElement('div');
+        prompt.id = 'notification-prompt';
+        prompt.className = 'fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 bg-gradient-to-br from-amber-800 to-stone-900 border-2 border-amber-500 rounded-xl p-4 shadow-2xl';
+        prompt.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="text-3xl">🔔</div>
+                <div class="flex-1">
+                    <h4 class="text-amber-200 font-bold text-sm">Enable Quest Reminders?</h4>
+                    <p class="text-amber-100/70 text-xs mt-1">Get notified about your daily quests, overdue tasks, and morning/evening reminders.</p>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="goalManager.requestNotificationPermission().then(() => { document.getElementById('notification-prompt')?.remove(); goalManager.renderReminderSettings(); })"
+                            class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold">
+                            Enable Notifications
+                        </button>
+                        <button onclick="document.getElementById('notification-prompt')?.remove(); localStorage.setItem('notificationPromptDismissed', 'true');"
+                            class="bg-stone-700 hover:bg-stone-600 text-amber-200 px-4 py-1.5 rounded-lg text-xs">
+                            Not Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(prompt);
     }
 
     showNotification(title, body, icon = '⚔️') {
