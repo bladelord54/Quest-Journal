@@ -58,6 +58,7 @@ class GoalManager {
         this.isRendering = false;
         this.saveTimeout = null;
         this.currentView = 'dashboard';
+        this.activeGoalTab = 'life-goals';
         
         // DOM element cache for frequently accessed elements
         this.domCache = {};
@@ -1000,6 +1001,28 @@ class GoalManager {
     }
 
     switchView(viewName) {
+        // Redirect legacy individual goal view names to the combined goals view
+        const goalTabMap = { 'life-goals': 'life-goals', 'yearly': 'yearly', 'monthly': 'monthly', 'weekly': 'weekly' };
+        if (goalTabMap[viewName]) {
+            this.currentView = 'goals';
+            this.switchGoalTab(goalTabMap[viewName]);
+            
+            document.querySelectorAll('.view-container').forEach(view => {
+                view.classList.add('hidden');
+            });
+            document.getElementById('goals-view').classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-view') === 'goals') {
+                    link.classList.add('active');
+                }
+            });
+            
+            this.render();
+            return;
+        }
+        
         // Track current view for optimized rendering
         this.currentView = viewName;
         
@@ -1018,6 +1041,59 @@ class GoalManager {
         
         // Render the new view immediately
         this.render();
+    }
+
+    switchGoalTab(tabName) {
+        // Track which goal tab is active
+        this.activeGoalTab = tabName;
+        
+        // Hide all tab content
+        document.querySelectorAll('.goal-tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        // Show the selected tab content
+        const tabContent = document.getElementById(`goal-tab-${tabName}`);
+        if (tabContent) {
+            tabContent.classList.remove('hidden');
+        }
+        
+        // Update tab button styles
+        document.querySelectorAll('.goal-tab').forEach(tab => {
+            tab.classList.remove('active-goal-tab');
+        });
+        const activeTab = document.querySelector(`[data-goal-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active-goal-tab');
+        }
+        
+        // Update tab counts
+        this.updateGoalTabCounts();
+        
+        // Render the appropriate content
+        const tabRenderMap = {
+            'life-goals': () => this.renderLifeGoals(),
+            'yearly': () => this.renderYearlyGoals(),
+            'monthly': () => this.renderMonthlyGoals(),
+            'weekly': () => this.renderWeeklyGoals()
+        };
+        if (tabRenderMap[tabName]) {
+            tabRenderMap[tabName]();
+        }
+    }
+
+    updateGoalTabCounts() {
+        const counts = {
+            'life-goals': this.lifeGoals.length,
+            'yearly': this.yearlyGoals.filter(g => !g.completed).length,
+            'monthly': this.monthlyGoals.filter(g => !g.completed).length,
+            'weekly': this.weeklyGoals.filter(g => !g.completed).length
+        };
+        
+        Object.entries(counts).forEach(([tab, count]) => {
+            const el = document.getElementById(`tab-${tab}-count`);
+            if (el) el.textContent = count;
+        });
     }
 
     playAchievementSound(level = 'daily') {
@@ -3845,10 +3921,17 @@ class GoalManager {
             // Map view names to render methods
             const viewRenderMap = {
                 'dashboard': () => this.renderDashboard(),
-                'life-goals': () => this.renderLifeGoals(),
-                'yearly': () => this.renderYearlyGoals(),
-                'monthly': () => this.renderMonthlyGoals(),
-                'weekly': () => this.renderWeeklyGoals(),
+                'goals': () => {
+                    this.updateGoalTabCounts();
+                    const tab = this.activeGoalTab || 'life-goals';
+                    const tabRender = {
+                        'life-goals': () => this.renderLifeGoals(),
+                        'yearly': () => this.renderYearlyGoals(),
+                        'monthly': () => this.renderMonthlyGoals(),
+                        'weekly': () => this.renderWeeklyGoals()
+                    };
+                    if (tabRender[tab]) tabRender[tab]();
+                },
                 'daily': () => this.renderDailyTasks(),
                 'sidequests': () => this.renderSideQuests(),
                 'calendar': () => {
@@ -10808,16 +10891,20 @@ class GoalManager {
             
             if (text) {
                 // Determine task type based on current view
-                const currentView = document.querySelector('.view-container:not(.hidden)')?.id;
+                const currentView = this.currentView;
                 
                 if (currentView === 'habits-view') {
                     this.addHabit(text);
-                } else if (currentView === 'sidequests-view') {
+                } else if (currentView === 'sidequests') {
                     this.addSideQuest(text);
-                } else if (currentView === 'weekly-view') {
+                } else if (currentView === 'goals' && this.activeGoalTab === 'weekly') {
                     this.addWeeklyGoal(text);
-                } else if (currentView === 'monthly-view') {
+                } else if (currentView === 'goals' && this.activeGoalTab === 'monthly') {
                     this.addMonthlyGoal(text);
+                } else if (currentView === 'goals' && this.activeGoalTab === 'yearly') {
+                    this.addYearlyGoal(text);
+                } else if (currentView === 'goals' && this.activeGoalTab === 'life-goals') {
+                    this.addLifeGoal(text);
                 } else {
                     // Default to daily task
                     this.addDailyTask(text);
@@ -11013,32 +11100,26 @@ class GoalManager {
             action: null
         },
         {
-            title: "Epic Quests 🚩",
-            content: "Your life's grandest goals! Epic Quests are long-term life goals that can span years. Break them down into Yearly Campaigns for manageable progress.",
-            element: "a[href='#life-goals'].nav-link",
-            action: () => this.switchView('life-goals')
+            title: "Quest Log 🚩",
+            content: "Your Quest Log holds all your goals across four horizons: Epic Quests (life goals), Yearly Campaigns, Monthly Raids, and Weekly Battles. Use the tabs to switch between them!",
+            element: "a[href='#goals'].nav-link",
+            action: () => { this.switchView('goals'); this.switchGoalTab('life-goals'); }
         },
         {
-            title: "Yearly Campaigns 📜",
-            content: "Year-long objectives! These connect to your Epic Quests above and break down into Monthly Raids. Perfect for big annual goals!",
-            element: "a[href='#yearly'].nav-link",
-            action: () => this.switchView('yearly')
+            title: "Goal Hierarchy 📜",
+            content: "Goals cascade downward: Epic Quests → Yearly Campaigns → Monthly Raids → Weekly Battles → Daily Tasks. Break big dreams into manageable steps!",
+            element: null,
+            action: () => { this.switchView('goals'); this.switchGoalTab('yearly'); }
         },
         {
-            title: "Monthly & Weekly Goals 📅",
-            content: "Plan bigger campaigns! Monthly Raids and Weekly Battles help you tackle larger projects. Link daily tasks to these goals to track progress.",
-            element: "a[href='#weekly'].nav-link",
-            action: () => this.switchView('weekly')
-        },
-        {
-            title: "Daily Skirmishes ⚔️",
+            title: "Daily Quests ⚔️",
             content: "Your daily quests! Each task you complete earns XP and gold. You'll also find Daily Rituals (habits) and Recurring Tasks here!",
             element: "a[href='#daily'].nav-link",
             action: () => this.switchView('daily')
         },
         {
             title: "Recurring Tasks 🔄",
-            content: "Tasks that repeat automatically! Set up weekly or monthly recurring tasks and they'll appear on the right days. Find them in Daily Skirmishes!",
+            content: "Tasks that repeat automatically! Set up weekly or monthly recurring tasks and they'll appear on the right days. Find them in Daily Quests!",
             element: null,
             action: null
         },
@@ -11160,8 +11241,20 @@ class GoalManager {
                 if (step.element && spotlight) {
                     const targetElement = document.querySelector(step.element);
                     if (targetElement) {
-                        // Scroll element into view first
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // On mobile, nav links are in a horizontal scrollable bar at bottom
+                        // scrollIntoView only handles vertical - manually scroll the nav container
+                        const isMobile = window.innerWidth <= 768;
+                        const navContainer = targetElement.closest('nav');
+                        
+                        if (isMobile && navContainer) {
+                            // Scroll the horizontal nav container to center the target icon
+                            const navRect = navContainer.getBoundingClientRect();
+                            const elRect = targetElement.getBoundingClientRect();
+                            const scrollLeft = targetElement.offsetLeft - (navRect.width / 2) + (targetElement.offsetWidth / 2);
+                            navContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+                        } else {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                        }
                         
                         // Wait for scroll animation to complete before getting rect
                         setTimeout(() => {
@@ -11174,7 +11267,7 @@ class GoalManager {
                             
                             // Position tooltip to not cover the highlighted element
                             this.positionTooltip(rect, tooltip);
-                        }, 400);
+                        }, 600);
                     } else {
                         spotlight.style.display = 'none';
                         this.centerTooltip(tooltip);

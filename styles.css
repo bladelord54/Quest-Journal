@@ -228,3 +228,25 @@ button:active {
 .heatmap-cell.level-3 {
     background-color: rgba(245, 158, 11, 0.9);
 }
+
+/* Goal Tab Styles (Quest Planner) */
+.goal-tab {
+    color: rgba(217, 186, 130, 0.7);
+    background: transparent;
+}
+
+.goal-tab:hover {
+    color: rgba(252, 211, 77, 1);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.goal-tab.active-goal-tab {
+    color: #fef3c7;
+    background: rgba(217, 119, 6, 0.35);
+    border: 1px solid rgba(217, 119, 6, 0.5);
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.15);
+}
+
+.goal-tab-content {
+    animation: fadeIn 0.2s ease-out;
+}

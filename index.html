@@ -295,25 +295,13 @@
                     <i class="ri-dashboard-line mr-3 text-2xl text-amber-400"></i>
                     <span class="fancy-font text-lg">Your Castle</span>
                 </a>
-                <a href="#life-goals" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="life-goals">
+                <a href="#goals" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="goals">
                     <i class="ri-flag-line mr-3 text-2xl text-red-400"></i>
-                    <span class="fancy-font text-lg">Epic Quests</span>
-                </a>
-                <a href="#yearly" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="yearly">
-                    <i class="ri-file-paper-2-line mr-3 text-2xl text-purple-400"></i>
-                    <span class="fancy-font text-lg">Yearly Campaigns</span>
-                </a>
-                <a href="#monthly" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="monthly">
-                    <i class="ri-book-3-line mr-3 text-2xl text-blue-400"></i>
-                    <span class="fancy-font text-lg">Monthly Raids</span>
-                </a>
-                <a href="#weekly" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="weekly">
-                    <i class="ri-shield-line mr-3 text-2xl text-green-400"></i>
-                    <span class="fancy-font text-lg">Weekly Battles</span>
+                    <span class="fancy-font text-lg">Quest Log</span>
                 </a>
                 <a href="#daily" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="daily">
                     <i class="ri-sword-line mr-3 text-2xl text-orange-400"></i>
-                    <span class="fancy-font text-lg">Daily Skirmishes</span>
+                    <span class="fancy-font text-lg">Daily Quests</span>
                 </a>
                 <a href="#calendar" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="calendar">
                     <i class="ri-calendar-event-line mr-3 text-2xl text-yellow-400"></i>
@@ -487,7 +475,7 @@
 
                 <!-- Stats Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div onclick="goalManager.switchView('life-goals')" class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform cursor-pointer">
+                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('life-goals');" class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform cursor-pointer">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-red-200 text-sm fancy-font">Epic Quests</p>
@@ -498,7 +486,7 @@
                         <div class="text-sm text-red-200 fancy-font">Legendary Goals</div>
                     </div>
                     
-                    <div onclick="goalManager.switchView('monthly')" class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 text-white p-6 rounded-xl shadow-2xl border-4 border-blue-700 hover:scale-105 transition-transform cursor-pointer">
+                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('monthly');" class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 text-white p-6 rounded-xl shadow-2xl border-4 border-blue-700 hover:scale-105 transition-transform cursor-pointer">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-blue-200 text-sm fancy-font">Monthly Raids</p>
@@ -509,7 +497,7 @@
                         <div class="text-sm text-blue-200 fancy-font">This month's conquests</div>
                     </div>
                     
-                    <div onclick="goalManager.switchView('weekly')" class="quest-card bg-gradient-to-br from-green-900 to-green-950 text-white p-6 rounded-xl shadow-2xl border-4 border-green-700 hover:scale-105 transition-transform cursor-pointer">
+                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('weekly');" class="quest-card bg-gradient-to-br from-green-900 to-green-950 text-white p-6 rounded-xl shadow-2xl border-4 border-green-700 hover:scale-105 transition-transform cursor-pointer">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-green-200 text-sm fancy-font">Weekly Battles</p>
@@ -549,75 +537,109 @@
                 </div>
             </div>
 
-            <!-- Life Goals View -->
-            <div id="life-goals-view" class="view-container hidden p-8">
-                <header class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-flag-line text-red-400 mr-2"></i>Epic Life Quests</h2>
-                        <p class="text-amber-200 fancy-font">Your grandest adventures and legendary achievements</p>
-                    </div>
-                    <button onclick="addLifeGoal()" class="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-red-500">
-                        <i class="ri-flag-line mr-2"></i>New Epic Quest
-                    </button>
+            <!-- Combined Goals View (Quest Planner) -->
+            <div id="goals-view" class="view-container hidden p-4 md:p-8">
+                <header class="mb-6 text-center">
+                    <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-flag-line text-red-400 mr-2"></i>Quest Log</h2>
+                    <p class="text-amber-200 fancy-font text-base md:text-lg">Track your adventures across all horizons</p>
                 </header>
 
-                <div id="life-goals-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-            </div>
-
-            <!-- Yearly Goals View -->
-            <div id="yearly-view" class="view-container hidden p-8">
-                <header class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-file-paper-2-line text-purple-400 mr-2"></i>Yearly Campaigns</h2>
-                        <p class="text-amber-200 fancy-font">The great battles of this year</p>
+                <!-- Goal Tabs -->
+                <div class="flex justify-center mb-6">
+                    <div class="inline-flex bg-stone-900/80 rounded-xl border-2 border-amber-700/50 p-1 gap-1 flex-wrap justify-center">
+                        <button onclick="goalManager.switchGoalTab('life-goals')" data-goal-tab="life-goals"
+                            class="goal-tab active-goal-tab px-4 py-2.5 rounded-lg font-bold fancy-font text-sm transition-all flex items-center gap-1.5">
+                            <i class="ri-flag-line text-red-400"></i>
+                            <span>Epic</span>
+                            <span class="goal-tab-count bg-red-900/60 text-red-200 text-xs px-1.5 py-0.5 rounded-full" id="tab-life-goals-count">0</span>
+                        </button>
+                        <button onclick="goalManager.switchGoalTab('yearly')" data-goal-tab="yearly"
+                            class="goal-tab px-4 py-2.5 rounded-lg font-bold fancy-font text-sm transition-all flex items-center gap-1.5">
+                            <i class="ri-file-paper-2-line text-purple-400"></i>
+                            <span>Yearly</span>
+                            <span class="goal-tab-count bg-purple-900/60 text-purple-200 text-xs px-1.5 py-0.5 rounded-full" id="tab-yearly-count">0</span>
+                        </button>
+                        <button onclick="goalManager.switchGoalTab('monthly')" data-goal-tab="monthly"
+                            class="goal-tab px-4 py-2.5 rounded-lg font-bold fancy-font text-sm transition-all flex items-center gap-1.5">
+                            <i class="ri-book-3-line text-blue-400"></i>
+                            <span>Monthly</span>
+                            <span class="goal-tab-count bg-blue-900/60 text-blue-200 text-xs px-1.5 py-0.5 rounded-full" id="tab-monthly-count">0</span>
+                        </button>
+                        <button onclick="goalManager.switchGoalTab('weekly')" data-goal-tab="weekly"
+                            class="goal-tab px-4 py-2.5 rounded-lg font-bold fancy-font text-sm transition-all flex items-center gap-1.5">
+                            <i class="ri-shield-line text-green-400"></i>
+                            <span>Weekly</span>
+                            <span class="goal-tab-count bg-green-900/60 text-green-200 text-xs px-1.5 py-0.5 rounded-full" id="tab-weekly-count">0</span>
+                        </button>
                     </div>
-                    <button onclick="addYearlyGoal()" class="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-purple-500">
-                        <i class="ri-calendar-2-line mr-2"></i>New Campaign
-                    </button>
-                </header>
+                </div>
 
-                <div id="yearly-goals-container" class="grid grid-cols-1 gap-4"></div>
-            </div>
-
-            <!-- Monthly Goals View -->
-            <div id="monthly-view" class="view-container hidden p-8">
-                <header class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-book-3-line text-blue-400 mr-2"></i>Monthly Raids</h2>
-                        <p class="text-amber-200 fancy-font">Conquer this month's challenges</p>
+                <!-- Tab Content: Life Goals -->
+                <div id="goal-tab-life-goals" class="goal-tab-content">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
+                        <div class="text-center md:text-left">
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title"><i class="ri-flag-line text-red-400 mr-2"></i>Epic Life Quests</h3>
+                            <p class="text-amber-200/80 fancy-font text-sm">Your grandest adventures and legendary achievements</p>
+                        </div>
+                        <button onclick="addLifeGoal()" class="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-2xl hover:scale-105 transition-transform border-2 border-red-500 w-full md:w-auto">
+                            <i class="ri-flag-line mr-2"></i>New Epic Quest
+                        </button>
                     </div>
-                    <button onclick="addMonthlyGoal()" class="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-blue-500">
-                        <i class="ri-calendar-line mr-2"></i>New Raid
-                    </button>
-                </header>
+                    <div id="life-goals-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                </div>
 
-                <div id="monthly-goals-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-            </div>
-
-            <!-- Weekly Goals View -->
-            <div id="weekly-view" class="view-container hidden p-8">
-                <header class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-shield-line text-green-400 mr-2"></i>Weekly Battles</h2>
-                        <p class="text-amber-200 fancy-font">This week's strategic missions</p>
+                <!-- Tab Content: Yearly -->
+                <div id="goal-tab-yearly" class="goal-tab-content hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
+                        <div class="text-center md:text-left">
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title"><i class="ri-file-paper-2-line text-purple-400 mr-2"></i>Yearly Campaigns</h3>
+                            <p class="text-amber-200/80 fancy-font text-sm">The great battles of this year</p>
+                        </div>
+                        <button onclick="addYearlyGoal()" class="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-2xl hover:scale-105 transition-transform border-2 border-purple-500 w-full md:w-auto">
+                            <i class="ri-calendar-2-line mr-2"></i>New Campaign
+                        </button>
                     </div>
-                    <button onclick="addWeeklyGoal()" class="bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 text-white px-8 py-4 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-green-500">
-                        <i class="ri-calendar-check-line mr-2"></i>New Battle
-                    </button>
-                </header>
+                    <div id="yearly-goals-container" class="grid grid-cols-1 gap-4"></div>
+                </div>
 
-                <div id="weekly-goals-container" class="space-y-4"></div>
+                <!-- Tab Content: Monthly -->
+                <div id="goal-tab-monthly" class="goal-tab-content hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
+                        <div class="text-center md:text-left">
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title"><i class="ri-book-3-line text-blue-400 mr-2"></i>Monthly Raids</h3>
+                            <p class="text-amber-200/80 fancy-font text-sm">Conquer this month's challenges</p>
+                        </div>
+                        <button onclick="addMonthlyGoal()" class="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-2xl hover:scale-105 transition-transform border-2 border-blue-500 w-full md:w-auto">
+                            <i class="ri-calendar-line mr-2"></i>New Raid
+                        </button>
+                    </div>
+                    <div id="monthly-goals-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                </div>
+
+                <!-- Tab Content: Weekly -->
+                <div id="goal-tab-weekly" class="goal-tab-content hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
+                        <div class="text-center md:text-left">
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title"><i class="ri-shield-line text-green-400 mr-2"></i>Weekly Battles</h3>
+                            <p class="text-amber-200/80 fancy-font text-sm">This week's strategic missions</p>
+                        </div>
+                        <button onclick="addWeeklyGoal()" class="bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-2xl hover:scale-105 transition-transform border-2 border-green-500 w-full md:w-auto">
+                            <i class="ri-calendar-check-line mr-2"></i>New Battle
+                        </button>
+                    </div>
+                    <div id="weekly-goals-container" class="space-y-4"></div>
+                </div>
             </div>
 
             <!-- Daily Tasks View -->
             <div id="daily-view" class="view-container hidden p-4 md:p-8">
                 <header class="flex flex-col md:flex-row justify-between items-center mb-8 max-w-4xl mx-auto text-center md:text-left">
                     <div class="mb-4 md:mb-0">
-                        <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-sword-line text-orange-400 mr-2"></i>Daily Skirmishes</h2>
+                        <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-sword-line text-orange-400 mr-2"></i>Daily Quests</h2>
                         <p class="text-amber-200 fancy-font">Today's action items and quick victories</p>
                     </div>
                     <button onclick="addDailyTask()" class="bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-700 hover:to-amber-800 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold fancy-font text-base md:text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-orange-500 w-full md:w-auto">
-                        <i class="ri-sword-line mr-2"></i>New Skirmish
+                        <i class="ri-sword-line mr-2"></i>New Quest
                     </button>
                 </header>
 
