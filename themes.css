@@ -280,9 +280,8 @@ body[class*="theme-"] .nav-link:hover {
     background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-/* Stats panel */
-body[class*="theme-"] #stats-panel,
-body[class*="theme-"] [id*="stats"] {
+/* Player panel */
+body[class*="theme-"] #player-panel-sheet .quest-card {
     background: linear-gradient(to bottom, var(--theme-card-from), var(--theme-card-to)) !important;
     border-color: var(--theme-border) !important;
 }

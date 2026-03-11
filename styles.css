@@ -272,3 +272,22 @@ button:active {
 .arcane-tab-content {
     animation: fadeIn 0.2s ease-out;
 }
+
+/* Player Panel */
+#player-panel-toggle {
+    transition: opacity 0.3s ease-in-out;
+}
+
+#player-panel-sheet {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(147, 51, 234, 0.3) transparent;
+}
+
+#player-panel-sheet::-webkit-scrollbar {
+    width: 6px;
+}
+
+#player-panel-sheet::-webkit-scrollbar-thumb {
+    background: rgba(147, 51, 234, 0.3);
+    border-radius: 3px;
+}

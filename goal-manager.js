@@ -33,6 +33,7 @@ class GoalManager {
         this.companions = []; // Collection of unlocked companions
         this.activeCompanionId = null; // Currently active companion type id
         this.statsPanelCollapsed = false;
+        this.playerPanelOpen = false;
         
         // Spellbook System
         this.spellbook = [];
@@ -965,14 +966,6 @@ class GoalManager {
                 link.classList.add('active');
             });
         });
-
-        // Restore stats panel collapsed state
-        const savedCollapsed = localStorage.getItem('statsPanelCollapsed');
-        if (savedCollapsed === 'true') {
-            this.statsPanelCollapsed = false; // Set to false first so toggle makes it true
-            // Wait for DOM to be ready
-            setTimeout(() => this.toggleStatsPanel(), 0);
-        }
 
         // Calculate progress on load
         this.updateParentProgress();
@@ -4142,6 +4135,33 @@ class GoalManager {
             }
         }
         
+        // Sync collapsed player avatar button
+        const avatarIcons = ['🧑‍🌾', '🗡️', '⚔️', '🛡️', '🏛️', '🦅', '🤴', '👑', '🏆', '⭐'];
+        const avatarIcon = avatarIcons[Math.min(this.level - 1, avatarIcons.length - 1)];
+        const miniIcon = document.getElementById('player-avatar-icon');
+        const miniLevel = document.getElementById('player-level-mini');
+        if (miniIcon) miniIcon.textContent = avatarIcon;
+        if (miniLevel) miniLevel.textContent = this.level;
+        
+        // Update avatar ring color by level tier
+        const ringColors = [
+            { from: 'from-gray-500', to: 'to-gray-700', border: 'border-gray-500' },
+            { from: 'from-gray-400', to: 'to-gray-600', border: 'border-gray-400' },
+            { from: 'from-amber-700', to: 'to-amber-900', border: 'border-amber-600' },
+            { from: 'from-amber-600', to: 'to-amber-800', border: 'border-amber-500' },
+            { from: 'from-slate-400', to: 'to-slate-600', border: 'border-slate-400' },
+            { from: 'from-blue-400', to: 'to-blue-600', border: 'border-blue-400' },
+            { from: 'from-yellow-500', to: 'to-yellow-700', border: 'border-yellow-400' },
+            { from: 'from-yellow-400', to: 'to-yellow-600', border: 'border-yellow-300' },
+            { from: 'from-purple-400', to: 'to-cyan-400', border: 'border-purple-400' },
+            { from: 'from-purple-300', to: 'to-cyan-300', border: 'border-cyan-300' }
+        ];
+        const ring = ringColors[Math.min(this.level - 1, ringColors.length - 1)];
+        const miniRing = document.getElementById('player-avatar-ring');
+        if (miniRing) {
+            miniRing.className = `w-14 h-14 rounded-full bg-gradient-to-br ${ring.from} ${ring.to} p-0.5 shadow-2xl border-2 ${ring.border} transition-all group-hover:scale-110 group-hover:shadow-purple-500/30`;
+        }
+        
         // Apply current theme
         if (this.currentTheme && this.currentTheme !== 'default') {
             this.applyColorTheme();
@@ -5585,27 +5605,118 @@ class GoalManager {
     }
 
     toggleStatsPanel() {
-        this.statsPanelCollapsed = !this.statsPanelCollapsed;
-        const panel = document.getElementById('stats-panel');
-        const content = document.getElementById('stats-content');
-        const icon = document.getElementById('stats-toggle-icon');
+        // Legacy - redirects to new player panel
+        this.togglePlayerPanel();
+    }
+
+    togglePlayerPanel() {
+        this.playerPanelOpen = !this.playerPanelOpen;
+        const backdrop = document.getElementById('player-panel-backdrop');
+        const sheet = document.getElementById('player-panel-sheet');
+        const toggle = document.getElementById('player-panel-toggle');
         
-        if (this.statsPanelCollapsed) {
-            // Collapsed state - slide out to the right (panel width + right margin)
-            panel.style.transform = 'translateX(calc(100% + 1rem))';
-            content.style.opacity = '0';
-            icon.classList.remove('ri-arrow-right-s-line');
-            icon.classList.add('ri-arrow-left-s-line');
+        if (this.playerPanelOpen) {
+            backdrop.classList.remove('hidden');
+            sheet.style.transform = 'translateX(0)';
+            if (toggle) toggle.style.opacity = '0';
+            this.renderPlayerPanel();
         } else {
-            // Expanded state - slide back in
-            panel.style.transform = 'translateX(0)';
-            content.style.opacity = '1';
-            icon.classList.remove('ri-arrow-left-s-line');
-            icon.classList.add('ri-arrow-right-s-line');
+            backdrop.classList.add('hidden');
+            sheet.style.transform = 'translateX(100%)';
+            if (toggle) toggle.style.opacity = '1';
+        }
+    }
+
+    renderPlayerPanel() {
+        // Avatar icon and ring color based on level
+        const avatarIcons = ['🧑‍🌾', '🗡️', '⚔️', '🛡️', '🏛️', '🦅', '🤴', '👑', '🏆', '⭐'];
+        const avatarIcon = avatarIcons[Math.min(this.level - 1, avatarIcons.length - 1)];
+        
+        const ringColors = [
+            { from: 'from-gray-500', to: 'to-gray-700', border: 'border-gray-500' },      // 1 Peasant
+            { from: 'from-gray-400', to: 'to-gray-600', border: 'border-gray-400' },      // 2 Squire
+            { from: 'from-amber-700', to: 'to-amber-900', border: 'border-amber-600' },   // 3 Knight
+            { from: 'from-amber-600', to: 'to-amber-800', border: 'border-amber-500' },   // 4 Baron
+            { from: 'from-slate-400', to: 'to-slate-600', border: 'border-slate-400' },   // 5 Earl
+            { from: 'from-blue-400', to: 'to-blue-600', border: 'border-blue-400' },      // 6 Duke
+            { from: 'from-yellow-500', to: 'to-yellow-700', border: 'border-yellow-400' },// 7 Prince
+            { from: 'from-yellow-400', to: 'to-yellow-600', border: 'border-yellow-300' },// 8 King
+            { from: 'from-purple-400', to: 'to-cyan-400', border: 'border-purple-400' },  // 9 Emperor
+            { from: 'from-purple-300', to: 'to-cyan-300', border: 'border-cyan-300' }     // 10 Legend
+        ];
+        const ring = ringColors[Math.min(this.level - 1, ringColors.length - 1)];
+        
+        // Update collapsed avatar
+        const miniIcon = document.getElementById('player-avatar-icon');
+        const miniLevel = document.getElementById('player-level-mini');
+        const miniRing = document.getElementById('player-avatar-ring');
+        if (miniIcon) miniIcon.textContent = avatarIcon;
+        if (miniLevel) miniLevel.textContent = this.level;
+        if (miniRing) {
+            miniRing.className = `w-14 h-14 rounded-full bg-gradient-to-br ${ring.from} ${ring.to} p-0.5 shadow-2xl border-2 ${ring.border} transition-all group-hover:scale-110 group-hover:shadow-purple-500/30`;
         }
         
-        // Save state
-        localStorage.setItem('statsPanelCollapsed', this.statsPanelCollapsed);
+        // Update expanded avatar
+        const panelIcon = document.getElementById('panel-avatar-icon');
+        const panelRing = document.getElementById('panel-avatar-ring');
+        if (panelIcon) panelIcon.textContent = avatarIcon;
+        if (panelRing) {
+            panelRing.className = `w-24 h-24 mx-auto rounded-full bg-gradient-to-br ${ring.from} ${ring.to} p-1 shadow-2xl border-3 ${ring.border} mb-3`;
+        }
+        
+        // Update companion
+        const companionEl = document.getElementById('panel-companion');
+        if (companionEl) {
+            const active = this.getActiveCompanion();
+            if (active) {
+                const defs = this.getCompanionDefinitions();
+                const def = defs[active.type];
+                const icon = active.icon || (def ? def.icon : '🐾');
+                const name = active.name || (def ? def.name : 'Companion');
+                const desc = def ? def.description : '';
+                companionEl.innerHTML = `
+                    <span class="text-3xl">${icon}</span>
+                    <div>
+                        <div class="text-green-200 fancy-font text-sm font-bold">${name}</div>
+                        <div class="text-green-400 text-xs fancy-font">${desc}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Update active buffs
+        const buffsEl = document.getElementById('panel-active-buffs');
+        if (buffsEl) {
+            const buffs = [];
+            
+            if (this.activeSpells && this.activeSpells.length > 0) {
+                this.activeSpells.forEach(active => {
+                    const spell = this.spellbook ? this.spellbook.find(s => s.id === active.spellId) : null;
+                    if (spell) {
+                        buffs.push(`<span class="inline-flex items-center gap-1 bg-purple-800/50 border border-purple-600/50 rounded-lg px-2 py-1 text-xs"><span>${spell.icon}</span><span class="text-purple-200 fancy-font">${spell.name}</span></span>`);
+                    }
+                });
+            }
+            
+            if (this.activeEnchantments && this.activeEnchantments.length > 0) {
+                this.activeEnchantments.forEach(active => {
+                    const remaining = Math.max(0, Math.ceil((new Date(active.expiresAt) - new Date()) / 60000));
+                    if (remaining > 0) {
+                        buffs.push(`<span class="inline-flex items-center gap-1 bg-pink-800/50 border border-pink-600/50 rounded-lg px-2 py-1 text-xs"><span>${active.icon || '🔮'}</span><span class="text-pink-200 fancy-font">${active.name}</span></span>`);
+                    }
+                });
+            }
+            
+            buffsEl.innerHTML = buffs.length > 0 ? buffs.join('') : '<span class="text-purple-500/60 fancy-font text-xs">No active buffs</span>';
+        }
+        
+        // Update inventory counts
+        const spellCount = document.getElementById('panel-spell-count');
+        const companionCount = document.getElementById('panel-companion-count');
+        const titleCount = document.getElementById('panel-title-count');
+        if (spellCount) spellCount.textContent = this.spellbook ? this.spellbook.length : 0;
+        if (companionCount) companionCount.textContent = this.companions ? this.companions.length : 0;
+        if (titleCount) titleCount.textContent = this.unlockedTitles ? this.unlockedTitles.length : 0;
     }
 
     // Undo/Redo System
@@ -11203,8 +11314,8 @@ class GoalManager {
         },
         {
             title: "Experience & Leveling 📊",
-            content: "Complete tasks to earn XP and gold! Level up to unlock new rewards, spells, and abilities. Your current stats are shown in the top-right panel.",
-            element: "#stats-content",
+            content: "Complete tasks to earn XP and gold! Level up to unlock new rewards, spells, and abilities. Tap the avatar in the top-right to open your character sheet!",
+            element: "#player-panel-toggle",
             action: null
         },
         {
