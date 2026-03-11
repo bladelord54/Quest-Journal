@@ -5620,11 +5620,54 @@ class GoalManager {
             sheet.style.transform = 'translateX(0)';
             if (toggle) toggle.style.opacity = '0';
             this.renderPlayerPanel();
+            this._initPlayerPanelSwipe(sheet);
         } else {
             backdrop.classList.add('hidden');
             sheet.style.transform = 'translateX(100%)';
             if (toggle) toggle.style.opacity = '1';
         }
+    }
+
+    _initPlayerPanelSwipe(sheet) {
+        if (this._playerPanelSwipeInit) return;
+        this._playerPanelSwipeInit = true;
+        
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let swiping = false;
+        
+        sheet.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            currentX = 0;
+            swiping = false;
+        }, { passive: true });
+        
+        sheet.addEventListener('touchmove', (e) => {
+            const diffX = e.touches[0].clientX - startX;
+            const diffY = Math.abs(e.touches[0].clientY - startY);
+            
+            // Only swipe if horizontal movement > vertical (not scrolling)
+            if (diffX > 10 && diffX > diffY) {
+                swiping = true;
+                currentX = diffX;
+                sheet.style.transform = `translateX(${Math.max(0, diffX)}px)`;
+                sheet.style.transition = 'none';
+            }
+        }, { passive: true });
+        
+        sheet.addEventListener('touchend', () => {
+            sheet.style.transition = 'transform 0.3s ease-in-out';
+            if (swiping && currentX > 80) {
+                // Swiped far enough — close
+                this.togglePlayerPanel();
+            } else {
+                // Snap back
+                sheet.style.transform = 'translateX(0)';
+            }
+            swiping = false;
+        }, { passive: true });
     }
 
     renderPlayerPanel() {
@@ -10806,11 +10849,11 @@ class GoalManager {
     openSearchModal() {
         const modal = document.createElement('div');
         modal.id = 'search-modal';
-        modal.className = 'fixed inset-0 bg-black/70 z-[100] flex items-start justify-center pt-20 p-4';
+        modal.className = 'fixed inset-0 bg-black/70 z-[100] flex items-start justify-center pt-12 md:pt-20 px-4';
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         
         modal.innerHTML = `
-            <div class="bg-gradient-to-br from-indigo-900 to-indigo-950 rounded-xl shadow-2xl border-4 border-indigo-600 w-full max-w-2xl max-h-[70vh] flex flex-col">
+            <div class="bg-gradient-to-br from-indigo-900 to-indigo-950 rounded-xl shadow-2xl border-4 border-indigo-600 w-full max-w-2xl max-h-[70vh] flex flex-col" style="max-width: min(672px, 100%); box-sizing: border-box;">
                 <div class="p-4 border-b-2 border-indigo-600">
                     <div class="flex items-center gap-3">
                         <i class="ri-search-line text-2xl text-indigo-300"></i>
@@ -10823,7 +10866,7 @@ class GoalManager {
                             <i class="ri-close-line text-2xl" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <div class="flex gap-2 mt-3">
+                    <div class="flex flex-wrap gap-2 mt-3">
                         <button onclick="goalManager.filterSearchResults('all')" class="search-filter-btn active px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-600 text-white" data-filter="all">All</button>
                         <button onclick="goalManager.filterSearchResults('tasks')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="tasks">Tasks</button>
                         <button onclick="goalManager.filterSearchResults('goals')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="goals">Goals</button>
