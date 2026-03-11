@@ -315,9 +315,9 @@
                     <i class="ri-trophy-line mr-3 text-2xl text-yellow-400"></i>
                     <span class="fancy-font text-lg">Treasury & Rewards</span>
                 </a>
-                <a href="#spellbook" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="spellbook">
-                    <i class="ri-book-2-line mr-3 text-2xl text-purple-400"></i>
-                    <span class="fancy-font text-lg">Spellbook</span>
+                <a href="#arcane" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="arcane">
+                    <i class="ri-magic-line mr-3 text-2xl text-purple-400"></i>
+                    <span class="fancy-font text-lg">Arcane Powers</span>
                 </a>
                 <a href="#analytics" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="analytics">
                     <i class="ri-line-chart-line mr-3 text-2xl text-blue-400"></i>
@@ -334,10 +334,6 @@
                 <a href="#focus" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="focus">
                     <i class="ri-time-line mr-3 text-2xl text-blue-400"></i>
                     <span class="fancy-font text-lg">Focus Timer</span>
-                </a>
-                <a href="#enchantments" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="enchantments">
-                    <i class="ri-magic-line mr-3 text-2xl text-pink-400"></i>
-                    <span class="fancy-font text-lg">Enchantments</span>
                 </a>
                 <a href="#tools" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="tools">
                     <i class="ri-tools-line mr-3 text-2xl text-gray-400"></i>
@@ -361,7 +357,7 @@
                 <!-- Stats Content -->
                 <div id="stats-content" class="space-y-2 w-64" style="transition: opacity 0.3s ease-in-out;">
                     <!-- Focus Crystals -->
-                    <div class="quest-card bg-gradient-to-br from-cyan-700 to-blue-800 backdrop-blur-sm rounded-lg p-3 border-2 border-cyan-500 shadow-2xl cursor-pointer hover:scale-105 transition-transform" onclick="goalManager.switchView('enchantments')">
+                    <div class="quest-card bg-gradient-to-br from-cyan-700 to-blue-800 backdrop-blur-sm rounded-lg p-3 border-2 border-cyan-500 shadow-2xl cursor-pointer hover:scale-105 transition-transform" onclick="goalManager.switchView('arcane'); goalManager.switchArcaneTab('enchantments');">
                         <div class="text-2xl font-bold text-cyan-100 fancy-font flex items-center justify-center">
                             <span class="text-3xl mr-2">💎</span>
                             <span id="focus-crystals">0</span>
@@ -925,38 +921,87 @@
                 </div>
             </div>
 
-            <!-- Enchantments View -->
-            <div id="enchantments-view" class="view-container hidden p-8">
-                <header class="mb-8 text-center">
-                    <h2 class="text-4xl font-bold text-pink-300 medieval-title mb-3"><i class="ri-magic-line text-pink-400 mr-2"></i>Mystic Enchantments</h2>
-                    <p class="text-amber-200 fancy-font text-lg">Empower yourself with magical buffs</p>
+            <!-- Arcane Powers View (Combined Spellbook + Enchantments) -->
+            <div id="arcane-view" class="view-container hidden p-4 md:p-8">
+                <header class="mb-6 text-center">
+                    <h2 class="text-3xl md:text-4xl font-bold text-purple-300 medieval-title mb-2"><i class="ri-magic-line text-purple-400 mr-2"></i>Arcane Powers</h2>
+                    <p class="text-amber-200 fancy-font text-base md:text-lg">Master spells and enchantments to empower your quest</p>
                 </header>
 
-                <div class="max-w-5xl mx-auto">
-                    <!-- Currency Display -->
-                    <div class="text-center mb-8">
-                        <div class="inline-block quest-card bg-gradient-to-br from-cyan-700 to-blue-800 p-6 rounded-lg border-4 border-cyan-500 shadow-2xl">
-                            <div class="text-5xl font-bold text-cyan-100 fancy-font flex items-center">
-                                <span class="text-5xl mr-3">💎</span>
-                                <span id="enchantments-crystals">0</span>
-                                <span class="text-2xl ml-3">Focus Crystals</span>
+                <!-- Active Buffs Summary -->
+                <div id="active-buffs-summary" class="mb-6 max-w-4xl mx-auto">
+                    <div class="quest-card bg-gradient-to-br from-purple-900/50 to-indigo-950/50 p-4 rounded-xl border-2 border-purple-600/40">
+                        <h3 class="text-lg font-bold text-purple-300 medieval-title mb-3 flex items-center justify-center gap-2">
+                            <i class="ri-flashlight-line"></i> Active Buffs
+                        </h3>
+                        <div id="active-buffs-container" class="flex flex-wrap gap-3 justify-center">
+                            <span class="text-purple-400/60 fancy-font text-sm">No active buffs</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arcane Tabs -->
+                <div class="flex justify-center mb-6">
+                    <div class="inline-flex bg-stone-900/80 rounded-xl border-2 border-purple-700/50 p-1 gap-1 flex-wrap justify-center">
+                        <button onclick="goalManager.switchArcaneTab('spellbook')" data-arcane-tab="spellbook"
+                            class="arcane-tab active-arcane-tab px-5 py-2.5 rounded-lg font-bold fancy-font text-sm transition-all flex items-center gap-2">
+                            <i class="ri-book-2-line text-purple-400"></i>
+                            <span>Spellbook</span>
+                        </button>
+                        <button onclick="goalManager.switchArcaneTab('enchantments')" data-arcane-tab="enchantments"
+                            class="arcane-tab px-5 py-2.5 rounded-lg font-bold fancy-font text-sm transition-all flex items-center gap-2">
+                            <i class="ri-magic-line text-pink-400"></i>
+                            <span>Enchantments</span>
+                            <span class="text-xs px-1.5 py-0.5 rounded-full bg-cyan-900/60 text-cyan-200">💎</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Spellbook -->
+                <div id="arcane-tab-spellbook" class="arcane-tab-content">
+                    <div class="mb-8">
+                        <h3 class="text-2xl md:text-3xl font-bold text-purple-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                            <i class="ri-flashlight-line mr-3"></i>Active Spell Effects
+                        </h3>
+                        <div id="active-spells-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <h3 class="text-2xl md:text-3xl font-bold text-purple-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                            <i class="ri-book-open-line mr-3"></i>Collected Spells
+                        </h3>
+                        <div id="spellbook-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Enchantments -->
+                <div id="arcane-tab-enchantments" class="arcane-tab-content hidden">
+                    <div class="max-w-5xl mx-auto">
+                        <!-- Currency Display -->
+                        <div class="text-center mb-8">
+                            <div class="inline-block quest-card bg-gradient-to-br from-cyan-700 to-blue-800 p-6 rounded-lg border-4 border-cyan-500 shadow-2xl">
+                                <div class="text-5xl font-bold text-cyan-100 fancy-font flex items-center">
+                                    <span class="text-5xl mr-3">💎</span>
+                                    <span id="enchantments-crystals">0</span>
+                                    <span class="text-2xl ml-3">Focus Crystals</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Active Enchantments -->
-                    <div class="mb-8">
-                        <h3 class="text-2xl font-bold text-pink-300 medieval-title mb-4 text-center">🔮 Active Enchantments</h3>
-                        <div id="active-enchantments-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <!-- Active enchantments will be rendered here -->
+                        <!-- Active Enchantments -->
+                        <div class="mb-8">
+                            <h3 class="text-2xl font-bold text-pink-300 medieval-title mb-4 text-center">🔮 Active Enchantments</h3>
+                            <div id="active-enchantments-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Available Enchantments -->
-                    <div>
-                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center">🛒 Enchantment Shop</h3>
-                        <div id="enchantments-shop-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <!-- Enchantments will be rendered here -->
+                        <!-- Available Enchantments -->
+                        <div>
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center">🛒 Enchantment Shop</h3>
+                            <div id="enchantments-shop-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1292,33 +1337,6 @@
                 </div>
             </div>
 
-            <!-- Spellbook View -->
-            <div id="spellbook-view" class="view-container hidden p-8">
-                <header class="mb-8 text-center">
-                    <h2 class="text-4xl font-bold text-purple-300 medieval-title mb-3"><i class="ri-book-2-line text-purple-400 mr-2"></i>Spellbook</h2>
-                    <p class="text-purple-200 fancy-font text-lg">Master arcane powers and bend reality to your will</p>
-                </header>
-
-                <!-- Active Spells Section -->
-                <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-purple-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
-                        <i class="ri-flashlight-line mr-3"></i>Active Spell Effects
-                    </h3>
-                    <div id="active-spells-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Will be populated dynamically -->
-                    </div>
-                </div>
-
-                <!-- Spellbook Collection -->
-                <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-purple-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
-                        <i class="ri-book-open-line mr-3"></i>Collected Spells
-                    </h3>
-                    <div id="spellbook-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <!-- Will be populated dynamically -->
-                    </div>
-                </div>
-            </div>
 
             <!-- Side Quests View -->
             <div id="sidequests-view" class="view-container hidden p-8">

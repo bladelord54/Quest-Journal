@@ -59,6 +59,7 @@ class GoalManager {
         this.saveTimeout = null;
         this.currentView = 'dashboard';
         this.activeGoalTab = 'life-goals';
+        this.activeArcaneTab = 'spellbook';
         
         // DOM element cache for frequently accessed elements
         this.domCache = {};
@@ -1001,6 +1002,28 @@ class GoalManager {
     }
 
     switchView(viewName) {
+        // Redirect legacy spellbook/enchantments view names to the combined arcane view
+        const arcaneTabMap = { 'spellbook': 'spellbook', 'enchantments': 'enchantments' };
+        if (arcaneTabMap[viewName]) {
+            this.currentView = 'arcane';
+            this.switchArcaneTab(arcaneTabMap[viewName]);
+            
+            document.querySelectorAll('.view-container').forEach(view => {
+                view.classList.add('hidden');
+            });
+            document.getElementById('arcane-view').classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-view') === 'arcane') {
+                    link.classList.add('active');
+                }
+            });
+            
+            this.render();
+            return;
+        }
+        
         // Redirect legacy individual goal view names to the combined goals view
         const goalTabMap = { 'life-goals': 'life-goals', 'yearly': 'yearly', 'monthly': 'monthly', 'weekly': 'weekly' };
         if (goalTabMap[viewName]) {
@@ -1094,6 +1117,84 @@ class GoalManager {
             const el = document.getElementById(`tab-${tab}-count`);
             if (el) el.textContent = count;
         });
+    }
+
+    switchArcaneTab(tabName) {
+        this.activeArcaneTab = tabName;
+        
+        document.querySelectorAll('.arcane-tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        const tabContent = document.getElementById(`arcane-tab-${tabName}`);
+        if (tabContent) {
+            tabContent.classList.remove('hidden');
+        }
+        
+        document.querySelectorAll('.arcane-tab').forEach(tab => {
+            tab.classList.remove('active-arcane-tab');
+        });
+        const activeTab = document.querySelector(`[data-arcane-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active-arcane-tab');
+        }
+        
+        // Render the appropriate content
+        if (tabName === 'spellbook') {
+            this.renderSpellbook();
+        } else if (tabName === 'enchantments') {
+            this.renderEnchantments();
+        }
+        
+        // Always update the active buffs summary
+        this.renderActiveBuffsSummary();
+    }
+
+    renderActiveBuffsSummary() {
+        const container = document.getElementById('active-buffs-container');
+        if (!container) return;
+        
+        const buffs = [];
+        
+        // Collect active spells
+        if (this.activeSpells && this.activeSpells.length > 0) {
+            this.activeSpells.forEach(active => {
+                const spell = this.spellbook ? this.spellbook.find(s => s.id === active.spellId) : null;
+                if (spell) {
+                    const remaining = active.expiresAt ? Math.max(0, Math.ceil((new Date(active.expiresAt) - new Date()) / 60000)) : null;
+                    const timeText = remaining !== null ? `${remaining}m` : (active.charges ? `${active.charges} use${active.charges !== 1 ? 's' : ''}` : '');
+                    buffs.push(`
+                        <div class="flex items-center gap-1.5 bg-purple-800/50 border border-purple-600/50 rounded-lg px-3 py-1.5 text-sm">
+                            <span class="text-lg">${spell.icon}</span>
+                            <span class="text-purple-200 fancy-font">${spell.name}</span>
+                            ${timeText ? `<span class="text-purple-400 text-xs">(${timeText})</span>` : ''}
+                        </div>
+                    `);
+                }
+            });
+        }
+        
+        // Collect active enchantments
+        if (this.activeEnchantments && this.activeEnchantments.length > 0) {
+            this.activeEnchantments.forEach(active => {
+                const remaining = Math.max(0, Math.ceil((new Date(active.expiresAt) - new Date()) / 60000));
+                if (remaining > 0) {
+                    buffs.push(`
+                        <div class="flex items-center gap-1.5 bg-pink-800/50 border border-pink-600/50 rounded-lg px-3 py-1.5 text-sm">
+                            <span class="text-lg">${active.icon || '🔮'}</span>
+                            <span class="text-pink-200 fancy-font">${active.name}</span>
+                            <span class="text-pink-400 text-xs">(${remaining}m)</span>
+                        </div>
+                    `);
+                }
+            });
+        }
+        
+        if (buffs.length === 0) {
+            container.innerHTML = '<span class="text-purple-400/60 fancy-font text-sm">No active buffs</span>';
+        } else {
+            container.innerHTML = buffs.join('');
+        }
     }
 
     playAchievementSound(level = 'daily') {
@@ -3944,12 +4045,19 @@ class GoalManager {
                     this.renderRewards();
                     this.renderBadges();
                 },
-                'spellbook': () => this.renderSpellbook(),
+                'arcane': () => {
+                    this.renderActiveBuffsSummary();
+                    const arcTab = this.activeArcaneTab || 'spellbook';
+                    if (arcTab === 'spellbook') {
+                        this.renderSpellbook();
+                    } else {
+                        this.renderEnchantments();
+                    }
+                },
                 'analytics': () => this.renderAnalytics(),
                 'bossbattles': () => this.renderBossBattles(),
                 'questchains': () => this.renderQuestChains(),
                 'focus': () => this.renderFocusTimer(),
-                'enchantments': () => this.renderEnchantments(),
                 'tools': () => {
                     this.renderThemeSelector();
                     this.renderRecurringTasks();
@@ -11148,22 +11256,16 @@ class GoalManager {
             action: () => this.switchView('rewards')
         },
         {
-            title: "Spellbook 📖",
-            content: "Collect powerful spells from treasure chests! Cast spells for helpful effects like bonus XP, gold boosts, or guaranteed rare loot.",
-            element: "a[href='#spellbook'].nav-link",
-            action: () => this.switchView('spellbook')
-        },
-        {
             title: "Focus Timer 🎯",
             content: "Deep work sessions! Complete 25-minute Pomodoro sessions to earn Focus Crystals. Stay focused to build your currency for enchantments!",
             element: "a[href='#focus'].nav-link",
             action: () => this.switchView('focus')
         },
         {
-            title: "Enchantments ✨",
-            content: "Magical power-ups! Spend your Focus Crystals on temporary buffs like 2x XP, 2x Gold, Boss Damage, and more. Stack them for maximum power!",
-            element: "a[href='#enchantments'].nav-link",
-            action: () => this.switchView('enchantments')
+            title: "Arcane Powers ✨",
+            content: "Your Spellbook and Enchantments in one place! Collect spells from treasure chests (gold) and buy enchantments with Focus Crystals. The Active Buffs summary shows all your current power-ups at a glance!",
+            element: "a[href='#arcane'].nav-link",
+            action: () => { this.switchView('arcane'); this.switchArcaneTab('spellbook'); }
         },
         {
             title: "Boss Battles 💀",
