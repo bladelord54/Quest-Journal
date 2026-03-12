@@ -374,8 +374,11 @@
                                 <span id="panel-avatar-icon" class="text-5xl">⚔️</span>
                             </div>
                         </div>
-                        <div id="player-title" class="text-lg font-bold text-amber-300 medieval-title">Peasant</div>
-                        <div id="current-prefix" class="text-sm text-yellow-400 italic fancy-font mt-1"></div>
+                        <div onclick="goalManager.openTitleHall()" class="cursor-pointer hover:opacity-80 transition-opacity">
+                            <div id="player-title" class="text-lg font-bold text-amber-300 medieval-title">Peasant</div>
+                            <div id="current-prefix" class="text-sm text-yellow-400 italic fancy-font mt-1"></div>
+                            <div class="text-xs text-amber-500 fancy-font mt-1"><i class="ri-medal-line mr-1"></i>Tap to manage titles</div>
+                        </div>
                     </div>
 
                     <!-- Level & XP -->
@@ -1390,16 +1393,47 @@
                     </div>
                 </div>
 
-                <!-- Titles Section -->
+            </div>
+
+            <!-- Title Hall View (accessed from Player Panel only) -->
+            <div id="titles-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <button onclick="goalManager.switchView(goalManager.previousView || 'dashboard')" class="absolute left-4 top-4 md:left-8 md:top-8 text-purple-300 hover:text-purple-100 transition-colors">
+                        <i class="ri-arrow-left-line text-2xl"></i>
+                    </button>
+                    <h2 class="text-4xl font-bold text-purple-300 medieval-title mb-3"><i class="ri-medal-line text-purple-400 mr-2"></i>Title Hall</h2>
+                    <p class="text-purple-200 fancy-font text-lg">Your earned titles and achievements</p>
+                </header>
+
+                <!-- Current Title Display -->
+                <div class="mb-8">
+                    <h3 class="text-2xl md:text-3xl font-bold text-yellow-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                        <i class="ri-vip-crown-line mr-3"></i>Current Title
+                    </h3>
+                    <div id="active-title-display">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- All Titles Collection -->
                 <div class="mb-8">
                     <h3 class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
-                        <i class="ri-medal-line mr-3"></i>Earned Titles
+                        <i class="ri-gallery-line mr-3"></i>Earned Titles
                     </h3>
                     <div id="titles-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <!-- Will be populated dynamically -->
                     </div>
                 </div>
 
+                <!-- Locked Titles -->
+                <div class="mb-8">
+                    <h3 class="text-2xl md:text-3xl font-bold text-stone-400 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                        <i class="ri-lock-line mr-3"></i>Undiscovered
+                    </h3>
+                    <div id="titles-locked-grid">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
             </div>
 
             <!-- Companions View (accessed from Player Panel only) -->

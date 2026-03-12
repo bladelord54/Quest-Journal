@@ -4052,6 +4052,7 @@ class GoalManager {
                 'bossbattles': () => this.renderBossBattles(),
                 'questchains': () => this.renderQuestChains(),
                 'focus': () => this.renderFocusTimer(),
+                'titles': () => this.renderTitleHall(),
                 'companions': () => this.renderCompanionDen(),
                 'tools': () => {
                     this.renderThemeSelector();
@@ -4506,7 +4507,6 @@ class GoalManager {
     renderRewards() {
         this.renderTreasureChests();
         this.renderThemes();
-        this.renderTitles();
     }
 
     renderTreasureChests() {
@@ -4578,10 +4578,88 @@ class GoalManager {
         }).join('');
     }
 
+    openTitleHall() {
+        // Close the player panel if open
+        if (this.playerPanelOpen) {
+            this.playerPanelOpen = false;
+            const backdrop = document.getElementById('player-panel-backdrop');
+            const sheet = document.getElementById('player-panel-sheet');
+            const toggle = document.getElementById('player-panel-toggle');
+            if (backdrop) backdrop.classList.add('hidden');
+            if (sheet) sheet.style.transform = 'translateX(100%)';
+            if (toggle) toggle.style.opacity = '1';
+        }
+        
+        this.switchView('titles');
+    }
+
     renderTitles() {
+        // Lightweight alias - re-render the titles view if currently active
+        if (this.currentView === 'titles') {
+            this.renderTitleHall();
+        }
+    }
+
+    renderTitleHall() {
+        const activeDisplay = document.getElementById('active-title-display');
         const container = document.getElementById('titles-container');
+        const lockedGrid = document.getElementById('titles-locked-grid');
         if (!container) return;
 
+        // All possible titles from checkTitleUnlocks
+        const allTitles = [
+            { id: 'first_quest', name: 'Adventurer', description: 'Complete your first quest' },
+            { id: 'early_bird', name: 'Early Bird', description: 'Complete a task before 8 AM' },
+            { id: 'night_owl', name: 'Night Owl', description: 'Complete a task after midnight' },
+            { id: 'streak_3', name: 'Determined', description: 'Maintain a 3-day streak' },
+            { id: 'streak_7', name: 'Relentless', description: 'Maintain a 7-day streak' },
+            { id: 'streak_30', name: 'Unstoppable', description: 'Maintain a 30-day streak' },
+            { id: 'task_10', name: 'Squire', description: 'Complete 10 tasks' },
+            { id: 'task_50', name: 'Knight', description: 'Complete 50 tasks' },
+            { id: 'task_100', name: 'Champion', description: 'Complete 100 tasks' },
+            { id: 'task_500', name: 'Legend', description: 'Complete 500 tasks' },
+            { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion' },
+            { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions' },
+            { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions' },
+            { id: 'level_5', name: 'Apprentice', description: 'Reach level 5' },
+            { id: 'level_10', name: 'Journeyman', description: 'Reach level 10' },
+            { id: 'level_25', name: 'Master', description: 'Reach level 25' },
+            { id: 'level_50', name: 'Grandmaster', description: 'Reach level 50' },
+            { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss' },
+            { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 5 bosses' },
+            { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 10 bosses' },
+        ];
+
+        // Current Active Title Display
+        if (activeDisplay) {
+            const activeTitle = this.unlockedTitles.find(t => t.id === this.currentTitle);
+            if (activeTitle) {
+                activeDisplay.innerHTML = `
+                    <div class="quest-card bg-gradient-to-br from-yellow-900 to-yellow-950 p-6 rounded-xl shadow-2xl border-4 border-yellow-500">
+                        <div class="flex items-center gap-6">
+                            <div class="text-8xl">👑</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs px-2 py-1 rounded bg-yellow-700 text-yellow-200 uppercase font-bold">EQUIPPED</span>
+                                </div>
+                                <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">"${activeTitle.name}"</h4>
+                                <p class="text-yellow-200 fancy-font text-lg">${activeTitle.description}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                activeDisplay.innerHTML = `
+                    <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 p-8 rounded-xl shadow-2xl border-4 border-purple-600 text-center">
+                        <div class="text-8xl mb-4">🎖️</div>
+                        <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Title Equipped</h4>
+                        <p class="text-purple-200 fancy-font text-lg">Earn titles by completing achievements, then equip one below!</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Earned Titles Grid
         if (this.unlockedTitles.length === 0) {
             container.innerHTML = `
                 <div class="col-span-3 text-center py-12 text-amber-200">
@@ -4610,6 +4688,34 @@ class GoalManager {
                     </div>
                 `;
             }).join('');
+        }
+
+        // Locked Titles Grid
+        if (lockedGrid) {
+            const unlockedIds = this.unlockedTitles.map(t => t.id);
+            const lockedTitles = allTitles.filter(t => !unlockedIds.includes(t.id));
+
+            if (lockedTitles.length === 0) {
+                lockedGrid.innerHTML = `
+                    <div class="text-center py-6">
+                        <div class="text-4xl mb-2">🏆</div>
+                        <p class="text-amber-300 fancy-font font-bold text-lg">All titles unlocked!</p>
+                        <p class="text-amber-200 text-sm">You've earned every title. Truly legendary!</p>
+                    </div>
+                `;
+            } else {
+                lockedGrid.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        ${lockedTitles.map(title => `
+                            <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-xl border-2 border-stone-600 text-center opacity-60">
+                                <div class="text-4xl mb-2">🔒</div>
+                                <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
+                                <p class="text-xs text-stone-500">${title.description}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
         }
     }
 
