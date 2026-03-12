@@ -106,6 +106,7 @@ class GoalManager {
         this.loadData();
         this.checkNotificationPermission();
         this.checkHabitReset();
+        this.scheduleMidnightReset(); // Schedule automatic habit reset at midnight
         this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
         this.initializeReminders(); // Set up task reminders
         this.initializeUI();
@@ -124,12 +125,21 @@ class GoalManager {
         setTimeout(() => this.checkExpiredSpells(), 500);
         this.spellCheckInterval = setInterval(() => this.checkExpiredSpells(), 60000); // Check every minute
         
+        // Re-check habit reset when app returns to foreground (handles sleep/backgrounded)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                this.checkHabitReset();
+                this.scheduleMidnightReset(); // Recalculate next midnight in case we slept through it
+                this.render();
+            }
+        });
+        
         // Cleanup intervals on page unload to prevent memory leaks
         window.addEventListener('beforeunload', () => this.cleanup());
     }
     
     cleanup() {
-        // Clear all intervals
+        // Clear all intervals and timeouts
         if (this.spellCheckInterval) {
             clearInterval(this.spellCheckInterval);
         }
@@ -138,6 +148,9 @@ class GoalManager {
         }
         if (this.focusTimer) {
             clearInterval(this.focusTimer);
+        }
+        if (this.midnightResetTimeout) {
+            clearTimeout(this.midnightResetTimeout);
         }
         
         // Force save any pending data
@@ -2253,6 +2266,37 @@ class GoalManager {
         }
     }
     
+    scheduleMidnightReset() {
+        // Clear any existing midnight timer
+        if (this.midnightResetTimeout) {
+            clearTimeout(this.midnightResetTimeout);
+        }
+        
+        // Calculate milliseconds until next midnight in the user's timezone
+        const now = new Date();
+        const offset = this.getTimezoneOffset();
+        const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const tzNow = new Date(utcTime + (offset * 3600000));
+        
+        // Next midnight in timezone
+        const nextMidnight = new Date(tzNow);
+        nextMidnight.setHours(24, 0, 0, 0);
+        
+        // Convert back to local system time for the timeout
+        const msUntilMidnight = nextMidnight.getTime() - tzNow.getTime();
+        
+        // Add a small buffer (2 seconds) to ensure we're past midnight
+        const delay = msUntilMidnight + 2000;
+        
+        this.midnightResetTimeout = setTimeout(() => {
+            this.checkHabitReset();
+            this.generateRecurringTasksForToday();
+            this.render();
+            // Re-schedule for the next midnight
+            this.scheduleMidnightReset();
+        }, delay);
+    }
+
     // Daily Login Bonus System
     checkDailyLoginBonus() {
         const today = this.getTodayDateString();
