@@ -60,6 +60,7 @@ class GoalManager {
         this.saveTimeout = null;
         this.currentView = 'dashboard';
         this.activeGoalTab = 'life-goals';
+        this.activeDailyTab = 'tasks';
         this.activeArcaneTab = 'spellbook';
         
         // DOM element cache for frequently accessed elements
@@ -1105,6 +1106,58 @@ class GoalManager {
             'yearly': this.yearlyGoals.filter(g => !g.completed).length,
             'monthly': this.monthlyGoals.filter(g => !g.completed).length,
             'weekly': this.weeklyGoals.filter(g => !g.completed).length
+        };
+        
+        Object.entries(counts).forEach(([tab, count]) => {
+            const el = document.getElementById(`tab-${tab}-count`);
+            if (el) el.textContent = count;
+        });
+    }
+
+    switchDailyTab(tabName) {
+        // Track which daily tab is active
+        this.activeDailyTab = tabName;
+        
+        // Hide all tab content
+        document.querySelectorAll('.daily-tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        // Show the selected tab content
+        const tabContent = document.getElementById(`daily-tab-${tabName}`);
+        if (tabContent) {
+            tabContent.classList.remove('hidden');
+        }
+        
+        // Update tab button styles
+        document.querySelectorAll('.daily-tab').forEach(tab => {
+            tab.classList.remove('active-daily-tab');
+        });
+        const activeTab = document.querySelector(`[data-daily-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active-daily-tab');
+        }
+        
+        // Update tab counts
+        this.updateDailyTabCounts();
+        
+        // Render the appropriate content
+        const tabRenderMap = {
+            'tasks': () => this.renderDailyTasks(),
+            'rituals': () => this.renderHabits(),
+            'recurring': () => this.renderRecurringTasks()
+        };
+        if (tabRenderMap[tabName]) {
+            tabRenderMap[tabName]();
+        }
+    }
+
+    updateDailyTabCounts() {
+        const todaysTasks = this.dailyTasks.filter(task => this.isToday(task.dueDate));
+        const counts = {
+            'daily-tasks': todaysTasks.filter(t => !t.completed).length,
+            'daily-rituals': this.habits.length,
+            'daily-recurring': this.recurringTasks.length
         };
         
         Object.entries(counts).forEach(([tab, count]) => {
@@ -4027,7 +4080,16 @@ class GoalManager {
                     };
                     if (tabRender[tab]) tabRender[tab]();
                 },
-                'daily': () => this.renderDailyTasks(),
+                'daily': () => {
+                    this.updateDailyTabCounts();
+                    const dailyTab = this.activeDailyTab || 'tasks';
+                    const dailyTabRender = {
+                        'tasks': () => this.renderDailyTasks(),
+                        'rituals': () => this.renderHabits(),
+                        'recurring': () => this.renderRecurringTasks()
+                    };
+                    if (dailyTabRender[dailyTab]) dailyTabRender[dailyTab]();
+                },
                 'sidequests': () => this.renderSideQuests(),
                 'calendar': () => {
                     this.renderCalendar();
@@ -4056,7 +4118,6 @@ class GoalManager {
                 'companions': () => this.renderCompanionDen(),
                 'tools': () => {
                     this.renderThemeSelector();
-                    this.renderRecurringTasks();
                     this.renderReminderSettings();
                     this.renderArchives();
                     this.renderPremiumCard();
@@ -4068,10 +4129,6 @@ class GoalManager {
                 viewRenderMap[activeView]();
             }
             
-            // Dashboard also needs habits for the daily view section
-            if (activeView === 'dashboard') {
-                this.renderHabits();
-            }
         } finally {
             this.isRendering = false;
         }
@@ -11382,7 +11439,11 @@ class GoalManager {
                 // Determine task type based on current view
                 const currentView = this.currentView;
                 
-                if (currentView === 'habits-view') {
+                if (currentView === 'daily' && this.activeDailyTab === 'rituals') {
+                    this.addHabit(text);
+                } else if (currentView === 'daily' && this.activeDailyTab === 'recurring') {
+                    this.addRecurringTask(text);
+                } else if (currentView === 'habits-view') {
                     this.addHabit(text);
                 } else if (currentView === 'sidequests') {
                     this.addSideQuest(text);
