@@ -424,9 +424,9 @@
                     </div>
 
                     <!-- Active Companion -->
-                    <div id="panel-companion-section" class="quest-card bg-gradient-to-br from-green-900/50 to-green-950/50 rounded-xl p-4 border-2 border-green-700/50 mb-4">
+                    <div id="panel-companion-section" class="quest-card bg-gradient-to-br from-green-900/50 to-green-950/50 rounded-xl p-4 border-2 border-green-700/50 mb-4 cursor-pointer hover:border-green-500 transition-all" onclick="goalManager.openCompanionDen()">
                         <div class="text-sm font-bold text-green-300 fancy-font mb-2 flex items-center justify-center">
-                            <i class="ri-bear-smile-line mr-2"></i> Companion
+                            <i class="ri-bear-smile-line mr-2"></i> Companion <i class="ri-arrow-right-s-line ml-auto text-green-500"></i>
                         </div>
                         <div id="panel-companion" class="flex items-center justify-center gap-3">
                             <span class="text-3xl">🥚</span>
@@ -1400,12 +1400,44 @@
                     </div>
                 </div>
 
-                <!-- Companion Section -->
+            </div>
+
+            <!-- Companions View (accessed from Player Panel only) -->
+            <div id="companions-view" class="view-container hidden p-8">
+                <header class="mb-8 text-center">
+                    <button onclick="goalManager.switchView(goalManager.previousView || 'dashboard')" class="absolute left-4 top-4 md:left-8 md:top-8 text-green-300 hover:text-green-100 transition-colors">
+                        <i class="ri-arrow-left-line text-2xl"></i>
+                    </button>
+                    <h2 class="text-4xl font-bold text-green-300 medieval-title mb-3"><i class="ri-bear-smile-line text-green-400 mr-2"></i>Companion Den</h2>
+                    <p class="text-green-200 fancy-font text-lg">Your loyal companions and their abilities</p>
+                </header>
+
+                <!-- Active Companion Display -->
+                <div class="mb-8">
+                    <h3 class="text-2xl md:text-3xl font-bold text-green-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                        <i class="ri-shield-star-line mr-3"></i>Active Companion
+                    </h3>
+                    <div id="active-companion-display">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Companion Collection -->
                 <div class="mb-8">
                     <h3 class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
-                        <i class="ri-bear-smile-line mr-3"></i>Loyal Companion
+                        <i class="ri-gallery-line mr-3"></i>Your Collection
                     </h3>
-                    <div id="companion-container">
+                    <div id="companion-collection-grid">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Undiscovered Companions -->
+                <div class="mb-8">
+                    <h3 class="text-2xl md:text-3xl font-bold text-stone-400 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                        <i class="ri-question-line mr-3"></i>Undiscovered
+                    </h3>
+                    <div id="companion-undiscovered-grid">
                         <!-- Will be populated dynamically -->
                     </div>
                 </div>

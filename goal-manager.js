@@ -1039,7 +1039,8 @@ class GoalManager {
             return;
         }
         
-        // Track current view for optimized rendering
+        // Track previous and current view for back navigation
+        this.previousView = this.currentView || 'dashboard';
         this.currentView = viewName;
         
         document.querySelectorAll('.view-container').forEach(view => {
@@ -1764,11 +1765,11 @@ class GoalManager {
     }
 
     deleteRecurringTask(id) {
-        if (confirm('Delete this recurring task? Future tasks will not be generated.')) {
+        this.showConfirm('Delete this recurring task? Future tasks will not be generated.', () => {
             this.recurringTasks = this.recurringTasks.filter(rt => rt.id !== id);
             this.saveData();
             this.render();
-        }
+        });
     }
 
     toggleRecurringTask(id) {
@@ -2080,7 +2081,7 @@ class GoalManager {
                                 onchange="goalManager.toggleChecklistItem('${taskType}', ${task.id}, ${item.id})"
                                 class="mr-2">
                             <span class="${item.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'} flex-1">${item.text}</span>
-                            <button onclick="if(confirm('Delete this item?')) goalManager.deleteChecklistItem('${taskType}', ${task.id}, ${item.id});" 
+                            <button onclick="goalManager.showConfirm('Delete this item?', () => goalManager.deleteChecklistItem('${taskType}', ${task.id}, ${item.id}))" 
                                 class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 ml-2 text-xs">
                                 <i class="ri-close-circle-line"></i>
                             </button>
@@ -3870,7 +3871,7 @@ class GoalManager {
     }
 
     deleteGoal(type, id) {
-        if (confirm('Are you sure you want to delete this quest?')) {
+        this.showConfirm('Are you sure you want to delete this quest?', () => {
             switch(type) {
                 case 'life':
                     this.lifeGoals = this.lifeGoals.filter(g => g.id !== id);
@@ -3896,7 +3897,7 @@ class GoalManager {
             }
             this.saveData();
             this.render();
-        }
+        });
     }
 
     editGoal(type, id) {
@@ -4051,6 +4052,7 @@ class GoalManager {
                 'bossbattles': () => this.renderBossBattles(),
                 'questchains': () => this.renderQuestChains(),
                 'focus': () => this.renderFocusTimer(),
+                'companions': () => this.renderCompanionDen(),
                 'tools': () => {
                     this.renderThemeSelector();
                     this.renderRecurringTasks();
@@ -4489,7 +4491,7 @@ class GoalManager {
                                 <button onclick="goalManager.restoreGoal(${goal.id})" class="text-${color}-400 hover:text-${color}-200 text-xl" title="Restore" aria-label="Restore archived goal">
                                     <i class="ri-refresh-line" aria-hidden="true"></i>
                                 </button>
-                                <button onclick="if(confirm('Permanently delete?')) { goalManager.archivedGoals = goalManager.archivedGoals.filter(g => g.id !== ${goal.id}); goalManager.saveData(); goalManager.render(); }" class="text-red-500 hover:text-red-300 text-xl" title="Delete Forever" aria-label="Permanently delete goal">
+                                <button onclick="goalManager.showConfirm('Permanently delete?', () => { goalManager.archivedGoals = goalManager.archivedGoals.filter(g => g.id !== ${goal.id}); goalManager.saveData(); goalManager.render(); })" class="text-red-500 hover:text-red-300 text-xl" title="Delete Forever" aria-label="Permanently delete goal">
                                     <i class="ri-delete-bin-line" aria-hidden="true"></i>
                                 </button>
                             </div>
@@ -4505,7 +4507,6 @@ class GoalManager {
         this.renderTreasureChests();
         this.renderThemes();
         this.renderTitles();
-        this.renderCompanion();
     }
 
     renderTreasureChests() {
@@ -4612,9 +4613,31 @@ class GoalManager {
         }
     }
 
+    openCompanionDen() {
+        // Close the player panel if open
+        const panel = document.getElementById('player-panel');
+        if (panel && panel.classList.contains('translate-x-0')) {
+            panel.classList.remove('translate-x-0');
+            panel.classList.add('translate-x-full');
+            const overlay = document.getElementById('panel-overlay');
+            if (overlay) overlay.classList.add('hidden');
+        }
+        
+        this.switchView('companions');
+    }
+
     renderCompanion() {
-        const container = document.getElementById('companion-container');
-        if (!container) return;
+        // Lightweight alias - re-render the companions view if currently active
+        if (this.currentView === 'companions') {
+            this.renderCompanionDen();
+        }
+    }
+
+    renderCompanionDen() {
+        const activeDisplay = document.getElementById('active-companion-display');
+        const collectionGrid = document.getElementById('companion-collection-grid');
+        const undiscoveredGrid = document.getElementById('companion-undiscovered-grid');
+        if (!activeDisplay) return;
 
         const activeCompanion = this.getActiveCompanion();
         const rarityColors = {
@@ -4625,92 +4648,109 @@ class GoalManager {
             legendary: { bg: 'amber', border: 'amber', text: 'amber' }
         };
         const defaultColors = { bg: 'green', border: 'green', text: 'green' };
+        const companionDefs = this.getCompanionDefinitions();
 
-        if (this.companions.length === 0) {
-            container.innerHTML = `
+        // Active Companion Display
+        if (this.companions.length === 0 || !activeCompanion) {
+            activeDisplay.innerHTML = `
                 <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-8 rounded-xl shadow-2xl border-4 border-green-600 text-center">
                     <div class="text-8xl mb-4">🥚</div>
                     <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Companions Yet</h4>
-                    <p class="text-green-200 fancy-font text-lg mb-4">Open chests to discover loyal companions!</p>
+                    <p class="text-green-200 fancy-font text-lg mb-4">Open treasure chests to discover loyal companions!</p>
                     <p class="text-green-300 text-sm">Each chest tier has different companions with unique bonuses!</p>
+                    <button onclick="goalManager.switchView('rewards')" class="mt-4 px-6 py-2 bg-amber-700 hover:bg-amber-600 text-amber-100 rounded-lg font-bold fancy-font transition-all border-2 border-amber-500">
+                        <i class="ri-treasure-map-line mr-2"></i>Visit Treasury
+                    </button>
                 </div>
             `;
         } else {
-            // Active companion display
-            const colors = rarityColors[activeCompanion?.rarity] || defaultColors;
-            const companionDefs = this.getCompanionDefinitions();
-            let html = '';
-            
-            if (activeCompanion) {
-                // Get description from definitions if not on companion object
-                const description = activeCompanion.description || companionDefs[activeCompanion.type]?.description || 'Loyal companion';
-                const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
-                
-                html += `
-                    <div class="quest-card bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-5 rounded-xl shadow-2xl border-4 border-${colors.border}-500 mb-6">
-                        <div class="flex items-center gap-6">
-                            <div class="text-8xl">${icon}</div>
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs px-2 py-1 rounded bg-${colors.bg}-700 text-${colors.text}-200 uppercase font-bold">${activeCompanion.rarity || 'rare'}</span>
-                                    <span class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 font-bold">ACTIVE</span>
-                                </div>
-                                <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">${activeCompanion.name}</h4>
-                                <p class="text-${colors.text}-200 fancy-font text-lg mb-2">${description}</p>
-                                <p class="text-${colors.text}-300 text-sm">Level ${activeCompanion.level || 1}</p>
+            const colors = rarityColors[activeCompanion.rarity] || defaultColors;
+            const description = activeCompanion.description || companionDefs[activeCompanion.type]?.description || 'Loyal companion';
+            const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
+
+            activeDisplay.innerHTML = `
+                <div class="quest-card bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl border-4 border-${colors.border}-500">
+                    <div class="flex items-center gap-6">
+                        <div class="text-8xl">${icon}</div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs px-2 py-1 rounded bg-${colors.bg}-700 text-${colors.text}-200 uppercase font-bold">${activeCompanion.rarity || 'rare'}</span>
+                                <span class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 font-bold">ACTIVE</span>
                             </div>
+                            <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">${activeCompanion.name}</h4>
+                            <p class="text-${colors.text}-200 fancy-font text-lg mb-2">${description}</p>
+                            <p class="text-${colors.text}-300 text-sm">Level ${activeCompanion.level || 1}</p>
                         </div>
                     </div>
-                `;
-            }
-            
-            // Companion collection
-            html += `
-                <h4 class="text-xl font-bold text-amber-300 medieval-title mb-3 flex items-center gap-2">
-                    <span>📚</span> Your Collection <span class="text-sm font-normal text-amber-400">(${this.companions.length} companions)</span>
-                </h4>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                </div>
             `;
-            
-            // Sort companions by rarity
-            const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
-            const sortedCompanions = [...this.companions].sort((a, b) => 
-                rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity)
-            );
-            
-            sortedCompanions.forEach(comp => {
-                const cColors = rarityColors[comp.rarity] || defaultColors;
-                const isActive = comp.type === this.activeCompanionId;
-                const compIcon = comp.icon || companionDefs[comp.type]?.icon || '🐾';
-                const compName = comp.name || companionDefs[comp.type]?.name || 'Companion';
-                
-                html += `
-                    <div class="quest-card bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-5 rounded-lg border-2 ${isActive ? 'border-green-400 ring-2 ring-green-400' : `border-${cColors.border}-700`} text-center cursor-pointer hover:scale-105 transition-transform"
-                         onclick="goalManager.setActiveCompanion('${comp.type}')">
-                        <div class="text-5xl mb-2">${compIcon}</div>
-                        <h5 class="font-bold text-amber-200 text-sm mb-1">${compName}</h5>
-                        <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-700 text-${cColors.text}-200 uppercase">${comp.rarity || 'rare'}</span>
-                        ${isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>'}
-                    </div>
-                `;
-            });
-            
-            html += '</div>';
-            
-            // Show all possible companions hint
-            const allCompanions = this.getCompanionDefinitions();
-            const unlockedTypes = this.companions.map(c => c.type);
-            const lockedCount = Object.keys(allCompanions).length - unlockedTypes.length;
-            
-            if (lockedCount > 0) {
-                html += `
-                    <div class="mt-4 text-center text-gray-400 text-sm">
-                        <span class="opacity-70">🔒 ${lockedCount} more companions to discover from chests!</span>
+        }
+
+        // Companion Collection Grid
+        if (collectionGrid) {
+            if (this.companions.length === 0) {
+                collectionGrid.innerHTML = `<p class="text-green-300 fancy-font text-center col-span-full">No companions collected yet.</p>`;
+            } else {
+                const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+                const sortedCompanions = [...this.companions].sort((a, b) => 
+                    rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity)
+                );
+
+                collectionGrid.innerHTML = `
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        ${sortedCompanions.map(comp => {
+                            const cColors = rarityColors[comp.rarity] || defaultColors;
+                            const isActive = comp.type === this.activeCompanionId;
+                            const compIcon = comp.icon || companionDefs[comp.type]?.icon || '🐾';
+                            const compName = comp.name || companionDefs[comp.type]?.name || 'Companion';
+                            const compDesc = comp.description || companionDefs[comp.type]?.description || '';
+                            
+                            return `
+                                <div class="quest-card bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-5 rounded-lg border-2 ${isActive ? 'border-green-400 ring-2 ring-green-400' : `border-${cColors.border}-700`} text-center cursor-pointer hover:scale-105 transition-transform"
+                                     onclick="goalManager.setActiveCompanion('${comp.type}')">
+                                    <div class="text-5xl mb-2">${compIcon}</div>
+                                    <h5 class="font-bold text-amber-200 text-sm mb-1">${compName}</h5>
+                                    <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-700 text-${cColors.text}-200 uppercase">${comp.rarity || 'rare'}</span>
+                                    <p class="text-xs text-${cColors.text}-300 mt-1">${compDesc}</p>
+                                    ${isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>'}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 `;
             }
-            
-            container.innerHTML = html;
+        }
+
+        // Undiscovered Companions Grid
+        if (undiscoveredGrid) {
+            const unlockedTypes = this.companions.map(c => c.type);
+            const lockedCompanions = Object.entries(companionDefs).filter(([type]) => !unlockedTypes.includes(type));
+
+            if (lockedCompanions.length === 0) {
+                undiscoveredGrid.innerHTML = `
+                    <div class="text-center py-6">
+                        <div class="text-4xl mb-2">🏆</div>
+                        <p class="text-amber-300 fancy-font font-bold text-lg">All companions discovered!</p>
+                        <p class="text-amber-200 text-sm">You've collected every companion. Legendary!</p>
+                    </div>
+                `;
+            } else {
+                undiscoveredGrid.innerHTML = `
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        ${lockedCompanions.map(([type, def]) => {
+                            const cColors = rarityColors[def.rarity] || defaultColors;
+                            return `
+                                <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg border-2 border-stone-600 text-center opacity-60">
+                                    <div class="text-5xl mb-2">❓</div>
+                                    <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
+                                    <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-800 text-${cColors.text}-300 uppercase">${def.rarity}</span>
+                                    <p class="text-xs text-stone-500 mt-1">Found in treasure chests</p>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
         }
     }
 
@@ -5835,41 +5875,17 @@ class GoalManager {
 
     // Archive System
     archiveGoal(type, id) {
-        let goal;
-        switch(type) {
-            case 'life':
-                goal = this.lifeGoals.find(g => g.id === id);
-                if (goal && confirm('Archive this life goal? You can restore it later.')) {
-                    this.lifeGoals = this.lifeGoals.filter(g => g.id !== id);
-                }
-                break;
-            case 'yearly':
-                goal = this.yearlyGoals.find(g => g.id === id);
-                if (goal && confirm('Archive this yearly goal?')) {
-                    this.yearlyGoals = this.yearlyGoals.filter(g => g.id !== id);
-                }
-                break;
-            case 'monthly':
-                goal = this.monthlyGoals.find(g => g.id === id);
-                if (goal && confirm('Archive this monthly goal?')) {
-                    this.monthlyGoals = this.monthlyGoals.filter(g => g.id !== id);
-                }
-                break;
-            case 'weekly':
-                goal = this.weeklyGoals.find(g => g.id === id);
-                if (goal && confirm('Archive this weekly goal?')) {
-                    this.weeklyGoals = this.weeklyGoals.filter(g => g.id !== id);
-                }
-                break;
-            case 'daily':
-                goal = this.dailyTasks.find(t => t.id === id);
-                if (goal && confirm('Archive this daily task?')) {
-                    this.dailyTasks = this.dailyTasks.filter(t => t.id !== id);
-                }
-                break;
-        }
+        const typeLabels = { life: 'life goal', yearly: 'yearly goal', monthly: 'monthly goal', weekly: 'weekly goal', daily: 'daily task' };
+        const lists = { life: 'lifeGoals', yearly: 'yearlyGoals', monthly: 'monthlyGoals', weekly: 'weeklyGoals', daily: 'dailyTasks' };
+        const listKey = lists[type];
+        if (!listKey) return;
         
-        if (goal) {
+        const goal = this[listKey].find(g => g.id === id);
+        if (!goal) return;
+        
+        const label = typeLabels[type] || 'item';
+        this.showConfirm(`Archive this ${label}? You can restore it later.`, () => {
+            this[listKey] = this[listKey].filter(g => g.id !== id);
             goal.archivedAt = new Date().toISOString();
             goal.type = type;
             this.archivedGoals.push(goal);
@@ -5877,7 +5893,7 @@ class GoalManager {
             this.saveData();
             this.render();
             this.showAchievement('📦 Archived!', 'daily');
-        }
+        });
     }
 
     bulkArchiveCompleted() {
@@ -7495,7 +7511,7 @@ class GoalManager {
                     return;
                 }
                 
-                if (confirm('This will replace all current data. Are you sure?\n\nTip: Export your current data first as a backup!')) {
+                this.showConfirm('This will replace all current data. Are you sure?\n\nTip: Export your current data first as a backup!', () => {
                     // Backup current data before import
                     const currentData = localStorage.getItem('lifeOrganizeData');
                     if (currentData) {
@@ -7546,7 +7562,7 @@ class GoalManager {
                     this.render();
                     this.showSuccessNotification('Your quest data has been restored successfully!');
                     this.showAchievement('📥 Data Imported Successfully!', 'weekly');
-                }
+                });
             } catch (error) {
                 console.error('Import error:', error);
                 this.showErrorNotification('Failed to import data. The file may be corrupted or invalid.');
@@ -7565,31 +7581,32 @@ class GoalManager {
 
     deleteAllData() {
         // First confirmation
-        if (!confirm('⚠️ DELETE ALL DATA\n\nThis will permanently erase ALL your quests, progress, levels, spells, companions, and settings.\n\nThis action CANNOT be undone.\n\nWould you like to export a backup first?')) {
-            return;
-        }
+        this.showConfirm('⚠️ DELETE ALL DATA\n\nThis will permanently erase ALL your quests, progress, levels, spells, companions, and settings.\n\nThis action CANNOT be undone.', () => {
+            // Offer to export first
+            this.showConfirm('Would you like to export a backup before deleting?\n\nConfirm to export first, or Cancel to skip.', () => {
+                this.exportData();
+                // After export, proceed to typed check
+                this._deleteAllDataFinalCheck();
+            }, () => {
+                // Skip backup, proceed to typed check
+                this._deleteAllDataFinalCheck();
+            });
+        });
+    }
 
-        // Offer to export first
-        const wantsBackup = confirm('Would you like to export a backup before deleting?\n\nClick OK to export first, or Cancel to skip.');
-        if (wantsBackup) {
-            this.exportData();
-        }
+    _deleteAllDataFinalCheck() {
+        this.showPrompt('To confirm deletion, type DELETE below:', 'DELETE', () => {
+            // Clear all app data from localStorage
+            localStorage.removeItem('lifeOrganizeData');
+            localStorage.removeItem('lifeOrganizeData_pre_import_backup');
+            localStorage.removeItem('audioEnabled');
+            localStorage.removeItem('audioVolume');
 
-        // Final confirmation with typed check
-        const confirmation = prompt('To confirm deletion, type DELETE below:');
-        if (confirmation !== 'DELETE') {
+            // Reload the app fresh
+            window.location.reload();
+        }, () => {
             this.showAchievement('❌ Data deletion cancelled.', 'daily');
-            return;
-        }
-
-        // Clear all app data from localStorage
-        localStorage.removeItem('lifeOrganizeData');
-        localStorage.removeItem('lifeOrganizeData_pre_import_backup');
-        localStorage.removeItem('audioEnabled');
-        localStorage.removeItem('audioVolume');
-
-        // Reload the app fresh
-        window.location.reload();
+        });
     }
 
     // Search functionality
@@ -10844,6 +10861,108 @@ class GoalManager {
         }, 5000);
     }
 
+    // ==================== CUSTOM CONFIRM DIALOG ====================
+    
+    showConfirm(message, onConfirm, onCancel) {
+        // Remove any existing confirm modal
+        const existing = document.getElementById('custom-confirm-modal');
+        if (existing) existing.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'custom-confirm-modal';
+        modal.className = 'fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4';
+        
+        // Support multi-line messages (convert \n to <br>)
+        const formattedMsg = message.replace(/\n/g, '<br>');
+        
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-4 border-amber-600 w-full max-w-sm p-6 text-center" style="max-width: min(400px, 100%);">
+                <div class="text-3xl mb-3">⚔️</div>
+                <div class="text-amber-100 fancy-font text-base mb-6 leading-relaxed">${formattedMsg}</div>
+                <div class="flex gap-3 justify-center">
+                    <button id="confirm-cancel-btn" class="flex-1 px-4 py-2.5 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded-lg font-bold fancy-font transition-all border-2 border-stone-500">Cancel</button>
+                    <button id="confirm-ok-btn" class="flex-1 px-4 py-2.5 bg-amber-700 hover:bg-amber-600 text-white rounded-lg font-bold fancy-font transition-all border-2 border-amber-500">Confirm</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        const cleanup = () => modal.remove();
+        
+        modal.querySelector('#confirm-ok-btn').addEventListener('click', () => {
+            cleanup();
+            if (onConfirm) onConfirm();
+        });
+        
+        modal.querySelector('#confirm-cancel-btn').addEventListener('click', () => {
+            cleanup();
+            if (onCancel) onCancel();
+        });
+        
+        // Close on backdrop click (treat as cancel)
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                cleanup();
+                if (onCancel) onCancel();
+            }
+        });
+        
+        // Focus the confirm button
+        setTimeout(() => modal.querySelector('#confirm-ok-btn')?.focus(), 50);
+    }
+
+    showPrompt(message, expectedValue, onMatch, onCancel) {
+        const existing = document.getElementById('custom-confirm-modal');
+        if (existing) existing.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'custom-confirm-modal';
+        modal.className = 'fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4';
+        
+        const formattedMsg = message.replace(/\n/g, '<br>');
+        
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-4 border-red-600 w-full max-w-sm p-6 text-center" style="max-width: min(400px, 100%);">
+                <div class="text-3xl mb-3">⚠️</div>
+                <div class="text-red-100 fancy-font text-base mb-4 leading-relaxed">${formattedMsg}</div>
+                <input type="text" id="prompt-input" placeholder="Type ${expectedValue} to confirm" 
+                    class="w-full bg-stone-700 text-white px-4 py-2.5 rounded-lg border-2 border-stone-500 focus:border-red-400 outline-none fancy-font text-center mb-4">
+                <div class="flex gap-3 justify-center">
+                    <button id="prompt-cancel-btn" class="flex-1 px-4 py-2.5 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded-lg font-bold fancy-font transition-all border-2 border-stone-500">Cancel</button>
+                    <button id="prompt-ok-btn" class="flex-1 px-4 py-2.5 bg-red-700 hover:bg-red-600 text-white rounded-lg font-bold fancy-font transition-all border-2 border-red-500">Confirm</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const cleanup = () => modal.remove();
+        
+        modal.querySelector('#prompt-ok-btn').addEventListener('click', () => {
+            const val = modal.querySelector('#prompt-input').value.trim();
+            cleanup();
+            if (val === expectedValue) {
+                if (onMatch) onMatch();
+            } else {
+                if (onCancel) onCancel();
+            }
+        });
+        
+        modal.querySelector('#prompt-cancel-btn').addEventListener('click', () => {
+            cleanup();
+            if (onCancel) onCancel();
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                cleanup();
+                if (onCancel) onCancel();
+            }
+        });
+        
+        setTimeout(() => modal.querySelector('#prompt-input')?.focus(), 50);
+    }
+
     // ==================== SEARCH FUNCTIONALITY ====================
     
     openSearchModal() {
@@ -11292,32 +11411,30 @@ class GoalManager {
     }
 
     bulkDelete() {
-        if (!confirm(`Are you sure you want to delete ${this.selectedItems.size} item(s)? This cannot be undone.`)) {
-            return;
-        }
-        
-        let deleted = 0;
-        
-        this.selectedItems.forEach(key => {
-            const [type, id] = key.split('-');
-            const itemId = Number(id);
+        this.showConfirm(`Are you sure you want to delete ${this.selectedItems.size} item(s)? This cannot be undone.`, () => {
+            let deleted = 0;
             
-            if (type === 'daily') {
-                this.dailyTasks = this.dailyTasks.filter(t => t.id !== itemId);
-                deleted++;
-            } else if (type === 'weekly') {
-                this.weeklyGoals = this.weeklyGoals.filter(g => g.id !== itemId);
-                deleted++;
-            } else if (type === 'monthly') {
-                this.monthlyGoals = this.monthlyGoals.filter(g => g.id !== itemId);
-                deleted++;
-            }
+            this.selectedItems.forEach(key => {
+                const [type, id] = key.split('-');
+                const itemId = Number(id);
+                
+                if (type === 'daily') {
+                    this.dailyTasks = this.dailyTasks.filter(t => t.id !== itemId);
+                    deleted++;
+                } else if (type === 'weekly') {
+                    this.weeklyGoals = this.weeklyGoals.filter(g => g.id !== itemId);
+                    deleted++;
+                } else if (type === 'monthly') {
+                    this.monthlyGoals = this.monthlyGoals.filter(g => g.id !== itemId);
+                    deleted++;
+                }
+            });
+            
+            this.selectedItems.clear();
+            this.showAchievement(`🗑️ Deleted ${deleted} item${deleted > 1 ? 's' : ''}!`, 'daily');
+            this.saveData();
+            this.render();
         });
-        
-        this.selectedItems.clear();
-        this.showAchievement(`🗑️ Deleted ${deleted} item${deleted > 1 ? 's' : ''}!`, 'daily');
-        this.saveData();
-        this.render();
     }
 
     cancelBulkSelection() {
@@ -11405,7 +11522,7 @@ class GoalManager {
         },
         {
             title: "Treasury & Rewards 🏆",
-            content: "Spend your gold here! Open treasure chests for spells, themes, and companions. Unlock kingdom themes to customize your look, and equip earned titles!",
+            content: "Spend your gold here! Open treasure chests for spells, themes, and companions. Unlock kingdom themes and equip earned titles! Manage your companions from the Player Panel.",
             element: "a[href='#rewards'].nav-link",
             action: () => this.switchView('rewards')
         },
@@ -11581,9 +11698,9 @@ class GoalManager {
     }
 
     skipTutorial() {
-        if (confirm('Are you sure you want to skip the tutorial? You can always restart it from Tools & Settings.')) {
+        this.showConfirm('Are you sure you want to skip the tutorial? You can always restart it from Tools & Settings.', () => {
             this.endTutorial();
-        }
+        });
     }
 
     endTutorial() {
@@ -11985,13 +12102,13 @@ class GoalManager {
     }
 
     abandonQuestChain(chainId) {
-        if (!confirm('Abandon this quest chain? All progress will be lost.')) return;
-
-        this.activeQuestChains = this.activeQuestChains.filter(c => c.id !== Number(chainId));
-        this.showAchievement('Quest chain abandoned', 'daily');
-        
-        this.saveData();
-        this.render();
+        this.showConfirm('Abandon this quest chain? All progress will be lost.', () => {
+            this.activeQuestChains = this.activeQuestChains.filter(c => c.id !== Number(chainId));
+            this.showAchievement('Quest chain abandoned', 'daily');
+            
+            this.saveData();
+            this.render();
+        });
     }
 }
 

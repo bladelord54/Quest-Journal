@@ -162,10 +162,10 @@ class MobileTouchHandler {
             // Archive or delete task
             this.vibrate(20);
             // Show quick action menu or archive
-            if (confirm('Archive this task?')) {
+            goalManager.showConfirm('Archive this task?', () => {
                 goalManager.deleteGoal(taskId, 'daily');
                 this.vibrateSuccess();
-            }
+            });
         }
     }
 
@@ -223,17 +223,10 @@ class MobileTouchHandler {
             '❌ Cancel'
         ];
 
-        const choice = prompt('Quick Actions:\n' + actions.join('\n'));
-        
-        if (choice && choice.includes('Complete')) {
+        goalManager.showConfirm('Complete this task?', () => {
             goalManager.toggleTask(taskId);
             this.vibrateSuccess();
-        } else if (choice && choice.includes('Delete')) {
-            if (confirm('Delete this task?')) {
-                goalManager.deleteGoal(taskId, 'daily');
-                this.vibrateSuccess();
-            }
-        }
+        });
     }
 
     // Prevent double-tap zoom on buttons and interactive elements
