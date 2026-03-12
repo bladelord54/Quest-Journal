@@ -1153,10 +1153,10 @@ class GoalManager {
         // Collect active spells
         if (this.activeSpells && this.activeSpells.length > 0) {
             this.activeSpells.forEach(active => {
-                const spell = this.spellbook ? this.spellbook.find(s => s.id === active.spellId) : null;
+                const spell = this.spellDefinitions ? this.spellDefinitions[active.spellId] : null;
                 if (spell) {
-                    const remaining = active.expiresAt ? Math.max(0, Math.ceil((new Date(active.expiresAt) - new Date()) / 60000)) : null;
-                    const timeText = remaining !== null ? `${remaining}m` : (active.charges ? `${active.charges} use${active.charges !== 1 ? 's' : ''}` : '');
+                    const remaining = (active.expiresAt && active.expiresAt !== -1) ? Math.max(0, Math.ceil((active.expiresAt - Date.now()) / 60000)) : null;
+                    const timeText = remaining !== null ? `${remaining}m` : (active.expiresAt === -1 ? 'Until triggered' : '');
                     buffs.push(`
                         <div class="flex items-center gap-1.5 bg-purple-800/50 border border-purple-600/50 rounded-lg px-3 py-1.5 text-sm">
                             <span class="text-lg">${spell.icon}</span>
@@ -5882,7 +5882,7 @@ class GoalManager {
             
             if (this.activeSpells && this.activeSpells.length > 0) {
                 this.activeSpells.forEach(active => {
-                    const spell = this.spellbook ? this.spellbook.find(s => s.id === active.spellId) : null;
+                    const spell = this.spellDefinitions ? this.spellDefinitions[active.spellId] : null;
                     if (spell) {
                         buffs.push(`<span class="inline-flex items-center gap-1 bg-purple-800/50 border border-purple-600/50 rounded-lg px-2 py-1 text-xs"><span>${spell.icon}</span><span class="text-purple-200 fancy-font">${spell.name}</span></span>`);
                     }
