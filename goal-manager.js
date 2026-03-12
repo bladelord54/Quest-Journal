@@ -5965,6 +5965,22 @@ class GoalManager {
         if (spellCount) spellCount.textContent = this.spellbook ? this.spellbook.length : 0;
         if (companionCount) companionCount.textContent = this.companions ? this.companions.length : 0;
         if (titleCount) titleCount.textContent = this.unlockedTitles ? this.unlockedTitles.length : 0;
+        
+        // Update analytics quick stats
+        const totalCompleted = this.dailyTasks.filter(t => t.completed).length +
+                              this.weeklyGoals.filter(g => g.completed).length +
+                              this.monthlyGoals.filter(g => g.completed).length +
+                              this.yearlyGoals.filter(g => g.completed).length +
+                              this.lifeGoals.filter(g => g.completed).length +
+                              this.sideQuests.filter(q => q.completed).length;
+        const totalTasks = this.dailyTasks.length + this.weeklyGoals.length + 
+                          this.monthlyGoals.length + this.sideQuests.length;
+        const completionRate = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+        
+        const panelCompleted = document.getElementById('panel-stat-completed');
+        const panelRate = document.getElementById('panel-stat-rate');
+        if (panelCompleted) panelCompleted.textContent = totalCompleted.toLocaleString();
+        if (panelRate) panelRate.textContent = completionRate + '%';
     }
 
     // Undo/Redo System
@@ -11721,8 +11737,8 @@ class GoalManager {
         },
         {
             title: "Analytics 📈",
-            content: "Track your progress over time! See charts of your productivity, completion rates, and streaks. Identify patterns and optimize your quest strategy!",
-            element: "a[href='#analytics'].nav-link",
+            content: "Track your progress over time! Open the Player Panel and tap Quest Analytics to see charts of your productivity, completion rates, and streaks. Quick stats are always visible in your character sheet!",
+            element: "#player-panel-toggle",
             action: () => this.switchView('analytics')
         },
         {

@@ -319,10 +319,6 @@
                     <i class="ri-magic-line mr-3 text-2xl text-purple-400"></i>
                     <span class="fancy-font text-lg">Arcane Powers</span>
                 </a>
-                <a href="#analytics" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="analytics">
-                    <i class="ri-line-chart-line mr-3 text-2xl text-blue-400"></i>
-                    <span class="fancy-font text-lg">Analytics</span>
-                </a>
                 <a href="#bossbattles" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="bossbattles">
                     <i class="ri-skull-2-line mr-3 text-2xl text-red-400"></i>
                     <span class="fancy-font text-lg">Boss Battles</span>
@@ -459,6 +455,24 @@
                             <span class="text-2xl">🏆</span>
                             <span class="text-xl font-bold text-amber-200 fancy-font" id="badge-count">0</span>
                             <span class="text-xs text-amber-400 fancy-font">achievements</span>
+                        </div>
+                    </div>
+
+                    <!-- Quest Analytics -->
+                    <div onclick="goalManager.switchView('analytics'); goalManager.togglePlayerPanel();" 
+                        class="quest-card bg-gradient-to-br from-blue-900/50 to-blue-950/50 rounded-xl p-4 border-2 border-blue-700/40 mb-4 cursor-pointer hover:border-blue-500 transition-all">
+                        <div class="text-sm font-bold text-blue-300 fancy-font mb-2 flex items-center justify-center">
+                            <i class="ri-line-chart-line mr-2"></i> Quest Analytics <i class="ri-arrow-right-s-line ml-auto text-blue-500"></i>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-center">
+                            <div>
+                                <div class="text-lg font-bold text-green-300 fancy-font" id="panel-stat-completed">0</div>
+                                <div class="text-xs text-stone-400 fancy-font">Completed</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-yellow-300 fancy-font" id="panel-stat-rate">0%</div>
+                                <div class="text-xs text-stone-400 fancy-font">Rate</div>
+                            </div>
                         </div>
                     </div>
 
