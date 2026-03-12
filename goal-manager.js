@@ -4615,12 +4615,14 @@ class GoalManager {
 
     openCompanionDen() {
         // Close the player panel if open
-        const panel = document.getElementById('player-panel');
-        if (panel && panel.classList.contains('translate-x-0')) {
-            panel.classList.remove('translate-x-0');
-            panel.classList.add('translate-x-full');
-            const overlay = document.getElementById('panel-overlay');
-            if (overlay) overlay.classList.add('hidden');
+        if (this.playerPanelOpen) {
+            this.playerPanelOpen = false;
+            const backdrop = document.getElementById('player-panel-backdrop');
+            const sheet = document.getElementById('player-panel-sheet');
+            const toggle = document.getElementById('player-panel-toggle');
+            if (backdrop) backdrop.classList.add('hidden');
+            if (sheet) sheet.style.transform = 'translateX(100%)';
+            if (toggle) toggle.style.opacity = '1';
         }
         
         this.switchView('companions');
