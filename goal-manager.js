@@ -10628,14 +10628,34 @@ class GoalManager {
     }
 
     // Notification System
-    checkNotificationPermission() {
+    async checkNotificationPermission() {
         // Passively check current permission state without prompting
         // (Android blocks permission requests that aren't from a user gesture)
         if ('Notification' in window) {
             this.notificationsEnabled = Notification.permission === 'granted';
+            console.log('[Notifications] Startup check: Notification.permission =', Notification.permission);
+            
+            // TWA/Android fallback: Notification.permission can stay 'default' even after granting.
+            // Use Permissions API as a secondary check.
+            if (!this.notificationsEnabled && navigator.permissions) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'notifications' });
+                    console.log('[Notifications] Permissions API state:', status.state);
+                    if (status.state === 'granted') {
+                        this.notificationsEnabled = true;
+                    }
+                    // Also check if we previously confirmed working notifications
+                    if (!this.notificationsEnabled && localStorage.getItem('notificationsConfirmedWorking') === 'true') {
+                        console.log('[Notifications] Previously confirmed working, enabling');
+                        this.notificationsEnabled = true;
+                    }
+                } catch (e) {
+                    console.warn('[Notifications] Permissions API query failed:', e);
+                }
+            }
             
             // If permission hasn't been asked yet, show a prompt after a short delay
-            if (Notification.permission === 'default' && !localStorage.getItem('notificationPromptDismissed')) {
+            if (!this.notificationsEnabled && Notification.permission === 'default' && !localStorage.getItem('notificationPromptDismissed')) {
                 setTimeout(() => this.showNotificationPrompt(), 3000);
             }
         }
@@ -10643,25 +10663,79 @@ class GoalManager {
 
     async requestNotificationPermission() {
         // Must be called from a user gesture (button tap) on Android
-        if ('Notification' in window) {
-            try {
-                const permission = await Notification.requestPermission();
-                this.notificationsEnabled = permission === 'granted';
-                console.log('[Notifications] Permission result:', permission);
-                
-                if (this.notificationsEnabled) {
-                    // Sync settings to service worker now that we have permission
-                    this.syncReminderSettingsToSW();
-                    
-                    // Send a confirmation notification immediately - this creates the
-                    // Android notification channel so the app appears in system settings
-                    this.sendConfirmationNotification();
-                }
-            } catch (err) {
-                console.error('[Notifications] Permission request failed:', err);
-            }
-        } else {
+        if (!('Notification' in window)) {
             console.warn('[Notifications] Notification API not available in this browser');
+            return;
+        }
+        
+        try {
+            const permission = await Notification.requestPermission();
+            console.log('[Notifications] requestPermission result:', permission);
+            console.log('[Notifications] Notification.permission after request:', Notification.permission);
+            
+            this.notificationsEnabled = permission === 'granted';
+            
+            // TWA fallback: if permission is still 'default', check Permissions API
+            if (!this.notificationsEnabled && navigator.permissions) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'notifications' });
+                    console.log('[Notifications] Permissions API state after request:', status.state);
+                    if (status.state === 'granted') {
+                        this.notificationsEnabled = true;
+                    }
+                } catch (e) {
+                    console.warn('[Notifications] Permissions API fallback failed:', e);
+                }
+            }
+            
+            // If still not confirmed, try sending a test notification anyway.
+            // On some TWAs, notifications work even when permission reports 'default'.
+            if (!this.notificationsEnabled && permission !== 'denied') {
+                console.log('[Notifications] Permission ambiguous, attempting test notification...');
+                const worked = await this._tryTestNotification();
+                if (worked) {
+                    this.notificationsEnabled = true;
+                    localStorage.setItem('notificationsConfirmedWorking', 'true');
+                    console.log('[Notifications] Test notification succeeded — marking as enabled');
+                }
+            }
+            
+            if (this.notificationsEnabled) {
+                localStorage.setItem('notificationsConfirmedWorking', 'true');
+                this.syncReminderSettingsToSW();
+                this.sendConfirmationNotification();
+            }
+        } catch (err) {
+            console.error('[Notifications] Permission request failed:', err);
+        }
+    }
+    
+    async _tryTestNotification() {
+        // Attempt to send a notification via the service worker regardless of reported permission.
+        // Returns true if it succeeded, false otherwise.
+        try {
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.showNotification('⚔️ Quest Reminders Active!', {
+                    body: 'Notifications are working! You will receive quest reminders.',
+                    icon: './icons/icon-192.png',
+                    badge: './icons/icon-96.png',
+                    tag: 'quest-journal-test-' + Date.now(),
+                    renotify: true,
+                    vibrate: [200, 100, 200],
+                    data: { url: './' }
+                });
+                return true;
+            }
+            // Desktop fallback
+            new Notification('⚔️ Quest Reminders Active!', {
+                body: 'Notifications are working!',
+                icon: './icons/icon-192.png'
+            });
+            return true;
+        } catch (err) {
+            console.error('[Notifications] _tryTestNotification failed:', err);
+            return false;
         }
     }
     
@@ -10669,6 +10743,10 @@ class GoalManager {
         // Re-check permission state before attempting
         if ('Notification' in window) {
             this.notificationsEnabled = Notification.permission === 'granted';
+        }
+        // TWA fallback: honor previously confirmed working state
+        if (!this.notificationsEnabled && localStorage.getItem('notificationsConfirmedWorking') === 'true') {
+            this.notificationsEnabled = true;
         }
         
         if (!this.notificationsEnabled) {
@@ -10751,6 +10829,10 @@ class GoalManager {
         // Re-check permission state
         if ('Notification' in window) {
             this.notificationsEnabled = Notification.permission === 'granted';
+        }
+        // TWA fallback: honor previously confirmed working state
+        if (!this.notificationsEnabled && localStorage.getItem('notificationsConfirmedWorking') === 'true') {
+            this.notificationsEnabled = true;
         }
         
         if (!this.notificationsEnabled || !('Notification' in window)) {
@@ -10986,6 +11068,10 @@ class GoalManager {
         if ('Notification' in window) {
             this.notificationsEnabled = Notification.permission === 'granted';
         }
+        // TWA fallback: also honor previously confirmed working notifications
+        if (!this.notificationsEnabled && localStorage.getItem('notificationsConfirmedWorking') === 'true') {
+            this.notificationsEnabled = true;
+        }
         
         const settings = this.reminderSettings;
         
@@ -11042,9 +11128,9 @@ class GoalManager {
                 <!-- Notification Status -->
                 <div class="mt-4 pt-4 border-t border-amber-700/50">
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-amber-300/70">Browser Permission:</span>
+                        <span class="text-amber-300/70">Notifications:</span>
                         <span class="${this.notificationsEnabled ? 'text-green-400' : 'text-red-400'}">
-                            ${this.notificationsEnabled ? '✓ Granted' : ('Notification' in window ? (Notification.permission === 'denied' ? '✗ Blocked' : '○ Not Asked') : '✗ Not Supported')}
+                            ${this.notificationsEnabled ? '✓ Enabled' : ('Notification' in window ? (Notification.permission === 'denied' ? '✗ Blocked' : '○ Not Enabled') : '✗ Not Supported')}
                         </span>
                     </div>
                     <div class="flex items-center justify-between text-sm mt-1">
@@ -11056,9 +11142,9 @@ class GoalManager {
                     ${!this.notificationsEnabled ? `
                     <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
                         class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
-                        Enable Browser Notifications
+                        Enable Notifications
                     </button>
-                    ${'Notification' in window && Notification.permission === 'denied' ? '<p class="text-red-400/80 text-xs mt-2 text-center">⚠️ Notifications were blocked. Go to your browser/device Settings → Site Settings → Notifications to re-enable them for this site.</p>' : ''}
+                    ${'Notification' in window && Notification.permission === 'denied' ? '<p class="text-red-400/80 text-xs mt-2 text-center">⚠️ Notifications were blocked. Go to your device Settings → Apps → Life Quest Journal → Notifications to re-enable.</p>' : ''}
                     ` : `
                     <button onclick="goalManager.sendConfirmationNotification()"
                         class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
