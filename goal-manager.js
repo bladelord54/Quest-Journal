@@ -10635,32 +10635,77 @@ class GoalManager {
     async requestNotificationPermission() {
         // Must be called from a user gesture (button tap) on Android
         if ('Notification' in window) {
-            const permission = await Notification.requestPermission();
-            this.notificationsEnabled = permission === 'granted';
-            
-            if (this.notificationsEnabled) {
-                // Sync settings to service worker now that we have permission
-                this.syncReminderSettingsToSW();
+            try {
+                const permission = await Notification.requestPermission();
+                this.notificationsEnabled = permission === 'granted';
+                console.log('[Notifications] Permission result:', permission);
                 
-                // Send a confirmation notification immediately - this creates the
-                // Android notification channel so the app appears in system settings
-                this.sendConfirmationNotification();
+                if (this.notificationsEnabled) {
+                    // Sync settings to service worker now that we have permission
+                    this.syncReminderSettingsToSW();
+                    
+                    // Send a confirmation notification immediately - this creates the
+                    // Android notification channel so the app appears in system settings
+                    this.sendConfirmationNotification();
+                }
+            } catch (err) {
+                console.error('[Notifications] Permission request failed:', err);
             }
+        } else {
+            console.warn('[Notifications] Notification API not available in this browser');
         }
     }
     
     sendConfirmationNotification() {
-        if ('serviceWorker' in navigator) {
+        // Re-check permission state before attempting
+        if ('Notification' in window) {
+            this.notificationsEnabled = Notification.permission === 'granted';
+        }
+        
+        if (!this.notificationsEnabled) {
+            console.warn('[Notifications] Cannot send: permission not granted (current:', Notification.permission, ')');
+            this.showAchievement('⚠️ Notifications not enabled — check browser/device permissions', 'daily');
+            return;
+        }
+        
+        const notifOptions = {
+            body: 'You will now receive notifications for your daily quests and reminders.',
+            icon: './icons/icon-192.png',
+            badge: './icons/icon-96.png',
+            tag: 'quest-journal-test-' + Date.now(),
+            renotify: true,
+            vibrate: [200, 100, 200],
+            data: { url: './' }
+        };
+        
+        // Try service worker notification first (required for Android PWAs)
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification('⚔️ Quest Reminders Enabled!', {
-                    body: 'You will now receive notifications for your daily quests and reminders.',
-                    icon: './icons/icon-192.png',
-                    badge: './icons/icon-96.png',
-                    tag: 'quest-journal-setup',
-                    vibrate: [200, 100, 200],
-                    data: { url: './' }
-                });
-            }).catch(() => {});
+                console.log('[Notifications] Sending via ServiceWorker showNotification');
+                return registration.showNotification('⚔️ Quest Reminders Active!', notifOptions);
+            }).then(() => {
+                console.log('[Notifications] ServiceWorker notification dispatched successfully');
+                this.showAchievement('🔔 Test notification sent!', 'daily');
+            }).catch(err => {
+                console.error('[Notifications] ServiceWorker showNotification failed:', err);
+                this._fallbackNotification(notifOptions);
+            });
+        } else {
+            console.log('[Notifications] No active SW controller, using fallback');
+            this._fallbackNotification(notifOptions);
+        }
+    }
+    
+    _fallbackNotification(options) {
+        // Fallback: try new Notification() directly (works on desktop, not Android)
+        try {
+            const n = new Notification('⚔️ Quest Reminders Active!', options);
+            n.onclick = () => { window.focus(); n.close(); };
+            console.log('[Notifications] Fallback Notification created');
+            this.showAchievement('🔔 Test notification sent!', 'daily');
+        } catch (err) {
+            console.error('[Notifications] Fallback Notification also failed:', err);
+            this.showAchievement('⚠️ Notification failed — your browser may be blocking them', 'daily');
         }
     }
 
@@ -10694,31 +10739,42 @@ class GoalManager {
     }
 
     showNotification(title, body, icon = '⚔️') {
+        // Re-check permission state
+        if ('Notification' in window) {
+            this.notificationsEnabled = Notification.permission === 'granted';
+        }
+        
         if (!this.notificationsEnabled || !('Notification' in window)) {
+            console.warn('[Notifications] showNotification skipped: enabled=', this.notificationsEnabled);
             return;
         }
 
+        const notifOptions = {
+            body: body,
+            icon: './icons/icon-192.png',
+            badge: './icons/icon-96.png',
+            tag: 'quest-journal-' + Date.now(),
+            renotify: true,
+            vibrate: [200, 100, 200],
+            data: { url: './' }
+        };
+
         // Use Service Worker notification API (required for Android PWAs)
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification(title, {
-                    body: body,
-                    icon: './icons/icon-192.png',
-                    badge: './icons/icon-96.png',
-                    tag: 'quest-journal-' + Date.now(),
-                    renotify: true,
-                    vibrate: [200, 100, 200],
-                    data: { url: './' }
-                });
-            }).catch(() => {
+                return registration.showNotification(title, notifOptions);
+            }).catch(err => {
+                console.error('[Notifications] SW showNotification failed:', err);
                 // Fallback to basic Notification for desktop
-                try { new Notification(title, { body: body }); } catch (e) {}
+                try { new Notification(title, { body: body, icon: './icons/icon-192.png' }); } catch (e) { console.error('[Notifications] Fallback also failed:', e); }
             });
         } else {
-            // Fallback for browsers without service worker
+            // Fallback for browsers without active service worker
             try {
                 new Notification(title, { body: body, icon: './icons/icon-192.png' });
-            } catch (error) {}
+            } catch (err) {
+                console.error('[Notifications] Direct Notification failed:', err);
+            }
         }
     }
 
@@ -10972,9 +11028,15 @@ class GoalManager {
                 <!-- Notification Status -->
                 <div class="mt-4 pt-4 border-t border-amber-700/50">
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-amber-300/70">Browser Notifications:</span>
+                        <span class="text-amber-300/70">Browser Permission:</span>
                         <span class="${this.notificationsEnabled ? 'text-green-400' : 'text-red-400'}">
-                            ${this.notificationsEnabled ? '✓ Enabled' : '✗ Disabled'}
+                            ${this.notificationsEnabled ? '✓ Granted' : ('Notification' in window ? (Notification.permission === 'denied' ? '✗ Blocked' : '○ Not Asked') : '✗ Not Supported')}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm mt-1">
+                        <span class="text-amber-300/70">Service Worker:</span>
+                        <span class="${navigator.serviceWorker?.controller ? 'text-green-400' : 'text-yellow-400'}">
+                            ${navigator.serviceWorker?.controller ? '✓ Active' : '○ Not controlling (reload page)'}
                         </span>
                     </div>
                     ${!this.notificationsEnabled ? `
@@ -10982,12 +11044,13 @@ class GoalManager {
                         class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
                         Enable Browser Notifications
                     </button>
-                    <p class="text-amber-400/60 text-xs mt-2 text-center">If notifications were previously denied, go to your device Settings → Apps → Life Quest Journal → Notifications to re-enable them.</p>
+                    ${'Notification' in window && Notification.permission === 'denied' ? '<p class="text-red-400/80 text-xs mt-2 text-center">⚠️ Notifications were blocked. Go to your browser/device Settings → Site Settings → Notifications to re-enable them for this site.</p>' : ''}
                     ` : `
                     <button onclick="goalManager.sendConfirmationNotification()"
                         class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
                         🔔 Send Test Notification
                     </button>
+                    <p class="text-amber-400/60 text-xs mt-1 text-center">If no notification appears, check that notifications are enabled in your device's app settings.</p>
                     `}
                 </div>
             </div>
