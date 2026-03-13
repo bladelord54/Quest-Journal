@@ -307,10 +307,6 @@
                     <i class="ri-calendar-event-line mr-3 text-2xl text-yellow-400"></i>
                     <span class="fancy-font text-lg">Quest Calendar</span>
                 </a>
-                <a href="#sidequests" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="sidequests">
-                    <i class="ri-compass-3-line mr-3 text-2xl text-cyan-400"></i>
-                    <span class="fancy-font text-lg">Side Quests</span>
-                </a>
                 <a href="#rewards" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="rewards">
                     <i class="ri-trophy-line mr-3 text-2xl text-yellow-400"></i>
                     <span class="fancy-font text-lg">Treasury & Rewards</span>
@@ -659,6 +655,12 @@
                             <span>Weekly</span>
                             <span class="goal-tab-count bg-green-900/60 text-green-200 text-xs px-1.5 py-0.5 rounded-full" id="tab-weekly-count">0</span>
                         </button>
+                        <button onclick="goalManager.switchGoalTab('sidequests')" data-goal-tab="sidequests"
+                            class="goal-tab px-4 py-2.5 rounded-lg font-bold fancy-font text-sm transition-all flex items-center gap-1.5">
+                            <i class="ri-compass-3-line text-cyan-400"></i>
+                            <span>Side</span>
+                            <span class="goal-tab-count bg-cyan-900/60 text-cyan-200 text-xs px-1.5 py-0.5 rounded-full" id="tab-sidequests-count">0</span>
+                        </button>
                     </div>
                 </div>
 
@@ -716,6 +718,34 @@
                         </button>
                     </div>
                     <div id="weekly-goals-container" class="space-y-4"></div>
+                </div>
+
+                <!-- Tab Content: Side Quests -->
+                <div id="goal-tab-sidequests" class="goal-tab-content hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
+                        <div class="text-center md:text-left">
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title"><i class="ri-compass-3-line text-cyan-400 mr-2"></i>Side Quests</h3>
+                            <p class="text-amber-200/80 fancy-font text-sm">Optional adventures and flexible tasks</p>
+                        </div>
+                        <button onclick="goalManager.addSideQuest()" class="bg-gradient-to-r from-cyan-600 to-cyan-800 hover:from-cyan-700 hover:to-cyan-900 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-2xl hover:scale-105 transition-transform border-2 border-cyan-500 w-full md:w-auto">
+                            <i class="ri-compass-3-line mr-2"></i>New Side Quest
+                        </button>
+                    </div>
+                    <div class="flex gap-2 mb-4 flex-wrap">
+                        <button onclick="goalManager.filterSideQuests('all')" id="filter-all" class="px-3 py-1.5 rounded-lg bg-cyan-700 text-white font-semibold fancy-font text-sm hover:bg-cyan-600 transition-all">
+                            All
+                        </button>
+                        <button onclick="goalManager.filterSideQuests('high')" id="filter-high" class="px-3 py-1.5 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font text-sm hover:bg-cyan-700 transition-all">
+                            ⚡ High
+                        </button>
+                        <button onclick="goalManager.filterSideQuests('medium')" id="filter-medium" class="px-3 py-1.5 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font text-sm hover:bg-cyan-700 transition-all">
+                            ⭐ Medium
+                        </button>
+                        <button onclick="goalManager.filterSideQuests('low')" id="filter-low" class="px-3 py-1.5 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font text-sm hover:bg-cyan-700 transition-all">
+                            💫 Low
+                        </button>
+                    </div>
+                    <div id="sidequests-container" class="space-y-4"></div>
                 </div>
             </div>
 
@@ -1513,40 +1543,6 @@
             </div>
 
 
-            <!-- Side Quests View -->
-            <div id="sidequests-view" class="view-container hidden p-8">
-                <header class="mb-8 text-center">
-                    <h2 class="text-4xl font-bold text-amber-300 medieval-title mb-3"><i class="ri-compass-3-line text-cyan-400 mr-2"></i>Side Quests</h2>
-                    <p class="text-amber-200 fancy-font text-lg">Optional adventures and flexible tasks</p>
-                </header>
-
-                <!-- Priority Filter -->
-                <div class="quest-card bg-gradient-to-br from-cyan-900 to-cyan-950 rounded-xl shadow-2xl p-6 border-4 border-cyan-600 mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-2xl font-bold text-amber-300 medieval-title">Filter by Priority</h3>
-                        <button onclick="goalManager.addSideQuest()" class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white px-6 py-3 rounded-lg font-bold fancy-font text-lg shadow-2xl hover:scale-105 transition-transform border-3 border-cyan-500">
-                            <i class="ri-compass-3-line mr-2"></i>New Side Quest
-                        </button>
-                    </div>
-                    <div class="flex gap-3">
-                        <button onclick="goalManager.filterSideQuests('all')" id="filter-all" class="px-4 py-2 rounded-lg bg-cyan-700 text-white font-semibold fancy-font hover:bg-cyan-600 transition-all">
-                            All Quests
-                        </button>
-                        <button onclick="goalManager.filterSideQuests('high')" id="filter-high" class="px-4 py-2 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font hover:bg-cyan-700 transition-all">
-                            ⚡ High Priority
-                        </button>
-                        <button onclick="goalManager.filterSideQuests('medium')" id="filter-medium" class="px-4 py-2 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font hover:bg-cyan-700 transition-all">
-                            ⭐ Medium Priority
-                        </button>
-                        <button onclick="goalManager.filterSideQuests('low')" id="filter-low" class="px-4 py-2 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font hover:bg-cyan-700 transition-all">
-                            💫 Low Priority
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Side Quests Container -->
-                <div id="sidequests-container" class="space-y-4"></div>
-            </div>
 
             <!-- Calendar View -->
             <div id="calendar-view" class="view-container hidden p-8">

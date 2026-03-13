@@ -1032,7 +1032,7 @@ class GoalManager {
         }
         
         // Redirect legacy individual goal view names to the combined goals view
-        const goalTabMap = { 'life-goals': 'life-goals', 'yearly': 'yearly', 'monthly': 'monthly', 'weekly': 'weekly' };
+        const goalTabMap = { 'life-goals': 'life-goals', 'yearly': 'yearly', 'monthly': 'monthly', 'weekly': 'weekly', 'sidequests': 'sidequests' };
         if (goalTabMap[viewName]) {
             this.currentView = 'goals';
             this.switchGoalTab(goalTabMap[viewName]);
@@ -1106,7 +1106,8 @@ class GoalManager {
             'life-goals': () => this.renderLifeGoals(),
             'yearly': () => this.renderYearlyGoals(),
             'monthly': () => this.renderMonthlyGoals(),
-            'weekly': () => this.renderWeeklyGoals()
+            'weekly': () => this.renderWeeklyGoals(),
+            'sidequests': () => this.renderSideQuests()
         };
         if (tabRenderMap[tabName]) {
             tabRenderMap[tabName]();
@@ -1118,7 +1119,8 @@ class GoalManager {
             'life-goals': this.lifeGoals.length,
             'yearly': this.yearlyGoals.filter(g => !g.completed).length,
             'monthly': this.monthlyGoals.filter(g => !g.completed).length,
-            'weekly': this.weeklyGoals.filter(g => !g.completed).length
+            'weekly': this.weeklyGoals.filter(g => !g.completed).length,
+            'sidequests': this.sideQuests.filter(q => !q.completed).length
         };
         
         Object.entries(counts).forEach(([tab, count]) => {
@@ -4134,7 +4136,6 @@ class GoalManager {
                     };
                     if (dailyTabRender[dailyTab]) dailyTabRender[dailyTab]();
                 },
-                'sidequests': () => this.renderSideQuests(),
                 'calendar': () => {
                     this.renderCalendar();
                     if (this.selectedDate) {
@@ -11505,7 +11506,7 @@ class GoalManager {
                     this.addRecurringTask(text);
                 } else if (currentView === 'habits-view') {
                     this.addHabit(text);
-                } else if (currentView === 'sidequests') {
+                } else if (currentView === 'goals' && this.activeGoalTab === 'sidequests') {
                     this.addSideQuest(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'weekly') {
                     this.addWeeklyGoal(text);
@@ -11745,9 +11746,9 @@ class GoalManager {
         },
         {
             title: "Side Quests 🧭",
-            content: "Quick tasks without deadlines! Perfect for ideas, someday-maybes, or tasks that don't fit a specific timeline. Tackle them whenever you're ready!",
-            element: "a[href='#sidequests'].nav-link",
-            action: () => this.switchView('sidequests')
+            content: "Quick tasks without deadlines! Find them in the Quest Log under the Side tab. Perfect for ideas, someday-maybes, or tasks that don't fit a specific timeline!",
+            element: "a[href='#goals'].nav-link",
+            action: () => { this.switchView('goals'); this.switchGoalTab('sidequests'); }
         },
         {
             title: "Treasury & Rewards 🏆",
