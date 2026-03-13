@@ -1,6 +1,7 @@
-const CACHE_NAME = 'life-quest-journal-v207';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v207';
-const urlsToCache = [
+const CACHE_NAME = 'life-quest-journal-v208';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v208';
+// Local files: must all succeed or install fails (a missing local file = real bug)
+const localUrlsToCache = [
   './',
   './index.html',
   './goal-manager.js',
@@ -29,8 +30,11 @@ const urlsToCache = [
   './sounds/level-up.wav',
   './sounds/crystal-earn.wav',
   './sounds/boss-damage.mp3',
-  './sounds/boss-defeated.mp3',
-  // CDN dependencies for offline support
+  './sounds/boss-defeated.mp3'
+];
+
+// CDN files: best-effort caching — failure must NOT block SW install/activation
+const cdnUrlsToCache = [
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css',
   'https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;700&family=Uncial+Antiqua&display=swap'
@@ -53,7 +57,19 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        return cache.addAll(urlsToCache);
+        // Cache local files (must succeed)
+        const localPromise = cache.addAll(localUrlsToCache);
+        
+        // Cache CDN files individually — failures are logged but don't block install
+        const cdnPromise = Promise.all(
+          cdnUrlsToCache.map(url =>
+            fetch(url).then(response => {
+              if (response.ok) return cache.put(url, response);
+            }).catch(err => console.warn('[SW] CDN cache skipped:', url, err.message))
+          )
+        );
+        
+        return Promise.all([localPromise, cdnPromise]);
       })
       .then(() => self.skipWaiting())
   );

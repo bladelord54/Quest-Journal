@@ -109,6 +109,15 @@ class GoalManager {
         this.scheduleMidnightReset(); // Schedule automatic habit reset at midnight
         this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
         this.initializeReminders(); // Set up task reminders
+        
+        // Listen for service worker taking control (after skipWaiting + clients.claim)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('[SW] New service worker took control');
+                this.syncReminderSettingsToSW();
+                this.renderReminderSettings();
+            });
+        }
         this.initializeUI();
         this.loadTheme();
         this.setupKeyboardShortcuts();
@@ -10972,6 +10981,11 @@ class GoalManager {
     renderReminderSettings() {
         const container = document.getElementById('reminder-settings-container');
         if (!container) return;
+        
+        // Always re-check permission state from the browser directly
+        if ('Notification' in window) {
+            this.notificationsEnabled = Notification.permission === 'granted';
+        }
         
         const settings = this.reminderSettings;
         
