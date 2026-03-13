@@ -4143,7 +4143,6 @@ class GoalManager {
                 },
                 'rewards': () => {
                     this.renderRewards();
-                    this.renderBadges();
                 },
                 'arcane': () => {
                     this.renderActiveBuffsSummary();
@@ -4160,6 +4159,7 @@ class GoalManager {
                 'focus': () => this.renderFocusTimer(),
                 'titles': () => this.renderTitleHall(),
                 'companions': () => this.renderCompanionDen(),
+                'badges': () => this.renderBadges(),
                 'tools': () => {
                     this.renderThemeSelector();
                     this.renderReminderSettings();

@@ -447,9 +447,10 @@
                     </div>
 
                     <!-- Badges -->
-                    <div class="quest-card bg-gradient-to-br from-amber-900/40 to-amber-950/40 rounded-xl p-4 border-2 border-amber-700/40 mb-4">
+                    <div onclick="goalManager.switchView('badges'); goalManager.togglePlayerPanel();"
+                        class="quest-card bg-gradient-to-br from-amber-900/40 to-amber-950/40 rounded-xl p-4 border-2 border-amber-700/40 mb-4 cursor-pointer hover:border-amber-500 transition-all">
                         <div class="text-sm font-bold text-amber-300 fancy-font mb-2 flex items-center justify-center">
-                            <i class="ri-medal-line mr-2"></i> Badges Earned
+                            <i class="ri-medal-line mr-2"></i> Badges Earned <i class="ri-arrow-right-s-line ml-auto text-amber-500"></i>
                         </div>
                         <div class="flex items-center justify-center gap-2">
                             <span class="text-2xl">🏆</span>
@@ -1376,20 +1377,24 @@
                         </div>
                     </div>
 
-                    <!-- Badges Gallery -->
-                    <div class="quest-card bg-gradient-to-br from-amber-800 to-amber-900 p-6 rounded-xl shadow-2xl border-4 border-amber-600 col-span-1 md:col-span-2">
-                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
-                            <i class="ri-trophy-line mr-2"></i> Badge Gallery
-                        </h3>
-                        <div id="badges-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <!-- Will be populated dynamically -->
-                        </div>
-                    </div>
                 </div>
 
                 <!-- App Version -->
                 <div class="mt-8 text-center">
                     <p class="text-sm text-gray-500 fancy-font">Life Quest Journal v1.0.0</p>
+                </div>
+            </div>
+
+            <!-- Badges View -->
+            <div id="badges-view" class="view-container hidden p-4 md:p-8">
+                <header class="mb-8 text-center">
+                    <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-2"><i class="ri-trophy-line text-yellow-400 mr-2"></i>Badge Gallery</h2>
+                    <p class="text-amber-200 fancy-font text-base md:text-lg">Your collection of achievements and milestones</p>
+                </header>
+                <div class="max-w-5xl mx-auto">
+                    <div id="badges-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- Will be populated dynamically -->
+                    </div>
                 </div>
             </div>
 
