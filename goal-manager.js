@@ -10887,17 +10887,22 @@ class GoalManager {
             };
         }
         
-        // Schedule daily reminders
+        // Schedule daily reminders (in-page timers as primary)
         this.scheduleDailyReminders();
         
-        // Send reminder settings to service worker for background notifications
+        // Send reminder settings to service worker for persistent background notifications
         this.syncReminderSettingsToSW();
         
-        // Re-schedule reminders when app returns to foreground (Android kills timers when backgrounded)
+        // Check for missed reminders on app open (catch-up)
+        this.checkMissedReminders();
+        
+        // Re-check everything when app returns to foreground
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 this.scheduleDailyReminders();
+                this.syncReminderSettingsToSW(); // Re-sync on every foreground
                 this.checkOverdueTasks();
+                this.checkMissedReminders();
             }
         });
         
@@ -10907,6 +10912,49 @@ class GoalManager {
         // Check for overdue tasks periodically
         this.checkOverdueTasks();
         setInterval(() => this.checkOverdueTasks(), 30 * 60 * 1000); // Every 30 minutes
+        
+        // Re-sync task counts to SW periodically (tasks may change during the day)
+        setInterval(() => this.syncReminderSettingsToSW(), 15 * 60 * 1000); // Every 15 minutes
+    }
+    
+    checkMissedReminders() {
+        if (!this.reminderSettings.enabled || !this.notificationsEnabled) return;
+        
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const today = now.toISOString().split('T')[0];
+        
+        // Check what was already sent today (stored in localStorage)
+        const sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}');
+        if (sentData._date !== today) {
+            sentData._date = today;
+            sentData.morning = false;
+            sentData.evening = false;
+        }
+        
+        // Morning catch-up: if it's past morning time but within 2 hours, and not yet sent
+        if (this.reminderSettings.morningReminder && !sentData.morning) {
+            const [th, tm] = this.reminderSettings.morningTime.split(':').map(Number);
+            const targetMins = th * 60 + tm;
+            if (currentMins >= targetMins && currentMins < targetMins + 120) {
+                console.log('[Reminders] Catch-up: sending missed morning reminder');
+                this.sendMorningReminder();
+                sentData.morning = true;
+                localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
+            }
+        }
+        
+        // Evening catch-up
+        if (this.reminderSettings.eveningReminder && !sentData.evening) {
+            const [th, tm] = this.reminderSettings.eveningTime.split(':').map(Number);
+            const targetMins = th * 60 + tm;
+            if (currentMins >= targetMins && currentMins < targetMins + 120) {
+                console.log('[Reminders] Catch-up: sending missed evening reminder');
+                this.sendEveningReminder();
+                sentData.evening = true;
+                localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
+            }
+        }
     }
     
     syncReminderSettingsToSW() {
@@ -10968,8 +11016,10 @@ class GoalManager {
             
             if (morningTime > now) {
                 const delay = morningTime - now;
+                console.log('[Reminders] Morning reminder scheduled in', Math.round(delay / 60000), 'minutes');
                 this._morningTimer = setTimeout(() => {
                     this.sendMorningReminder();
+                    this._markReminderSent('morning');
                     // Reschedule for next day
                     setTimeout(() => this.scheduleDailyReminders(), 1000);
                 }, delay);
@@ -10984,11 +11034,25 @@ class GoalManager {
             
             if (eveningTime > now) {
                 const delay = eveningTime - now;
+                console.log('[Reminders] Evening reminder scheduled in', Math.round(delay / 60000), 'minutes');
                 this._eveningTimer = setTimeout(() => {
                     this.sendEveningReminder();
+                    this._markReminderSent('evening');
                 }, delay);
             }
         }
+    }
+    
+    _markReminderSent(type) {
+        const today = new Date().toISOString().split('T')[0];
+        const sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}');
+        if (sentData._date !== today) {
+            sentData._date = today;
+            sentData.morning = false;
+            sentData.evening = false;
+        }
+        sentData[type] = true;
+        localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
     }
 
     sendMorningReminder() {

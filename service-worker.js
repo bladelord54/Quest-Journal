@@ -1,5 +1,5 @@
-const CACHE_NAME = 'life-quest-journal-v211';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v211';
+const CACHE_NAME = 'life-quest-journal-v212';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v212';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
   './',
@@ -94,6 +94,9 @@ self.addEventListener('activate', event => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
+  // Piggyback: check reminders on fetch activity (throttled)
+  maybeCheckReminders();
+  
   const url = new URL(event.request.url);
 
   // Determine if this is a lazy-cacheable asset (large theme backgrounds)
@@ -137,19 +140,51 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// Handle messages from main thread
-let reminderSettings = null;
-let lastTaskCounts = null;
+// ==================== PERSISTENT REMINDER SYSTEM ====================
+// Uses Cache API for persistent storage (survives SW termination).
+// Checks reminders on fetch events (piggyback), periodicsync, and messages.
 
+const REMINDER_CACHE = 'quest-reminders-data';
+let lastReminderCheck = 0; // Throttle: check at most once per 5 minutes
+
+// Save reminder data to Cache API (persistent, accessible from SW)
+async function saveReminderData(data) {
+  try {
+    const cache = await caches.open(REMINDER_CACHE);
+    const response = new Response(JSON.stringify(data));
+    await cache.put('reminder-data', response);
+  } catch (e) { /* cache write failed, not critical */ }
+}
+
+// Load reminder data from Cache API
+async function loadReminderData() {
+  try {
+    const cache = await caches.open(REMINDER_CACHE);
+    const response = await cache.match('reminder-data');
+    if (response) return await response.json();
+  } catch (e) { /* cache read failed */ }
+  return null;
+}
+
+// Handle messages from main thread
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
   
-  // Receive reminder settings and task counts from the app
+  // Receive reminder settings and task counts from the app — persist to Cache API
   if (event.data && event.data.type === 'SYNC_REMINDERS') {
-    reminderSettings = event.data.settings;
-    lastTaskCounts = event.data.taskCounts;
+    event.waitUntil((async () => {
+      const existing = await loadReminderData() || {};
+      await saveReminderData({
+        ...existing,
+        settings: event.data.settings,
+        taskCounts: event.data.taskCounts,
+        lastSync: Date.now()
+      });
+      // Also run a reminder check immediately after sync
+      await checkAndSendReminders();
+    })());
   }
 });
 
@@ -178,42 +213,69 @@ self.addEventListener('periodicsync', event => {
   }
 });
 
-// Check if any reminders should fire based on stored settings
+// Piggyback reminder check on fetch events (throttled to once per 5 minutes)
+// This is the most reliable way to check reminders since fetch fires whenever
+// the browser makes ANY request while the SW is active
+function maybeCheckReminders() {
+  const now = Date.now();
+  if (now - lastReminderCheck < 5 * 60 * 1000) return; // Throttle: 5 min
+  lastReminderCheck = now;
+  checkAndSendReminders().catch(() => {});
+}
+
+// Check if any reminders should fire based on persistently stored settings
 async function checkAndSendReminders() {
-  if (!reminderSettings || !reminderSettings.enabled) return;
+  const data = await loadReminderData();
+  if (!data || !data.settings || !data.settings.enabled) return;
   
+  const settings = data.settings;
+  const counts = data.taskCounts || { todayTasks: 0, incompleteHabits: 0, overdueTasks: 0 };
   const now = new Date();
-  const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+  const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const currentMins = now.getHours() * 60 + now.getMinutes();
   
-  // Check morning reminder (within a 30-min window since periodic sync is imprecise)
-  if (reminderSettings.morningReminder) {
-    const morningTime = reminderSettings.morningTime;
-    if (isWithinWindow(currentTime, morningTime, 30)) {
-      await sendReminderNotification('morning');
+  // Track which reminders were already sent today (avoid duplicates)
+  const sentToday = data.sentToday || {};
+  let updated = false;
+  
+  // Reset tracking if it's a new day
+  if (sentToday._date !== today) {
+    sentToday._date = today;
+    sentToday.morning = false;
+    sentToday.evening = false;
+    updated = true;
+  }
+  
+  // Check morning reminder
+  if (settings.morningReminder && !sentToday.morning) {
+    const [th, tm] = settings.morningTime.split(':').map(Number);
+    const targetMins = th * 60 + tm;
+    // Fire if we're past the reminder time (within a 2-hour catch-up window)
+    if (currentMins >= targetMins && currentMins < targetMins + 120) {
+      await sendReminderNotification('morning', counts);
+      sentToday.morning = true;
+      updated = true;
     }
   }
   
   // Check evening reminder
-  if (reminderSettings.eveningReminder) {
-    const eveningTime = reminderSettings.eveningTime;
-    if (isWithinWindow(currentTime, eveningTime, 30)) {
-      await sendReminderNotification('evening');
+  if (settings.eveningReminder && !sentToday.evening) {
+    const [th, tm] = settings.eveningTime.split(':').map(Number);
+    const targetMins = th * 60 + tm;
+    if (currentMins >= targetMins && currentMins < targetMins + 120) {
+      await sendReminderNotification('evening', counts);
+      sentToday.evening = true;
+      updated = true;
     }
+  }
+  
+  // Save updated tracking data
+  if (updated) {
+    await saveReminderData({ ...data, sentToday });
   }
 }
 
-// Check if currentTime is within minuteWindow of targetTime
-function isWithinWindow(currentTime, targetTime, minuteWindow) {
-  const [ch, cm] = currentTime.split(':').map(Number);
-  const [th, tm] = targetTime.split(':').map(Number);
-  const currentMins = ch * 60 + cm;
-  const targetMins = th * 60 + tm;
-  return currentMins >= targetMins && currentMins < targetMins + minuteWindow;
-}
-
-async function sendReminderNotification(type) {
-  const counts = lastTaskCounts || { todayTasks: 0, incompleteHabits: 0, overdueTasks: 0 };
-  
+async function sendReminderNotification(type, counts) {
   let title, body;
   if (type === 'morning') {
     title = '🌅 Good Morning, Adventurer!';
@@ -229,13 +291,17 @@ async function sendReminderNotification(type) {
     if (!body) body = 'All quests completed! Well done!';
   }
   
-  return self.registration.showNotification(title, {
-    body: body,
-    icon: './icons/icon-192.png',
-    badge: './icons/badge-96.png',
-    tag: 'quest-reminder-' + type,
-    renotify: true,
-    vibrate: [200, 100, 200],
-    data: { url: './' }
-  });
+  try {
+    return await self.registration.showNotification(title, {
+      body: body,
+      icon: './icons/icon-192.png',
+      badge: './icons/badge-96.png',
+      tag: 'quest-reminder-' + type,
+      renotify: true,
+      vibrate: [200, 100, 200],
+      data: { url: './' }
+    });
+  } catch (e) {
+    // Notification permission may not be granted — nothing we can do from SW
+  }
 }
