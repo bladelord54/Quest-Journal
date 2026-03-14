@@ -10719,7 +10719,7 @@ class GoalManager {
                 await registration.showNotification('⚔️ Quest Reminders Active!', {
                     body: 'Notifications are working! You will receive quest reminders.',
                     icon: './icons/icon-192.png',
-                    badge: './icons/icon-96.png',
+                    badge: './icons/badge-96.png',
                     tag: 'quest-journal-test-' + Date.now(),
                     renotify: true,
                     vibrate: [200, 100, 200],
@@ -10743,7 +10743,7 @@ class GoalManager {
         const notifOptions = {
             body: 'You will now receive notifications for your daily quests and reminders.',
             icon: './icons/icon-192.png',
-            badge: './icons/icon-96.png',
+            badge: './icons/badge-96.png',
             tag: 'quest-journal-test-' + Date.now(),
             renotify: true,
             vibrate: [200, 100, 200],
@@ -10843,7 +10843,7 @@ class GoalManager {
         const notifOptions = {
             body: body,
             icon: './icons/icon-192.png',
-            badge: './icons/icon-96.png',
+            badge: './icons/badge-96.png',
             tag: 'quest-journal-' + Date.now(),
             renotify: true,
             vibrate: [200, 100, 200],

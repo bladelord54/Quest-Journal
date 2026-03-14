@@ -1,5 +1,5 @@
-const CACHE_NAME = 'life-quest-journal-v210';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v210';
+const CACHE_NAME = 'life-quest-journal-v211';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v211';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
   './',
@@ -19,6 +19,8 @@ const localUrlsToCache = [
   './icons/leaf.gif',
   './icons/snow.gif',
   './icons/shine.gif',
+  './icons/badge-96.png',
+  './icons/badge-192.png',
   // Sound files (only files that exist on disk)
   './sounds/achievement-daily.wav',
   './sounds/achievement-weekly.wav',
@@ -230,7 +232,7 @@ async function sendReminderNotification(type) {
   return self.registration.showNotification(title, {
     body: body,
     icon: './icons/icon-192.png',
-    badge: './icons/icon-96.png',
+    badge: './icons/badge-96.png',
     tag: 'quest-reminder-' + type,
     renotify: true,
     vibrate: [200, 100, 200],
