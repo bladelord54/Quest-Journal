@@ -10740,21 +10740,6 @@ class GoalManager {
     }
     
     sendConfirmationNotification() {
-        // Re-check permission state before attempting
-        if ('Notification' in window) {
-            this.notificationsEnabled = Notification.permission === 'granted';
-        }
-        // TWA fallback: honor previously confirmed working state
-        if (!this.notificationsEnabled && localStorage.getItem('notificationsConfirmedWorking') === 'true') {
-            this.notificationsEnabled = true;
-        }
-        
-        if (!this.notificationsEnabled) {
-            console.warn('[Notifications] Cannot send: permission not granted (current:', Notification.permission, ')');
-            this.showAchievement('⚠️ Notifications not enabled — check browser/device permissions', 'daily');
-            return;
-        }
-        
         const notifOptions = {
             body: 'You will now receive notifications for your daily quests and reminders.',
             icon: './icons/icon-192.png',
@@ -10765,20 +10750,22 @@ class GoalManager {
             data: { url: './' }
         };
         
-        // Try service worker notification first (required for Android PWAs)
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        // Try service worker notification first (required for Android PWAs/TWAs)
+        if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then(registration => {
                 console.log('[Notifications] Sending via ServiceWorker showNotification');
                 return registration.showNotification('⚔️ Quest Reminders Active!', notifOptions);
             }).then(() => {
                 console.log('[Notifications] ServiceWorker notification dispatched successfully');
-                this.showAchievement('🔔 Test notification sent!', 'daily');
+                localStorage.setItem('notificationsConfirmedWorking', 'true');
+                this.notificationsEnabled = true;
+                this.showAchievement('🔔 Test notification sent! Check your notification shade.', 'daily');
             }).catch(err => {
                 console.error('[Notifications] ServiceWorker showNotification failed:', err);
                 this._fallbackNotification(notifOptions);
             });
         } else {
-            console.log('[Notifications] No active SW controller, using fallback');
+            console.log('[Notifications] No service worker, using fallback');
             this._fallbackNotification(notifOptions);
         }
     }
@@ -10789,10 +10776,23 @@ class GoalManager {
             const n = new Notification('⚔️ Quest Reminders Active!', options);
             n.onclick = () => { window.focus(); n.close(); };
             console.log('[Notifications] Fallback Notification created');
+            localStorage.setItem('notificationsConfirmedWorking', 'true');
+            this.notificationsEnabled = true;
             this.showAchievement('🔔 Test notification sent!', 'daily');
         } catch (err) {
             console.error('[Notifications] Fallback Notification also failed:', err);
-            this.showAchievement('⚠️ Notification failed — your browser may be blocking them', 'daily');
+            // Clear false positive — notifications do NOT actually work
+            localStorage.removeItem('notificationsConfirmedWorking');
+            this.notificationsEnabled = false;
+            this.renderReminderSettings();
+            
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 document.referrer.includes('android-app://');
+            if (isStandalone) {
+                this.showAchievement('⚠️ Notifications blocked at the Android level. Go to your device Settings → Apps → Life Quest Journal → Notifications and enable them.', 'daily');
+            } else {
+                this.showAchievement('⚠️ Notification failed — your browser may be blocking them', 'daily');
+            }
         }
     }
 
