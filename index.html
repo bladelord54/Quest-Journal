@@ -237,12 +237,12 @@
     </div>
 
     <!-- Tutorial Overlay -->
-    <div id="tutorial-overlay" class="hidden fixed inset-0 z-50 bg-black bg-opacity-40">
+    <div id="tutorial-overlay" class="hidden fixed inset-0 bg-black bg-opacity-40" style="z-index: 9990;">
         <!-- Spotlight highlight -->
-        <div id="tutorial-spotlight" class="absolute pointer-events-none border-4 border-yellow-400 rounded-lg shadow-2xl" style="display: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5), 0 0 50px 10px rgba(250, 204, 21, 0.8); z-index: 51;"></div>
+        <div id="tutorial-spotlight" class="pointer-events-none border-4 border-yellow-400 rounded-lg shadow-2xl" style="display: none; position: fixed; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5), 0 0 50px 10px rgba(250, 204, 21, 0.8); z-index: 9991;"></div>
         
         <!-- Tutorial Tooltip -->
-        <div id="tutorial-tooltip" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-amber-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 w-full max-w-2xl mx-4 p-8" style="z-index: 52;">
+        <div id="tutorial-tooltip" class="bg-gradient-to-br from-amber-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 p-6 md:p-8" style="z-index: 9992; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(100% - 32px); max-width: 42rem;">
             <div class="text-center mb-6">
                 <h2 id="tutorial-title" class="text-4xl font-bold text-amber-300 medieval-title mb-3">Welcome!</h2>
                 <div id="tutorial-content" class="text-amber-100 fancy-font text-lg leading-relaxed">

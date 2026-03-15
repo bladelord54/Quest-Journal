@@ -11992,6 +11992,9 @@ class GoalManager {
 
         overlay.classList.remove('hidden');
         
+        // Reset tooltip to centered position (clear any previous step positioning)
+        this.centerTooltip(tooltip);
+        
         // Update tooltip content
         document.getElementById('tutorial-title').textContent = step.title;
         document.getElementById('tutorial-content').innerHTML = step.content.replace(/\n/g, '<br>');
@@ -12014,33 +12017,33 @@ class GoalManager {
                 if (step.element && spotlight) {
                     const targetElement = document.querySelector(step.element);
                     if (targetElement) {
-                        // On mobile, nav links are in a horizontal scrollable bar at bottom
-                        // scrollIntoView only handles vertical - manually scroll the nav container
                         const isMobile = window.innerWidth <= 768;
                         const navContainer = targetElement.closest('nav');
+                        const isInBottomNav = isMobile && navContainer;
                         
-                        if (isMobile && navContainer) {
-                            // Scroll the horizontal nav container to center the target icon
+                        if (isInBottomNav) {
+                            // On mobile, nav is a fixed horizontal bar at bottom
+                            // Use instant scroll so measurement is accurate
                             const navRect = navContainer.getBoundingClientRect();
-                            const elRect = targetElement.getBoundingClientRect();
                             const scrollLeft = targetElement.offsetLeft - (navRect.width / 2) + (targetElement.offsetWidth / 2);
-                            navContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+                            navContainer.scrollTo({ left: scrollLeft, behavior: 'instant' });
                         } else {
                             targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
                         }
                         
-                        // Wait for scroll animation to complete before getting rect
+                        // Wait for scroll/layout to settle, then position spotlight
+                        const delay = isInBottomNav ? 100 : 600;
                         setTimeout(() => {
                             const rect = targetElement.getBoundingClientRect();
                             spotlight.style.display = 'block';
-                            spotlight.style.top = `${rect.top - 10}px`;
-                            spotlight.style.left = `${rect.left - 10}px`;
-                            spotlight.style.width = `${rect.width + 20}px`;
-                            spotlight.style.height = `${rect.height + 20}px`;
+                            spotlight.style.top = `${rect.top - 8}px`;
+                            spotlight.style.left = `${rect.left - 8}px`;
+                            spotlight.style.width = `${rect.width + 16}px`;
+                            spotlight.style.height = `${rect.height + 16}px`;
                             
                             // Position tooltip to not cover the highlighted element
-                            this.positionTooltip(rect, tooltip);
-                        }, 600);
+                            this.positionTooltip(rect, tooltip, isInBottomNav);
+                        }, delay);
                     } else {
                         spotlight.style.display = 'none';
                         this.centerTooltip(tooltip);
@@ -12053,24 +12056,33 @@ class GoalManager {
         }, 100);
     }
 
-    positionTooltip(targetRect, tooltip) {
-        // Check if there's enough space above or below the target
+    positionTooltip(targetRect, tooltip, isInBottomNav = false) {
         const viewportHeight = window.innerHeight;
-        const tooltipHeight = 400; // Approximate height
+        
+        if (isInBottomNav) {
+            // Target is in the bottom nav bar - center tooltip in top half of screen
+            tooltip.style.left = '50%';
+            tooltip.style.top = '40%';
+            tooltip.style.transform = 'translate(-50%, -50%)';
+            return;
+        }
+        
+        // Measure actual tooltip height
+        const tooltipHeight = tooltip.offsetHeight || 300;
         const spaceAbove = targetRect.top;
         const spaceBelow = viewportHeight - targetRect.bottom;
         
         // If target is in the middle third of the screen, center tooltip
         if (targetRect.top > viewportHeight / 3 && targetRect.bottom < (viewportHeight * 2 / 3)) {
             this.centerTooltip(tooltip);
-        } else if (spaceBelow > tooltipHeight + 50) {
-            // Position below if there's space
-            tooltip.style.top = `${targetRect.bottom + 30}px`;
+        } else if (spaceBelow > tooltipHeight + 30) {
+            // Position below
+            tooltip.style.top = `${targetRect.bottom + 20}px`;
             tooltip.style.left = '50%';
             tooltip.style.transform = 'translateX(-50%)';
-        } else if (spaceAbove > tooltipHeight + 50) {
-            // Position above if there's space
-            tooltip.style.top = `${targetRect.top - tooltipHeight - 30}px`;
+        } else if (spaceAbove > tooltipHeight + 30) {
+            // Position above
+            tooltip.style.top = `${targetRect.top - tooltipHeight - 20}px`;
             tooltip.style.left = '50%';
             tooltip.style.transform = 'translateX(-50%)';
         } else {
