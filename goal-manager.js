@@ -7641,19 +7641,6 @@ class GoalManager {
         this.renderPremiumCard();
     }
     
-    // Debug: Toggle premium status for testing
-    togglePremium() {
-        this.isPremium = !this.isPremium;
-        if (this.isPremium) {
-            this.premiumPurchaseDate = new Date().toISOString();
-        }
-        this.saveData();
-        this.renderPremiumCard();
-        this.renderThemes();
-        this.renderThemeSelector();
-        this.showAchievement(this.isPremium ? '👑 Premium ENABLED (test mode)' : '🔒 Premium DISABLED (test mode)', 'daily');
-    }
-
     renderPremiumCard() {
         const container = document.getElementById('premium-content');
         if (!container) return;
