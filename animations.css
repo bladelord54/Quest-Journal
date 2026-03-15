@@ -493,6 +493,52 @@
     }
 }
 
+/* ===== BOSS COMBAT HIT ANIMATIONS ===== */
+
+/* Card shake when boss takes damage */
+.boss-hit-shake {
+    animation: boss-hit-shake 0.4s ease-out;
+}
+
+@keyframes boss-hit-shake {
+    0% { transform: translate(0, 0); }
+    15% { transform: translate(-6px, 3px); }
+    30% { transform: translate(6px, -3px); }
+    45% { transform: translate(-4px, -2px); }
+    60% { transform: translate(4px, 2px); }
+    75% { transform: translate(-2px, 1px); }
+    100% { transform: translate(0, 0); }
+}
+
+/* Floating damage number */
+.boss-damage-float {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'MedievalSharp', serif;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #fca5a5;
+    text-shadow: 0 0 10px rgba(220, 38, 38, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    z-index: 100;
+    animation: boss-damage-float-up 1.2s ease-out forwards;
+}
+
+.boss-damage-float.crit {
+    font-size: 2.4rem;
+    color: #fbbf24;
+    text-shadow: 0 0 15px rgba(251, 191, 36, 0.8), 0 0 30px rgba(220, 38, 38, 0.5), 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+@keyframes boss-damage-float-up {
+    0% { transform: translateX(-50%) translateY(0) scale(0.5); opacity: 0; }
+    15% { transform: translateX(-50%) translateY(-10px) scale(1.3); opacity: 1; }
+    30% { transform: translateX(-50%) translateY(-20px) scale(1); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-80px) scale(0.8); opacity: 0; }
+}
+
 /* ===== ENHANCED LEVEL UP ANIMATIONS ===== */
 
 /* Full-screen golden flash */

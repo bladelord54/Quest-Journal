@@ -928,43 +928,59 @@
 
             <!-- Boss Battles View -->
             <div id="bossbattles-view" class="view-container hidden p-4 md:p-8">
-                <header class="mb-8 text-center">
-                    <h2 class="text-3xl md:text-4xl font-bold text-red-300 medieval-title mb-3"><i class="ri-skull-2-line text-red-400 mr-2"></i>Boss Battles</h2>
-                    <p class="text-amber-200 fancy-font text-base md:text-lg">Face your greatest challenges and claim legendary victories</p>
+                <header class="mb-6 text-center">
+                    <h2 class="text-3xl md:text-4xl font-bold text-red-300 medieval-title mb-2"><i class="ri-skull-2-line text-red-400 mr-2"></i>Boss Battles</h2>
+                    <p class="text-amber-200 fancy-font text-base md:text-lg mb-3">Complete tasks to earn attacks, then slay your foes!</p>
+                    <!-- Attack Charges Display -->
+                    <div id="attack-charges-bar" class="inline-flex items-center gap-3 bg-gradient-to-r from-red-900/60 to-amber-900/60 px-6 py-3 rounded-xl border-2 border-amber-600/50">
+                        <i class="ri-sword-fill text-2xl text-amber-400"></i>
+                        <span class="text-amber-200 fancy-font text-lg">Attacks Available:</span>
+                        <span id="attack-charges-display" class="text-3xl font-bold text-amber-300 medieval-title transition-transform">0</span>
+                    </div>
                 </header>
 
-                <!-- Active Boss Battles -->
+                <!-- Boss Arena -->
+                <div id="boss-arena" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Daily and Weekly boss cards rendered dynamically -->
+                </div>
+
+                <!-- Battle Log -->
                 <div class="mb-8">
-                    <h3 class="text-xl md:text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
-                        <i class="ri-sword-line mr-2"></i>Active Boss Battles
+                    <h3 class="text-xl font-bold text-amber-300 medieval-title mb-3 flex items-center">
+                        <i class="ri-scroll-line mr-2"></i>Battle Log
                     </h3>
-                    <div id="active-bosses-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Will be populated dynamically -->
+                    <div id="boss-battle-log" class="bg-stone-900/60 rounded-lg border border-amber-700/30 p-4 max-h-48 overflow-y-auto space-y-1">
+                        <!-- Populated dynamically -->
                     </div>
                 </div>
 
-                <!-- Boss Gallery (Defeated) -->
+                <!-- Boss Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-gradient-to-br from-red-900/40 to-stone-900/40 p-4 rounded-lg border border-red-700/30 text-center">
+                        <div class="text-3xl font-bold text-red-300 medieval-title" id="stat-bosses-defeated">0</div>
+                        <div class="text-xs text-amber-200 fancy-font">Bosses Slain</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-orange-900/40 to-stone-900/40 p-4 rounded-lg border border-orange-700/30 text-center">
+                        <div class="text-3xl font-bold text-orange-300 medieval-title" id="stat-daily-streak">0</div>
+                        <div class="text-xs text-amber-200 fancy-font">Daily Streak</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-900/40 to-stone-900/40 p-4 rounded-lg border border-purple-700/30 text-center">
+                        <div class="text-3xl font-bold text-purple-300 medieval-title" id="stat-weekly-streak">0</div>
+                        <div class="text-xs text-amber-200 fancy-font">Weekly Streak</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-amber-900/40 to-stone-900/40 p-4 rounded-lg border border-amber-700/30 text-center">
+                        <div class="text-3xl font-bold text-amber-300 medieval-title" id="stat-total-attacks">0</div>
+                        <div class="text-xs text-amber-200 fancy-font">Attacks Available</div>
+                    </div>
+                </div>
+
+                <!-- Hall of Champions -->
                 <div class="mb-8">
-                    <h3 class="text-xl md:text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                    <h3 class="text-xl md:text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center">
                         <i class="ri-trophy-line mr-2"></i>Hall of Champions
                     </h3>
-                    <p class="text-sm text-amber-200 mb-4 fancy-font text-center md:text-left">Your legendary victories over conquered bosses</p>
                     <div id="defeated-bosses-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Will be populated dynamically -->
-                    </div>
-                </div>
-
-                <!-- Convert Goals to Bosses -->
-                <div class="bg-gradient-to-br from-red-900/40 to-stone-900/40 p-4 md:p-6 rounded-xl border-2 border-red-700/50">
-                    <h3 class="text-xl md:text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
-                        <i class="ri-shield-star-line mr-2"></i>Create Boss Battle
-                    </h3>
-                    <p class="text-amber-200 mb-4 fancy-font text-sm text-center md:text-left">
-                        Transform your Life Goals or Yearly Campaigns into epic boss battles! 
-                        Each sub-goal completed will deal damage to the boss until final victory.
-                    </p>
-                    <div id="boss-conversion-list" class="space-y-2">
-                        <!-- Will be populated dynamically -->
+                        <!-- Populated dynamically -->
                     </div>
                 </div>
             </div>

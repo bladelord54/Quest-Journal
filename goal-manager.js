@@ -54,6 +54,16 @@ class GoalManager {
         this.focusSessionsCompleted = 0;
         this.spellsCast = 0;
         
+        // Boss Battle System (auto-generated daily/weekly bosses)
+        this.dailyBoss = null;
+        this.weeklyBoss = null;
+        this.attackCharges = 0;
+        this.bossLog = [];
+        this.defeatedBossList = [];
+        this.dailyBossStreak = 0;
+        this.weeklyBossStreak = 0;
+        this.bossThemes = this.initializeBossThemes();
+        
         // Render optimization
         this.renderTimeout = null;
         this.isRendering = false;
@@ -106,6 +116,7 @@ class GoalManager {
         this.loadData();
         this.checkNotificationPermission();
         this.checkHabitReset();
+        this.generateBosses(); // Generate daily/weekly bosses
         this.scheduleMidnightReset(); // Schedule automatic habit reset at midnight
         this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
         this.initializeReminders(); // Set up task reminders
@@ -273,6 +284,15 @@ class GoalManager {
                 this.focusSessionsCompleted = data.focusSessionsCompleted || 0;
                 this.spellsCast = data.spellsCast || 0;
                 
+                // Boss Battle System
+                this.dailyBoss = data.dailyBoss || null;
+                this.weeklyBoss = data.weeklyBoss || null;
+                this.attackCharges = data.attackCharges || 0;
+                this.bossLog = data.bossLog || [];
+                this.defeatedBossList = data.defeatedBossList || [];
+                this.dailyBossStreak = data.dailyBossStreak || 0;
+                this.weeklyBossStreak = data.weeklyBossStreak || 0;
+                
                 // Migrate tasks with `name` but no `title` (from starter task bug)
                 [this.dailyTasks, this.weeklyGoals, this.monthlyGoals, this.yearlyGoals, this.lifeGoals, this.sideQuests, this.habits].forEach(arr => {
                     arr.forEach(item => {
@@ -371,7 +391,14 @@ class GoalManager {
                 chestsOpened: this.chestsOpened,
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
-                spellsCast: this.spellsCast
+                spellsCast: this.spellsCast,
+                dailyBoss: this.dailyBoss,
+                weeklyBoss: this.weeklyBoss,
+                attackCharges: this.attackCharges,
+                bossLog: this.bossLog,
+                defeatedBossList: this.defeatedBossList,
+                dailyBossStreak: this.dailyBossStreak,
+                weeklyBossStreak: this.weeklyBossStreak
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
         } catch (error) {
@@ -443,6 +470,322 @@ class GoalManager {
         };
     }
 
+    initializeBossThemes() {
+        return {
+            daily: [
+                { name: 'Slime of Procrastination', icon: '🟢', flavor: 'A gelatinous blob that feeds on delayed tasks.' },
+                { name: 'Goblin of Distraction', icon: '👺', flavor: 'Sneaky creature that steals your focus.' },
+                { name: 'Imp of Laziness', icon: '😈', flavor: 'Whispers sweet nothings about staying in bed.' },
+                { name: 'Shadow of Doubt', icon: '👤', flavor: 'A dark figure that questions your every move.' },
+                { name: 'Skeleton of Bad Habits', icon: '💀', flavor: 'Rattles with the chains of old patterns.' },
+                { name: 'Bat of Anxiety', icon: '🦇', flavor: 'Swoops in when you least expect it.' },
+                { name: 'Spider of Overwhelm', icon: '🕷️', flavor: 'Spins webs of endless to-do lists.' },
+                { name: 'Rat of Excuses', icon: '🐀', flavor: 'Gnaws away at your good intentions.' },
+                { name: 'Ghost of Yesterday', icon: '👻', flavor: 'Haunts you with missed opportunities.' },
+                { name: 'Mushroom of Confusion', icon: '🍄', flavor: 'Clouds your mind with indecision.' },
+                { name: 'Snake of Temptation', icon: '🐍', flavor: 'Lures you toward quick dopamine hits.' },
+                { name: 'Scarecrow of Fear', icon: '🎃', flavor: 'Guards the field of your ambitions.' },
+                { name: 'Troll of Negativity', icon: '🧌', flavor: 'Blocks the bridge to your goals.' },
+                { name: 'Wisp of Forgetfulness', icon: '🔮', flavor: 'Makes important tasks vanish from memory.' }
+            ],
+            weekly: [
+                { name: 'Dragon of Distraction', icon: '🐉', flavor: 'Ancient beast that hoards your wasted hours.' },
+                { name: 'Lich of Procrastination', icon: '☠️', flavor: 'Undying lord of "I\'ll do it tomorrow."' },
+                { name: 'Hydra of Overthinking', icon: '🐲', flavor: 'Cut one worry, two more take its place.' },
+                { name: 'Demon of Self-Doubt', icon: '👿', flavor: 'Feeds on your insecurities to grow stronger.' },
+                { name: 'Titan of Burnout', icon: '👹', flavor: 'Massive creature born from overwork.' },
+                { name: 'Kraken of Chaos', icon: '🦑', flavor: 'Tentacles of disorder wrap around your plans.' },
+                { name: 'Cerberus of Temptation', icon: '🐕', flavor: 'Three heads: social media, games, and snacks.' },
+                { name: 'Golem of Stagnation', icon: '🗿', flavor: 'An immovable wall blocking your progress.' },
+                { name: 'Wyvern of Wasted Time', icon: '🦅', flavor: 'Soars away with your precious hours.' },
+                { name: 'Necromancer of Old Habits', icon: '🧙', flavor: 'Keeps resurrecting the patterns you buried.' }
+            ]
+        };
+    }
+    
+    generateBosses() {
+        const today = this.getTodayDateString();
+        const currentWeek = this.getWeekString(new Date());
+        
+        // Check/generate daily boss
+        if (!this.dailyBoss || this.dailyBoss.spawnDate !== today) {
+            // Check if previous daily boss was defeated (for streak)
+            if (this.dailyBoss && !this.dailyBoss.defeated && this.dailyBoss.spawnDate !== today) {
+                // Boss fled — break streak
+                this.dailyBossStreak = 0;
+                this.addBossLog(`💨 ${this.dailyBoss.name} fled into the shadows!`);
+            }
+            this.generateDailyBoss(today);
+        }
+        
+        // Check/generate weekly boss
+        if (!this.weeklyBoss || this.weeklyBoss.spawnWeek !== currentWeek) {
+            if (this.weeklyBoss && !this.weeklyBoss.defeated && this.weeklyBoss.spawnWeek !== currentWeek) {
+                this.weeklyBossStreak = 0;
+                this.addBossLog(`💨 ${this.weeklyBoss.name} retreated to its lair!`);
+            }
+            this.generateWeeklyBoss(currentWeek);
+        }
+        
+        this.saveData();
+    }
+    
+    generateDailyBoss(today) {
+        const themes = this.bossThemes.daily;
+        const seed = this.hashDateString(today);
+        const theme = themes[seed % themes.length];
+        const bossLevel = Math.max(1, Math.floor(this.level / 2));
+        const maxHP = 8 + Math.floor(this.level / 3);
+        
+        this.dailyBoss = {
+            name: theme.name,
+            icon: theme.icon,
+            flavor: theme.flavor,
+            maxHP: maxHP,
+            currentHP: maxHP,
+            level: bossLevel,
+            spawnDate: today,
+            type: 'daily',
+            defeated: false,
+            totalDamage: 0,
+            rewards: {
+                xp: 50 + bossLevel * 20,
+                gold: 30 + bossLevel * 15
+            }
+        };
+        this.addBossLog(`⚔️ ${theme.icon} ${theme.name} appeared! (${maxHP} HP)`);
+    }
+    
+    generateWeeklyBoss(week) {
+        const themes = this.bossThemes.weekly;
+        const seed = this.hashDateString(week);
+        const theme = themes[seed % themes.length];
+        const bossLevel = Math.max(1, this.level);
+        const maxHP = 30 + Math.floor(this.level / 2) * 5;
+        
+        this.weeklyBoss = {
+            name: theme.name,
+            icon: theme.icon,
+            flavor: theme.flavor,
+            maxHP: maxHP,
+            currentHP: maxHP,
+            level: bossLevel,
+            spawnWeek: week,
+            type: 'weekly',
+            defeated: false,
+            totalDamage: 0,
+            rewards: {
+                xp: 200 + bossLevel * 30,
+                gold: 150 + bossLevel * 25,
+                spellScroll: true
+            }
+        };
+        this.addBossLog(`🔥 ${theme.icon} ${theme.name} emerges! (${maxHP} HP)`);
+    }
+    
+    hashDateString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+    
+    addBossLog(message) {
+        this.bossLog.unshift({ message, time: Date.now() });
+        if (this.bossLog.length > 20) this.bossLog.length = 20;
+    }
+    
+    grantAttackCharge(amount, source) {
+        this.attackCharges += amount;
+        this.saveData();
+        
+        // Update attack counter in UI if visible
+        const chargeEl = document.getElementById('attack-charges-display');
+        if (chargeEl) {
+            chargeEl.textContent = this.attackCharges;
+            chargeEl.classList.add('scale-125');
+            setTimeout(() => chargeEl.classList.remove('scale-125'), 300);
+        }
+    }
+    
+    attackBoss(bossType) {
+        const boss = bossType === 'daily' ? this.dailyBoss : this.weeklyBoss;
+        if (!boss || boss.defeated || this.attackCharges <= 0) return;
+        
+        this.attackCharges--;
+        
+        // Calculate damage
+        let damage = 1;
+        let messages = [];
+        let isCrit = false;
+        
+        // Wolf companion bonus (+20% attack damage, rounds up)
+        const wolfBonus = this.getCompanionBonus('attack');
+        if (wolfBonus > 0) {
+            damage = Math.ceil(damage * (1 + wolfBonus));
+            messages.push('🐺 Wolf Pack!');
+        }
+        
+        // Boss Slayer Enchantment (+50% damage)
+        const enchantmentBonus = this.getEnchantmentMultiplier('boss_damage');
+        if (enchantmentBonus > 1) {
+            damage = Math.ceil(damage * enchantmentBonus);
+            messages.push('⚔️ Titan Enchantment!');
+        }
+        
+        // Berserker Rage spell (double damage, consumed on use)
+        const berserkerRage = this.activeSpells.find(s => s.spellId === 'berserker_rage');
+        if (berserkerRage) {
+            damage *= 2;
+            messages.push('🔥 BERSERKER RAGE! x2!');
+            this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'berserker_rage');
+        }
+        
+        // Boss Slayer spell (+25% damage, duration-based)
+        const bossSlayer = this.activeSpells.find(s => s.spellId === 'boss_slayer' && s.expiresAt > Date.now());
+        if (bossSlayer) {
+            damage = Math.ceil(damage * 1.25);
+            messages.push('🗡️ Boss Slayer!');
+        }
+        
+        // Critical Strike spell (50% chance for +50% damage)
+        const criticalStrike = this.activeSpells.find(s => s.spellId === 'critical_strike' && s.expiresAt > Date.now());
+        if (criticalStrike && Math.random() < 0.5) {
+            damage = Math.ceil(damage * 1.5);
+            isCrit = true;
+            messages.push('💥 CRITICAL HIT!');
+        }
+        
+        // Apply damage
+        boss.currentHP = Math.max(0, boss.currentHP - damage);
+        boss.totalDamage += damage;
+        
+        // Play sound
+        if (window.audioManager) window.audioManager.playBossDamage();
+        
+        // Log
+        const dmgText = isCrit ? `💥 CRIT! ${damage} DMG` : `⚔️ ${damage} DMG`;
+        this.addBossLog(`${dmgText} to ${boss.icon} ${boss.name}! ${messages.join(' ')}`);
+        
+        // Animate the hit
+        this.animateBossHit(bossType, damage, isCrit);
+        
+        // Check defeat
+        if (boss.currentHP <= 0) {
+            boss.defeated = true;
+            setTimeout(() => this.onBossDefeated(bossType), 600);
+        }
+        
+        this.saveData();
+        this.renderBossBattles();
+    }
+    
+    animateBossHit(bossType, damage, isCrit) {
+        const bossCard = document.getElementById(`boss-card-${bossType}`);
+        if (!bossCard) return;
+        
+        // Screen shake on the card
+        bossCard.classList.add('boss-hit-shake');
+        setTimeout(() => bossCard.classList.remove('boss-hit-shake'), 400);
+        
+        // Floating damage number
+        const dmgEl = document.createElement('div');
+        dmgEl.className = `boss-damage-float ${isCrit ? 'crit' : ''}`;
+        dmgEl.textContent = isCrit ? `💥 ${damage}` : `-${damage}`;
+        bossCard.style.position = 'relative';
+        bossCard.appendChild(dmgEl);
+        setTimeout(() => dmgEl.remove(), 1200);
+    }
+    
+    onBossDefeated(bossType) {
+        const boss = bossType === 'daily' ? this.dailyBoss : this.weeklyBoss;
+        if (!boss) return;
+        
+        // Update streaks
+        if (bossType === 'daily') {
+            this.dailyBossStreak++;
+        } else {
+            this.weeklyBossStreak++;
+        }
+        this.bossesDefeated++;
+        
+        // Calculate rewards with streak bonus
+        const streak = bossType === 'daily' ? this.dailyBossStreak : this.weeklyBossStreak;
+        const streakMultiplier = 1 + Math.min(streak - 1, 10) * 0.1; // +10% per streak, max +100%
+        
+        const xpReward = Math.round(boss.rewards.xp * streakMultiplier);
+        const goldReward = Math.round(boss.rewards.gold * streakMultiplier);
+        
+        this.addXP(xpReward, bossType === 'daily' ? 'daily' : 'weekly');
+        this.goldCoins += goldReward;
+        
+        // Grant a random spell scroll for weekly boss defeats
+        let spellReward = null;
+        if (boss.rewards.spellScroll) {
+            const spellKeys = Object.keys(this.spellDefinitions);
+            const randomKey = spellKeys[Math.floor(Math.random() * spellKeys.length)];
+            spellReward = this.spellDefinitions[randomKey];
+            const existing = this.spellbook.find(s => s.spellId === randomKey);
+            if (existing) {
+                existing.quantity = (existing.quantity || 1) + 1;
+            } else {
+                this.spellbook.push({ spellId: randomKey, quantity: 1, acquiredAt: Date.now() });
+            }
+        }
+        
+        // Add to defeated list
+        this.defeatedBossList.unshift({
+            name: boss.name,
+            icon: boss.icon,
+            type: bossType,
+            level: boss.level,
+            maxHP: boss.maxHP,
+            totalDamage: boss.totalDamage,
+            defeatedAt: new Date().toISOString(),
+            rewards: { xp: xpReward, gold: goldReward }
+        });
+        if (this.defeatedBossList.length > 50) this.defeatedBossList.length = 50;
+        
+        this.addBossLog(`🏆 ${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold${streak > 1 ? ` (x${streak} streak!)` : ''}`);
+        
+        // Play boss defeated sound and celebration
+        if (window.audioManager) window.audioManager.playBossDefeated();
+        this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward, spellReward);
+        this.createConfetti();
+        
+        // Check badges/titles
+        this.checkBadges();
+        this.checkTitleUnlocks();
+        
+        this.saveData();
+        this.renderBossBattles();
+    }
+    
+    executeBossBySpell(bossType) {
+        const boss = bossType === 'daily' ? this.dailyBoss : this.weeklyBoss;
+        if (!boss || boss.defeated) return;
+        
+        const hpPercent = (boss.currentHP / boss.maxHP) * 100;
+        const executeSpell = this.activeSpells.find(s => s.spellId === 'execute');
+        if (!executeSpell || hpPercent > 25) return;
+        
+        // Consume Execute spell
+        this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'execute');
+        
+        // Instant kill
+        boss.currentHP = 0;
+        boss.defeated = true;
+        
+        this.addBossLog(`💀 EXECUTE! ${boss.icon} ${boss.name} instantly slain!`);
+        this.showAchievement('💀 EXECUTE! INSTANT KILL!', 'legendary');
+        
+        setTimeout(() => this.onBossDefeated(bossType), 300);
+        this.saveData();
+        this.renderBossBattles();
+    }
+    
     initializeSpells() {
         // Free spells: lucky_draw, instant_archive, focus_mode, minor_wisdom, copper_blessing (5 free)
         // Premium spells: all others
@@ -1958,6 +2301,7 @@ class GoalManager {
             if (quest.completed) {
                 const xpReward = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
                 this.addXP(xpReward, 'side');
+                this.grantAttackCharge(1, 'sidequest');
                 this.showAchievement(`Side Quest Completed! +${xpReward} XP 🧭`, 'daily');
             } else {
                 const xpReward = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
@@ -2301,6 +2645,7 @@ class GoalManager {
         
         this.midnightResetTimeout = setTimeout(() => {
             this.checkHabitReset();
+            this.generateBosses(); // New daily/weekly boss at midnight
             this.generateRecurringTasksForToday();
             this.render();
             // Re-schedule for the next midnight
@@ -3399,6 +3744,7 @@ class GoalManager {
                 
                 // Add XP for habit
                 this.addXP(10, 'habit');
+                this.grantAttackCharge(1, 'habit');
                 
                 // Special achievements for streaks
                 if (habit.streak === 7) {
@@ -3590,6 +3936,7 @@ class GoalManager {
         this.focusCrystals += crystalsEarned;
         this.totalFocusTime += sessionLength;
         this.focusSessionsCompleted++; // Track for titles
+        this.grantAttackCharge(1, 'focus');
         
         // Play crystal earn sound
         if (window.audioManager) {
@@ -3795,6 +4142,7 @@ class GoalManager {
             task.completed = !task.completed;
             if (task.completed) {
                 this.addXP(15, 'daily');
+                this.grantAttackCharge(1, 'task');
                 this.showAchievement('Quest Task Completed! +15 XP ⚔️', 'daily');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
@@ -3822,6 +4170,7 @@ class GoalManager {
             goal.completed = !goal.completed;
             if (goal.completed) {
                 this.addXP(50, 'weekly');
+                this.grantAttackCharge(2, 'weekly');
                 this.showAchievement('Weekly Quest Conquered! +50 XP 🛡️', 'weekly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
@@ -3840,9 +4189,8 @@ class GoalManager {
             goal.completed = !goal.completed;
             if (goal.completed) {
                 this.addXP(200, 'monthly');
+                this.grantAttackCharge(3, 'monthly');
                 this.showAchievement('Monthly Victory Achieved! +200 XP 👑', 'monthly');
-                // Deal damage to parent boss if exists
-                this.dealBossDamage(goal, 'monthly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
             } else {
@@ -7544,7 +7892,7 @@ class GoalManager {
 
     // Purchase using Digital Goods API (Google Play Billing)
     async purchaseWithDigitalGoods() {
-        const PREMIUM_SKU = 'quest_journal_premium'; // Set this in Google Play Console
+        const PREMIUM_SKU = 'premium-upgrade-option'; // Must match Google Play Console product ID
         
         
         // Get the Digital Goods service
@@ -7627,7 +7975,7 @@ class GoalManager {
                 const service = await window.getDigitalGoodsService('https://play.google.com/billing');
                 const purchases = await service.listPurchases();
                 
-                const premiumPurchase = purchases.find(p => p.itemId === 'quest_journal_premium');
+                const premiumPurchase = purchases.find(p => p.itemId === 'premium-upgrade-option');
                 if (premiumPurchase) {
                     this.onPremiumPurchaseSuccess(premiumPurchase.purchaseToken);
                     this.showAchievement('✅ Premium restored successfully!', 'weekly');
@@ -9211,233 +9559,170 @@ class GoalManager {
         container.innerHTML = html;
     }
 
-    // Boss Battles System
+    // Boss Battles System (New: Auto-generated daily/weekly bosses)
     renderBossBattles() {
-        // Premium gate for boss battles
-        if (!this.isPremium) {
-            const container = document.getElementById('active-bosses-container');
-            if (container) {
-                container.innerHTML = `
-                    <div class="col-span-2 text-center py-12">
-                        <div class="text-8xl mb-4">🐉</div>
-                        <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2">Boss Battles</h3>
-                        <p class="text-amber-200 fancy-font mb-4">Transform your goals into epic boss fights!</p>
-                        <p class="text-amber-300/70 text-sm mb-6 fancy-font">Complete tasks to deal damage and defeat bosses for bonus rewards.</p>
-                        <button onclick="goalManager.showPremiumPurchaseModal()" 
-                            class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
-                            <i class="ri-vip-crown-2-fill mr-2"></i> Unlock with Premium
-                        </button>
+        // Ensure bosses exist
+        this.generateBosses();
+        
+        // Update attack charges display
+        const chargeEl = document.getElementById('attack-charges-display');
+        if (chargeEl) chargeEl.textContent = this.attackCharges;
+        
+        // Update stats
+        const statBosses = document.getElementById('stat-bosses-defeated');
+        if (statBosses) statBosses.textContent = this.bossesDefeated;
+        const statDaily = document.getElementById('stat-daily-streak');
+        if (statDaily) statDaily.textContent = this.dailyBossStreak;
+        const statWeekly = document.getElementById('stat-weekly-streak');
+        if (statWeekly) statWeekly.textContent = this.weeklyBossStreak;
+        const statAttacks = document.getElementById('stat-total-attacks');
+        if (statAttacks) statAttacks.textContent = this.attackCharges;
+        
+        this.renderBossArena();
+        this.renderBossLog();
+        this.renderDefeatedBosses();
+    }
+
+    renderBossArena() {
+        const container = document.getElementById('boss-arena');
+        if (!container) return;
+        
+        let html = '';
+        if (this.dailyBoss) html += this.renderBossCard(this.dailyBoss, 'daily');
+        if (this.weeklyBoss) html += this.renderBossCard(this.weeklyBoss, 'weekly');
+        container.innerHTML = html;
+    }
+    
+    renderBossCard(boss, type) {
+        const hpPercent = boss.maxHP > 0 ? (boss.currentHP / boss.maxHP) * 100 : 0;
+        const isDefeated = boss.defeated;
+        
+        // Phase colors
+        let phaseColor = 'red', phaseText = 'Full Power';
+        if (hpPercent <= 0) { phaseColor = 'green'; phaseText = 'DEFEATED'; }
+        else if (hpPercent <= 25) { phaseColor = 'purple'; phaseText = 'CRITICAL!'; }
+        else if (hpPercent <= 50) { phaseColor = 'orange'; phaseText = 'Wounded'; }
+        else if (hpPercent <= 75) { phaseColor = 'yellow'; phaseText = 'Injured'; }
+        
+        const typeLabel = type === 'daily' ? 'DAILY FOE' : 'WEEKLY NEMESIS';
+        const typeColor = type === 'daily' ? 'amber' : 'purple';
+        
+        // Check if Execute spell is usable
+        const executeSpell = this.activeSpells.find(s => s.spellId === 'execute');
+        const canExecute = executeSpell && hpPercent > 0 && hpPercent <= 25;
+        
+        // Active boss spell buffs
+        const bossSpells = this.activeSpells.filter(s => 
+            ['berserker_rage', 'critical_strike', 'boss_slayer'].includes(s.spellId)
+        );
+        const spellBuffsHtml = bossSpells.length > 0 ? `
+            <div class="flex gap-2 mt-3 justify-center flex-wrap">
+                ${bossSpells.map(s => {
+                    const def = this.spellDefinitions[s.spellId];
+                    return `<span class="bg-purple-900/60 text-purple-200 px-2 py-1 rounded text-xs border border-purple-600/50">${def ? def.icon : '🔮'} ${def ? def.name : s.spellId}</span>`;
+                }).join('')}
+            </div>
+        ` : '';
+        
+        return `
+            <div id="boss-card-${type}" class="boss-card bg-gradient-to-br ${isDefeated ? 'from-green-950 to-stone-950 border-green-600/50' : `from-${phaseColor}-950 via-red-950 to-stone-950 border-${phaseColor}-600`} p-5 rounded-xl border-2 shadow-2xl relative overflow-hidden">
+                ${!isDefeated ? `<div class="absolute inset-0 bg-gradient-to-t from-${phaseColor}-900/20 to-transparent animate-pulse pointer-events-none"></div>` : ''}
+                
+                <div class="relative z-10">
+                    <!-- Boss Header -->
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="text-5xl ${isDefeated ? 'grayscale opacity-50' : 'animate-bounce'}">${boss.icon}</div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="text-xs bg-${typeColor}-700 text-white px-2 py-0.5 rounded fancy-font">${typeLabel}</span>
+                                <span class="text-xs bg-${phaseColor}-700 text-white px-2 py-0.5 rounded fancy-font ${!isDefeated && hpPercent <= 25 ? 'animate-pulse' : ''}">${phaseText}</span>
+                                <span class="text-xs text-amber-400 fancy-font">Lv.${boss.level}</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-amber-300 medieval-title">${boss.name}</h3>
+                            <p class="text-xs text-amber-200/60 italic fancy-font">${boss.flavor}</p>
+                        </div>
                     </div>
-                `;
-            }
-            const defeatedContainer = document.getElementById('defeated-bosses-container');
-            if (defeatedContainer) defeatedContainer.innerHTML = '';
-            const conversionContainer = document.getElementById('boss-conversion-container');
-            if (conversionContainer) conversionContainer.innerHTML = '';
+                    
+                    <!-- HP Bar -->
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm text-amber-200 font-bold fancy-font">HP</span>
+                            <span class="text-sm text-${phaseColor}-300 font-bold">${boss.currentHP} / ${boss.maxHP}</span>
+                        </div>
+                        <div class="relative w-full bg-stone-900 rounded-full h-6 border-2 border-${phaseColor}-700/70 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-${phaseColor}-600 to-${phaseColor}-400 transition-all duration-500 flex items-center justify-center" 
+                                 style="width: ${hpPercent}%">
+                                ${hpPercent > 15 ? `<span class="text-white font-bold text-xs drop-shadow-lg">${Math.round(hpPercent)}%</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${boss.totalDamage > 0 ? `<div class="text-center text-sm text-amber-300 mb-3 fancy-font">${boss.totalDamage} total damage dealt</div>` : ''}
+                    
+                    ${spellBuffsHtml}
+                    
+                    <!-- Action Buttons -->
+                    ${!isDefeated ? `
+                        <div class="flex gap-3 mt-4">
+                            <button onclick="goalManager.attackBoss('${type}')" 
+                                class="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400/50 text-lg"
+                                ${this.attackCharges <= 0 ? 'disabled' : ''}>
+                                <i class="ri-sword-fill mr-2"></i>ATTACK!${this.attackCharges > 0 ? ` (${this.attackCharges})` : ''}
+                            </button>
+                            ${canExecute ? `
+                                <button onclick="goalManager.executeBossBySpell('${type}')"
+                                    class="bg-gradient-to-r from-purple-600 to-red-600 hover:from-purple-500 hover:to-red-500 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-purple-400/50 animate-pulse">
+                                    <i class="ri-skull-2-fill mr-1"></i>EXECUTE!
+                                </button>
+                            ` : ''}
+                        </div>
+                    ` : `
+                        <div class="mt-4 text-center">
+                            <div class="text-2xl font-bold text-green-300 medieval-title">DEFEATED!</div>
+                            <div class="text-sm text-green-200 fancy-font">+${boss.rewards.xp} XP, +${boss.rewards.gold} Gold</div>
+                        </div>
+                    `}
+                    
+                    <!-- Rewards Preview -->
+                    ${!isDefeated ? `
+                        <div class="mt-3 text-center text-xs text-amber-200/50 fancy-font">
+                            Rewards: ${boss.rewards.xp} XP, ${boss.rewards.gold} Gold${boss.rewards.spellScroll ? ', Spell Scroll' : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    renderBossLog() {
+        const container = document.getElementById('boss-battle-log');
+        if (!container) return;
+        
+        if (this.bossLog.length === 0) {
+            container.innerHTML = '<div class="text-amber-200/50 text-sm fancy-font text-center py-4">No battles yet. Complete tasks to earn attacks!</div>';
             return;
         }
         
-        this.renderActiveBosses();
-        this.renderDefeatedBosses();
-        this.renderBossConversionList();
-    }
-
-    renderActiveBosses() {
-        const container = document.getElementById('active-bosses-container');
-        if (!container) return;
-
-        const activeBosses = [
-            ...this.lifeGoals.filter(g => g.isBoss && !g.completed),
-            ...this.yearlyGoals.filter(g => g.isBoss && !g.completed)
-        ];
-
-        if (activeBosses.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-2 text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">⚔️</div>
-                    <p class="fancy-font text-lg">No active boss battles. Transform a goal into a boss below!</p>
-                </div>
-            `;
-            return;
-        }
-
-        const html = activeBosses.map(boss => {
-            const isLife = this.lifeGoals.includes(boss);
-            const children = isLife 
-                ? this.yearlyGoals.filter(y => {
-                    // Check both array format (lifeGoalIds) and old single format (lifeGoalId)
-                    const ids = y.lifeGoalIds || (y.lifeGoalId ? [y.lifeGoalId] : []);
-                    return ids.includes(boss.id);
-                })
-                : this.monthlyGoals.filter(m => {
-                    // Check both array format (yearlyGoalIds) and old single format (yearlyGoalId)
-                    const ids = m.yearlyGoalIds || (m.yearlyGoalId ? [m.yearlyGoalId] : []);
-                    return ids.includes(boss.id);
-                });
-            
-            const maxHP = children.length * 100;
-            
-            // Initialize HP if not set (for existing bosses or new bosses)
-            if (boss.bossCurrentHP === null || boss.bossCurrentHP === undefined) {
-                boss.bossCurrentHP = maxHP;
-                boss.totalDamageDealt = 0;
-            }
-            
-            // If max HP increased (new sub-goals added), increase current HP proportionally
-            const oldMaxHP = boss.bossCurrentHP + (boss.totalDamageDealt || 0);
-            if (maxHP > oldMaxHP && oldMaxHP > 0) {
-                // New sub-goal added! Increase boss HP
-                const hpIncrease = maxHP - oldMaxHP;
-                boss.bossCurrentHP += hpIncrease;
-            }
-            
-            // Ensure HP stays within bounds
-            boss.bossCurrentHP = Math.max(0, Math.min(boss.bossCurrentHP, maxHP));
-            
-            const currentHP = Math.max(0, boss.bossCurrentHP);
-            const hpPercent = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
-            const completedChildren = children.filter(c => c.completed).length;
-            
-            // Determine boss phase
-            let phase = 'full';
-            let phaseText = 'Full Power';
-            let phaseColor = 'red';
-            if (hpPercent <= 25) {
-                phase = 'critical';
-                phaseText = 'CRITICAL!';
-                phaseColor = 'purple';
-            } else if (hpPercent <= 50) {
-                phase = 'wounded';
-                phaseText = 'Wounded';
-                phaseColor = 'orange';
-            } else if (hpPercent <= 75) {
-                phase = 'injured';
-                phaseText = 'Injured';
-                phaseColor = 'yellow';
-            }
-
-            const bossIcon = this.getBossIcon(boss);
-            
-            return `
-                <div class="boss-card bg-gradient-to-br from-${phaseColor}-950 via-red-950 to-stone-950 p-6 rounded-xl border-3 border-${phaseColor}-600 shadow-2xl relative overflow-hidden">
-                    <!-- Boss Aura Effect -->
-                    <div class="absolute inset-0 bg-gradient-to-t from-${phaseColor}-900/20 to-transparent animate-pulse"></div>
-                    
-                    <div class="relative z-10">
-                        <!-- Boss Header -->
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex items-center gap-4">
-                                <div class="text-6xl animate-bounce">${bossIcon}</div>
-                                <div>
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-xs bg-${phaseColor}-700 text-white px-2 py-1 rounded fancy-font">
-                                            ${isLife ? 'LEGENDARY BOSS' : 'ELITE BOSS'}
-                                        </span>
-                                        <span class="text-xs bg-red-700 text-white px-2 py-1 rounded fancy-font animate-pulse">
-                                            ${phaseText}
-                                        </span>
-                                    </div>
-                                    <h3 class="text-2xl font-bold text-amber-300 medieval-title">${boss.title}</h3>
-                                    <p class="text-sm text-${phaseColor}-200 fancy-font">Level ${isLife ? '99' : '50'} Boss</p>
-                                </div>
-                            </div>
-                            <button onclick="goalManager.toggleBossMode(${boss.id}, '${isLife ? 'life' : 'yearly'}')" 
-                                class="text-red-400 hover:text-red-200 text-xl" title="Remove boss status">
-                                <i class="ri-close-circle-line"></i>
-                            </button>
-                        </div>
-
-                        <!-- HP Bar -->
-                        <div class="mb-4">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm text-amber-200 font-bold fancy-font">HP</span>
-                                <span class="text-sm text-${phaseColor}-300 font-bold">${currentHP} / ${maxHP}</span>
-                            </div>
-                            <div class="relative w-full bg-stone-900 rounded-full h-8 border-2 border-${phaseColor}-700 overflow-hidden">
-                                <div class="absolute inset-0 bg-gradient-to-r from-${phaseColor}-900/50 to-transparent animate-pulse"></div>
-                                <div class="relative h-full bg-gradient-to-r from-${phaseColor}-600 to-${phaseColor}-400 transition-all duration-1000 flex items-center justify-center" 
-                                     style="width: ${hpPercent}%">
-                                    <span class="text-white font-bold text-sm drop-shadow-lg">${Math.round(hpPercent)}%</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Battle Progress -->
-                        <div class="bg-stone-900/60 rounded-lg p-4 border border-${phaseColor}-700/50">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm text-amber-300 font-bold fancy-font">
-                                    ⚔️ Battle Progress
-                                </span>
-                                <span class="text-${phaseColor}-300 font-bold">
-                                    ${completedChildren}/${children.length} defeated
-                                </span>
-                            </div>
-                            <div class="text-xs text-amber-200 mb-3">
-                                ${children.length - completedChildren} ${isLife ? 'yearly campaigns' : 'monthly raids'} remaining
-                                <div class="text-purple-300 mt-1">
-                                    💡 Boss dies when HP reaches 0 (even if not all quests done!)
-                                </div>
-                            </div>
-                            
-                            ${children.length > 0 ? `
-                                <div class="space-y-1 max-h-32 overflow-y-auto">
-                                    ${children.map(child => `
-                                        <div class="flex items-center gap-2 text-xs ${child.completed ? 'text-green-400' : 'text-amber-200'}">
-                                            ${child.completed ? '✓' : '○'} ${child.title}
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : `
-                                <p class="text-xs text-${phaseColor}-300 italic">
-                                    No sub-quests yet. Add some to deal damage!
-                                </p>
-                            `}
-                        </div>
-
-                        <!-- Damage Counter -->
-                        ${boss.totalDamageDealt > 0 ? `
-                            <div class="mt-4 text-center">
-                                <div class="text-3xl font-bold text-${phaseColor}-300 animate-pulse">
-                                    ${boss.totalDamageDealt} TOTAL DMG DEALT!
-                                </div>
-                                ${boss.totalDamageDealt > completedChildren * 100 ? `
-                                    <div class="text-xs text-amber-300 mt-1">
-                                        🔥 BONUS DAMAGE from spells! ${boss.totalDamageDealt - (completedChildren * 100)} extra!
-                                    </div>
-                                ` : ''}
-                            </div>
-                        ` : ''}
-
-                        <!-- Active Boss Spells -->
-                        ${this.renderBossSpellBuffs()}
-
-                        <!-- Execute Button (if boss is below 25% HP and spell is active) -->
-                        ${this.canExecuteBoss(boss, hpPercent) ? `
-                            <div class="mt-4">
-                                <button onclick="goalManager.executeBoss(${boss.id}, '${isLife ? 'life' : 'yearly'}')"
-                                    class="w-full bg-gradient-to-r from-red-600 to-purple-600 hover:from-red-500 hover:to-purple-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-xl transition-all hover:scale-105 border-2 border-red-400 animate-pulse">
-                                    💀 EXECUTE! Instant Kill!
-                                </button>
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
+        container.innerHTML = this.bossLog.map(entry => {
+            const timeAgo = this.getTimeAgo(entry.time);
+            return `<div class="text-sm text-amber-200/80 fancy-font flex justify-between"><span>${entry.message}</span><span class="text-amber-400/40 text-xs ml-2 shrink-0">${timeAgo}</span></div>`;
         }).join('');
-
-        container.innerHTML = html;
+    }
+    
+    getTimeAgo(timestamp) {
+        const mins = Math.floor((Date.now() - timestamp) / 60000);
+        if (mins < 1) return 'now';
+        if (mins < 60) return `${mins}m`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h`;
+        return `${Math.floor(hours / 24)}d`;
     }
 
     renderDefeatedBosses() {
         const container = document.getElementById('defeated-bosses-container');
         if (!container) return;
-
-        const defeatedBosses = [
-            ...this.lifeGoals.filter(g => g.isBoss && g.completed),
-            ...this.yearlyGoals.filter(g => g.isBoss && g.completed)
-        ];
-
-        if (defeatedBosses.length === 0) {
+        
+        if (this.defeatedBossList.length === 0) {
             container.innerHTML = `
                 <div class="col-span-3 text-center py-8 text-amber-200">
                     <div class="text-6xl mb-3 opacity-30">🏆</div>
@@ -9446,372 +9731,43 @@ class GoalManager {
             `;
             return;
         }
-
-        const html = defeatedBosses.map(boss => {
-            const isLife = this.lifeGoals.includes(boss);
-            const bossIcon = this.getBossIcon(boss);
-            const completedDate = boss.completed ? new Date(boss.completedAt || boss.created).toLocaleDateString() : '';
-
+        
+        container.innerHTML = this.defeatedBossList.map(boss => {
+            const date = new Date(boss.defeatedAt).toLocaleDateString();
+            const typeLabel = boss.type === 'daily' ? 'Daily' : 'Weekly';
             return `
-                <div class="bg-gradient-to-br from-green-900/40 to-stone-900/40 p-4 rounded-lg border-2 border-green-600/50 relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent"></div>
+                <div class="bg-gradient-to-br from-green-900/30 to-stone-900/30 p-4 rounded-lg border border-green-600/30 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-t from-green-500/5 to-transparent"></div>
                     <div class="relative z-10">
-                        <div class="text-4xl mb-2 grayscale opacity-75">${bossIcon}</div>
-                        <h4 class="text-lg font-bold text-green-300 medieval-title mb-1">${boss.title}</h4>
-                        <div class="text-xs text-green-200 mb-2">
-                            <span class="bg-green-700/50 px-2 py-1 rounded">${isLife ? 'LEGENDARY' : 'ELITE'}</span>
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-3xl grayscale opacity-60">${boss.icon}</span>
+                            <div>
+                                <h4 class="text-sm font-bold text-green-300 medieval-title">${boss.name}</h4>
+                                <span class="text-xs text-green-200/60 fancy-font">${typeLabel} Lv.${boss.level} (${boss.maxHP} HP)</span>
+                            </div>
                         </div>
-                        <div class="text-xs text-amber-300 fancy-font">
-                            ⚔️ Defeated: ${completedDate}
-                        </div>
-                        <div class="mt-2 text-center">
-                            <span class="text-2xl">🏆</span>
+                        <div class="flex justify-between text-xs text-amber-300/60 fancy-font">
+                            <span>+${boss.rewards.xp} XP, +${boss.rewards.gold} Gold</span>
+                            <span>${date}</span>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
-
-        container.innerHTML = html;
     }
 
-    renderBossConversionList() {
-        const container = document.getElementById('boss-conversion-list');
-        if (!container) return;
-
-        const eligibleGoals = [
-            ...this.lifeGoals.filter(g => !g.isBoss && !g.completed).map(g => ({ ...g, type: 'life', icon: '👑', label: 'Life Goal' })),
-            ...this.yearlyGoals.filter(g => !g.isBoss && !g.completed).map(g => ({ ...g, type: 'yearly', icon: '📅', label: 'Yearly Campaign' }))
-        ];
-
-        if (eligibleGoals.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-6 text-amber-300 fancy-font">
-                    No eligible goals. Create a Life Goal or Yearly Campaign first!
-                </div>
-            `;
-            return;
-        }
-
-        const html = eligibleGoals.map(goal => `
-            <div class="flex items-center justify-between bg-stone-900/60 p-3 rounded-lg border border-amber-700/30 hover:border-red-600 transition-all">
-                <div class="flex items-center gap-3">
-                    <span class="text-2xl">${goal.icon}</span>
-                    <div>
-                        <div class="font-bold text-amber-300">${goal.title}</div>
-                        <div class="text-xs text-amber-200 fancy-font">${goal.label}</div>
-                    </div>
-                </div>
-                <button onclick="goalManager.toggleBossMode(${goal.id}, '${goal.type}')" 
-                    class="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105">
-                    ⚔️ Make Boss
-                </button>
-            </div>
-        `).join('');
-
-        container.innerHTML = html;
-    }
-
-    toggleBossMode(goalId, goalType) {
-        let goal;
-        if (goalType === 'life') {
-            goal = this.lifeGoals.find(g => g.id === goalId);
-        } else if (goalType === 'yearly') {
-            goal = this.yearlyGoals.find(g => g.id === goalId);
-        }
-
-        if (!goal) return;
-
-        goal.isBoss = !goal.isBoss;
-
-        if (goal.isBoss) {
-            // Initialize boss damage tracking
-            goal.bossCurrentHP = null; // Will be calculated based on sub-goals
-            goal.totalDamageDealt = 0;
-            this.showAchievement(`⚔️ BOSS BATTLE INITIATED: ${goal.title}!`, 'life');
-            this.createConfetti();
-        } else {
-            // Clean up boss properties
-            delete goal.bossCurrentHP;
-            delete goal.totalDamageDealt;
-            this.showAchievement(`Normal quest restored: ${goal.title}`, 'daily');
-        }
-
-        this.saveData();
-        this.render();
-    }
+    // Legacy boss methods kept for backward compatibility with old save data
+    renderActiveBosses() {}
+    renderBossConversionList() {}
+    toggleBossMode() {}
+    dealBossDamage() {}
+    checkBossDefeat() {}
 
     getBossIcon(boss) {
-        const icons = ['🐉', '👹', '💀', '🦹', '👾', '🤖', '🐲', '🦖', '👿', '😈'];
-        // Generate consistent icon based on boss ID
-        const index = boss.id % icons.length;
-        return icons[index];
+        return boss.icon || '🐉';
     }
-
-    renderBossSpellBuffs() {
-        const bossSpells = this.activeSpells.filter(s => 
-            ['berserker_rage', 'critical_strike', 'boss_slayer', 'execute'].includes(s.spellId)
-        );
-
-        if (bossSpells.length === 0) return '';
-
-        const html = bossSpells.map(activeSpell => {
-            const spell = this.spellDefinitions[activeSpell.spellId];
-            if (!spell) return ''; // Skip if spell no longer exists
-            let timeText = '';
-            
-            if (activeSpell.expiresAt === -1) {
-                timeText = 'Ready!';
-            } else {
-                const timeRemaining = Math.max(0, activeSpell.expiresAt - Date.now());
-                const hours = Math.floor(timeRemaining / 3600000);
-                const minutes = Math.floor((timeRemaining % 3600000) / 60000);
-                timeText = `${hours}h ${minutes}m`;
-            }
-
-            return `
-                <div class="bg-purple-900/40 border border-purple-500 rounded px-2 py-1 text-xs">
-                    <span class="text-xl mr-1">${spell.icon}</span>
-                    <span class="text-purple-200 font-bold">${spell.name}</span>
-                    <span class="text-purple-300 ml-2">${timeText}</span>
-                </div>
-            `;
-        }).join('');
-
-        return `
-            <div class="mt-4">
-                <div class="text-xs text-purple-300 mb-2 font-bold">⚡ Active Buffs:</div>
-                <div class="flex flex-wrap gap-2">
-                    ${html}
-                </div>
-            </div>
-        `;
-    }
-
-    canExecuteBoss(boss, hpPercent) {
-        const executeSpell = this.activeSpells.find(s => s.spellId === 'execute');
-        return executeSpell && hpPercent <= 25 && !boss.completed;
-    }
-
-    executeBoss(bossId, bossType) {
-        let boss;
-        if (bossType === 'life') {
-            boss = this.lifeGoals.find(g => g.id === bossId);
-        } else if (bossType === 'yearly') {
-            boss = this.yearlyGoals.find(g => g.id === bossId);
-        }
-
-        if (!boss || !boss.isBoss) return;
-
-        // Consume Execute spell
-        this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'execute');
-
-        // Mark boss as defeated
-        boss.completed = true;
-        boss.completedAt = new Date().toISOString();
-
-        // Epic execution celebration
-        this.showAchievement('💀 EXECUTE! INSTANT KILL!', 'legendary');
-        this.createConfetti();
-        setTimeout(() => this.createConfetti(), 300);
-        setTimeout(() => this.createConfetti(), 600);
-
-        // Trigger boss defeat rewards
-        this.defeatBoss(boss);
-
-        this.saveData();
-        this.render();
-    }
-
-    dealBossDamage(completedGoal, goalType) {
-        // Find parent bosses
-        let parentBosses = [];
-        
-        if (goalType === 'monthly') {
-            // Check yearly bosses
-            const yearlyIds = completedGoal.yearlyGoalIds || (completedGoal.yearlyGoalId ? [completedGoal.yearlyGoalId] : []);
-            parentBosses = this.yearlyGoals.filter(y => y.isBoss && yearlyIds.includes(y.id) && !y.completed);
-        } else if (goalType === 'yearly') {
-            // Check life goal bosses
-            const lifeIds = completedGoal.lifeGoalIds || (completedGoal.lifeGoalId ? [completedGoal.lifeGoalId] : []);
-            parentBosses = this.lifeGoals.filter(l => l.isBoss && lifeIds.includes(l.id) && !l.completed);
-        }
-
-        if (parentBosses.length === 0) return;
-
-        // Calculate damage with spell bonuses
-        let baseDamage = 100;
-        let totalDamage = baseDamage;
-        let damageMessages = [];
-        let isCrit = false;
-
-        // Check for Wolf companion bonus (+20% attack damage)
-        const wolfBonus = this.getCompanionBonus('attack');
-        if (wolfBonus > 0) {
-            totalDamage *= (1 + wolfBonus);
-            damageMessages.push('🐺 WOLF PACK! +20% Damage!');
-        }
-
-        // Check for Boss Slayer Enchantment (+50% damage)
-        const enchantmentBonus = this.getEnchantmentMultiplier('boss_damage');
-        if (enchantmentBonus > 1) {
-            totalDamage *= enchantmentBonus;
-            damageMessages.push('⚔️ TITAN ENCHANTMENT! +50% Damage!');
-        }
-
-        // Check for Berserker Rage (double damage, one-time use)
-        const berserkerRage = this.activeSpells.find(s => s.spellId === 'berserker_rage');
-        if (berserkerRage) {
-            totalDamage *= 2;
-            damageMessages.push('⚔️ BERSERKER RAGE! x2 Damage!');
-            // Consume the spell
-            this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'berserker_rage');
-        }
-
-        // Check for Boss Slayer (+25% damage, duration-based)
-        const bossSlayer = this.activeSpells.find(s => s.spellId === 'boss_slayer');
-        if (bossSlayer && bossSlayer.expiresAt > Date.now()) {
-            totalDamage *= 1.25;
-            damageMessages.push('🗡️ BOSS SLAYER! +25% Damage!');
-        }
-
-        // Check for Critical Strike (50% chance for +50% damage)
-        const criticalStrike = this.activeSpells.find(s => s.spellId === 'critical_strike');
-        if (criticalStrike && criticalStrike.expiresAt > Date.now()) {
-            if (Math.random() < 0.5) {
-                totalDamage *= 1.5;
-                isCrit = true;
-                damageMessages.push('💥 CRITICAL STRIKE! +50% Damage!');
-            }
-        }
-
-        totalDamage = Math.round(totalDamage);
-
-        // Apply damage to all parent bosses
-        parentBosses.forEach(boss => {
-            // Initialize HP tracking if needed
-            const isLife = this.lifeGoals.includes(boss);
-            const children = isLife 
-                ? this.yearlyGoals.filter(y => {
-                    const ids = y.lifeGoalIds || (y.lifeGoalId ? [y.lifeGoalId] : []);
-                    return ids.includes(boss.id);
-                })
-                : this.monthlyGoals.filter(m => {
-                    const ids = m.yearlyGoalIds || (m.yearlyGoalId ? [m.yearlyGoalId] : []);
-                    return ids.includes(boss.id);
-                });
-            
-            const maxHP = children.length * 100;
-            
-            if (boss.bossCurrentHP === null || boss.bossCurrentHP === undefined) {
-                boss.bossCurrentHP = maxHP;
-                boss.totalDamageDealt = 0;
-            }
-            
-            // Deal damage
-            boss.bossCurrentHP = Math.max(0, boss.bossCurrentHP - totalDamage);
-            boss.totalDamageDealt = (boss.totalDamageDealt || 0) + totalDamage;
-            
-            // Play boss damage sound
-            if (window.audioManager) {
-                window.audioManager.playBossDamage();
-            }
-            
-            const bossIcon = this.getBossIcon(boss);
-            let message = `${bossIcon} BOSS HIT! ${totalDamage} DMG dealt to ${boss.title}!`;
-            if (isCrit) message = '💥 ' + message;
-            
-            this.showAchievement(message, 'life', false);
-            
-            if (damageMessages.length > 0) {
-                setTimeout(() => {
-                    damageMessages.forEach(msg => {
-                        this.showAchievement(msg, 'epic', false);
-                    });
-                }, 500);
-            }
-            
-            // Check if boss is defeated by damage
-            if (boss.bossCurrentHP <= 0 && !boss.completed) {
-                setTimeout(() => {
-                    boss.completed = true;
-                    boss.completedAt = new Date().toISOString();
-                    this.showAchievement(`💀 ${boss.title} HP DEPLETED! Boss defeated by pure damage!`, 'legendary', false);
-                    this.defeatBoss(boss);
-                    this.saveData();
-                    this.render();
-                }, 1000);
-            }
-        });
-    }
-
-    checkBossDefeat(goal) {
-        if (!goal || !goal.isBoss || goal.completed) return;
-
-        const isLife = this.lifeGoals.includes(goal);
-        const children = isLife 
-            ? this.yearlyGoals.filter(y => {
-                // Check both array format (lifeGoalIds) and old single format (lifeGoalId)
-                const ids = y.lifeGoalIds || (y.lifeGoalId ? [y.lifeGoalId] : []);
-                return ids.includes(goal.id);
-            })
-            : this.monthlyGoals.filter(m => {
-                // Check both array format (yearlyGoalIds) and old single format (yearlyGoalId)
-                const ids = m.yearlyGoalIds || (m.yearlyGoalId ? [m.yearlyGoalId] : []);
-                return ids.includes(goal.id);
-            });
-
-        const allChildrenCompleted = children.length > 0 && children.every(c => c.completed);
-
-        if (allChildrenCompleted) {
-            // Boss defeated!
-            goal.completed = true;
-            goal.completedAt = new Date().toISOString();
-            this.defeatBoss(goal);
-        }
-    }
-
-    defeatBoss(boss) {
-        const isLife = this.lifeGoals.includes(boss);
-        this.bossesDefeated++; // Track for titles
-        
-        // Play boss defeated sound
-        if (window.audioManager) {
-            window.audioManager.playBossDefeated();
-        }
-
-        // Legendary rewards
-        const xpReward = isLife ? 5000 : 2000;
-        const goldReward = isLife ? 10000 : 5000;
-        
-        // Suppress sub-reward sounds during boss defeat
-        this._suppressRewardSounds = true;
-        this.addXP(xpReward, 'boss');
-        this.addGold(goldReward, 'boss');
-
-        // Special loot
-        const legendarySpells = ['moonlight_blessing', 'double_xp_weekend', 'time_freeze', 'berserker_rage'];
-        const randomSpell = legendarySpells[Math.floor(Math.random() * legendarySpells.length)];
-        this.addSpellToBook(randomSpell, 3);
-        this._suppressRewardSounds = false;
-
-        // Epic celebration animation!
-        const bossIcon = this.getBossIcon(boss);
-        const spellDef = this.spellDefinitions[randomSpell];
-        this.celebrateBossDefeat(boss, bossIcon, xpReward, goldReward, spellDef);
-
-        // Unlock badge
-        this.unlockBadge(
-            'boss_slayer_' + boss.id,
-            'Boss Slayer',
-            `Defeated ${boss.title}`,
-            '⚔️'
-        );
-
-        this.saveData();
-        this.render();
-    }
-
+    
+    // Old boss system code removed - new system uses renderBossArena/renderBossCard above
     celebrateBossDefeat(boss, bossIcon, xpReward, goldReward, spellDef) {
         // 1. Screen shake
         document.body.classList.add('boss-defeat-shake');
@@ -11997,7 +11953,7 @@ class GoalManager {
         },
         {
             title: "Boss Battles 💀",
-            content: "Epic challenges! Turn your life goals into boss fights. Deal damage by completing sub-goals and defeat them for legendary rewards!",
+            content: "Face daily and weekly bosses! Complete tasks, habits, and goals to earn Attack Charges, then spend them to deal damage. Defeat bosses before they expire for XP, gold, spell scrolls, and streak bonuses! Use spells like Berserker Rage or Execute for devastating effects.",
             element: "a[href='#bossbattles'].nav-link",
             action: () => this.switchView('bossbattles')
         },
