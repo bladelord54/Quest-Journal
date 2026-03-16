@@ -371,33 +371,33 @@ body[class*="theme-"] h3[class*="text-yellow"] {
 }
 
 /* Light background overrides (task items, light cards, etc.) */
-body[class*="theme-"] [class*="bg-amber-50"],
-body[class*="theme-"] [class*="bg-amber-100"],
-body[class*="theme-"] [class*="bg-stone-100"],
-body[class*="theme-"] [class*="bg-stone-200"],
-body[class*="theme-"] [class*="bg-gray-100"],
-body[class*="theme-"] [class*="bg-gray-200"],
-body[class*="theme-"] [class*="bg-slate-100"],
-body[class*="theme-"] [class*="bg-slate-200"],
-body[class*="theme-"] [class*="bg-white"] {
+body[class*="theme-"] .bg-amber-50,
+body[class*="theme-"] .bg-amber-100,
+body[class*="theme-"] .bg-stone-100,
+body[class*="theme-"] .bg-stone-200,
+body[class*="theme-"] .bg-gray-100,
+body[class*="theme-"] .bg-gray-200,
+body[class*="theme-"] .bg-slate-100,
+body[class*="theme-"] .bg-slate-200,
+body[class*="theme-"] .bg-white {
     background-color: var(--theme-card-from) !important;
 }
 
-body[class*="theme-"] [class*="hover\:bg-amber-100"]:hover,
-body[class*="theme-"] [class*="hover\:bg-amber-50"]:hover {
+body[class*="theme-"] .hover\:bg-amber-100:hover,
+body[class*="theme-"] .hover\:bg-amber-50:hover {
     background-color: var(--theme-primary-light) !important;
 }
 
 /* Light text that should adapt to themed backgrounds */
-body[class*="theme-"] .task-item [class*="text-amber-900"],
-body[class*="theme-"] .task-item [class*="text-stone-900"],
-body[class*="theme-"] .task-item [class*="text-gray-900"] {
+body[class*="theme-"] .task-item .text-amber-900,
+body[class*="theme-"] .task-item .text-stone-900,
+body[class*="theme-"] .task-item .text-gray-900 {
     color: var(--theme-text) !important;
 }
 
 /* Light border overrides on task items */
-body[class*="theme-"] [class*="border-amber-300"],
-body[class*="theme-"] [class*="border-amber-200"] {
+body[class*="theme-"] .border-amber-300,
+body[class*="theme-"] .border-amber-200 {
     border-color: var(--theme-border) !important;
 }
 

@@ -7003,12 +7003,12 @@ class GoalManager {
             `;
         } else {
             todayTasksList.innerHTML = todaysTasks.map(task => `
-                <div class="flex items-center p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-all border-2 border-amber-300 task-item">
+                <div class="flex items-center p-4 quest-card bg-gradient-to-br from-amber-900/60 to-stone-900/80 rounded-lg hover:from-amber-800/70 hover:to-stone-800/80 transition-all border-2 border-amber-700/50 task-item">
                     <input 
                         type="checkbox" 
                         ${task.completed ? 'checked' : ''} 
                         onchange="goalManager.toggleTask(${task.id}, event)">
-                    <span class="ml-4 flex-1 fancy-font font-semibold text-lg ${task.completed ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${task.title}</span>
+                    <span class="ml-4 flex-1 fancy-font font-semibold text-lg ${task.completed ? 'line-through text-amber-600 opacity-60' : 'text-amber-100'}">${task.title}</span>
                     <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
                         <i class="ri-delete-bin-line"></i>
                     </button>
