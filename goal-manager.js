@@ -12107,7 +12107,7 @@ class GoalManager {
                             const rect = targetElement.getBoundingClientRect();
                             spotlight.style.display = 'block';
                             spotlight.style.top = `${rect.top - 20}px`;
-                            spotlight.style.left = `${rect.left - 14}px`;
+                            spotlight.style.left = `${rect.left - 22}px`;
                             spotlight.style.width = `${rect.width + 16}px`;
                             spotlight.style.height = `${rect.height + 16}px`;
                             
