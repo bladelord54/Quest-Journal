@@ -97,6 +97,71 @@ class AudioManager {
         this.play('boss-damage', 0.4);
     }
 
+    // Play synthesized slash/swoosh sound (sword swing)
+    playSlash(isCrit = false) {
+        if (!this.enabled) return;
+        
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const vol = ctx.createGain();
+            vol.connect(ctx.destination);
+            vol.gain.setValueAtTime(this.volume * 0.5, ctx.currentTime);
+            
+            // Noise burst for the "whoosh" of the swing
+            const bufferSize = ctx.sampleRate * 0.15;
+            const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const noiseData = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                noiseData[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            }
+            
+            const noise = ctx.createBufferSource();
+            noise.buffer = noiseBuffer;
+            
+            // Bandpass filter for metallic swoosh character
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(isCrit ? 3000 : 2200, ctx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.12);
+            filter.Q.value = isCrit ? 3 : 2;
+            
+            // Envelope - quick attack, fast decay
+            const envelope = ctx.createGain();
+            envelope.gain.setValueAtTime(0, ctx.currentTime);
+            envelope.gain.linearRampToValueAtTime(isCrit ? 1.0 : 0.8, ctx.currentTime + 0.01);
+            envelope.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (isCrit ? 0.18 : 0.12));
+            
+            noise.connect(filter);
+            filter.connect(envelope);
+            envelope.connect(vol);
+            
+            // Metallic ring overtone for blade impact
+            const ring = ctx.createOscillator();
+            ring.type = 'sine';
+            ring.frequency.setValueAtTime(isCrit ? 1800 : 1400, ctx.currentTime);
+            ring.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.08);
+            
+            const ringEnv = ctx.createGain();
+            ringEnv.gain.setValueAtTime(0, ctx.currentTime);
+            ringEnv.gain.linearRampToValueAtTime(isCrit ? 0.25 : 0.15, ctx.currentTime + 0.005);
+            ringEnv.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+            
+            ring.connect(ringEnv);
+            ringEnv.connect(vol);
+            
+            noise.start(ctx.currentTime);
+            ring.start(ctx.currentTime);
+            noise.stop(ctx.currentTime + 0.2);
+            ring.stop(ctx.currentTime + 0.15);
+            
+            // Cleanup
+            setTimeout(() => ctx.close().catch(() => {}), 500);
+        } catch (e) {
+            // Fallback to boss-damage file sound
+            this.play('boss-damage', 0.4);
+        }
+    }
+
     // Play boss defeated sound
     playBossDefeated() {
         this.play('boss-defeated');

@@ -662,8 +662,8 @@ class GoalManager {
         boss.currentHP = Math.max(0, boss.currentHP - damage);
         boss.totalDamage += damage;
         
-        // Play sound
-        if (window.audioManager) window.audioManager.playBossDamage();
+        // Play slash sound
+        if (window.audioManager) window.audioManager.playSlash(isCrit);
         
         // Log
         const dmgText = isCrit ? `💥 CRIT! ${damage} DMG` : `⚔️ ${damage} DMG`;
@@ -685,18 +685,41 @@ class GoalManager {
     animateBossHit(bossType, damage, isCrit) {
         const bossCard = document.getElementById(`boss-card-${bossType}`);
         if (!bossCard) return;
-        
-        // Screen shake on the card
-        bossCard.classList.add('boss-hit-shake');
-        setTimeout(() => bossCard.classList.remove('boss-hit-shake'), 400);
-        
-        // Floating damage number
-        const dmgEl = document.createElement('div');
-        dmgEl.className = `boss-damage-float ${isCrit ? 'crit' : ''}`;
-        dmgEl.textContent = isCrit ? `💥 ${damage}` : `-${damage}`;
         bossCard.style.position = 'relative';
-        bossCard.appendChild(dmgEl);
-        setTimeout(() => dmgEl.remove(), 1200);
+        
+        // Slash visual overlay
+        const slashOverlay = document.createElement('div');
+        slashOverlay.className = 'boss-slash-overlay';
+        
+        const slashMark = document.createElement('div');
+        slashMark.className = `boss-slash-mark ${isCrit ? 'crit' : ''}`;
+        
+        const slashTrail = document.createElement('div');
+        slashTrail.className = 'boss-slash-trail';
+        
+        const slashFlash = document.createElement('div');
+        slashFlash.className = 'boss-slash-flash';
+        
+        slashOverlay.appendChild(slashTrail);
+        slashOverlay.appendChild(slashMark);
+        slashOverlay.appendChild(slashFlash);
+        bossCard.appendChild(slashOverlay);
+        setTimeout(() => slashOverlay.remove(), 500);
+        
+        // Screen shake on the card (slight delay so slash lands first)
+        setTimeout(() => {
+            bossCard.classList.add('boss-hit-shake');
+            setTimeout(() => bossCard.classList.remove('boss-hit-shake'), 400);
+        }, 80);
+        
+        // Floating damage number (appears after slash connects)
+        setTimeout(() => {
+            const dmgEl = document.createElement('div');
+            dmgEl.className = `boss-damage-float ${isCrit ? 'crit' : ''}`;
+            dmgEl.textContent = isCrit ? `💥 ${damage}` : `-${damage}`;
+            bossCard.appendChild(dmgEl);
+            setTimeout(() => dmgEl.remove(), 1200);
+        }, 120);
     }
     
     onBossDefeated(bossType) {
