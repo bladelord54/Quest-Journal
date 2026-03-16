@@ -1,5 +1,5 @@
-const CACHE_NAME = 'life-quest-journal-v220';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v220';
+const CACHE_NAME = 'life-quest-journal-v221';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v221';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
   './',

@@ -11335,7 +11335,8 @@ class GoalManager {
         
         const modal = document.createElement('div');
         modal.id = 'custom-confirm-modal';
-        modal.className = 'fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4';
+        modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center p-4';
+        modal.style.zIndex = '99999';
         
         // Support multi-line messages (convert \n to <br>)
         const formattedMsg = message.replace(/\n/g, '<br>');
