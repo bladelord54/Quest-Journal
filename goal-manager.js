@@ -12036,8 +12036,8 @@ class GoalManager {
                         setTimeout(() => {
                             const rect = targetElement.getBoundingClientRect();
                             spotlight.style.display = 'block';
-                            spotlight.style.top = `${rect.top - 8}px`;
-                            spotlight.style.left = `${rect.left - 8}px`;
+                            spotlight.style.top = `${rect.top - 14}px`;
+                            spotlight.style.left = `${rect.left - 2}px`;
                             spotlight.style.width = `${rect.width + 16}px`;
                             spotlight.style.height = `${rect.height + 16}px`;
                             
@@ -12061,7 +12061,7 @@ class GoalManager {
         
         if (isInBottomNav) {
             // Target is in the bottom nav bar - center tooltip in top half of screen
-            tooltip.style.left = '50%';
+            tooltip.style.left = 'calc(50% + 8px)';
             tooltip.style.top = '40%';
             tooltip.style.transform = 'translate(-50%, -50%)';
             return;
@@ -12078,12 +12078,12 @@ class GoalManager {
         } else if (spaceBelow > tooltipHeight + 30) {
             // Position below
             tooltip.style.top = `${targetRect.bottom + 20}px`;
-            tooltip.style.left = '50%';
+            tooltip.style.left = 'calc(50% + 8px)';
             tooltip.style.transform = 'translateX(-50%)';
         } else if (spaceAbove > tooltipHeight + 30) {
             // Position above
             tooltip.style.top = `${targetRect.top - tooltipHeight - 20}px`;
-            tooltip.style.left = '50%';
+            tooltip.style.left = 'calc(50% + 8px)';
             tooltip.style.transform = 'translateX(-50%)';
         } else {
             // Default: center it
@@ -12093,7 +12093,7 @@ class GoalManager {
 
     centerTooltip(tooltip) {
         tooltip.style.top = '50%';
-        tooltip.style.left = '50%';
+        tooltip.style.left = 'calc(50% + 8px)';
         tooltip.style.transform = 'translate(-50%, -50%)';
     }
 
