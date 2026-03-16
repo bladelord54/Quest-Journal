@@ -170,9 +170,9 @@ body.theme-shadow {
     --theme-bg-start: #1f2937;
     --theme-bg-mid: #111827;
     --theme-bg-end: #030712;
-    --theme-card-from: #374151;
-    --theme-card-to: #111827;
-    --theme-border: #4b5563;
+    --theme-card-from: #1f2937;
+    --theme-card-to: #0f1623;
+    --theme-border: #374151;
     --theme-text: #e5e7eb;
     --theme-text-muted: #9ca3af;
     /* Shadow: Dark mist and void wisps */
@@ -368,6 +368,37 @@ body[class*="theme-"] h3[class*="text-amber"],
 body[class*="theme-"] h2[class*="text-yellow"],
 body[class*="theme-"] h3[class*="text-yellow"] {
     color: var(--theme-accent) !important;
+}
+
+/* Light background overrides (task items, light cards, etc.) */
+body[class*="theme-"] [class*="bg-amber-50"],
+body[class*="theme-"] [class*="bg-amber-100"],
+body[class*="theme-"] [class*="bg-stone-100"],
+body[class*="theme-"] [class*="bg-stone-200"],
+body[class*="theme-"] [class*="bg-gray-100"],
+body[class*="theme-"] [class*="bg-gray-200"],
+body[class*="theme-"] [class*="bg-slate-100"],
+body[class*="theme-"] [class*="bg-slate-200"],
+body[class*="theme-"] [class*="bg-white"] {
+    background-color: var(--theme-card-from) !important;
+}
+
+body[class*="theme-"] [class*="hover\:bg-amber-100"]:hover,
+body[class*="theme-"] [class*="hover\:bg-amber-50"]:hover {
+    background-color: var(--theme-primary-light) !important;
+}
+
+/* Light text that should adapt to themed backgrounds */
+body[class*="theme-"] .task-item [class*="text-amber-900"],
+body[class*="theme-"] .task-item [class*="text-stone-900"],
+body[class*="theme-"] .task-item [class*="text-gray-900"] {
+    color: var(--theme-text) !important;
+}
+
+/* Light border overrides on task items */
+body[class*="theme-"] [class*="border-amber-300"],
+body[class*="theme-"] [class*="border-amber-200"] {
+    border-color: var(--theme-border) !important;
 }
 
 /* Theme selector styling */
