@@ -672,6 +672,10 @@ class GoalManager {
         // Animate the hit
         this.animateBossHit(bossType, damage, isCrit);
         
+        // Update HP bar immediately without full re-render (which would wipe animation)
+        this.updateBossHPBar(bossType, boss);
+        this.renderBossLog();
+        
         // Check defeat
         if (boss.currentHP <= 0) {
             boss.defeated = true;
@@ -679,7 +683,9 @@ class GoalManager {
         }
         
         this.saveData();
-        this.renderBossBattles();
+        
+        // Full re-render after animation completes
+        setTimeout(() => this.renderBossBattles(), 1300);
     }
     
     animateBossHit(bossType, damage, isCrit) {
@@ -720,6 +726,46 @@ class GoalManager {
             bossCard.appendChild(dmgEl);
             setTimeout(() => dmgEl.remove(), 1200);
         }, 120);
+    }
+    
+    updateBossHPBar(bossType, boss) {
+        const bossCard = document.getElementById(`boss-card-${bossType}`);
+        if (!bossCard) return;
+        
+        const hpPercent = boss.maxHP > 0 ? (boss.currentHP / boss.maxHP) * 100 : 0;
+        
+        // Update the HP bar fill width
+        const hpBarFill = bossCard.querySelector('.h-full.bg-gradient-to-r');
+        if (hpBarFill) {
+            hpBarFill.style.width = `${hpPercent}%`;
+            // Update percentage text inside bar
+            const percentLabel = hpBarFill.querySelector('span');
+            if (percentLabel) {
+                percentLabel.textContent = `${Math.round(hpPercent)}%`;
+            }
+        }
+        
+        // Update the HP text (e.g., "8 / 14")
+        const hpTexts = bossCard.querySelectorAll('.font-bold');
+        hpTexts.forEach(el => {
+            if (el.textContent.includes('/') && el.textContent.includes(boss.maxHP.toString())) {
+                el.textContent = `${boss.currentHP} / ${boss.maxHP}`;
+            }
+        });
+        
+        // Update total damage text
+        if (boss.totalDamage > 0) {
+            const dmgText = bossCard.querySelector('.text-amber-300.mb-3');
+            if (dmgText) dmgText.textContent = `${boss.totalDamage} total damage dealt`;
+        }
+        
+        // Update attack charges on button
+        const attackBtn = bossCard.querySelector('button[onclick*="attackBoss"]');
+        if (attackBtn) {
+            const chargesText = this.attackCharges > 0 ? ` (${this.attackCharges})` : '';
+            attackBtn.innerHTML = `<i class="ri-sword-fill mr-2"></i>ATTACK!${chargesText}`;
+            attackBtn.disabled = this.attackCharges <= 0;
+        }
     }
     
     onBossDefeated(bossType) {
