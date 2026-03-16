@@ -8,7 +8,8 @@
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="Transform your life goals into epic quests. Track habits, earn rewards, and level up your life!">
-    <meta name="theme-color" content="#78350f">
+    <meta name="theme-color" content="#1c1917">
+    <meta name="color-scheme" content="dark">
     <link rel="manifest" href="manifest.json">
     
     <!-- Apple Touch Icons -->
@@ -26,7 +27,7 @@
     <link rel="stylesheet" href="mobile.css">
     <link rel="stylesheet" href="themes.css">
 </head>
-<body class="bg-stone-900">
+<body class="bg-stone-900" style="color-scheme: dark;">
     <!-- Theme Particle Container -->
     <div id="theme-particles"></div>
     
@@ -932,7 +933,7 @@
                     <h2 class="text-3xl md:text-4xl font-bold text-red-300 medieval-title mb-2"><i class="ri-skull-2-line text-red-400 mr-2"></i>Boss Battles</h2>
                     <p class="text-amber-200 fancy-font text-base md:text-lg mb-3">Complete tasks to earn attacks, then slay your foes!</p>
                     <!-- Attack Charges Display -->
-                    <div id="attack-charges-bar" class="inline-flex items-center gap-3 bg-gradient-to-r from-red-900/60 to-amber-900/60 px-6 py-3 rounded-xl border-2 border-amber-600/50">
+                    <div id="attack-charges-bar" class="inline-flex items-center gap-3 bg-gradient-to-r from-red-950/80 to-stone-900/80 px-6 py-3 rounded-xl border-2 border-red-700/50">
                         <i class="ri-sword-fill text-2xl text-amber-400"></i>
                         <span class="text-amber-200 fancy-font text-lg">Attacks Available:</span>
                         <span id="attack-charges-display" class="text-3xl font-bold text-amber-300 medieval-title transition-transform">0</span>
@@ -1314,7 +1315,7 @@
                     </div>
 
                     <!-- Task Reminders -->
-                    <div class="quest-card bg-gradient-to-br from-amber-800 to-amber-900 p-6 rounded-xl shadow-2xl border-4 border-amber-600">
+                    <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-6 rounded-xl shadow-2xl border-4 border-amber-700/50">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
                             <i class="ri-notification-3-line mr-2"></i> Task Reminders
                         </h3>
@@ -1546,12 +1547,12 @@
                 </header>
 
                 <!-- Calendar Controls -->
-                <div class="quest-card bg-gradient-to-br from-amber-100 to-yellow-50 rounded-xl shadow-2xl p-6 border-4 border-amber-600 mb-6">
+                <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl p-6 border-4 border-amber-700/50 mb-6">
                     <div class="flex justify-between items-center mb-6">
                         <button onclick="goalManager.previousMonth()" class="bg-amber-700 hover:bg-amber-800 text-white p-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105">
                             <i class="ri-arrow-left-line text-2xl"></i>
                         </button>
-                        <h3 id="calendar-month-year" class="text-3xl font-bold text-amber-900 medieval-title"></h3>
+                        <h3 id="calendar-month-year" class="text-3xl font-bold text-amber-300 medieval-title"></h3>
                         <button onclick="goalManager.nextMonth()" class="bg-amber-700 hover:bg-amber-800 text-white p-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105">
                             <i class="ri-arrow-right-line text-2xl"></i>
                         </button>
@@ -1560,13 +1561,13 @@
                     <!-- Calendar Grid -->
                     <div class="grid grid-cols-7 gap-2">
                         <!-- Day Headers -->
-                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Sun</div>
-                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Mon</div>
-                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Tue</div>
-                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Wed</div>
-                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Thu</div>
-                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Fri</div>
-                        <div class="text-center font-bold text-amber-900 p-2 fancy-font">Sat</div>
+                        <div class="text-center font-bold text-amber-300 p-2 fancy-font">Sun</div>
+                        <div class="text-center font-bold text-amber-300 p-2 fancy-font">Mon</div>
+                        <div class="text-center font-bold text-amber-300 p-2 fancy-font">Tue</div>
+                        <div class="text-center font-bold text-amber-300 p-2 fancy-font">Wed</div>
+                        <div class="text-center font-bold text-amber-300 p-2 fancy-font">Thu</div>
+                        <div class="text-center font-bold text-amber-300 p-2 fancy-font">Fri</div>
+                        <div class="text-center font-bold text-amber-300 p-2 fancy-font">Sat</div>
                         
                         <!-- Calendar Days -->
                         <div id="calendar-days" class="col-span-7 grid grid-cols-7 gap-2"></div>
