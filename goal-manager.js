@@ -5971,13 +5971,13 @@ class GoalManager {
     // Premium themes: all others require premium
     themeDefinitions = {
         default: { name: 'Medieval Kingdom', icon: '🏰', color: '#b45309', unlockLevel: 0, premium: false },
-        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 5, premium: false },
-        desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10, premium: true },
-        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15, premium: true },
-        volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20, premium: true },
-        mystic: { name: 'Mystic Realm', icon: '✨', color: '#7c3aed', unlockLevel: 25, premium: true },
-        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: '100 completed', premium: true },
-        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: '5 life goals', premium: true }
+        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 5, premium: false, cardFrom: '#033026', cardTo: '#011812', border: '#059669' },
+        desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10, premium: true, cardFrom: '#431407', cardTo: '#1f0a04', border: '#ea580c' },
+        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15, premium: true, cardFrom: '#082f49', cardTo: '#041726', border: '#0ea5e9' },
+        volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20, premium: true, cardFrom: '#450a0a', cardTo: '#1f0505', border: '#ef4444' },
+        mystic: { name: 'Mystic Realm', icon: '✨', color: '#7c3aed', unlockLevel: 25, premium: true, cardFrom: '#2e1065', cardTo: '#140830', border: '#8b5cf6' },
+        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: '100 completed', premium: true, cardFrom: '#402804', cardTo: '#1f0f03', border: '#eab308' },
+        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: '5 life goals', premium: true, cardFrom: '#1f2937', cardTo: '#0f1623', border: '#374151' }
     };
 
     applyColorTheme() {
@@ -6003,7 +6003,8 @@ class GoalManager {
     }
 
     applyThemeToCards() {
-        const isThemed = this.currentTheme && this.currentTheme !== 'default';
+        const themeDef = this.themeDefinitions[this.currentTheme];
+        const isThemed = this.currentTheme && this.currentTheme !== 'default' && themeDef && themeDef.cardFrom;
         const cards = document.querySelectorAll('.quest-card');
         
         if (!isThemed) {
@@ -6016,19 +6017,13 @@ class GoalManager {
             return;
         }
         
-        // Read computed theme variables from the body
-        const styles = getComputedStyle(document.body);
-        const cardFrom = styles.getPropertyValue('--theme-card-from').trim();
-        const cardTo = styles.getPropertyValue('--theme-card-to').trim();
-        const border = styles.getPropertyValue('--theme-border').trim();
-        
-        if (!cardFrom || !cardTo) return;
-        
-        const bg = `linear-gradient(to bottom right, ${cardFrom}, ${cardTo})`;
+        // Use hardcoded theme colors from themeDefinitions (no CSS dependency)
+        const bg = `linear-gradient(to bottom right, ${themeDef.cardFrom}, ${themeDef.cardTo})`;
         
         cards.forEach(card => {
-            card.style.background = bg;
-            card.style.borderColor = border;
+            card.style.setProperty('background', bg, 'important');
+            card.style.setProperty('background-image', bg, 'important');
+            card.style.setProperty('border-color', themeDef.border, 'important');
         });
     }
     
