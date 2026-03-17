@@ -1533,6 +1533,7 @@ class GoalManager {
         if (tabRenderMap[tabName]) {
             tabRenderMap[tabName]();
         }
+        this.applyThemeToCards();
     }
 
     updateGoalTabCounts() {
@@ -1586,6 +1587,7 @@ class GoalManager {
         if (tabRenderMap[tabName]) {
             tabRenderMap[tabName]();
         }
+        this.applyThemeToCards();
     }
 
     updateDailyTabCounts() {
@@ -1631,6 +1633,7 @@ class GoalManager {
         
         // Always update the active buffs summary
         this.renderActiveBuffsSummary();
+        this.applyThemeToCards();
     }
 
     renderActiveBuffsSummary() {
@@ -2397,6 +2400,7 @@ class GoalManager {
         }
         
         this.renderSideQuests();
+        this.applyThemeToCards();
     }
 
     // Checklist System for Tasks
@@ -8447,11 +8451,13 @@ class GoalManager {
     previousMonth() {
         this.currentCalendarDate.setMonth(this.currentCalendarDate.getMonth() - 1);
         this.renderCalendar();
+        this.applyThemeToCards();
     }
 
     nextMonth() {
         this.currentCalendarDate.setMonth(this.currentCalendarDate.getMonth() + 1);
         this.renderCalendar();
+        this.applyThemeToCards();
     }
 
     selectDate(dateString) {
@@ -8466,6 +8472,7 @@ class GoalManager {
         if (selectedDay) {
             selectedDay.classList.add('selected');
         }
+        this.applyThemeToCards();
     }
 
     renderCalendar() {
