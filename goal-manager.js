@@ -4600,6 +4600,9 @@ class GoalManager {
                 viewRenderMap[activeView]();
             }
             
+            // Apply theme inline styles to any newly rendered quest-cards
+            this.applyThemeToCards();
+            
         } finally {
             this.isRendering = false;
         }
@@ -5989,11 +5992,44 @@ class GoalManager {
             body.classList.add(`theme-${this.currentTheme}`);
         }
         
+        // Force theme card colors via inline styles (Tailwind CDN overrides CSS !important)
+        this.applyThemeToCards();
+        
         // Update theme particles
         this.initThemeParticles();
         
         // Update theme video background
         this.updateThemeVideoBackground();
+    }
+
+    applyThemeToCards() {
+        const isThemed = this.currentTheme && this.currentTheme !== 'default';
+        const cards = document.querySelectorAll('.quest-card');
+        
+        if (!isThemed) {
+            // Remove inline styles for default theme
+            cards.forEach(card => {
+                card.style.removeProperty('background');
+                card.style.removeProperty('background-image');
+                card.style.removeProperty('border-color');
+            });
+            return;
+        }
+        
+        // Read computed theme variables from the body
+        const styles = getComputedStyle(document.body);
+        const cardFrom = styles.getPropertyValue('--theme-card-from').trim();
+        const cardTo = styles.getPropertyValue('--theme-card-to').trim();
+        const border = styles.getPropertyValue('--theme-border').trim();
+        
+        if (!cardFrom || !cardTo) return;
+        
+        const bg = `linear-gradient(to bottom right, ${cardFrom}, ${cardTo})`;
+        
+        cards.forEach(card => {
+            card.style.background = bg;
+            card.style.borderColor = border;
+        });
     }
     
     updateThemeVideoBackground() {
@@ -9637,6 +9673,7 @@ class GoalManager {
         this.renderBossArena();
         this.renderBossLog();
         this.renderDefeatedBosses();
+        this.applyThemeToCards();
     }
 
     renderBossArena() {
