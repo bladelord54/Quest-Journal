@@ -216,6 +216,7 @@ body[class*="theme-"] .quest-card,
 body[class*="theme-"] [class*="bg-gradient-to-br"][class*="from-amber"],
 body[class*="theme-"] [class*="bg-gradient-to-br"][class*="from-yellow"] {
     background: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
+    background-image: linear-gradient(to bottom right, var(--theme-card-from), var(--theme-card-to)) !important;
     border-color: var(--theme-border) !important;
 }
 
@@ -259,14 +260,14 @@ body[class*="theme-"] [class*="hover:bg-yellow"]:hover {
     background-color: var(--theme-primary-light) !important;
 }
 
-/* Gradient buttons */
-body[class*="theme-"] [class*="from-amber"],
-body[class*="theme-"] [class*="from-yellow"] {
+/* Gradient buttons - exclude quest-card panels */
+body[class*="theme-"] [class*="from-amber"]:not(.quest-card),
+body[class*="theme-"] [class*="from-yellow"]:not(.quest-card) {
     --tw-gradient-from: var(--theme-primary) !important;
 }
 
-body[class*="theme-"] [class*="to-amber"],
-body[class*="theme-"] [class*="to-yellow"] {
+body[class*="theme-"] [class*="to-amber"]:not(.quest-card),
+body[class*="theme-"] [class*="to-yellow"]:not(.quest-card) {
     --tw-gradient-to: var(--theme-primary-dark) !important;
 }
 
