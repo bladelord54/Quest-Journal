@@ -790,17 +790,27 @@ class GoalManager {
         this.addXP(xpReward, bossType === 'daily' ? 'daily' : 'weekly');
         this.goldCoins += goldReward;
         
-        // Grant a random spell scroll for weekly boss defeats
+        // Grant a rarity-weighted random spell scroll for weekly boss defeats
         let spellReward = null;
         if (boss.rewards.spellScroll) {
-            const spellKeys = Object.keys(this.spellDefinitions);
-            const randomKey = spellKeys[Math.floor(Math.random() * spellKeys.length)];
-            spellReward = this.spellDefinitions[randomKey];
-            const existing = this.spellbook.find(s => s.spellId === randomKey);
+            const rarityWeights = { common: 40, uncommon: 25, rare: 20, epic: 10, legendary: 5 };
+            const spellEntries = Object.entries(this.spellDefinitions);
+            const weighted = spellEntries.map(([key, spell]) => ({
+                key, spell, weight: rarityWeights[spell.rarity] || 10
+            }));
+            const totalWeight = weighted.reduce((sum, w) => sum + w.weight, 0);
+            let roll = Math.random() * totalWeight;
+            let picked = weighted[0];
+            for (const entry of weighted) {
+                roll -= entry.weight;
+                if (roll <= 0) { picked = entry; break; }
+            }
+            spellReward = picked.spell;
+            const existing = this.spellbook.find(s => s.spellId === picked.key);
             if (existing) {
                 existing.quantity = (existing.quantity || 1) + 1;
             } else {
-                this.spellbook.push({ spellId: randomKey, quantity: 1, acquiredAt: Date.now() });
+                this.spellbook.push({ spellId: picked.key, quantity: 1, acquiredAt: Date.now() });
             }
         }
         
