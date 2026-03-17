@@ -102,7 +102,27 @@ class AudioManager {
         if (!this.enabled) return;
         
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            // Reuse a persistent AudioContext (creating new ones fails on Android)
+            if (!this._slashCtx || this._slashCtx.state === 'closed') {
+                this._slashCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const ctx = this._slashCtx;
+            
+            // Resume if suspended (required on mobile after user gesture)
+            if (ctx.state === 'suspended') {
+                ctx.resume().then(() => this._doPlaySlash(ctx, isCrit)).catch(() => this.play('boss-damage', 0.4));
+                return;
+            }
+            
+            this._doPlaySlash(ctx, isCrit);
+        } catch (e) {
+            // Fallback to boss-damage file sound
+            this.play('boss-damage', 0.4);
+        }
+    }
+    
+    _doPlaySlash(ctx, isCrit) {
+        try {
             const vol = ctx.createGain();
             vol.connect(ctx.destination);
             vol.gain.setValueAtTime(this.volume * 0.5, ctx.currentTime);
@@ -153,9 +173,6 @@ class AudioManager {
             ring.start(ctx.currentTime);
             noise.stop(ctx.currentTime + 0.2);
             ring.stop(ctx.currentTime + 0.15);
-            
-            // Cleanup
-            setTimeout(() => ctx.close().catch(() => {}), 500);
         } catch (e) {
             // Fallback to boss-damage file sound
             this.play('boss-damage', 0.4);

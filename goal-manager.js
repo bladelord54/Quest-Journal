@@ -11466,7 +11466,7 @@ class GoalManager {
     openSearchModal() {
         const modal = document.createElement('div');
         modal.id = 'search-modal';
-        modal.className = 'fixed inset-0 bg-black/70 z-[100] flex items-start justify-center pt-12 md:pt-20 px-4';
+        modal.className = 'fixed inset-0 bg-black/70 z-[100] flex items-start justify-center md:justify-start pt-12 md:pt-20 px-4 md:pl-72';
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         
         modal.innerHTML = `
