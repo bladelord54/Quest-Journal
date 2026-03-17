@@ -1646,7 +1646,7 @@ body.has-theme-bg.theme-forest #main-sidebar {
     background: linear-gradient(to bottom, #064e3b, #022c22, #0f1510) !important;
 }
 body.has-theme-bg.theme-forest .quest-card {
-    background: linear-gradient(to bottom right, #065f46, #022c22) !important;
+    background: linear-gradient(to bottom right, #033026, #011812) !important;
 }
 
 /* ===== DESERT THEME ANIMATED BG ===== */
@@ -1654,7 +1654,7 @@ body.has-theme-bg.theme-desert #main-sidebar {
     background: linear-gradient(to bottom, #7c2d12, #431407, #1a0f0a) !important;
 }
 body.has-theme-bg.theme-desert .quest-card {
-    background: linear-gradient(to bottom right, #9a3412, #431407) !important;
+    background: linear-gradient(to bottom right, #3d1508, #1f0a03) !important;
 }
 
 /* ===== ICE THEME ANIMATED BG ===== */
@@ -1662,7 +1662,7 @@ body.has-theme-bg.theme-ice #main-sidebar {
     background: linear-gradient(to bottom, #0c4a6e, #082f49, #0a1929) !important;
 }
 body.has-theme-bg.theme-ice .quest-card {
-    background: linear-gradient(to bottom right, #075985, #082f49) !important;
+    background: linear-gradient(to bottom right, #042d44, #041928) !important;
 }
 
 /* ===== VOLCANIC THEME ANIMATED BG ===== */
@@ -1670,7 +1670,7 @@ body.has-theme-bg.theme-volcanic #main-sidebar {
     background: linear-gradient(to bottom, #7f1d1d, #450a0a, #1a0505) !important;
 }
 body.has-theme-bg.theme-volcanic .quest-card {
-    background: linear-gradient(to bottom right, #991b1b, #450a0a) !important;
+    background: linear-gradient(to bottom right, #3d0b0b, #1f0505) !important;
 }
 
 /* ===== MYSTIC THEME ANIMATED BG ===== */
@@ -1678,7 +1678,7 @@ body.has-theme-bg.theme-mystic #main-sidebar {
     background: linear-gradient(to bottom, #5b21b6, #3b0764, #1a0533) !important;
 }
 body.has-theme-bg.theme-mystic .quest-card {
-    background: linear-gradient(to bottom right, #6d28d9, #3b0764) !important;
+    background: linear-gradient(to bottom right, #2d1160, #1a0330) !important;
 }
 
 /* ===== GOLDEN THEME ANIMATED BG ===== */
@@ -1686,7 +1686,7 @@ body.has-theme-bg.theme-golden #main-sidebar {
     background: linear-gradient(to bottom, #854d0e, #422006, #1a0f03) !important;
 }
 body.has-theme-bg.theme-golden .quest-card {
-    background: linear-gradient(to bottom right, #a16207, #422006) !important;
+    background: linear-gradient(to bottom right, #402804, #1f0f03) !important;
 }
 
 /* ===== SHADOW THEME ANIMATED BG ===== */
@@ -1694,7 +1694,7 @@ body.has-theme-bg.theme-shadow #main-sidebar {
     background: linear-gradient(to bottom, #1f2937, #111827, #030712) !important;
 }
 body.has-theme-bg.theme-shadow .quest-card {
-    background: linear-gradient(to bottom right, #374151, #111827) !important;
+    background: linear-gradient(to bottom right, #1f2937, #0f1623) !important;
 }
 
 /* Gold shimmer animation (Golden Empire) */

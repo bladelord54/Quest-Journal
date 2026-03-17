@@ -27,8 +27,8 @@ body.theme-forest {
     --theme-bg-start: #064e3b;
     --theme-bg-mid: #022c22;
     --theme-bg-end: #0f1510;
-    --theme-card-from: #065f46;
-    --theme-card-to: #022c22;
+    --theme-card-from: #033026;
+    --theme-card-to: #011812;
     --theme-border: #059669;
     --theme-text: #d1fae5;
     --theme-text-muted: #6ee7b7;
@@ -50,8 +50,8 @@ body.theme-desert {
     --theme-bg-start: #7c2d12;
     --theme-bg-mid: #431407;
     --theme-bg-end: #1a0f0a;
-    --theme-card-from: #9a3412;
-    --theme-card-to: #431407;
+    --theme-card-from: #3d1508;
+    --theme-card-to: #1f0a03;
     --theme-border: #ea580c;
     --theme-text: #ffedd5;
     --theme-text-muted: #fdba74;
@@ -73,8 +73,8 @@ body.theme-ice {
     --theme-bg-start: #0c4a6e;
     --theme-bg-mid: #082f49;
     --theme-bg-end: #0a1929;
-    --theme-card-from: #075985;
-    --theme-card-to: #082f49;
+    --theme-card-from: #042d44;
+    --theme-card-to: #041928;
     --theme-border: #0284c7;
     --theme-text: #e0f2fe;
     --theme-text-muted: #7dd3fc;
@@ -97,8 +97,8 @@ body.theme-volcanic {
     --theme-bg-start: #7f1d1d;
     --theme-bg-mid: #450a0a;
     --theme-bg-end: #1a0505;
-    --theme-card-from: #991b1b;
-    --theme-card-to: #450a0a;
+    --theme-card-from: #3d0b0b;
+    --theme-card-to: #1f0505;
     --theme-border: #ef4444;
     --theme-text: #fee2e2;
     --theme-text-muted: #fca5a5;
@@ -121,8 +121,8 @@ body.theme-mystic {
     --theme-bg-start: #5b21b6;
     --theme-bg-mid: #3b0764;
     --theme-bg-end: #1a0533;
-    --theme-card-from: #6d28d9;
-    --theme-card-to: #3b0764;
+    --theme-card-from: #2d1160;
+    --theme-card-to: #1a0330;
     --theme-border: #8b5cf6;
     --theme-text: #ede9fe;
     --theme-text-muted: #c4b5fd;
@@ -146,8 +146,8 @@ body.theme-golden {
     --theme-bg-start: #854d0e;
     --theme-bg-mid: #422006;
     --theme-bg-end: #1a0f03;
-    --theme-card-from: #a16207;
-    --theme-card-to: #422006;
+    --theme-card-from: #402804;
+    --theme-card-to: #1f0f03;
     --theme-border: #eab308;
     --theme-text: #fef9c3;
     --theme-text-muted: #fde047;
