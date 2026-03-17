@@ -443,9 +443,9 @@ class GoalManager {
             boss_slayer: {
                 id: 'boss_slayer',
                 name: 'Enchantment of the Titan',
-                description: '+50% damage to boss battles for 1 hour',
+                description: '+30% damage to boss battles for 1 hour',
                 icon: '⚔️',
-                cost: 6,
+                cost: 5,
                 duration: 60,
                 effect: 'boss_damage'
             },
@@ -616,8 +616,8 @@ class GoalManager {
         
         this.attackCharges--;
         
-        // Calculate damage
-        let damage = 1;
+        // Calculate damage (scales +1 per 10 player levels)
+        let damage = 1 + Math.floor(this.level / 10);
         let messages = [];
         let isCrit = false;
         
@@ -628,18 +628,18 @@ class GoalManager {
             messages.push('🐺 Wolf Pack!');
         }
         
-        // Boss Slayer Enchantment (+50% damage)
+        // Boss Slayer Enchantment (+30% damage)
         const enchantmentBonus = this.getEnchantmentMultiplier('boss_damage');
         if (enchantmentBonus > 1) {
             damage = Math.ceil(damage * enchantmentBonus);
             messages.push('⚔️ Titan Enchantment!');
         }
         
-        // Berserker Rage spell (double damage, consumed on use)
+        // Berserker Rage spell (1.5x damage, consumed on use)
         const berserkerRage = this.activeSpells.find(s => s.spellId === 'berserker_rage');
         if (berserkerRage) {
-            damage *= 2;
-            messages.push('🔥 BERSERKER RAGE! x2!');
+            damage = Math.ceil(damage * 1.5);
+            messages.push('🔥 BERSERKER RAGE! x1.5!');
             this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'berserker_rage');
         }
         
@@ -1023,10 +1023,10 @@ class GoalManager {
                 id: 'berserker_rage',
                 name: 'Berserker Rage',
                 icon: '⚔️',
-                description: 'Next boss attack deals DOUBLE damage (200 DMG)',
+                description: 'Next boss attack deals 1.5x damage',
                 rarity: 'epic',
                 effect: 'boss_double_damage',
-                multiplier: 2,
+                multiplier: 1.5,
                 duration: -1, // Active until next boss damage
                 premium: true
             },
@@ -4133,7 +4133,7 @@ class GoalManager {
             return 2;
         }
         if (type === 'boss_damage' && this.hasActiveEnchantment('boss_damage')) {
-            return 1.5;
+            return 1.3;
         }
         
         return 1;
