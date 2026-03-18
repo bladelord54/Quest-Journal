@@ -621,11 +621,12 @@ class GoalManager {
         let messages = [];
         let isCrit = false;
         
-        // Wolf companion bonus (+20% attack damage, rounds up)
-        const wolfBonus = this.getCompanionBonus('attack');
-        if (wolfBonus > 0) {
-            damage = Math.ceil(damage * (1 + wolfBonus));
-            messages.push('🐺 Wolf Pack!');
+        // Companion attack bonus (Wolf +15%, Bear +20%, Lion +30%)
+        const companionAttackBonus = this.getCompanionBonus('attack');
+        if (companionAttackBonus > 0) {
+            const activeComp = this.getActiveCompanion();
+            damage = Math.ceil(damage * (1 + companionAttackBonus));
+            messages.push(`${activeComp?.icon || '🐾'} ${activeComp?.name || 'Companion'} Strike!`);
         }
         
         // Boss Slayer Enchantment (+30% damage)
@@ -11485,7 +11486,7 @@ class GoalManager {
     openSearchModal() {
         const modal = document.createElement('div');
         modal.id = 'search-modal';
-        modal.className = 'fixed inset-0 bg-black/70 z-[100] flex items-start justify-start pt-12 md:pt-20 px-4 md:pl-72';
+        modal.className = 'fixed inset-0 bg-black/70 z-[100] flex items-start justify-center md:justify-start pt-12 md:pt-20 px-4 md:pl-72';
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         
         modal.innerHTML = `
