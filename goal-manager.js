@@ -1808,13 +1808,15 @@ class GoalManager {
             this.playAchievementSound(soundLevel);
         }
         
+        // Loot & achievement toasts stay longer so user can read rewards
+        const duration = (type === 'loot' || type === 'achievement' || type === 'companion') ? 6000 : 3000;
         setTimeout(() => {
             toast.classList.remove('scale-100');
             toast.classList.add('scale-0');
             setTimeout(() => {
                 toast.classList.add('hidden');
             }, 300);
-        }, 3000);
+        }, duration);
     }
 
     addLifeGoal() {
@@ -3518,7 +3520,7 @@ class GoalManager {
                 loot.style.left = `calc(50% + ${spread}px)`;
                 loot.style.top = '45%';
                 document.body.appendChild(loot);
-                setTimeout(() => loot.remove(), 1500);
+                setTimeout(() => loot.remove(), 3000);
             }, 800 + i * 200);
         });
 
@@ -3527,7 +3529,7 @@ class GoalManager {
         label.className = `chest-tier-label ${type}`;
         label.textContent = `${type} Chest`;
         document.body.appendChild(label);
-        setTimeout(() => label.remove(), 2500);
+        setTimeout(() => label.remove(), 4000);
 
         // 8. Confetti burst (delayed to sync with opening moment)
         setTimeout(() => this.createConfetti(), 400);
@@ -11506,6 +11508,7 @@ class GoalManager {
                         <button onclick="goalManager.filterSearchResults('goals')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="goals">Goals</button>
                         <button onclick="goalManager.filterSearchResults('habits')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="habits">Habits</button>
                         <button onclick="goalManager.filterSearchResults('sidequests')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="sidequests">Side Quests</button>
+                        <button onclick="goalManager.filterSearchResults('recurring')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="recurring">Recurring</button>
                     </div>
                 </div>
                 <div id="search-results" class="flex-1 overflow-y-auto p-4">
@@ -11573,7 +11576,7 @@ class GoalManager {
         // Search daily tasks
         if (filter === 'all' || filter === 'tasks') {
             this.dailyTasks.forEach(task => {
-                if (task.title.toLowerCase().includes(lowerQuery)) {
+                if (task.title.toLowerCase().includes(lowerQuery) || (task.description && task.description.toLowerCase().includes(lowerQuery))) {
                     results.push({
                         type: 'task',
                         icon: 'ri-sword-line',
@@ -11591,7 +11594,7 @@ class GoalManager {
         // Search habits
         if (filter === 'all' || filter === 'habits') {
             this.habits.forEach(habit => {
-                if (habit.name.toLowerCase().includes(lowerQuery)) {
+                if (habit.name.toLowerCase().includes(lowerQuery) || (habit.description && habit.description.toLowerCase().includes(lowerQuery))) {
                     results.push({
                         type: 'habit',
                         icon: 'ri-repeat-line',
@@ -11609,7 +11612,7 @@ class GoalManager {
         // Search weekly goals
         if (filter === 'all' || filter === 'goals') {
             this.weeklyGoals.forEach(goal => {
-                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                if (goal.title.toLowerCase().includes(lowerQuery) || (goal.description && goal.description.toLowerCase().includes(lowerQuery))) {
                     results.push({
                         type: 'goal',
                         icon: 'ri-shield-line',
@@ -11625,7 +11628,7 @@ class GoalManager {
             
             // Search monthly goals
             this.monthlyGoals.forEach(goal => {
-                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                if (goal.title.toLowerCase().includes(lowerQuery) || (goal.description && goal.description.toLowerCase().includes(lowerQuery))) {
                     results.push({
                         type: 'goal',
                         icon: 'ri-book-3-line',
@@ -11641,7 +11644,7 @@ class GoalManager {
             
             // Search yearly goals
             this.yearlyGoals.forEach(goal => {
-                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                if (goal.title.toLowerCase().includes(lowerQuery) || (goal.description && goal.description.toLowerCase().includes(lowerQuery))) {
                     results.push({
                         type: 'goal',
                         icon: 'ri-file-paper-2-line',
@@ -11657,7 +11660,7 @@ class GoalManager {
             
             // Search life goals
             this.lifeGoals.forEach(goal => {
-                if (goal.title.toLowerCase().includes(lowerQuery)) {
+                if (goal.title.toLowerCase().includes(lowerQuery) || (goal.description && goal.description.toLowerCase().includes(lowerQuery))) {
                     results.push({
                         type: 'goal',
                         icon: 'ri-flag-line',
@@ -11675,7 +11678,7 @@ class GoalManager {
         // Search side quests
         if (filter === 'all' || filter === 'sidequests') {
             this.sideQuests.forEach(quest => {
-                if (quest.title.toLowerCase().includes(lowerQuery)) {
+                if (quest.title.toLowerCase().includes(lowerQuery) || (quest.description && quest.description.toLowerCase().includes(lowerQuery))) {
                     results.push({
                         type: 'sidequest',
                         icon: 'ri-compass-3-line',
@@ -11685,6 +11688,25 @@ class GoalManager {
                         completed: quest.completed,
                         view: 'sidequests',
                         id: quest.id
+                    });
+                }
+            });
+        }
+        
+        // Search recurring tasks
+        if (filter === 'all' || filter === 'recurring') {
+            this.recurringTasks.forEach(task => {
+                if (task.title.toLowerCase().includes(lowerQuery) || (task.description && task.description.toLowerCase().includes(lowerQuery))) {
+                    const scheduleText = task.schedule ? `Every ${task.schedule.days ? task.schedule.days.join(', ') : task.schedule.interval || 'day'}` : 'Recurring';
+                    results.push({
+                        type: 'recurring',
+                        icon: 'ri-calendar-schedule-line',
+                        color: 'teal',
+                        title: task.title,
+                        subtitle: `Recurring Task • ${scheduleText}`,
+                        completed: false,
+                        view: 'daily',
+                        id: task.id
                     });
                 }
             });
