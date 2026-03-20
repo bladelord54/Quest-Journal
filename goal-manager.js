@@ -4082,7 +4082,7 @@ class GoalManager {
                     `).join('')}
                 </div>
                 <button class="w-full py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-lg transition-all duration-200 active:scale-95"
-                        onclick="this.closest('.fixed').remove()">
+                        onclick="this.parentElement.parentElement.remove()">
                     ✨ Collect
                 </button>
             </div>
