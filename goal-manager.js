@@ -54,14 +54,19 @@ class GoalManager {
         this.focusSessionsCompleted = 0;
         this.spellsCast = 0;
         
-        // Boss Battle System (auto-generated daily/weekly bosses)
+        // Boss Battle System (auto-generated daily/weekly/monthly bosses)
         this.dailyBoss = null;
         this.weeklyBoss = null;
+        this.monthlyBoss = null;
         this.attackCharges = 0;
         this.bossLog = [];
         this.defeatedBossList = [];
         this.dailyBossStreak = 0;
         this.weeklyBossStreak = 0;
+        this.monthlyBossStreak = 0;
+        this.bossKillsThisMonth = 0;
+        this.bossKillsMonth = null; // Tracks which month the kill count belongs to
+        this.monthlyBossUnlockThreshold = 5; // Defeat 5 bosses to unlock monthly challenge
         this.bossThemes = this.initializeBossThemes();
         
         // Render optimization
@@ -84,6 +89,8 @@ class GoalManager {
         this.totalFocusTime = 0; // in minutes
         this.activeEnchantments = [];
         this.enchantmentDefinitions = this.initializeEnchantments();
+        this.momentumStack = 0; // Tracks consecutive tasks for Momentum enchantment
+        this.earlyBirdTasksToday = 0; // Tracks daily tasks completed today for Early Bird
         
         // Settings
         this.timezone = 'auto'; // Can be 'auto' or a number (-12 to +13)
@@ -98,6 +105,37 @@ class GoalManager {
         this.tutorialCompleted = false;
         this.currentTutorialStep = 0;
         this.tutorialActive = false;
+        
+        // Progressive Feature Unlock System
+        this.featureUnlockLevels = {
+            dashboard: 1, goals: 1, daily: 1, calendar: 1, tools: 1,
+            rewards: 2,
+            arcane: 3,
+            focus: 5,
+            questchains: 7,
+            bossbattles: 10
+        };
+        this.goalTabUnlockLevels = {
+            weekly: 4, sidequests: 4,
+            monthly: 7,
+            yearly: 9, 'life-goals': 9
+        };
+        this.arcaneTabUnlockLevels = {
+            spellbook: 3,
+            enchantments: 5
+        };
+        this.featureUnlockTutorials = {
+            2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
+            3: { title: '🔮 Arcane Powers Unlocked!', text: "You may have collected spell scrolls from treasure chests — visit Arcane Powers to view your spellbook and cast powerful spells!" },
+            4: { title: '⚔️ Weekly Battles & Side Quests!', text: "Your Quest Log now has Weekly Battles and Side Quests! Set weekly goals and track flexible tasks without deadlines." },
+            5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
+            6: { title: '🎨 Kingdom Themes Unlocked!', text: "You've unlocked the Forest Kingdom theme! Customize your journal's look by visiting the Treasury and selecting Themes. As you level up, more themes will become available — each with unique backgrounds and particle effects!" },
+            7: { title: '📖 Monthly Raids & Quest Chains!', text: "Plan bigger with Monthly Raids! Chain multiple tasks into epic multi-step Quest Chains for bonus rewards." },
+            9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
+            10: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic rewards. This is a Premium feature — upgrade to unlock the full Boss Battle experience!" }
+        };
+        this.seenFeatureTutorials = [];
+        this.progressiveUnlockInitialized = false;
         
         // Premium System
         this.isPremium = false;
@@ -114,6 +152,20 @@ class GoalManager {
         this.loginStreak = 0;
         
         this.loadData();
+        
+        // Progressive unlock: existing users get past tutorials auto-dismissed
+        if (!this.progressiveUnlockInitialized) {
+            this.progressiveUnlockInitialized = true;
+            if (this.level > 1) {
+                Object.keys(this.featureUnlockTutorials).forEach(lvl => {
+                    if (parseInt(lvl) <= this.level && !this.seenFeatureTutorials.includes(parseInt(lvl))) {
+                        this.seenFeatureTutorials.push(parseInt(lvl));
+                    }
+                });
+            }
+            this.saveData();
+        }
+        
         this.checkNotificationPermission();
         this.checkHabitReset();
         this.generateBosses(); // Generate daily/weekly bosses
@@ -263,6 +315,10 @@ class GoalManager {
                 // Tutorial
                 this.tutorialCompleted = data.tutorialCompleted || false;
                 
+                // Progressive Feature Unlock
+                this.seenFeatureTutorials = data.seenFeatureTutorials || [];
+                this.progressiveUnlockInitialized = data.progressiveUnlockInitialized || false;
+                
                 // Period Transition Tracking
                 this.lastVisitDate = data.lastVisitDate || null;
                 this.lastWeekNumber = data.lastWeekNumber || null;
@@ -287,11 +343,15 @@ class GoalManager {
                 // Boss Battle System
                 this.dailyBoss = data.dailyBoss || null;
                 this.weeklyBoss = data.weeklyBoss || null;
+                this.monthlyBoss = data.monthlyBoss || null;
                 this.attackCharges = data.attackCharges || 0;
                 this.bossLog = data.bossLog || [];
                 this.defeatedBossList = data.defeatedBossList || [];
                 this.dailyBossStreak = data.dailyBossStreak || 0;
                 this.weeklyBossStreak = data.weeklyBossStreak || 0;
+                this.monthlyBossStreak = data.monthlyBossStreak || 0;
+                this.bossKillsThisMonth = data.bossKillsThisMonth || 0;
+                this.bossKillsMonth = data.bossKillsMonth || null;
                 
                 // Migrate tasks with `name` but no `title` (from starter task bug)
                 [this.dailyTasks, this.weeklyGoals, this.monthlyGoals, this.yearlyGoals, this.lifeGoals, this.sideQuests, this.habits].forEach(arr => {
@@ -394,11 +454,17 @@ class GoalManager {
                 spellsCast: this.spellsCast,
                 dailyBoss: this.dailyBoss,
                 weeklyBoss: this.weeklyBoss,
+                monthlyBoss: this.monthlyBoss,
                 attackCharges: this.attackCharges,
                 bossLog: this.bossLog,
                 defeatedBossList: this.defeatedBossList,
                 dailyBossStreak: this.dailyBossStreak,
-                weeklyBossStreak: this.weeklyBossStreak
+                weeklyBossStreak: this.weeklyBossStreak,
+                monthlyBossStreak: this.monthlyBossStreak,
+                bossKillsThisMonth: this.bossKillsThisMonth,
+                bossKillsMonth: this.bossKillsMonth,
+                seenFeatureTutorials: this.seenFeatureTutorials,
+                progressiveUnlockInitialized: this.progressiveUnlockInitialized
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
         } catch (error) {
@@ -420,7 +486,8 @@ class GoalManager {
                 icon: '⚡',
                 cost: 5,
                 duration: 60, // minutes
-                effect: 'double_xp'
+                effect: 'double_xp',
+                premium: true
             },
             double_gold: {
                 id: 'double_gold',
@@ -429,7 +496,8 @@ class GoalManager {
                 icon: '💰',
                 cost: 5,
                 duration: 60,
-                effect: 'double_gold'
+                effect: 'double_gold',
+                premium: true
             },
             streak_shield: {
                 id: 'streak_shield',
@@ -438,7 +506,8 @@ class GoalManager {
                 icon: '🛡️',
                 cost: 8,
                 duration: 1440, // 24 hours
-                effect: 'streak_shield'
+                effect: 'streak_shield',
+                premium: true
             },
             boss_slayer: {
                 id: 'boss_slayer',
@@ -447,7 +516,8 @@ class GoalManager {
                 icon: '⚔️',
                 cost: 5,
                 duration: 60,
-                effect: 'boss_damage'
+                effect: 'boss_damage',
+                premium: true
             },
             crystal_finder: {
                 id: 'crystal_finder',
@@ -456,7 +526,8 @@ class GoalManager {
                 icon: '💎',
                 cost: 4,
                 duration: 240,
-                effect: 'bonus_crystal'
+                effect: 'bonus_crystal',
+                premium: false
             },
             time_warden: {
                 id: 'time_warden',
@@ -465,7 +536,78 @@ class GoalManager {
                 icon: '⏳',
                 cost: 3,
                 duration: 120,
-                effect: 'extended_focus'
+                effect: 'extended_focus',
+                premium: false
+            },
+            lucky_loot: {
+                id: 'lucky_loot',
+                name: 'Enchantment of Luck',
+                description: '+15% rare loot & companion chance from chests for 2 hours',
+                icon: '🍀',
+                cost: 3,
+                duration: 120,
+                effect: 'lucky_loot',
+                premium: false
+            },
+            serenity: {
+                id: 'serenity',
+                name: 'Enchantment of Serenity',
+                description: '20% chance to earn a bonus Focus Crystal on task completion for 3 hours',
+                icon: '🧘',
+                cost: 3,
+                duration: 180,
+                effect: 'crystal_chance',
+                premium: false
+            },
+            bonding: {
+                id: 'bonding',
+                name: 'Enchantment of Bonding',
+                description: '2x companion XP gain for 2 hours',
+                icon: '🐾',
+                cost: 5,
+                duration: 120,
+                effect: 'companion_bond',
+                premium: true
+            },
+            momentum: {
+                id: 'momentum',
+                name: 'Enchantment of Momentum',
+                description: '+5 bonus XP per consecutive task (stacks up to +25) for 1 hour',
+                icon: '⚡',
+                cost: 6,
+                duration: 60,
+                effect: 'momentum',
+                premium: true
+            },
+            early_bird: {
+                id: 'early_bird',
+                name: 'Enchantment of the Early Bird',
+                description: 'First 3 tasks of the day give 3x XP for 24 hours',
+                icon: '🌅',
+                cost: 4,
+                duration: 1440,
+                effect: 'early_bird',
+                premium: true
+            },
+            precision: {
+                id: 'precision',
+                name: 'Enchantment of Precision',
+                description: 'Habit completions count as double streak progress for 12 hours',
+                icon: '🎯',
+                cost: 7,
+                duration: 720,
+                effect: 'double_streak',
+                premium: true
+            },
+            battle_fury: {
+                id: 'battle_fury',
+                name: 'Enchantment of Battle Fury',
+                description: 'Earn +1 bonus attack charge per charge gained for 2 hours',
+                icon: '🗡️',
+                cost: 5,
+                duration: 120,
+                effect: 'bonus_charges',
+                premium: true
             }
         };
     }
@@ -499,6 +641,20 @@ class GoalManager {
                 { name: 'Golem of Stagnation', icon: '🗿', flavor: 'An immovable wall blocking your progress.' },
                 { name: 'Wyvern of Wasted Time', icon: '🦅', flavor: 'Soars away with your precious hours.' },
                 { name: 'Necromancer of Old Habits', icon: '🧙', flavor: 'Keeps resurrecting the patterns you buried.' }
+            ],
+            monthly: [
+                { name: 'The Obsidian Warden', icon: '🏴', flavor: 'An ancient guardian forged from pure resistance to change.' },
+                { name: 'Archmage of the Void', icon: '🌑', flavor: 'Master of nothingness who erases your motivation.' },
+                { name: 'Behemoth of Despair', icon: '🦣', flavor: 'A colossal beast whose footsteps shake your resolve.' },
+                { name: 'The Crimson Overlord', icon: '👑', flavor: 'Tyrannical ruler who demands your surrender to mediocrity.' },
+                { name: 'Leviathan of Lost Days', icon: '🐋', flavor: 'Swallows entire weeks into its endless abyss.' },
+                { name: 'The Phantom Emperor', icon: '👁️', flavor: 'Rules an invisible empire built on your abandoned dreams.' },
+                { name: 'Colossus of Complacency', icon: '🗽', flavor: 'A towering monument to "good enough" thinking.' },
+                { name: 'The Abyssal Serpent', icon: '🐍', flavor: 'Coils around your potential and drags it to the depths.' },
+                { name: 'Infernal Juggernaut', icon: '🔥', flavor: 'An unstoppable force of destructive routines.' },
+                { name: 'The Shadow Sovereign', icon: '🌘', flavor: 'Commands an army of every excuse you\'ve ever made.' },
+                { name: 'Dreadnought of Doom', icon: '⚓', flavor: 'An armored fortress of fear that blocks your horizon.' },
+                { name: 'The Eternal Watcher', icon: '🗿', flavor: 'Has observed a thousand failed resolutions. Will yours be different?' }
             ]
         };
     }
@@ -506,6 +662,21 @@ class GoalManager {
     generateBosses() {
         const today = this.getTodayDateString();
         const currentWeek = this.getWeekString(new Date());
+        const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+        
+        // Reset monthly boss kill counter if new month
+        if (this.bossKillsMonth !== currentMonth) {
+            this.bossKillsThisMonth = 0;
+            this.bossKillsMonth = currentMonth;
+            // Clear expired monthly boss from previous month
+            if (this.monthlyBoss && this.monthlyBoss.spawnMonth !== currentMonth) {
+                if (!this.monthlyBoss.defeated) {
+                    this.monthlyBossStreak = 0;
+                    this.addBossLog(`💨 ${this.monthlyBoss.name} vanished as the new moon rose!`);
+                }
+                this.monthlyBoss = null;
+            }
+        }
         
         // Check/generate daily boss
         if (!this.dailyBoss || this.dailyBoss.spawnDate !== today) {
@@ -576,11 +747,48 @@ class GoalManager {
             totalDamage: 0,
             rewards: {
                 xp: 200 + bossLevel * 30,
-                gold: 150 + bossLevel * 25,
-                spellScroll: true
+                gold: 150 + bossLevel * 25
             }
         };
         this.addBossLog(`🔥 ${theme.icon} ${theme.name} emerges! (${maxHP} HP)`);
+    }
+    
+    canChallengeMonthlyBoss() {
+        // Monthly boss is available if: threshold met, no active/defeated monthly boss this month
+        if (this.bossKillsThisMonth < this.monthlyBossUnlockThreshold) return false;
+        if (this.monthlyBoss) return false; // Already spawned (active or defeated)
+        return true;
+    }
+    
+    challengeMonthlyBoss() {
+        if (!this.canChallengeMonthlyBoss()) return;
+        
+        const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+        const themes = this.bossThemes.monthly;
+        const seed = this.hashDateString(currentMonth);
+        const theme = themes[seed % themes.length];
+        const bossLevel = Math.max(1, this.level);
+        const maxHP = 100 + this.level * 10;
+        
+        this.monthlyBoss = {
+            name: theme.name,
+            icon: theme.icon,
+            flavor: theme.flavor,
+            maxHP: maxHP,
+            currentHP: maxHP,
+            level: bossLevel,
+            spawnMonth: currentMonth,
+            type: 'monthly',
+            defeated: false,
+            totalDamage: 0,
+            rewards: {
+                xp: 500 + bossLevel * 50,
+                gold: 400 + bossLevel * 40
+            }
+        };
+        this.addBossLog(`🏴 ${theme.icon} ${theme.name} has been summoned! (${maxHP} HP) — MONTHLY CHAMPION`);
+        this.saveData();
+        this.renderBossBattles();
     }
     
     hashDateString(str) {
@@ -598,6 +806,10 @@ class GoalManager {
     }
     
     grantAttackCharge(amount, source) {
+        // Battle Fury enchantment: +1 bonus charge per charge earned
+        if (this.hasActiveEnchantment('bonus_charges')) {
+            amount *= 2;
+        }
         this.attackCharges += amount;
         this.saveData();
         
@@ -611,7 +823,7 @@ class GoalManager {
     }
     
     attackBoss(bossType) {
-        const boss = bossType === 'daily' ? this.dailyBoss : this.weeklyBoss;
+        const boss = bossType === 'daily' ? this.dailyBoss : bossType === 'weekly' ? this.weeklyBoss : this.monthlyBoss;
         if (!boss || boss.defeated || this.attackCharges <= 0) return;
         
         this.attackCharges--;
@@ -770,50 +982,49 @@ class GoalManager {
     }
     
     onBossDefeated(bossType) {
-        const boss = bossType === 'daily' ? this.dailyBoss : this.weeklyBoss;
+        const boss = bossType === 'daily' ? this.dailyBoss : bossType === 'weekly' ? this.weeklyBoss : this.monthlyBoss;
         if (!boss) return;
         
         // Update streaks
         if (bossType === 'daily') {
             this.dailyBossStreak++;
-        } else {
+        } else if (bossType === 'weekly') {
             this.weeklyBossStreak++;
+        } else if (bossType === 'monthly') {
+            this.monthlyBossStreak++;
         }
         this.bossesDefeated++;
         
+        // Track boss kills this month (for monthly boss unlock threshold)
+        this.bossKillsThisMonth++;
+        
         // Calculate rewards with streak bonus
-        const streak = bossType === 'daily' ? this.dailyBossStreak : this.weeklyBossStreak;
+        const streak = bossType === 'daily' ? this.dailyBossStreak : bossType === 'weekly' ? this.weeklyBossStreak : this.monthlyBossStreak;
         const streakMultiplier = 1 + Math.min(streak - 1, 10) * 0.1; // +10% per streak, max +100%
         
         const xpReward = Math.round(boss.rewards.xp * streakMultiplier);
         const goldReward = Math.round(boss.rewards.gold * streakMultiplier);
         
-        this.addXP(xpReward, bossType === 'daily' ? 'daily' : 'weekly');
+        const xpSource = bossType === 'monthly' ? 'monthly' : bossType === 'daily' ? 'daily' : 'weekly';
+        this.addXP(xpReward, xpSource);
         this.goldCoins += goldReward;
         
-        // Grant a rarity-weighted random spell scroll for weekly boss defeats
-        let spellReward = null;
-        if (boss.rewards.spellScroll) {
-            const rarityWeights = { common: 40, uncommon: 25, rare: 20, epic: 10, legendary: 5 };
-            const spellEntries = Object.entries(this.spellDefinitions);
-            const weighted = spellEntries.map(([key, spell]) => ({
-                key, spell, weight: rarityWeights[spell.rarity] || 10
-            }));
-            const totalWeight = weighted.reduce((sum, w) => sum + w.weight, 0);
-            let roll = Math.random() * totalWeight;
-            let picked = weighted[0];
-            for (const entry of weighted) {
-                roll -= entry.weight;
-                if (roll <= 0) { picked = entry; break; }
-            }
-            spellReward = picked.spell;
-            const existing = this.spellbook.find(s => s.spellId === picked.key);
-            if (existing) {
-                existing.quantity = (existing.quantity || 1) + 1;
-            } else {
-                this.spellbook.push({ spellId: picked.key, quantity: 1, acquiredAt: Date.now() });
-            }
-        }
+        // Generate bonus loot drops
+        const loot = this.generateBossLoot(bossType);
+        
+        // Apply loot rewards
+        this._suppressRewardSounds = true;
+        this._suppressRewardToasts = true;
+        loot.forEach(reward => {
+            if (reward.type === 'gold') this.addGold(reward.amount, 'boss');
+            if (reward.type === 'xp') this.addXP(reward.amount, 'boss');
+            if (reward.type === 'charges') this.attackCharges += reward.amount;
+            if (reward.type === 'theme') this.tryUnlockRandomTheme();
+            if (reward.type === 'companion') this.unlockCompanion(reward.value);
+            if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
+        });
+        this._suppressRewardSounds = false;
+        this._suppressRewardToasts = false;
         
         // Add to defeated list
         this.defeatedBossList.unshift({
@@ -828,12 +1039,21 @@ class GoalManager {
         });
         if (this.defeatedBossList.length > 50) this.defeatedBossList.length = 50;
         
-        this.addBossLog(`🏆 ${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold${streak > 1 ? ` (x${streak} streak!)` : ''}`);
+        const streakText = streak > 1 ? ` (x${streak} streak!)` : '';
+        this.addBossLog(`🏆 ${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold${streakText}`);
         
         // Play boss defeated sound and celebration
         if (window.audioManager) window.audioManager.playBossDefeated();
-        this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward, spellReward);
+        this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward);
         this.createConfetti();
+        
+        // Show loot panel after celebration finishes
+        if (loot.length > 0) {
+            const bossLootType = `boss_${bossType}`;
+            setTimeout(() => {
+                this.showLootPanel(bossLootType, loot);
+            }, 3500);
+        }
         
         // Check badges/titles
         this.checkBadges();
@@ -844,7 +1064,7 @@ class GoalManager {
     }
     
     executeBossBySpell(bossType) {
-        const boss = bossType === 'daily' ? this.dailyBoss : this.weeklyBoss;
+        const boss = bossType === 'daily' ? this.dailyBoss : bossType === 'weekly' ? this.weeklyBoss : this.monthlyBoss;
         if (!boss || boss.defeated) return;
         
         const hpPercent = (boss.currentHP / boss.maxHP) * 100;
@@ -859,7 +1079,6 @@ class GoalManager {
         boss.defeated = true;
         
         this.addBossLog(`💀 EXECUTE! ${boss.icon} ${boss.name} instantly slain!`);
-        this.showAchievement('💀 EXECUTE! INSTANT KILL!', 'legendary');
         
         setTimeout(() => this.onBossDefeated(bossType), 300);
         this.saveData();
@@ -1406,6 +1625,8 @@ class GoalManager {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const view = link.getAttribute('data-view');
+                // Skip locked nav links
+                if (link.classList.contains('nav-locked')) return;
                 this.switchView(view);
                 
                 document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -1416,6 +1637,9 @@ class GoalManager {
         // Calculate progress on load
         this.updateParentProgress();
         this._doRender(); // Initial render - immediate, not debounced
+        
+        // Apply progressive feature unlock visibility
+        this.updateNavVisibility();
 
         // Handle manifest shortcut URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -1440,7 +1664,197 @@ class GoalManager {
         }
     }
 
+    // ==================== PROGRESSIVE FEATURE UNLOCK ====================
+    
+    isFeatureUnlocked(viewName) {
+        const requiredLevel = this.featureUnlockLevels[viewName];
+        if (requiredLevel === undefined) return true;
+        return this.level >= requiredLevel;
+    }
+    
+    isGoalTabUnlocked(tabName) {
+        const requiredLevel = this.goalTabUnlockLevels[tabName];
+        if (requiredLevel === undefined) return true;
+        return this.level >= requiredLevel;
+    }
+    
+    isArcaneTabUnlocked(tabName) {
+        const requiredLevel = this.arcaneTabUnlockLevels[tabName];
+        if (requiredLevel === undefined) return true;
+        return this.level >= requiredLevel;
+    }
+    
+    updateNavVisibility() {
+        document.querySelectorAll('.nav-link').forEach(link => {
+            const view = link.getAttribute('data-view');
+            const requiredLevel = this.featureUnlockLevels[view];
+            
+            if (requiredLevel && this.level < requiredLevel) {
+                // Lock: gray out and add lock badge
+                link.classList.add('nav-locked');
+                link.style.opacity = '0.4';
+                link.style.pointerEvents = 'none';
+                let badge = link.querySelector('.nav-lock-badge');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'nav-lock-badge ml-auto text-xs bg-gray-700/80 text-gray-400 px-1.5 py-0.5 rounded-full fancy-font';
+                    link.appendChild(badge);
+                }
+                badge.textContent = `🔒 Lv.${requiredLevel}`;
+                // Hide the original text span on mobile to save space
+                const textSpan = link.querySelector('span.fancy-font:not(.nav-lock-badge)');
+                if (textSpan) textSpan.style.opacity = '0.5';
+            } else {
+                // Unlock: restore normal appearance
+                link.classList.remove('nav-locked');
+                link.style.opacity = '';
+                link.style.pointerEvents = '';
+                const badge = link.querySelector('.nav-lock-badge');
+                if (badge) badge.remove();
+                const textSpan = link.querySelector('span.fancy-font:not(.nav-lock-badge)');
+                if (textSpan) textSpan.style.opacity = '';
+            }
+        });
+        
+        this.updateGoalTabVisibility();
+        this.updateArcaneTabVisibility();
+        
+        // Hide companion section in Player Panel until level 3
+        const companionSection = document.getElementById('panel-companion-section');
+        if (companionSection) {
+            companionSection.style.display = this.level >= 3 ? '' : 'none';
+        }
+    }
+    
+    updateGoalTabVisibility() {
+        let anyTabVisible = false;
+        
+        document.querySelectorAll('.goal-tab').forEach(tab => {
+            const tabName = tab.getAttribute('data-goal-tab');
+            if (tabName && this.goalTabUnlockLevels[tabName] !== undefined) {
+                if (this.level < this.goalTabUnlockLevels[tabName]) {
+                    tab.classList.add('hidden');
+                } else {
+                    tab.classList.remove('hidden');
+                    anyTabVisible = true;
+                }
+            }
+        });
+        
+        // Show locked message if no goal tabs are unlocked
+        let lockedMsg = document.getElementById('goals-locked-message');
+        const goalsView = document.getElementById('goals-view');
+        if (!goalsView) return;
+        
+        if (!anyTabVisible) {
+            if (!lockedMsg) {
+                lockedMsg = document.createElement('div');
+                lockedMsg.id = 'goals-locked-message';
+                lockedMsg.className = 'text-center py-16 px-6';
+                lockedMsg.innerHTML = `
+                    <div class="text-7xl mb-6">📜</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Your Quest Log Awaits!</h3>
+                    <p class="text-amber-200 fancy-font text-lg mb-2">Complete daily quests to level up and unlock new quest types.</p>
+                    <p class="text-amber-400 fancy-font mt-4">⚔️ Weekly Battles & Side Quests unlock at <span class="font-bold text-yellow-300">Level 4</span></p>
+                    <p class="text-amber-400/70 fancy-font mt-1">📖 Monthly Raids at <span class="text-yellow-300">Lv.7</span> · 🚩 Life Goals at <span class="text-yellow-300">Lv.9</span></p>
+                `;
+                // Insert after the tab bar
+                const tabBar = goalsView.querySelector('.flex.justify-center.mb-6');
+                if (tabBar) {
+                    tabBar.after(lockedMsg);
+                } else {
+                    goalsView.prepend(lockedMsg);
+                }
+            }
+            // Hide all tab content and the tab bar
+            document.querySelectorAll('.goal-tab-content').forEach(c => c.classList.add('hidden'));
+            const tabBar = goalsView.querySelector('.flex.justify-center.mb-6');
+            if (tabBar) tabBar.classList.add('hidden');
+        } else {
+            if (lockedMsg) lockedMsg.remove();
+            const tabBar = goalsView.querySelector('.flex.justify-center.mb-6');
+            if (tabBar) tabBar.classList.remove('hidden');
+            
+            // If current active tab is locked, switch to first unlocked tab
+            if (!this.isGoalTabUnlocked(this.activeGoalTab)) {
+                const firstUnlocked = Object.entries(this.goalTabUnlockLevels)
+                    .filter(([_, lvl]) => this.level >= lvl)
+                    .sort((a, b) => a[1] - b[1])[0];
+                if (firstUnlocked) this.switchGoalTab(firstUnlocked[0]);
+            }
+        }
+    }
+    
+    updateArcaneTabVisibility() {
+        document.querySelectorAll('.arcane-tab').forEach(tab => {
+            const tabName = tab.getAttribute('data-arcane-tab');
+            if (tabName && this.arcaneTabUnlockLevels[tabName] !== undefined) {
+                if (this.level < this.arcaneTabUnlockLevels[tabName]) {
+                    tab.classList.add('hidden');
+                } else {
+                    tab.classList.remove('hidden');
+                }
+            }
+        });
+        
+        // If enchantments tab locked and currently active, switch to spellbook
+        if (this.activeArcaneTab === 'enchantments' && !this.isArcaneTabUnlocked('enchantments')) {
+            this.switchArcaneTab('spellbook');
+        }
+    }
+    
+    checkFeatureUnlocks() {
+        const tutorial = this.featureUnlockTutorials[this.level];
+        if (tutorial && !this.seenFeatureTutorials.includes(this.level)) {
+            this.seenFeatureTutorials.push(this.level);
+            this.saveData();
+            
+            // Delay so it doesn't overlap level-up celebration
+            setTimeout(() => {
+                this.showFeatureUnlockPopup(tutorial.title, tutorial.text);
+            }, 3000);
+        }
+        
+        // Update nav for newly unlocked features
+        this.updateNavVisibility();
+    }
+    
+    showFeatureUnlockPopup(title, text) {
+        const emoji = title.split(' ')[0];
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 bg-black/80 z-[200] flex items-center justify-center px-4';
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+        overlay.innerHTML = `
+            <div class="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 rounded-2xl shadow-2xl border-4 border-yellow-500 max-w-md w-full p-8 text-center transform scale-0 transition-transform duration-500" id="unlock-popup-inner">
+                <div class="text-7xl mb-4 animate-bounce">${emoji}</div>
+                <h2 class="text-2xl font-bold text-yellow-300 medieval-title mb-4">${title}</h2>
+                <p class="text-amber-200 fancy-font text-lg mb-6 leading-relaxed">${text}</p>
+                <button onclick="this.closest('.fixed').remove()" class="px-8 py-3 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white font-bold rounded-xl fancy-font text-lg border-2 border-yellow-400 transition-all hover:scale-105">
+                    Awesome!
+                </button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const inner = document.getElementById('unlock-popup-inner');
+                if (inner) inner.style.transform = 'scale(1)';
+            });
+        });
+        
+        if (window.audioManager) window.audioManager.play('achievement', 0.5);
+    }
+    
     switchView(viewName) {
+        // Progressive unlock gating
+        const directViewCheck = this.featureUnlockLevels[viewName];
+        if (directViewCheck && this.level < directViewCheck) {
+            this.showAchievement(`🔒 Unlocks at Level ${directViewCheck}!`, 'daily');
+            return;
+        }
+        
         // Redirect legacy spellbook/enchantments view names to the combined arcane view
         const arcaneTabMap = { 'spellbook': 'spellbook', 'enchantments': 'enchantments' };
         if (arcaneTabMap[viewName]) {
@@ -1466,6 +1880,12 @@ class GoalManager {
         // Redirect legacy individual goal view names to the combined goals view
         const goalTabMap = { 'life-goals': 'life-goals', 'yearly': 'yearly', 'monthly': 'monthly', 'weekly': 'weekly', 'sidequests': 'sidequests' };
         if (goalTabMap[viewName]) {
+            // Gate locked goal tabs
+            if (!this.isGoalTabUnlocked(viewName)) {
+                const reqLvl = this.goalTabUnlockLevels[viewName];
+                this.showAchievement(`🔒 Unlocks at Level ${reqLvl}!`, 'daily');
+                return;
+            }
             this.currentView = 'goals';
             this.switchGoalTab(goalTabMap[viewName]);
             
@@ -1507,6 +1927,13 @@ class GoalManager {
     }
 
     switchGoalTab(tabName) {
+        // Progressive unlock gating
+        if (!this.isGoalTabUnlocked(tabName)) {
+            const reqLvl = this.goalTabUnlockLevels[tabName];
+            this.showAchievement(`🔒 Unlocks at Level ${reqLvl}!`, 'daily');
+            return;
+        }
+        
         // Track which goal tab is active
         this.activeGoalTab = tabName;
         
@@ -1616,6 +2043,13 @@ class GoalManager {
     }
 
     switchArcaneTab(tabName) {
+        // Progressive unlock gating
+        if (!this.isArcaneTabUnlocked(tabName)) {
+            const reqLvl = this.arcaneTabUnlockLevels[tabName];
+            this.showAchievement(`🔒 Unlocks at Level ${reqLvl}!`, 'daily');
+            return;
+        }
+        
         this.activeArcaneTab = tabName;
         
         document.querySelectorAll('.arcane-tab-content').forEach(content => {
@@ -2383,14 +2817,13 @@ class GoalManager {
             }
             
             quest.completed = !quest.completed;
-            if (quest.completed) {
+            if (quest.completed && !quest.rewarded) {
+                quest.rewarded = true;
                 const xpReward = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
                 this.addXP(xpReward, 'side');
                 this.grantAttackCharge(1, 'sidequest');
+                this.checkSerenityBonus();
                 this.showAchievement(`Side Quest Completed! +${xpReward} XP 🧭`, 'daily');
-            } else {
-                const xpReward = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
-                this.xp = Math.max(0, this.xp - xpReward);
             }
             this.saveData();
             this.render();
@@ -2829,12 +3262,13 @@ class GoalManager {
     // XP and Leveling System
     getXPForLevel(level) {
         // Progressive scaling: Each level requires more XP
-        // Level 1: 500 XP
-        // Level 2: 800 XP
-        // Level 3: 1,200 XP
-        // Level 4: 1,700 XP
-        // Formula: 500 + (level - 1) * 300
-        return 500 + (level - 1) * 300;
+        // Level 1: 150 XP  (1-2 days for new users)
+        // Level 2: 400 XP
+        // Level 3: 650 XP
+        // Level 4: 900 XP
+        // Level 5: 1,150 XP
+        // Formula: 150 + (level - 1) * 250
+        return 150 + (level - 1) * 250;
     }
 
     getTotalXPForLevel(level) {
@@ -2847,6 +3281,22 @@ class GoalManager {
     }
 
     addXP(amount, source) {
+        // Early Bird enchantment: 3x XP for first 3 daily tasks of the day
+        if (source === 'daily' && this.hasActiveEnchantment('early_bird')) {
+            this.earlyBirdTasksToday++;
+            if (this.earlyBirdTasksToday <= 3) {
+                amount *= 3;
+            }
+        }
+        
+        // Momentum enchantment: +5 bonus XP per consecutive task (stacks up to +25)
+        if (this.hasActiveEnchantment('momentum')) {
+            this.momentumStack = Math.min(this.momentumStack + 1, 5);
+            amount += this.momentumStack * 5;
+        } else {
+            this.momentumStack = 0;
+        }
+        
         // Apply spell multipliers
         const xpMultiplier = this.getActiveSpellMultiplier('xp_multiplier') * this.getActiveSpellMultiplier('xp_boost');
         // Apply enchantment multipliers
@@ -2866,14 +3316,14 @@ class GoalManager {
         
         const finalXP = Math.floor(amount * xpMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
+        // Grant companion XP (Bonding enchantment doubles it)
+        this.grantCompanionXP(finalXP);
+        
         this.xp += finalXP;
         const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
         
         // Trigger XP bar animation
         this.animateXPGain(finalXP);
-        
-        // Also award gold coins (XP = Coins for simplicity) - pass questDoublerMultiplier
-        this.addGold(amount, source, questDoublerMultiplier);
         
         if (this.xp >= xpForNextLevel) {
             this.levelUp();
@@ -3168,7 +3618,7 @@ class GoalManager {
     // Theme System
     checkRewardUnlocks() {
         // Theme unlocks based on level
-        if (this.level >= 5 && !this.unlockedThemes.includes('forest')) {
+        if (this.level >= 6 && !this.unlockedThemes.includes('forest')) {
             this.unlockTheme('forest', 'Forest Kingdom');
         }
         if (this.level >= 10 && !this.unlockedThemes.includes('desert')) {
@@ -3202,7 +3652,7 @@ class GoalManager {
     unlockTheme(id, name) {
         if (!this.unlockedThemes.includes(id)) {
             this.unlockedThemes.push(id);
-            this.showAchievement(`🎨 Theme Unlocked: ${name}!`, 'yearly');
+            if (!this._suppressRewardToasts) this.showAchievement(`🎨 Theme Unlocked: ${name}!`, 'yearly');
         }
     }
 
@@ -3256,167 +3706,233 @@ class GoalManager {
             this.showAchievement('🎲 Lucky Draw! Guaranteed rare loot!', 'rare', false);
         }
         
-        // Apply rewards (spells, companions, themes only - no gold/XP from chests)
-        // Suppress sub-reward sounds so only the chest toast sound plays
+        // Apply rewards - suppress sub-reward sounds so only chest sound plays
         this._suppressRewardSounds = true;
+        this._suppressRewardToasts = true;
         rewards.forEach(reward => {
+            if (reward.type === 'gold') this.addGold(reward.amount, 'chest');
+            if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
+            if (reward.type === 'charges') this.attackCharges += reward.amount;
             if (reward.type === 'theme') this.tryUnlockRandomTheme();
             if (reward.type === 'companion') this.unlockCompanion(reward.value);
             if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
         });
         this._suppressRewardSounds = false;
+        this._suppressRewardToasts = false;
         
         this.saveData();
         this.render();
     }
 
+    getMasterLootPool() {
+        return {
+            common: [
+                { type: 'gold', amount: [25, 50], weight: 30, name: 'Small Gold Pouch', icon: '💰' },
+                { type: 'gold', amount: [50, 100], weight: 20, name: 'Gold Pouch', icon: '💰' },
+                { type: 'xp', amount: [15, 30], weight: 25, name: 'Minor XP Scroll', icon: '📜' },
+                { type: 'spell', spellId: 'minor_wisdom', charges: 1, weight: 15 },
+                { type: 'spell', spellId: 'copper_blessing', charges: 1, weight: 10 },
+            ],
+            uncommon: [
+                { type: 'gold', amount: [100, 200], weight: 18, name: 'Large Gold Pouch', icon: '💰' },
+                { type: 'xp', amount: [50, 100], weight: 15, name: 'Greater XP Scroll', icon: '📜' },
+                { type: 'charges', amount: 1, weight: 15, name: 'Attack Charge', icon: '⚔️' },
+                { type: 'spell', spellId: 'lucky_draw', charges: 1, weight: 14 },
+                { type: 'spell', spellId: 'focus_mode', charges: 1, weight: 12 },
+                { type: 'spell', spellId: 'instant_archive', charges: 1, weight: 10 },
+                { type: 'spell', spellId: 'silver_blessing', charges: 1, weight: 8 },
+                { type: 'companion', companions: ['cat', 'rabbit'], weight: 8 },
+            ],
+            rare: [
+                { type: 'gold', amount: [200, 400], weight: 12, name: 'Grand Gold Pouch', icon: '💰' },
+                { type: 'xp', amount: [100, 200], weight: 10, name: 'Epic XP Scroll', icon: '📜' },
+                { type: 'charges', amount: 2, weight: 10, name: 'Attack Charges x2', icon: '⚔️' },
+                { type: 'spell', spellId: 'arcane_surge', charges: 2, weight: 15 },
+                { type: 'spell', spellId: 'golden_touch', charges: 1, weight: 12 },
+                { type: 'spell', spellId: 'inferno_focus', charges: 1, weight: 12 },
+                { type: 'spell', spellId: 'critical_strike', charges: 1, weight: 10 },
+                { type: 'theme', weight: 10 },
+                { type: 'companion', companions: ['owl', 'fox', 'turtle'], weight: 9 },
+            ],
+            epic: [
+                { type: 'spell', spellId: 'berserker_rage', charges: 1, weight: 20 },
+                { type: 'spell', spellId: 'streak_shield', charges: 1, weight: 15 },
+                { type: 'spell', spellId: 'boss_slayer', charges: 1, weight: 15 },
+                { type: 'spell', spellId: 'execute', charges: 1, weight: 10 },
+                { type: 'companion', companions: ['wolf', 'eagle', 'bear', 'unicorn'], weight: 18 },
+                { type: 'gold', amount: [300, 600], weight: 10, name: 'Epic Gold Hoard', icon: '💰' },
+                { type: 'charges', amount: 3, weight: 7, name: 'Battle Charges x3', icon: '⚔️' },
+                { type: 'theme', weight: 5 },
+            ],
+            legendary: [
+                { type: 'spell', spellId: 'moonlight_blessing', charges: 2, weight: 22 },
+                { type: 'spell', spellId: 'double_xp_weekend', charges: 1, weight: 18 },
+                { type: 'spell', spellId: 'time_freeze', charges: 2, weight: 18 },
+                { type: 'companion', companions: ['dragon', 'phoenix', 'lion'], weight: 17 },
+                { type: 'gold', amount: [500, 1000], weight: 12, name: 'Legendary Treasure', icon: '👑' },
+                { type: 'charges', amount: 5, weight: 8, name: 'War Chest x5', icon: '⚔️' },
+                { type: 'theme', weight: 5 },
+            ]
+        };
+    }
+
     generateChestRewards(type, luckyDrawActive = false) {
         const rewards = [];
-        
-        // Free spells that non-premium users can earn
         const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing'];
         
-        // Define loot tables with weights (no gold/XP - earn those through tasks!)
-        const lootTables = {
-            bronze: {
-                spells: [
-                    { id: 'lucky_draw', weight: 30, charges: 1, rarity: 'uncommon' },
-                    { id: 'minor_wisdom', weight: 25, charges: 1, rarity: 'common' },
-                    { id: 'copper_blessing', weight: 25, charges: 1, rarity: 'common' },
-                    { id: 'arcane_surge', weight: 15, charges: 1, rarity: 'rare' },
-                    { id: 'golden_touch', weight: 5, charges: 1, rarity: 'rare' }
-                ],
-                companions: [
-                    { id: 'cat', weight: 50, rarity: 'common' },
-                    { id: 'rabbit', weight: 50, rarity: 'common' }
-                ],
-                companionChance: 0.05,
-                itemCount: 1
-            },
-            silver: {
-                spells: [
-                    { id: 'arcane_surge', weight: 25, charges: 2, rarity: 'rare' },
-                    { id: 'golden_touch', weight: 20, charges: 1, rarity: 'rare' },
-                    { id: 'silver_blessing', weight: 20, charges: 1, rarity: 'uncommon' },
-                    { id: 'inferno_focus', weight: 20, charges: 1, rarity: 'rare' },
-                    { id: 'critical_strike', weight: 15, charges: 1, rarity: 'rare' }
-                ],
-                companions: [
-                    { id: 'cat', weight: 20, rarity: 'common' },
-                    { id: 'rabbit', weight: 20, rarity: 'common' },
-                    { id: 'owl', weight: 25, rarity: 'uncommon' },
-                    { id: 'fox', weight: 25, rarity: 'uncommon' },
-                    { id: 'turtle', weight: 10, rarity: 'uncommon' }
-                ],
-                companionChance: 0.10,
-                themeChance: 0.3,
-                itemCount: 2
-            },
-            gold: {
-                spells: [
-                    { id: 'inferno_focus', weight: 30, charges: 2, rarity: 'rare' },
-                    { id: 'berserker_rage', weight: 25, charges: 1, rarity: 'epic' },
-                    { id: 'critical_strike', weight: 20, charges: 2, rarity: 'rare' },
-                    { id: 'streak_shield', weight: 15, charges: 1, rarity: 'epic' },
-                    { id: 'moonlight_blessing', weight: 10, charges: 1, rarity: 'legendary' }
-                ],
-                companions: [
-                    { id: 'owl', weight: 15, rarity: 'uncommon' },
-                    { id: 'fox', weight: 15, rarity: 'uncommon' },
-                    { id: 'turtle', weight: 10, rarity: 'uncommon' },
-                    { id: 'wolf', weight: 25, rarity: 'rare' },
-                    { id: 'eagle', weight: 20, rarity: 'rare' },
-                    { id: 'bear', weight: 15, rarity: 'rare' }
-                ],
-                companionChance: 0.20,
-                themeChance: 0.5,
-                itemCount: 3
-            },
-            royal: {
-                spells: [
-                    { id: 'boss_slayer', weight: 25, charges: 1, rarity: 'epic' },
-                    { id: 'execute', weight: 20, charges: 1, rarity: 'epic' },
-                    { id: 'moonlight_blessing', weight: 20, charges: 2, rarity: 'legendary' },
-                    { id: 'berserker_rage', weight: 15, charges: 2, rarity: 'epic' },
-                    { id: 'double_xp_weekend', weight: 10, charges: 1, rarity: 'legendary' },
-                    { id: 'time_freeze', weight: 10, charges: 2, rarity: 'legendary' }
-                ],
-                companions: [
-                    { id: 'wolf', weight: 10, rarity: 'rare' },
-                    { id: 'eagle', weight: 10, rarity: 'rare' },
-                    { id: 'bear', weight: 15, rarity: 'rare' },
-                    { id: 'dragon', weight: 25, rarity: 'legendary' },
-                    { id: 'unicorn', weight: 20, rarity: 'epic' },
-                    { id: 'phoenix', weight: 10, rarity: 'legendary' },
-                    { id: 'lion', weight: 10, rarity: 'legendary' }
-                ],
-                companionChance: 0.40,
-                themeChance: 0.7,
-                itemCount: 4
-            }
+        const lootPool = this.getMasterLootPool();
+        
+        // Rarity weights per chest tier
+        const rarityWeights = {
+            bronze:  { common: 50, uncommon: 30, rare: 15, epic: 4, legendary: 1 },
+            silver:  { common: 30, uncommon: 35, rare: 25, epic: 8, legendary: 2 },
+            gold:    { common: 10, uncommon: 25, rare: 35, epic: 22, legendary: 8 },
+            royal:   { common: 5, uncommon: 15, rare: 30, epic: 30, legendary: 20 }
         };
         
-        const table = lootTables[type];
+        // Item counts per chest tier
+        const itemCounts = { bronze: 1, silver: 2, gold: 3, royal: 4 };
         
-        // Filter spells based on premium status
-        // Free users only get charges for free spells, premium users get all spells
-        let availableSpells = table.spells;
-        if (!this.isPremium) {
-            availableSpells = table.spells.filter(s => freeSpellIds.includes(s.id));
-            // If no free spells in this chest tier, use default free spells
-            if (availableSpells.length === 0) {
-                availableSpells = [
-                    { id: 'minor_wisdom', weight: 25, charges: 1, rarity: 'common' }, 
-                    { id: 'copper_blessing', weight: 25, charges: 1, rarity: 'common' }, 
-                    { id: 'lucky_draw', weight: 20, charges: 1, rarity: 'uncommon' }, 
-                    { id: 'focus_mode', weight: 15, charges: 1, rarity: 'uncommon' }, 
-                    { id: 'instant_archive', weight: 15, charges: 1, rarity: 'uncommon' }
+        const weights = { ...(rarityWeights[type] || rarityWeights.bronze) };
+        const itemCount = itemCounts[type] || 1;
+        
+        // Lucky Loot enchantment: shift rarity weights upward
+        if (this.hasActiveEnchantment('lucky_loot')) {
+            const shift = Math.min(weights.common, 10);
+            weights.common -= shift;
+            weights.rare += Math.floor(shift * 0.5);
+            weights.epic += Math.floor(shift * 0.5);
+        }
+        
+        // Lucky Draw: minimum uncommon rarity
+        if (luckyDrawActive) {
+            const commonWeight = weights.common;
+            weights.common = 0;
+            weights.uncommon += Math.floor(commonWeight * 0.4);
+            weights.rare += Math.floor(commonWeight * 0.3);
+            weights.epic += Math.floor(commonWeight * 0.2);
+            weights.legendary += Math.floor(commonWeight * 0.1);
+        }
+        
+        // Build available pools (filter premium spells for free users)
+        const availablePools = {};
+        for (const [rarity, pool] of Object.entries(lootPool)) {
+            let filtered = this.isPremium ? [...pool] : pool.filter(item => {
+                if (item.type === 'spell' && !freeSpellIds.includes(item.spellId)) return false;
+                return true;
+            });
+            // Fallback if rarity pool is empty after filtering
+            if (filtered.length === 0) {
+                const fallbackAmounts = { common: [25, 75], uncommon: [75, 150], rare: [150, 300], epic: [300, 600], legendary: [500, 1000] };
+                filtered = [
+                    { type: 'gold', amount: fallbackAmounts[rarity] || [50, 150], weight: 40, name: 'Gold Pouch', icon: '💰' },
+                    { type: 'xp', amount: [30, 80], weight: 30, name: 'XP Scroll', icon: '📜' },
+                    { type: 'charges', amount: rarity === 'legendary' ? 3 : rarity === 'epic' ? 2 : 1, weight: 30, name: 'Attack Charges', icon: '⚔️' },
                 ];
             }
+            availablePools[rarity] = filtered;
         }
         
-        // Lucky Draw: Filter to only uncommon+ loot (no common drops)
-        const uncommonOrBetter = ['uncommon', 'rare', 'epic', 'legendary'];
-        if (luckyDrawActive) {
-            // Filter spells to uncommon or better
-            const goodSpells = availableSpells.filter(s => uncommonOrBetter.includes(s.rarity));
-            if (goodSpells.length > 0) {
-                availableSpells = goodSpells;
-            }
-        }
-        
-        // Random spells based on weighted selection
-        for (let i = 0; i < table.itemCount; i++) {
-            const spell = this.weightedRandomSelect(availableSpells);
-            if (spell) {
-                rewards.push({ type: 'spell', spellId: spell.id, charges: spell.charges });
-            }
-        }
-        
-        // Random theme unlock (Lucky Draw guarantees theme if available)
-        if (table.themeChance) {
-            if (luckyDrawActive || Math.random() < table.themeChance) {
-                rewards.push({ type: 'theme', value: 'random' });
-            }
-        }
-        
-        // Random companion unlock from pool
-        let companionPool = table.companions;
-        if (luckyDrawActive && companionPool) {
-            // Lucky Draw: Filter to uncommon+ companions and guarantee a drop
-            const goodCompanions = companionPool.filter(c => uncommonOrBetter.includes(c.rarity));
-            if (goodCompanions.length > 0) {
-                const companion = this.weightedRandomSelect(goodCompanions);
-                rewards.push({ type: 'companion', value: companion.id });
-            }
-        } else if (table.companionChance && companionPool && Math.random() < table.companionChance) {
-            const companion = this.weightedRandomSelect(companionPool);
-            if (companion) {
-                rewards.push({ type: 'companion', value: companion.id });
-            }
+        // Roll each item
+        const rarityEntries = Object.entries(weights).map(([rarity, weight]) => ({ rarity, weight }));
+        for (let i = 0; i < itemCount; i++) {
+            // Step 1: Roll rarity
+            const rarityRoll = this.weightedRandomSelect(rarityEntries);
+            const rolledRarity = rarityRoll.rarity;
+            
+            // Step 2: Pick item from that rarity's pool
+            const pool = availablePools[rolledRarity];
+            const item = this.weightedRandomSelect(pool);
+            
+            // Step 3: Build reward object
+            const reward = this.buildLootReward(item, rolledRarity);
+            if (reward) rewards.push(reward);
         }
         
         return rewards;
+    }
+    
+    generateBossLoot(bossType) {
+        const rewards = [];
+        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing'];
+        
+        const lootPool = this.getMasterLootPool();
+        
+        // Boss-specific rarity weights and item counts
+        const rarityWeights = {
+            daily:   { common: 40, uncommon: 35, rare: 18, epic: 5, legendary: 2 },
+            weekly:  { common: 15, uncommon: 30, rare: 35, epic: 15, legendary: 5 },
+            monthly: { common: 5, uncommon: 15, rare: 30, epic: 30, legendary: 20 }
+        };
+        const itemCounts = { daily: 1, weekly: 2, monthly: 3 };
+        
+        const weights = { ...(rarityWeights[bossType] || rarityWeights.daily) };
+        const itemCount = itemCounts[bossType] || 1;
+        
+        // Build available pools (filter premium spells for free users)
+        const availablePools = {};
+        for (const [rarity, pool] of Object.entries(lootPool)) {
+            let filtered = this.isPremium ? [...pool] : pool.filter(item => {
+                if (item.type === 'spell' && !freeSpellIds.includes(item.spellId)) return false;
+                return true;
+            });
+            if (filtered.length === 0) {
+                const fallbackAmounts = { common: [25, 75], uncommon: [75, 150], rare: [150, 300], epic: [300, 600], legendary: [500, 1000] };
+                filtered = [
+                    { type: 'gold', amount: fallbackAmounts[rarity] || [50, 150], weight: 40, name: 'Gold Pouch', icon: '💰' },
+                    { type: 'xp', amount: [30, 80], weight: 30, name: 'XP Scroll', icon: '📜' },
+                    { type: 'charges', amount: rarity === 'legendary' ? 3 : rarity === 'epic' ? 2 : 1, weight: 30, name: 'Attack Charges', icon: '⚔️' },
+                ];
+            }
+            availablePools[rarity] = filtered;
+        }
+        
+        // Roll each item
+        const rarityEntries = Object.entries(weights).map(([rarity, weight]) => ({ rarity, weight }));
+        for (let i = 0; i < itemCount; i++) {
+            const rarityRoll = this.weightedRandomSelect(rarityEntries);
+            const rolledRarity = rarityRoll.rarity;
+            const pool = availablePools[rolledRarity];
+            const item = this.weightedRandomSelect(pool);
+            const reward = this.buildLootReward(item, rolledRarity);
+            if (reward) rewards.push(reward);
+        }
+        
+        return rewards;
+    }
+    
+    buildLootReward(item, rarity) {
+        if (item.type === 'gold') {
+            const [min, max] = item.amount;
+            const amount = Math.floor(Math.random() * (max - min + 1)) + min;
+            return { type: 'gold', amount, rarity, name: item.name, icon: item.icon };
+        }
+        if (item.type === 'xp') {
+            const [min, max] = item.amount;
+            const amount = Math.floor(Math.random() * (max - min + 1)) + min;
+            return { type: 'xp', amount, rarity, name: item.name, icon: item.icon };
+        }
+        if (item.type === 'charges') {
+            return { type: 'charges', amount: item.amount, rarity, name: item.name, icon: item.icon };
+        }
+        if (item.type === 'spell') {
+            return { type: 'spell', spellId: item.spellId, charges: item.charges, rarity };
+        }
+        if (item.type === 'theme') {
+            return { type: 'theme', value: 'random', rarity };
+        }
+        if (item.type === 'companion') {
+            if (this.level < 3) {
+                // Companions locked before level 3 - give gold instead
+                const goldAmounts = { uncommon: [75, 150], rare: [150, 300], epic: [300, 500], legendary: [500, 1000] };
+                const [min, max] = goldAmounts[rarity] || [50, 100];
+                const amount = Math.floor(Math.random() * (max - min + 1)) + min;
+                return { type: 'gold', amount, rarity, name: 'Gold (Companion Locked)', icon: '💰' };
+            }
+            const companionId = item.companions[Math.floor(Math.random() * item.companions.length)];
+            return { type: 'companion', value: companionId, rarity };
+        }
+        return null;
     }
     
     weightedRandomSelect(items) {
@@ -3433,29 +3949,16 @@ class GoalManager {
     }
 
     showChestRewards(type, rewards) {
-        const companions = this.getCompanionDefinitions();
-        const rewardText = rewards.map(r => {
-            if (r.type === 'theme') return `🎨 Theme`;
-            if (r.type === 'companion') {
-                const companion = companions[r.value];
-                return companion ? `${companion.icon} ${companion.name}` : '🐾 Companion';
-            }
-            if (r.type === 'spell') {
-                const spellName = this.spellDefinitions[r.spellId]?.name || 'Unknown Spell';
-                return `🔮 ${spellName} x${r.charges}`;
-            }
-            return '';
-        }).filter(r => r).join(', ');
-        
         this.celebrateChestOpen(type, rewards);
         
-        // Delayed toast so it appears after the animation
+        // Show loot panel after celebration animation finishes
         setTimeout(() => {
-            this.showAchievement(`🎁 ${type.toUpperCase()} CHEST! ${rewardText}`, 'life');
-        }, 1200);
+            this.showLootPanel(type, rewards);
+        }, 2200);
     }
 
     celebrateChestOpen(type, rewards) {
+        if (window.audioManager) window.audioManager.playAchievement('life');
         const chestIcons = { bronze: '🟫', silver: '⬜', gold: '🟨', royal: '🟪' };
         const chestIcon = chestIcons[type] || '🎁';
 
@@ -3503,37 +4006,95 @@ class GoalManager {
             }, 400 + i * 20);
         }
 
-        // 6. Loot items pop in around center
-        const companions = this.getCompanionDefinitions();
-        const lootIcons = rewards.map(r => {
-            if (r.type === 'theme') return '🎨';
-            if (r.type === 'companion') return companions[r.value]?.icon || '🐾';
-            if (r.type === 'spell') return this.spellDefinitions[r.spellId]?.icon || '🔮';
-            return '✨';
-        });
-        
-        lootIcons.forEach((lootIcon, i) => {
-            setTimeout(() => {
-                const loot = document.createElement('div');
-                loot.className = 'chest-loot-item';
-                loot.textContent = lootIcon;
-                const spread = lootIcons.length > 1 ? (i / (lootIcons.length - 1) - 0.5) * 200 : 0;
-                loot.style.left = `calc(50% + ${spread}px)`;
-                loot.style.top = '45%';
-                document.body.appendChild(loot);
-                setTimeout(() => loot.remove(), 3000);
-            }, 800 + i * 200);
-        });
-
-        // 7. Tier label
-        const label = document.createElement('div');
-        label.className = `chest-tier-label ${type}`;
-        label.textContent = `${type} Chest`;
-        document.body.appendChild(label);
-        setTimeout(() => label.remove(), 4000);
-
-        // 8. Confetti burst (delayed to sync with opening moment)
+        // 6. Confetti burst (delayed to sync with opening moment)
         setTimeout(() => this.createConfetti(), 400);
+    }
+
+    showLootPanel(type, rewards) {
+        const companions = this.getCompanionDefinitions();
+        const tierColors = {
+            bronze: { bg: 'from-amber-900 to-amber-950', border: 'border-amber-600', text: 'text-amber-300', glow: 'shadow-amber-500/30', title: 'Bronze Chest Opened!', icon: '🎁' },
+            silver: { bg: 'from-slate-700 to-slate-900', border: 'border-slate-400', text: 'text-slate-200', glow: 'shadow-slate-400/30', title: 'Silver Chest Opened!', icon: '🎁' },
+            gold: { bg: 'from-yellow-800 to-yellow-950', border: 'border-yellow-500', text: 'text-yellow-300', glow: 'shadow-yellow-500/40', title: 'Gold Chest Opened!', icon: '🎁' },
+            royal: { bg: 'from-purple-800 to-purple-950', border: 'border-purple-400', text: 'text-purple-200', glow: 'shadow-purple-500/40', title: 'Royal Chest Opened!', icon: '🎁' },
+            boss_daily: { bg: 'from-red-900 to-red-950', border: 'border-red-500', text: 'text-red-300', glow: 'shadow-red-500/30', title: 'Daily Boss Loot!', icon: '💀' },
+            boss_weekly: { bg: 'from-red-800 to-red-950', border: 'border-orange-500', text: 'text-orange-300', glow: 'shadow-orange-500/40', title: 'Weekly Boss Loot!', icon: '🔥' },
+            boss_monthly: { bg: 'from-red-700 to-purple-950', border: 'border-yellow-500', text: 'text-yellow-300', glow: 'shadow-yellow-500/40', title: 'Monthly Champion Loot!', icon: '🏴' },
+        };
+        const tier = tierColors[type] || tierColors.bronze;
+        const panelTitle = tier.title;
+        const panelIcon = tier.icon;
+
+        const rewardItems = rewards.map(r => {
+            if (r.type === 'gold') {
+                return { icon: r.icon || '💰', name: r.name || 'Gold', desc: `+${r.amount} gold`, rarity: r.rarity || 'common' };
+            }
+            if (r.type === 'xp') {
+                return { icon: r.icon || '📜', name: r.name || 'XP Scroll', desc: `+${r.amount} XP`, rarity: r.rarity || 'common' };
+            }
+            if (r.type === 'charges') {
+                return { icon: r.icon || '⚔️', name: r.name || 'Attack Charges', desc: `+${r.amount} charge${r.amount > 1 ? 's' : ''}`, rarity: r.rarity || 'uncommon' };
+            }
+            if (r.type === 'theme') {
+                return { icon: '🎨', name: 'New Theme', desc: 'A new kingdom theme!', rarity: r.rarity || 'rare' };
+            }
+            if (r.type === 'companion') {
+                const c = companions[r.value];
+                return { icon: c?.icon || '🐾', name: c?.name || 'Companion', desc: c?.description || 'A loyal companion', rarity: r.rarity || c?.rarity || 'common' };
+            }
+            if (r.type === 'spell') {
+                const spell = this.spellDefinitions[r.spellId];
+                return { icon: spell?.icon || '🔮', name: spell?.name || 'Spell', desc: `x${r.charges} charges`, rarity: r.rarity || spell?.rarity || 'common' };
+            }
+            return { icon: '✨', name: 'Reward', desc: '', rarity: 'common' };
+        });
+
+        const rarityColors = {
+            common: 'text-gray-300 border-gray-600 bg-gray-800/50',
+            uncommon: 'text-green-300 border-green-600 bg-green-900/30',
+            rare: 'text-blue-300 border-blue-500 bg-blue-900/30',
+            epic: 'text-purple-300 border-purple-500 bg-purple-900/30',
+            legendary: 'text-yellow-300 border-yellow-500 bg-yellow-900/30'
+        };
+
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 bg-black/80 z-[200] flex items-center justify-center px-4';
+        overlay.style.animation = 'fadeIn 0.3s ease-out';
+
+        overlay.innerHTML = `
+            <div class="bg-gradient-to-br ${tier.bg} rounded-2xl border-4 ${tier.border} shadow-2xl ${tier.glow} max-w-sm w-full p-6 transform scale-0" 
+                 style="animation: lootPanelIn 0.4s ease-out 0.1s forwards;">
+                <div class="text-center mb-5">
+                    <div class="text-5xl mb-2">${panelIcon}</div>
+                    <h2 class="text-2xl font-bold ${tier.text} medieval-title">${panelTitle}</h2>
+                    <p class="text-sm text-white/60 mt-1">You found ${rewardItems.length} item${rewardItems.length > 1 ? 's' : ''}!</p>
+                </div>
+                <div class="space-y-3 mb-6">
+                    ${rewardItems.map((item, i) => `
+                        <div class="flex items-center gap-3 p-3 rounded-xl border-2 ${rarityColors[item.rarity] || rarityColors.common}"
+                             style="animation: lootItemIn 0.3s ease-out ${0.3 + i * 0.15}s both;">
+                            <div class="text-3xl flex-shrink-0">${item.icon}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-sm">${item.name}</div>
+                                <div class="text-xs opacity-70">${item.desc}</div>
+                            </div>
+                            <div class="text-[10px] uppercase font-bold opacity-60">${item.rarity}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="w-full py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-lg transition-all duration-200 active:scale-95"
+                        onclick="this.closest('.fixed').remove()">
+                    ✨ Collect
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Also dismiss on backdrop click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
     }
 
     // Companion System
@@ -3661,7 +4222,7 @@ class GoalManager {
             // Already have this companion - give bonus gold
             const bonusGold = { common: 50, uncommon: 100, rare: 200, epic: 400, legendary: 800 }[companionData.rarity];
             this.goldCoins += bonusGold;
-            this.showAchievement(`Already have ${companionData.name}! +${bonusGold} Gold instead`, 'daily');
+            if (!this._suppressRewardToasts) this.showAchievement(`Already have ${companionData.name}! +${bonusGold} Gold instead`, 'daily');
         } else {
             // New companion - add to collection
             const newCompanion = { 
@@ -3681,16 +4242,16 @@ class GoalManager {
             
             if (!activeCompanion) {
                 this.activeCompanionId = selected;
-                this.showAchievement(`🎉 First Companion: ${companionData.name}! ${companionData.description}`, 'life');
+                if (!this._suppressRewardToasts) this.showAchievement(`🎉 First Companion: ${companionData.name}! ${companionData.description}`, 'life');
             } else {
                 const currentRarity = rarityOrder.indexOf(activeCompanion.rarity);
                 const newRarity = rarityOrder.indexOf(companionData.rarity);
                 
                 if (newRarity > currentRarity) {
                     this.activeCompanionId = selected;
-                    this.showAchievement(`🎉 NEW COMPANION: ${companionData.name}! Auto-equipped (higher rarity)`, 'life');
+                    if (!this._suppressRewardToasts) this.showAchievement(`🎉 NEW COMPANION: ${companionData.name}! Auto-equipped (higher rarity)`, 'life');
                 } else {
-                    this.showAchievement(`🎉 NEW COMPANION: ${companionData.name}! Check your collection to equip.`, 'life');
+                    if (!this._suppressRewardToasts) this.showAchievement(`🎉 NEW COMPANION: ${companionData.name}! Check your collection to equip.`, 'life');
                 }
             }
             
@@ -3718,6 +4279,33 @@ class GoalManager {
         }
     }
     
+    checkSerenityBonus() {
+        if (this.hasActiveEnchantment('crystal_chance') && Math.random() < 0.2) {
+            this.focusCrystals++;
+            this.showAchievement('🧘 Serenity! Bonus Focus Crystal earned! 💎', 'daily');
+            this.saveData();
+        }
+    }
+    
+    grantCompanionXP(amount) {
+        const companion = this.getActiveCompanion();
+        if (!companion || !amount || amount <= 0) return;
+        
+        // Bonding enchantment: 2x companion XP
+        const bondingActive = this.hasActiveEnchantment('companion_bond');
+        const xpGain = bondingActive ? amount * 2 : amount;
+        
+        companion.xp = (companion.xp || 0) + xpGain;
+        
+        // Level up: 100 * currentLevel XP needed
+        const xpNeeded = 100 * (companion.level || 1);
+        if (companion.xp >= xpNeeded) {
+            companion.xp -= xpNeeded;
+            companion.level = (companion.level || 1) + 1;
+            this.showAchievement(`${companion.icon} ${companion.name} leveled up to Lv.${companion.level}!`, 'weekly');
+        }
+    }
+    
     getCompanionBonus(type) {
         const activeCompanion = this.getActiveCompanion();
         if (!activeCompanion) return 0;
@@ -3740,7 +4328,10 @@ class GoalManager {
         // Epic celebration animation!
         this.createLevelUpBurst(this.level, title);
         
-        this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐');
+        this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐', true);
+        
+        // Check for progressive feature unlocks
+        this.checkFeatureUnlocks();
         
         // Check if can level up again (in case of large XP gain)
         const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
@@ -3749,7 +4340,7 @@ class GoalManager {
         }
     }
 
-    unlockBadge(id, name, description, icon) {
+    unlockBadge(id, name, description, icon, silent = false) {
         if (!this.badges.find(b => b.id === id)) {
             this.badges.push({
                 id,
@@ -3758,7 +4349,7 @@ class GoalManager {
                 icon,
                 unlockedAt: new Date().toISOString()
             });
-            this.showAchievement(`🏆 Badge Unlocked: ${name}!`, 'monthly');
+            if (!silent) this.showAchievement(`🏆 Badge Unlocked: ${name}!`, 'monthly');
         }
     }
 
@@ -3818,8 +4409,11 @@ class GoalManager {
                 habit.completionHistory = [];
             }
             
-            if (habit.completedToday) {
-                habit.streak = (habit.streak || 0) + 1;
+            if (habit.completedToday && !habit.rewardedToday) {
+                habit.rewardedToday = today;
+                // Precision enchantment: double streak progress
+                const streakInc = this.hasActiveEnchantment('double_streak') ? 2 : 1;
+                habit.streak = (habit.streak || 0) + streakInc;
                 habit.totalCompletions = (habit.totalCompletions || 0) + 1;
                 habit.lastCompleted = today;
                 
@@ -3831,6 +4425,7 @@ class GoalManager {
                 // Add XP for habit
                 this.addXP(10, 'habit');
                 this.grantAttackCharge(1, 'habit');
+                this.checkSerenityBonus();
                 
                 // Special achievements for streaks
                 if (habit.streak === 7) {
@@ -3842,13 +4437,15 @@ class GoalManager {
                 } else {
                     this.showAchievement('Daily Ritual Completed! 🕯️', 'daily');
                 }
-            } else {
-                habit.streak = Math.max(0, (habit.streak || 0) - 1);
-                habit.totalCompletions = Math.max(0, (habit.totalCompletions || 0) - 1);
-                this.xp = Math.max(0, this.xp - 5);
-                
-                // Remove from completion history
-                habit.completionHistory = habit.completionHistory.filter(d => d !== today);
+            } else if (!habit.completedToday) {
+                // Only reverse streak/history if it was rewarded (not just toggled visually)
+                if (habit.rewardedToday === today) {
+                    habit.streak = Math.max(0, (habit.streak || 0) - 1);
+                    habit.totalCompletions = Math.max(0, (habit.totalCompletions || 0) - 1);
+                    habit.rewardedToday = null;
+                    // Remove from completion history
+                    habit.completionHistory = habit.completionHistory.filter(d => d !== today);
+                }
             }
             
             this.saveData();
@@ -4081,6 +4678,12 @@ class GoalManager {
         const enchantment = this.enchantmentDefinitions[enchantmentId];
         if (!enchantment) return;
         
+        // Premium gate
+        if (enchantment.premium && !this.isPremium) {
+            this.showPremiumPurchaseModal();
+            return;
+        }
+        
         if (this.focusCrystals < enchantment.cost) {
             this.showAchievement(`⚠️ Not enough Focus Crystals! Need ${enchantment.cost}, have ${this.focusCrystals}`, 'daily');
             return;
@@ -4226,14 +4829,14 @@ class GoalManager {
             }
             
             task.completed = !task.completed;
-            if (task.completed) {
+            if (task.completed && !task.rewarded) {
+                task.rewarded = true;
                 this.addXP(15, 'daily');
                 this.grantAttackCharge(1, 'task');
+                this.checkSerenityBonus();
                 this.showAchievement('Quest Task Completed! +15 XP ⚔️', 'daily');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
-            } else {
-                this.xp = Math.max(0, this.xp - 10);
             }
             this.updateParentProgress();
             this.saveData();
@@ -4254,14 +4857,14 @@ class GoalManager {
             }
             
             goal.completed = !goal.completed;
-            if (goal.completed) {
+            if (goal.completed && !goal.rewarded) {
+                goal.rewarded = true;
                 this.addXP(50, 'weekly');
                 this.grantAttackCharge(2, 'weekly');
+                this.checkSerenityBonus();
                 this.showAchievement('Weekly Quest Conquered! +50 XP 🛡️', 'weekly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
-            } else {
-                this.xp = Math.max(0, this.xp - 50);
             }
             this.updateParentProgress();
             this.saveData();
@@ -4273,14 +4876,14 @@ class GoalManager {
         const goal = this.monthlyGoals.find(g => g.id === goalId);
         if (goal) {
             goal.completed = !goal.completed;
-            if (goal.completed) {
+            if (goal.completed && !goal.rewarded) {
+                goal.rewarded = true;
                 this.addXP(200, 'monthly');
                 this.grantAttackCharge(3, 'monthly');
+                this.checkSerenityBonus();
                 this.showAchievement('Monthly Victory Achieved! +200 XP 👑', 'monthly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
-            } else {
-                this.xp = Math.max(0, this.xp - 200);
             }
             this.updateParentProgress();
             this.saveData();
@@ -4619,6 +5222,10 @@ class GoalManager {
             
             // Apply theme inline styles to any newly rendered quest-cards
             this.applyThemeToCards();
+            
+            // Keep progressive unlock tab visibility in sync
+            this.updateGoalTabVisibility();
+            this.updateArcaneTabVisibility();
             
         } finally {
             this.isRendering = false;
@@ -5268,6 +5875,12 @@ class GoalManager {
     }
 
     openCompanionDen() {
+        // Gate behind level 3
+        if (this.level < 3) {
+            this.showAchievement('🔒 Companions unlock at Level 3!', 'daily');
+            return;
+        }
+        
         // Close the player panel if open
         if (this.playerPanelOpen) {
             this.playerPanelOpen = false;
@@ -5814,6 +6427,7 @@ class GoalManager {
     }
 
     celebrateSpellUnlock(spell) {
+        if (this._suppressRewardToasts) return;
         this.createSparkles();
         this.showAchievement(`📖 New spell learned: ${spell.name}!`, 'epic');
     }
@@ -5988,7 +6602,7 @@ class GoalManager {
     // Premium themes: all others require premium
     themeDefinitions = {
         default: { name: 'Medieval Kingdom', icon: '🏰', color: '#b45309', unlockLevel: 0, premium: false },
-        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 5, premium: false, cardFrom: '#033026', cardTo: '#011812', border: '#059669' },
+        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 6, premium: false, cardFrom: '#033026', cardTo: '#011812', border: '#059669' },
         desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10, premium: true, cardFrom: '#431407', cardTo: '#1f0a04', border: '#ea580c' },
         ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15, premium: true, cardFrom: '#082f49', cardTo: '#041726', border: '#0ea5e9' },
         volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20, premium: true, cardFrom: '#450a0a', cardTo: '#1f0505', border: '#ef4444' },
@@ -9682,6 +10296,10 @@ class GoalManager {
         if (statDaily) statDaily.textContent = this.dailyBossStreak;
         const statWeekly = document.getElementById('stat-weekly-streak');
         if (statWeekly) statWeekly.textContent = this.weeklyBossStreak;
+        const statMonthlyStreak = document.getElementById('stat-monthly-streak');
+        if (statMonthlyStreak) statMonthlyStreak.textContent = this.monthlyBossStreak;
+        const statMonthlyKills = document.getElementById('stat-monthly-kills');
+        if (statMonthlyKills) statMonthlyKills.textContent = this.bossKillsThisMonth;
         const statAttacks = document.getElementById('stat-total-attacks');
         if (statAttacks) statAttacks.textContent = this.attackCharges;
         
@@ -9699,6 +10317,83 @@ class GoalManager {
         if (this.dailyBoss) html += this.renderBossCard(this.dailyBoss, 'daily');
         if (this.weeklyBoss) html += this.renderBossCard(this.weeklyBoss, 'weekly');
         container.innerHTML = html;
+        
+        // Monthly boss section (separate container)
+        const monthlyContainer = document.getElementById('monthly-boss-arena');
+        if (!monthlyContainer) return;
+        
+        if (this.monthlyBoss) {
+            // Active or defeated monthly boss
+            monthlyContainer.innerHTML = this.renderBossCard(this.monthlyBoss, 'monthly');
+        } else if (this.canChallengeMonthlyBoss()) {
+            // Threshold met — show challenge prompt
+            monthlyContainer.innerHTML = this.renderMonthlyBossChallenge();
+        } else {
+            // Show progress toward unlocking monthly boss
+            monthlyContainer.innerHTML = this.renderMonthlyBossProgress();
+        }
+    }
+    
+    renderMonthlyBossChallenge() {
+        const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+        const themes = this.bossThemes.monthly;
+        const seed = this.hashDateString(currentMonth);
+        const theme = themes[seed % themes.length];
+        const maxHP = 100 + this.level * 10;
+        
+        return `
+            <div class="bg-gradient-to-br from-red-950 via-purple-950 to-stone-950 p-6 rounded-xl border-2 border-red-500/70 shadow-2xl relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-t from-red-900/20 to-transparent animate-pulse pointer-events-none"></div>
+                <div class="relative z-10 text-center">
+                    <div class="text-6xl mb-3 animate-bounce">${theme.icon}</div>
+                    <div class="text-xs bg-red-700 text-white px-3 py-1 rounded inline-block fancy-font mb-2">MONTHLY CHAMPION</div>
+                    <h3 class="text-2xl font-bold text-red-300 medieval-title mb-2">${theme.name}</h3>
+                    <p class="text-sm text-amber-200/60 italic fancy-font mb-4">${theme.flavor}</p>
+                    <div class="flex items-center justify-center gap-4 mb-4 text-sm text-amber-300 fancy-font">
+                        <span>HP: ${maxHP}</span>
+                        <span>•</span>
+                        <span>Lv.${Math.max(1, this.level)}</span>
+                    </div>
+                    <div class="bg-stone-900/60 rounded-lg p-3 mb-4 border border-amber-700/30">
+                        <div class="text-xs text-amber-200/70 fancy-font mb-1">Champion Rewards</div>
+                        <div class="flex items-center justify-center gap-3 text-sm">
+                            <span class="text-yellow-300">${500 + Math.max(1, this.level) * 50} XP</span>
+                            <span class="text-amber-400">${400 + Math.max(1, this.level) * 40} Gold</span>
+                            <span class="text-purple-300">Spell Scroll</span>
+                            <span class="text-pink-300">Epic Chest</span>
+                        </div>
+                    </div>
+                    <button onclick="goalManager.challengeMonthlyBoss()" 
+                        class="bg-gradient-to-r from-red-600 via-purple-600 to-red-600 hover:from-red-500 hover:via-purple-500 hover:to-red-500 text-white px-8 py-4 rounded-xl font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400/50 text-lg animate-pulse">
+                        <i class="ri-skull-2-fill mr-2"></i>CHALLENGE THE CHAMPION!
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    renderMonthlyBossProgress() {
+        const kills = this.bossKillsThisMonth;
+        const threshold = this.monthlyBossUnlockThreshold;
+        const progress = Math.min((kills / threshold) * 100, 100);
+        const remaining = Math.max(0, threshold - kills);
+        
+        return `
+            <div class="bg-gradient-to-br from-stone-900/60 to-stone-950/60 p-5 rounded-xl border-2 border-stone-700/50 text-center">
+                <div class="text-4xl mb-2 opacity-40">🏴</div>
+                <h3 class="text-lg font-bold text-amber-300/60 medieval-title mb-2">Monthly Champion</h3>
+                <p class="text-sm text-amber-200/40 fancy-font mb-3">
+                    ${remaining > 0 
+                        ? `Defeat ${remaining} more boss${remaining !== 1 ? 'es' : ''} this month to unlock the challenge!` 
+                        : 'Challenge available!'}
+                </p>
+                <div class="w-full bg-stone-800 rounded-full h-4 border border-stone-600/50 mb-2">
+                    <div class="bg-gradient-to-r from-red-600 to-purple-600 h-4 rounded-full transition-all duration-500" 
+                         style="width: ${progress}%"></div>
+                </div>
+                <div class="text-xs text-amber-400/50 fancy-font">${kills} / ${threshold} bosses defeated</div>
+            </div>
+        `;
     }
     
     renderBossCard(boss, type) {
@@ -9712,8 +10407,8 @@ class GoalManager {
         else if (hpPercent <= 50) { phaseColor = 'orange'; phaseText = 'Wounded'; }
         else if (hpPercent <= 75) { phaseColor = 'yellow'; phaseText = 'Injured'; }
         
-        const typeLabel = type === 'daily' ? 'DAILY FOE' : 'WEEKLY NEMESIS';
-        const typeColor = type === 'daily' ? 'amber' : 'purple';
+        const typeLabel = type === 'daily' ? 'DAILY FOE' : type === 'weekly' ? 'WEEKLY NEMESIS' : 'MONTHLY CHAMPION';
+        const typeColor = type === 'daily' ? 'amber' : type === 'weekly' ? 'purple' : 'red';
         
         // Check if Execute spell is usable
         const executeSpell = this.activeSpells.find(s => s.spellId === 'execute');
@@ -9842,7 +10537,7 @@ class GoalManager {
         
         container.innerHTML = this.defeatedBossList.map(boss => {
             const date = new Date(boss.defeatedAt).toLocaleDateString();
-            const typeLabel = boss.type === 'daily' ? 'Daily' : 'Weekly';
+            const typeLabel = boss.type === 'daily' ? 'Daily' : boss.type === 'weekly' ? 'Weekly' : 'Monthly';
             return `
                 <div class="bg-gradient-to-br from-green-900/30 to-stone-900/30 p-4 rounded-lg border border-green-600/30 relative overflow-hidden">
                     <div class="absolute inset-0 bg-gradient-to-t from-green-500/5 to-transparent"></div>
@@ -9876,7 +10571,7 @@ class GoalManager {
     }
     
     // Old boss system code removed - new system uses renderBossArena/renderBossCard above
-    celebrateBossDefeat(boss, bossIcon, xpReward, goldReward, spellDef) {
+    celebrateBossDefeat(boss, bossIcon, xpReward, goldReward) {
         // 1. Screen shake
         document.body.classList.add('boss-defeat-shake');
         setTimeout(() => document.body.classList.remove('boss-defeat-shake'), 600);
@@ -9941,7 +10636,7 @@ class GoalManager {
         const rewards = [
             { text: `+${xpReward} XP`, cls: 'xp', top: '68%' },
             { text: `+${goldReward} Gold`, cls: 'gold', top: '73%' },
-            { text: `🔮 ${spellDef ? spellDef.name : 'Legendary Spell'} x3`, cls: 'spell', top: '78%' }
+            { text: `+ Bonus Loot!`, cls: 'spell', top: '78%' }
         ];
         rewards.forEach((r, i) => {
             setTimeout(() => {
@@ -10194,28 +10889,6 @@ class GoalManager {
 
     // Enchantments Rendering
     renderEnchantments() {
-        // Premium gate for enchantments
-        if (!this.isPremium) {
-            const activeContainer = document.getElementById('active-enchantments-container');
-            if (activeContainer) {
-                activeContainer.innerHTML = `
-                    <div class="col-span-3 text-center py-12">
-                        <div class="text-8xl mb-4">✨</div>
-                        <h3 class="text-2xl font-bold text-pink-300 medieval-title mb-2">Enchantments</h3>
-                        <p class="text-pink-200 fancy-font mb-4">Apply magical buffs to boost your productivity!</p>
-                        <p class="text-pink-300/70 text-sm mb-6 fancy-font">Earn Focus Crystals and activate powerful enchantments.</p>
-                        <button onclick="goalManager.showPremiumPurchaseModal()" 
-                            class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
-                            <i class="ri-vip-crown-2-fill mr-2"></i> Unlock with Premium
-                        </button>
-                    </div>
-                `;
-            }
-            const shopContainer = document.getElementById('enchantments-shop-container');
-            if (shopContainer) shopContainer.innerHTML = '';
-            return;
-        }
-        
         // Update crystal display in enchantments view
         const enchantmentsCrystals = document.getElementById('enchantments-crystals');
         if (enchantmentsCrystals) {
@@ -10282,9 +10955,40 @@ class GoalManager {
         
         const enchantments = Object.values(this.enchantmentDefinitions);
         
-        const html = enchantments.map(ench => {
+        // Sort: free enchantments first, then premium
+        const sorted = [...enchantments].sort((a, b) => (a.premium === b.premium) ? 0 : a.premium ? 1 : -1);
+        
+        const html = sorted.map(ench => {
             const isActive = this.hasActiveEnchantment(ench.effect);
             const canAfford = this.focusCrystals >= ench.cost;
+            const isLocked = ench.premium && !this.isPremium;
+            
+            if (isLocked) {
+                return `
+                    <div class="bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border-3 border-gray-600/50 shadow-xl relative overflow-hidden opacity-60">
+                        <div class="absolute top-2 right-2 bg-yellow-600/90 text-black text-xs font-bold px-2 py-1 rounded-full fancy-font">
+                            <i class="ri-vip-crown-2-fill mr-1"></i>Premium
+                        </div>
+                        <div class="text-5xl text-center mb-3 grayscale">${ench.icon}</div>
+                        <h4 class="text-xl font-bold text-gray-400 medieval-title text-center mb-2">${ench.name}</h4>
+                        <p class="text-sm text-gray-500 fancy-font text-center mb-4">${ench.description}</p>
+                        
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-sm text-gray-500 fancy-font">
+                                💎 ${ench.cost} Crystals
+                            </div>
+                            <div class="text-sm text-gray-500 fancy-font">
+                                ⏱️ ${ench.duration >= 60 ? Math.floor(ench.duration / 60) + 'h' : ench.duration + 'm'}
+                            </div>
+                        </div>
+                        
+                        <button onclick="goalManager.showPremiumPurchaseModal()" 
+                            class="bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-black w-full py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                            <i class="ri-vip-crown-2-fill mr-1"></i> Unlock
+                        </button>
+                    </div>
+                `;
+            }
             
             return `
                 <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl border-3 ${isActive ? 'border-green-600' : 'border-amber-600'} shadow-xl ${isActive ? 'opacity-50' : ''}">
@@ -10305,7 +11009,7 @@ class GoalManager {
                         onclick="goalManager.purchaseEnchantment('${ench.id}')" 
                         class="${isActive ? 'bg-gray-600 cursor-not-allowed' : (canAfford ? 'bg-pink-600 hover:bg-pink-500' : 'bg-gray-600 cursor-not-allowed')} text-white w-full py-3 rounded-lg font-bold fancy-font shadow-lg transition-all"
                         ${isActive || !canAfford ? 'disabled' : ''}>
-                        ${isActive ? '✓ Active' : (canAfford ? '✨ Purchase' : '🔒 Locked')}
+                        ${isActive ? '✓ Active' : (canAfford ? '✨ Purchase' : '🔒 Need ' + ench.cost + ' 💎')}
                     </button>
                 </div>
             `;
@@ -12001,122 +12705,44 @@ class GoalManager {
         this.showTutorialStep();
     }
 
-    tutorialSteps = [
-        {
-            title: "Welcome to Life Quest Journal! ⚔️",
-            content: "Welcome, brave adventurer! This RPG-themed task manager will help you level up in real life. Let me show you around!",
-            element: null,
-            action: () => this.switchView('dashboard')
-        },
-        {
-            title: "Your Dashboard 🏰",
-            content: "This is your command center. Here you can see your level, XP, gold, and quick stats. Track your progress at a glance!",
-            element: "a[href='#dashboard'].nav-link",
-            action: null
-        },
-        {
-            title: "Experience & Leveling 📊",
-            content: "Complete tasks to earn XP and gold! Level up to unlock new rewards, spells, and abilities. Tap the avatar in the top-right to open your character sheet!",
-            element: "#player-panel-toggle",
-            action: null
-        },
-        {
-            title: "Quest Log 🚩",
-            content: "Your Quest Log holds all your goals across four horizons: Epic Quests (life goals), Yearly Campaigns, Monthly Raids, and Weekly Battles. Use the tabs to switch between them!",
-            element: "a[href='#goals'].nav-link",
-            action: () => { this.switchView('goals'); this.switchGoalTab('life-goals'); }
-        },
-        {
-            title: "Goal Hierarchy 📜",
-            content: "Goals cascade downward: Epic Quests → Yearly Campaigns → Monthly Raids → Weekly Battles → Daily Tasks. Break big dreams into manageable steps!",
-            element: null,
-            action: () => { this.switchView('goals'); this.switchGoalTab('yearly'); }
-        },
-        {
-            title: "Daily Quests ⚔️",
-            content: "Your daily quests! Each task you complete earns XP and gold. You'll also find Daily Rituals (habits) and Recurring Tasks here!",
-            element: "a[href='#daily'].nav-link",
-            action: () => this.switchView('daily')
-        },
-        {
-            title: "Recurring Tasks 🔄",
-            content: "Tasks that repeat automatically! Set up weekly or monthly recurring tasks and they'll appear on the right days. Find them in Daily Quests!",
-            element: null,
-            action: null
-        },
-        {
-            title: "Daily Rituals 🕯️",
-            content: "Build streaks with daily habits! Complete them every day to build powerful streaks. The heat map shows your consistency over time.",
-            element: null,
-            action: null
-        },
-        {
-            title: "Quest Calendar 📆",
-            content: "See all your quests on a calendar! View tasks by day, plan ahead, and never miss a deadline. Click any day to see what's due.",
-            element: "a[href='#calendar'].nav-link",
-            action: () => this.switchView('calendar')
-        },
-        {
-            title: "Side Quests 🧭",
-            content: "Quick tasks without deadlines! Find them in the Quest Log under the Side tab. Perfect for ideas, someday-maybes, or tasks that don't fit a specific timeline!",
-            element: "a[href='#goals'].nav-link",
-            action: () => { this.switchView('goals'); this.switchGoalTab('sidequests'); }
-        },
-        {
-            title: "Treasury & Rewards 🏆",
-            content: "Spend your gold here! Open treasure chests for spells, themes, and companions. Unlock kingdom themes and equip earned titles! Manage your companions from the Player Panel.",
-            element: "a[href='#rewards'].nav-link",
-            action: () => this.switchView('rewards')
-        },
-        {
-            title: "Focus Timer 🎯",
-            content: "Deep work sessions! Complete 25-minute Pomodoro sessions to earn Focus Crystals. Stay focused to build your currency for enchantments!",
-            element: "a[href='#focus'].nav-link",
-            action: () => this.switchView('focus')
-        },
-        {
-            title: "Arcane Powers ✨",
-            content: "Your Spellbook and Enchantments in one place! Collect spells from treasure chests (gold) and buy enchantments with Focus Crystals. The Active Buffs summary shows all your current power-ups at a glance!",
-            element: "a[href='#arcane'].nav-link",
-            action: () => { this.switchView('arcane'); this.switchArcaneTab('spellbook'); }
-        },
-        {
-            title: "Boss Battles 💀",
-            content: "Face daily and weekly bosses! Complete tasks, habits, and goals to earn Attack Charges, then spend them to deal damage. Defeat bosses before they expire for XP, gold, spell scrolls, and streak bonuses! Use spells like Berserker Rage or Execute for devastating effects.",
-            element: "a[href='#bossbattles'].nav-link",
-            action: () => this.switchView('bossbattles')
-        },
-        {
-            title: "Quest Chains ⛓️",
-            content: "Multi-step adventures! Quest Chains are guided storylines with multiple chapters. Complete sequential tasks to unlock the next chapter and earn epic rewards!",
-            element: "a[href='#questchains'].nav-link",
-            action: () => this.switchView('questchains')
-        },
-        {
-            title: "Analytics 📈",
-            content: "Track your progress over time! Open the Player Panel and tap Quest Analytics to see charts of your productivity, completion rates, and streaks. Quick stats are always visible in your character sheet!",
-            element: "#player-panel-toggle",
-            action: () => this.switchView('analytics')
-        },
-        {
-            title: "Global Search 🔍",
-            content: "Find anything instantly! Press Ctrl+K or / to search all your tasks, goals, and habits. Click a result to jump right to it.",
-            element: null,
-            action: null
-        },
-        {
-            title: "Keyboard Shortcuts ⌨️",
-            content: "Work faster with hotkeys:\n• N - Quick add task\n• Ctrl+K or / - Search\n• Ctrl+Z - Undo\n• Ctrl+Y - Redo\n\nMaster these to become unstoppable!",
-            element: null,
-            action: null
-        },
-        {
-            title: "Ready to Begin! 🎉",
-            content: "You're all set! Start by adding your first daily task or goal. Remember: every quest completed makes you stronger. Good luck, hero! You can replay this tutorial anytime from Tools & Settings.",
-            element: null,
-            action: () => this.switchView('dashboard')
-        }
-    ];
+    getAllTutorialSteps() {
+        return [
+            {
+                title: "Welcome to Life Quest Journal! ⚔️",
+                content: "Welcome, brave adventurer! This is your Dashboard — your command center for tracking XP, gold, and daily progress at a glance.",
+                element: "a[href='#dashboard'].nav-link",
+                action: () => this.switchView('dashboard')
+            },
+            {
+                title: "Level Up & Unlock 📊",
+                content: "Complete tasks to earn XP and gold! As you level up, you'll unlock the Treasury, Spellbook, Focus Timer, Boss Battles, and more. Tap the avatar in the top-right to view your character sheet!",
+                element: "#player-panel-toggle",
+                action: null
+            },
+            {
+                title: "Daily Quests ⚔️",
+                content: "Your main workspace! Add tasks, build habit streaks with Daily Rituals, and set up Recurring Tasks that repeat automatically. Every completion earns XP and gold!",
+                element: "a[href='#daily'].nav-link",
+                action: () => this.switchView('daily')
+            },
+            {
+                title: "Quest Calendar 📆",
+                content: "See all your quests on a calendar! View tasks by day, plan ahead, and never miss a deadline.",
+                element: "a[href='#calendar'].nav-link",
+                action: () => this.switchView('calendar')
+            },
+            {
+                title: "Ready to Begin! 🎉",
+                content: "Start by adding your first daily task! New features unlock as you level up — you'll be notified each time. Good luck, hero!",
+                element: null,
+                action: () => this.switchView('daily')
+            }
+        ];
+    }
+    
+    get tutorialSteps() {
+        return this.getAllTutorialSteps();
+    }
 
     showTutorialStep() {
         const step = this.tutorialSteps[this.currentTutorialStep];

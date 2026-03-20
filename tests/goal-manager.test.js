@@ -28,7 +28,8 @@ window.audioManager = {
     playBossDefeated: jest.fn(),
     playAchievement: jest.fn(),
     playTaskComplete: jest.fn(),
-    playHabitComplete: jest.fn()
+    playHabitComplete: jest.fn(),
+    playSlash: jest.fn()
 };
 window.confirm = jest.fn(() => true);
 window.alert = jest.fn();
@@ -130,6 +131,21 @@ function createTestManager(overrides = {}) {
     gm.activeEnchantments = [];
     gm.enchantmentDefinitions = gm.initializeEnchantments();
 
+    // Boss Battle System
+    gm.dailyBoss = null;
+    gm.weeklyBoss = null;
+    gm.monthlyBoss = null;
+    gm.attackCharges = 0;
+    gm.bossLog = [];
+    gm.defeatedBossList = [];
+    gm.dailyBossStreak = 0;
+    gm.weeklyBossStreak = 0;
+    gm.monthlyBossStreak = 0;
+    gm.bossKillsThisMonth = 0;
+    gm.bossKillsMonth = null;
+    gm.monthlyBossUnlockThreshold = 5;
+    gm.bossThemes = gm.initializeBossThemes();
+
     // Stats tracking
     gm.chestsOpened = 0;
     gm.bossesDefeated = 0;
@@ -153,6 +169,24 @@ function createTestManager(overrides = {}) {
     gm.tutorialCompleted = true;
     gm.isPremium = false;
     gm._suppressRewardSounds = false;
+    gm._suppressRewardToasts = false;
+
+    // Feature unlock tutorials (set in constructor)
+    gm.featureUnlockTutorials = {
+        2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
+        3: { title: '🔮 Arcane Powers Unlocked!', text: "You may have collected spell scrolls from treasure chests — visit Arcane Powers to view your spellbook and cast powerful spells!" },
+        4: { title: '⚔️ Weekly Battles & Side Quests!', text: "Your Quest Log now has Weekly Battles and Side Quests! Set weekly goals and track flexible tasks without deadlines." },
+        5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
+        6: { title: '🎨 Kingdom Themes Unlocked!', text: "You've unlocked the Forest Kingdom theme! Customize your journal's look by visiting the Treasury and selecting Themes. As you level up, more themes will become available — each with unique backgrounds and particle effects!" },
+        7: { title: '📖 Monthly Raids & Quest Chains!', text: "Plan bigger with Monthly Raids! Chain multiple tasks into epic multi-step Quest Chains for bonus rewards." },
+        9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
+        10: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic rewards. This is a Premium feature — upgrade to unlock the full Boss Battle experience!" }
+    };
+    gm.seenFeatureTutorials = [];
+    gm.progressiveUnlockInitialized = false;
+    gm.navUnlockLevels = { treasury: 2, 'arcane-powers': 3, 'quest-log': 4, focus: 5, calendar: 1 };
+    gm.arcaneTabUnlockLevels = { spellbook: 3, enchantments: 5 };
+    gm.questLogTabUnlockLevels = { weekly: 4, side: 4, monthly: 7, yearly: 9, life: 9, chains: 7 };
     gm.lastVisitDate = null;
     gm.lastWeekNumber = null;
     gm.lastMonth = null;
@@ -180,6 +214,12 @@ function createTestManager(overrides = {}) {
     gm.celebrateSpellCast = jest.fn();
     gm.celebrateChestOpen = jest.fn();
     gm.celebrateBossDefeat = jest.fn();
+    gm.showLootPanel = jest.fn();
+    gm.tryUnlockRandomTheme = jest.fn();
+    gm.unlockCompanion = jest.fn();
+    gm.renderBossBattles = jest.fn();
+    gm.updateNavVisibility = jest.fn();
+    gm.checkFeatureUnlocks = jest.fn();
     gm.showErrorNotification = jest.fn();
     gm.renderCompanion = jest.fn();
     gm.showInputModal = jest.fn();
@@ -211,18 +251,18 @@ describe('GoalManager', () => {
 
         test('getXPForLevel returns correct XP requirements', () => {
             const gm = createTestManager();
-            expect(gm.getXPForLevel(1)).toBe(500);
-            expect(gm.getXPForLevel(2)).toBe(800);
-            expect(gm.getXPForLevel(3)).toBe(1100);
-            expect(gm.getXPForLevel(5)).toBe(1700);
+            expect(gm.getXPForLevel(1)).toBe(150);
+            expect(gm.getXPForLevel(2)).toBe(400);
+            expect(gm.getXPForLevel(3)).toBe(650);
+            expect(gm.getXPForLevel(5)).toBe(1150);
         });
 
         test('getTotalXPForLevel returns cumulative XP', () => {
             const gm = createTestManager();
-            expect(gm.getTotalXPForLevel(1)).toBe(0);   // Level 1 starts at 0
-            expect(gm.getTotalXPForLevel(2)).toBe(500);  // Need 500 to reach level 2
-            expect(gm.getTotalXPForLevel(3)).toBe(1300); // 500 + 800
-            expect(gm.getTotalXPForLevel(4)).toBe(2400); // 500 + 800 + 1100
+            expect(gm.getTotalXPForLevel(1)).toBe(0);    // Level 1 starts at 0
+            expect(gm.getTotalXPForLevel(2)).toBe(150);   // Need 150 to reach level 2
+            expect(gm.getTotalXPForLevel(3)).toBe(550);   // 150 + 400
+            expect(gm.getTotalXPForLevel(4)).toBe(1200);  // 150 + 400 + 650
         });
 
         test('addXP increases XP correctly with no multipliers', () => {
@@ -233,23 +273,29 @@ describe('GoalManager', () => {
 
         test('addXP triggers levelUp when threshold is reached', () => {
             const gm = createTestManager();
-            gm.addXP(500, 'daily');
-            expect(gm.level).toBe(2); // 500 XP should trigger level 2
+            gm.updateNavVisibility = jest.fn();
+            gm.showFeatureUnlockPopup = jest.fn();
+            gm.addXP(150, 'daily');
+            expect(gm.level).toBe(2); // 150 XP should trigger level 2
         });
 
         test('addXP handles multiple level-ups from large XP gain', () => {
             const gm = createTestManager();
-            // Level 2 needs 500, level 3 needs 1300 total
-            gm.addXP(1500, 'life');
+            gm.updateNavVisibility = jest.fn();
+            gm.showFeatureUnlockPopup = jest.fn();
+            // Level 2 needs 150, level 3 needs 550 total
+            gm.addXP(600, 'life');
             expect(gm.level).toBeGreaterThanOrEqual(3);
         });
 
         test('levelUp increments level and creates badge', () => {
             const gm = createTestManager();
             gm.unlockBadge = jest.fn();
+            gm.updateNavVisibility = jest.fn();
+            gm.showFeatureUnlockPopup = jest.fn();
             gm.levelUp();
             expect(gm.level).toBe(2);
-            expect(gm.unlockBadge).toHaveBeenCalledWith('level_2', 'Level 2', expect.any(String), '⭐');
+            expect(gm.unlockBadge).toHaveBeenCalledWith('level_2', 'Level 2', expect.any(String), '⭐', true);
         });
 
         test('addXP applies companion XP bonus', () => {
@@ -354,11 +400,11 @@ describe('GoalManager', () => {
             expect(gm.getEnchantmentMultiplier('gold')).toBe(2);
         });
 
-        test('getEnchantmentMultiplier returns 1.5 for boss_damage enchantment', () => {
+        test('getEnchantmentMultiplier returns 1.3 for boss_damage enchantment', () => {
             const gm = createTestManager();
             gm.checkExpiredEnchantments = jest.fn();
             gm.hasActiveEnchantment = jest.fn((type) => type === 'boss_damage');
-            expect(gm.getEnchantmentMultiplier('boss_damage')).toBe(1.5);
+            expect(gm.getEnchantmentMultiplier('boss_damage')).toBe(1.3);
         });
     });
 
@@ -899,7 +945,7 @@ describe('GoalManager', () => {
             expect(gm.addXP).toHaveBeenCalledWith(15, 'daily');
         });
 
-        test('toggleTask uncompletes a task and removes XP', () => {
+        test('toggleTask uncompletes a task without XP clawback', () => {
             const gm = createTestManager();
             gm.xp = 100;
             gm.dealBossDamage = jest.fn();
@@ -909,12 +955,52 @@ describe('GoalManager', () => {
                 id: 1,
                 title: 'Test Task',
                 completed: true,
+                rewarded: true,
                 dueDate: '2025-01-15'
             }];
 
             gm.toggleTask(1, { target: { closest: () => null } });
 
             expect(gm.dailyTasks[0].completed).toBe(false);
+            expect(gm.xp).toBe(100); // No XP clawback
+        });
+
+        test('toggleTask does not award XP on re-completion (exploit prevention)', () => {
+            const gm = createTestManager();
+            gm.dealBossDamage = jest.fn();
+            gm.addXP = jest.fn();
+
+            gm.dailyTasks = [{
+                id: 1,
+                title: 'Test Task',
+                completed: false,
+                rewarded: true, // Already rewarded from first completion
+                dueDate: '2025-01-15'
+            }];
+
+            gm.toggleTask(1, { target: { closest: () => null } });
+
+            expect(gm.dailyTasks[0].completed).toBe(true);
+            expect(gm.addXP).not.toHaveBeenCalled(); // No double XP
+        });
+
+        test('toggleTask sets rewarded flag on first completion', () => {
+            const gm = createTestManager();
+            gm.dealBossDamage = jest.fn();
+            gm.addXP = jest.fn();
+
+            gm.dailyTasks = [{
+                id: 1,
+                title: 'Test Task',
+                completed: false,
+                dueDate: '2025-01-15'
+            }];
+
+            gm.toggleTask(1, { target: { closest: () => null } });
+
+            expect(gm.dailyTasks[0].completed).toBe(true);
+            expect(gm.dailyTasks[0].rewarded).toBe(true);
+            expect(gm.addXP).toHaveBeenCalledWith(15, 'daily');
         });
 
         test('toggleWeeklyGoal completes and adds XP', () => {
@@ -960,6 +1046,7 @@ describe('GoalManager', () => {
 
         test('deleteGoal removes daily task', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.dailyTasks = [
                 { id: 1, title: 'Task 1' },
                 { id: 2, title: 'Task 2' }
@@ -971,6 +1058,7 @@ describe('GoalManager', () => {
 
         test('deleteGoal removes weekly goal', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.weeklyGoals = [
                 { id: 1, title: 'Goal 1' },
                 { id: 2, title: 'Goal 2' }
@@ -982,6 +1070,7 @@ describe('GoalManager', () => {
 
         test('deleteGoal removes monthly goal', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.monthlyGoals = [
                 { id: 1, title: 'Goal 1' },
                 { id: 2, title: 'Goal 2' }
@@ -992,6 +1081,7 @@ describe('GoalManager', () => {
 
         test('deleteGoal removes yearly goal', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.yearlyGoals = [
                 { id: 1, title: 'Goal 1' },
                 { id: 2, title: 'Goal 2' }
@@ -1002,6 +1092,7 @@ describe('GoalManager', () => {
 
         test('deleteGoal removes life goal', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.lifeGoals = [
                 { id: 1, title: 'Goal 1' },
                 { id: 2, title: 'Goal 2' }
@@ -1012,6 +1103,7 @@ describe('GoalManager', () => {
 
         test('deleteGoal removes side quest', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.sideQuests = [
                 { id: 1, title: 'Quest 1' },
                 { id: 2, title: 'Quest 2' }
@@ -1022,6 +1114,7 @@ describe('GoalManager', () => {
 
         test('deleteGoal removes habit', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.habits = [
                 { id: 1, title: 'Habit 1' },
                 { id: 2, title: 'Habit 2' }
@@ -1032,6 +1125,7 @@ describe('GoalManager', () => {
 
         test('deleteRecurringTask removes recurring task', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
             gm.recurringTasks = [
                 { id: 1, title: 'RT 1' },
                 { id: 2, title: 'RT 2' }
@@ -1092,6 +1186,8 @@ describe('GoalManager', () => {
 
         test('archiveGoal moves goal to archive with metadata', () => {
             const gm = createTestManager();
+            gm.showConfirm = jest.fn((msg, cb) => cb());
+            gm.recordAction = jest.fn();
             gm.dailyTasks = [
                 { id: 1, title: 'Task to archive', completed: true }
             ];
@@ -1203,6 +1299,414 @@ describe('GoalManager', () => {
             expect(gm.recurringTasks[0].active).toBe(false);
             gm.toggleRecurringTask(1);
             expect(gm.recurringTasks[0].active).toBe(true);
+        });
+    });
+
+    // ==================== XP EXPLOIT PREVENTION ====================
+
+    describe('XP Exploit Prevention', () => {
+
+        test('toggleWeeklyGoal does not award XP on re-completion', () => {
+            const gm = createTestManager();
+            gm.dealBossDamage = jest.fn();
+            gm.addXP = jest.fn();
+
+            gm.weeklyGoals = [{
+                id: 1,
+                title: 'Weekly Goal',
+                completed: false,
+                rewarded: true,
+                priority: 'medium'
+            }];
+
+            gm.toggleWeeklyGoal(1, { target: { closest: () => null } });
+
+            expect(gm.weeklyGoals[0].completed).toBe(true);
+            expect(gm.addXP).not.toHaveBeenCalled();
+        });
+
+        test('toggleMonthlyGoal does not award XP on re-completion', () => {
+            const gm = createTestManager();
+            gm.dealBossDamage = jest.fn();
+            gm.addXP = jest.fn();
+
+            gm.monthlyGoals = [{
+                id: 1,
+                title: 'Monthly Goal',
+                completed: false,
+                rewarded: true,
+                priority: 'medium'
+            }];
+
+            gm.toggleMonthlyGoal(1, { target: { closest: () => null } });
+
+            expect(gm.monthlyGoals[0].completed).toBe(true);
+            expect(gm.addXP).not.toHaveBeenCalled();
+        });
+
+        test('toggleSideQuest does not award XP on re-completion', () => {
+            const gm = createTestManager();
+            gm.dealBossDamage = jest.fn();
+            gm.addXP = jest.fn();
+
+            gm.sideQuests = [{
+                id: 1,
+                title: 'Side Quest',
+                completed: false,
+                rewarded: true,
+                priority: 'medium'
+            }];
+
+            gm.toggleSideQuest(1);
+
+            expect(gm.sideQuests[0].completed).toBe(true);
+            expect(gm.addXP).not.toHaveBeenCalled();
+        });
+
+        test('toggleWeeklyGoal sets rewarded flag on first completion', () => {
+            const gm = createTestManager();
+            gm.dealBossDamage = jest.fn();
+            gm.addXP = jest.fn();
+
+            gm.weeklyGoals = [{
+                id: 1,
+                title: 'Weekly Goal',
+                completed: false,
+                priority: 'medium'
+            }];
+
+            gm.toggleWeeklyGoal(1, { target: { closest: () => null } });
+
+            expect(gm.weeklyGoals[0].rewarded).toBe(true);
+            expect(gm.addXP).toHaveBeenCalledWith(50, 'weekly');
+        });
+    });
+
+    // ==================== TUTORIAL SYSTEM ====================
+
+    describe('Tutorial System', () => {
+
+        test('tutorial has exactly 5 steps', () => {
+            const gm = createTestManager();
+            const steps = gm.getAllTutorialSteps();
+            expect(steps).toHaveLength(5);
+        });
+
+        test('tutorial steps cover level 1 features only', () => {
+            const gm = createTestManager();
+            const steps = gm.getAllTutorialSteps();
+            // No step should have a requiredLevel property > 1
+            steps.forEach(step => {
+                if (step.requiredLevel) {
+                    expect(step.requiredLevel).toBe(1);
+                }
+            });
+        });
+
+        test('tutorial includes Welcome, Stats, Daily Quests, Calendar, Ready steps', () => {
+            const gm = createTestManager();
+            const steps = gm.getAllTutorialSteps();
+            const titles = steps.map(s => s.title);
+            expect(titles[0]).toContain('Welcome');
+            expect(titles[1]).toContain('Level Up');
+            expect(titles[2]).toContain('Daily Quests');
+            expect(titles[3]).toContain('Quest Calendar');
+            expect(titles[4]).toContain('Ready to Begin');
+        });
+
+        test('feature unlock tutorials cover levels 2-10', () => {
+            const gm = createTestManager();
+            const unlockLevels = Object.keys(gm.featureUnlockTutorials).map(Number);
+            expect(unlockLevels).toEqual(expect.arrayContaining([2, 3, 4, 5, 6, 7, 9, 10]));
+        });
+
+        test('level 6 feature unlock is Kingdom Themes', () => {
+            const gm = createTestManager();
+            expect(gm.featureUnlockTutorials[6].title).toContain('Kingdom Themes');
+        });
+
+        test('level 10 Boss Battles mentions Premium', () => {
+            const gm = createTestManager();
+            expect(gm.featureUnlockTutorials[10].text).toContain('Premium');
+        });
+    });
+
+    // ==================== MONTHLY BOSS SYSTEM ====================
+
+    describe('Monthly Boss System', () => {
+
+        test('canChallengeMonthlyBoss returns false when kills below threshold', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 3;
+            expect(gm.canChallengeMonthlyBoss()).toBe(false);
+        });
+
+        test('canChallengeMonthlyBoss returns true when kills meet threshold and no active monthly boss', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 5;
+            gm.monthlyBoss = null;
+            expect(gm.canChallengeMonthlyBoss()).toBe(true);
+        });
+
+        test('canChallengeMonthlyBoss returns false when monthly boss already exists', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 10;
+            gm.monthlyBoss = { name: 'Test Boss', defeated: false };
+            expect(gm.canChallengeMonthlyBoss()).toBe(false);
+        });
+
+        test('challengeMonthlyBoss spawns a monthly boss when threshold met', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 5;
+            gm.level = 5;
+            gm.monthlyBoss = null;
+
+            gm.challengeMonthlyBoss();
+
+            expect(gm.monthlyBoss).not.toBeNull();
+            expect(gm.monthlyBoss.type).toBe('monthly');
+            expect(gm.monthlyBoss.defeated).toBe(false);
+            expect(gm.monthlyBoss.maxHP).toBe(100 + 5 * 10); // 150
+            expect(gm.monthlyBoss.rewards.xp).toBe(500 + 5 * 50); // 750
+            expect(gm.monthlyBoss.rewards.gold).toBe(400 + 5 * 40); // 600
+            expect(gm.saveData).toHaveBeenCalled();
+            expect(gm.renderBossBattles).toHaveBeenCalled();
+        });
+
+        test('challengeMonthlyBoss does nothing when threshold not met', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 2;
+            gm.monthlyBoss = null;
+
+            gm.challengeMonthlyBoss();
+
+            expect(gm.monthlyBoss).toBeNull();
+        });
+
+        test('challengeMonthlyBoss does nothing when monthly boss already active', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 10;
+            gm.monthlyBoss = { name: 'Existing Boss', defeated: false, type: 'monthly' };
+
+            gm.challengeMonthlyBoss();
+
+            expect(gm.monthlyBoss.name).toBe('Existing Boss');
+        });
+
+        test('monthly boss HP scales with player level', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 5;
+            gm.level = 10;
+
+            gm.challengeMonthlyBoss();
+
+            expect(gm.monthlyBoss.maxHP).toBe(100 + 10 * 10); // 200
+        });
+
+        test('monthly boss rewards scale with player level', () => {
+            const gm = createTestManager();
+            gm.bossKillsThisMonth = 5;
+            gm.level = 10;
+
+            gm.challengeMonthlyBoss();
+
+            expect(gm.monthlyBoss.rewards.xp).toBe(500 + 10 * 50); // 1000
+            expect(gm.monthlyBoss.rewards.gold).toBe(400 + 10 * 40); // 800
+        });
+
+        test('attackBoss works on monthly boss', () => {
+            const gm = createTestManager();
+            gm.level = 1;
+            gm.attackCharges = 3;
+            gm.monthlyBoss = {
+                name: 'Test Monthly Boss',
+                icon: '🏴',
+                flavor: 'Test',
+                maxHP: 100,
+                currentHP: 100,
+                level: 1,
+                spawnMonth: '2026-03',
+                type: 'monthly',
+                defeated: false,
+                totalDamage: 0,
+                rewards: { xp: 500, gold: 400 }
+            };
+
+            gm.attackBoss('monthly');
+
+            expect(gm.attackCharges).toBe(2);
+            expect(gm.monthlyBoss.currentHP).toBeLessThan(100);
+            expect(gm.monthlyBoss.totalDamage).toBeGreaterThan(0);
+        });
+
+        test('onBossDefeated increments monthly streak and bossKillsThisMonth', () => {
+            const gm = createTestManager();
+            gm.level = 1;
+            gm.monthlyBoss = {
+                name: 'Test Monthly Boss',
+                icon: '🏴',
+                flavor: 'Test',
+                maxHP: 100,
+                currentHP: 0,
+                level: 1,
+                spawnMonth: '2026-03',
+                type: 'monthly',
+                defeated: true,
+                totalDamage: 100,
+                rewards: { xp: 500, gold: 400 }
+            };
+            gm.monthlyBossStreak = 0;
+            gm.bossKillsThisMonth = 5;
+            gm.bossesDefeated = 10;
+            gm.generateBossLoot = jest.fn(() => []);
+
+            gm.onBossDefeated('monthly');
+
+            expect(gm.monthlyBossStreak).toBe(1);
+            expect(gm.bossKillsThisMonth).toBe(6);
+            expect(gm.bossesDefeated).toBe(11);
+        });
+
+        test('onBossDefeated generates boss loot drops', () => {
+            const gm = createTestManager();
+            gm.level = 5;
+            gm.monthlyBoss = {
+                name: 'Test Monthly Boss',
+                icon: '🏴',
+                flavor: 'Test',
+                maxHP: 100,
+                currentHP: 0,
+                level: 1,
+                spawnMonth: '2026-03',
+                type: 'monthly',
+                defeated: true,
+                totalDamage: 100,
+                rewards: { xp: 500, gold: 400 }
+            };
+            const fakeLoot = [{ type: 'gold', amount: 200, rarity: 'rare', name: 'Grand Gold Pouch', icon: '💰' }];
+            gm.generateBossLoot = jest.fn(() => fakeLoot);
+
+            gm.onBossDefeated('monthly');
+
+            expect(gm.generateBossLoot).toHaveBeenCalledWith('monthly');
+            // Gold from loot is applied via addGold
+            expect(gm.goldCoins).toBeGreaterThanOrEqual(400);
+        });
+
+        test('onBossDefeated awards XP and gold for monthly boss', () => {
+            const gm = createTestManager();
+            gm.level = 10;
+            gm.xp = 0;
+            gm.goldCoins = 0;
+            gm.monthlyBoss = {
+                name: 'Test Monthly Boss',
+                icon: '🏴',
+                flavor: 'Test',
+                maxHP: 100,
+                currentHP: 0,
+                level: 1,
+                spawnMonth: '2026-03',
+                type: 'monthly',
+                defeated: true,
+                totalDamage: 100,
+                rewards: { xp: 500, gold: 400 }
+            };
+            gm.monthlyBossStreak = 0;
+            gm.generateBossLoot = jest.fn(() => []);
+
+            gm.onBossDefeated('monthly');
+
+            // Streak becomes 1, multiplier = 1.0
+            // With empty loot, only base boss reward gold applies
+            expect(gm.goldCoins).toBe(400);
+            expect(gm.xp).toBe(500);
+        });
+
+        test('monthly boss added to defeatedBossList on defeat', () => {
+            const gm = createTestManager();
+            gm.level = 1;
+            gm.monthlyBoss = {
+                name: 'The Obsidian Warden',
+                icon: '🏴',
+                flavor: 'Test',
+                maxHP: 100,
+                currentHP: 0,
+                level: 1,
+                spawnMonth: '2026-03',
+                type: 'monthly',
+                defeated: true,
+                totalDamage: 100,
+                rewards: { xp: 500, gold: 400 }
+            };
+            gm.generateBossLoot = jest.fn(() => []);
+
+            gm.onBossDefeated('monthly');
+
+            expect(gm.defeatedBossList.length).toBe(1);
+            expect(gm.defeatedBossList[0].type).toBe('monthly');
+            expect(gm.defeatedBossList[0].name).toBe('The Obsidian Warden');
+        });
+
+        test('monthly boss themes exist and have required fields', () => {
+            const gm = createTestManager();
+            expect(gm.bossThemes.monthly).toBeDefined();
+            expect(gm.bossThemes.monthly.length).toBeGreaterThanOrEqual(10);
+            gm.bossThemes.monthly.forEach(theme => {
+                expect(theme.name).toBeDefined();
+                expect(theme.icon).toBeDefined();
+                expect(theme.flavor).toBeDefined();
+            });
+        });
+
+        test('monthly boss unlock threshold defaults to 5', () => {
+            const gm = createTestManager();
+            expect(gm.monthlyBossUnlockThreshold).toBe(5);
+        });
+
+        test('bossKillsThisMonth increments on daily boss defeat', () => {
+            const gm = createTestManager();
+            gm.level = 1;
+            gm.bossKillsThisMonth = 0;
+            gm.dailyBoss = {
+                name: 'Test Daily Boss',
+                icon: '🐀',
+                flavor: 'Test',
+                maxHP: 10,
+                currentHP: 0,
+                level: 1,
+                spawnDate: '2026-03-19',
+                type: 'daily',
+                defeated: true,
+                totalDamage: 10,
+                rewards: { xp: 70, gold: 45 }
+            };
+
+            gm.onBossDefeated('daily');
+
+            expect(gm.bossKillsThisMonth).toBe(1);
+        });
+
+        test('bossKillsThisMonth increments on weekly boss defeat', () => {
+            const gm = createTestManager();
+            gm.level = 1;
+            gm.bossKillsThisMonth = 3;
+            gm.weeklyBoss = {
+                name: 'Test Weekly Boss',
+                icon: '🐉',
+                flavor: 'Test',
+                maxHP: 30,
+                currentHP: 0,
+                level: 1,
+                spawnWeek: '2026-W12',
+                type: 'weekly',
+                defeated: true,
+                totalDamage: 30,
+                rewards: { xp: 230, gold: 175, spellScroll: true }
+            };
+
+            gm.onBossDefeated('weekly');
+
+            expect(gm.bossKillsThisMonth).toBe(4);
         });
     });
 
