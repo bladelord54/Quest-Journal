@@ -11247,7 +11247,24 @@ class GoalManager {
                     <i class="${icon} mr-2"></i>${title}
                 </h3>
                 <div class="space-y-4">
-                    ${inputType === 'textarea' ? `
+                    ${inputType === 'date' ? (() => {
+                        const parts = (defaultValue || '').split('-');
+                        const selY = parseInt(parts[0]) || new Date().getFullYear();
+                        const selM = parseInt(parts[1]) || (new Date().getMonth() + 1);
+                        const selD = parseInt(parts[2]) || new Date().getDate();
+                        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                        const selectClass = 'p-2 rounded-lg bg-gray-700/80 border-2 border-amber-600/50 text-white focus:border-amber-500 focus:outline-none fancy-font text-sm appearance-none text-center';
+                        const monthOpts = months.map((m, i) => `<option value="${i+1}" ${i+1===selM?'selected':''}>${m}</option>`).join('');
+                        const dayOpts = Array.from({length:31},(_,i)=>`<option value="${i+1}" ${i+1===selD?'selected':''}>${i+1}</option>`).join('');
+                        const curYear = new Date().getFullYear();
+                        const yearOpts = Array.from({length:5},(_,i)=>`<option value="${curYear+i}" ${curYear+i===selY?'selected':''}>${curYear+i}</option>`).join('');
+                        return `
+                        <div id="modal-date-selects" class="flex gap-2 justify-center">
+                            <select id="modal-date-month" class="${selectClass}" style="flex:1.2">${monthOpts}</select>
+                            <select id="modal-date-day" class="${selectClass}" style="flex:0.8">${dayOpts}</select>
+                            <select id="modal-date-year" class="${selectClass}" style="flex:1">${yearOpts}</select>
+                        </div>`;
+                    })() : inputType === 'textarea' ? `
                         <textarea id="modal-input" 
                             class="w-full p-3 rounded-lg bg-gray-700/50 border-2 border-amber-600/50 text-white placeholder-gray-400 focus:border-amber-500 focus:outline-none fancy-font resize-none"
                             placeholder="${placeholder}"
@@ -11306,8 +11323,17 @@ class GoalManager {
     }
 
     submitInputModal() {
-        const input = document.getElementById('modal-input');
-        const value = input ? input.value : '';
+        let value = '';
+        const dateSelects = document.getElementById('modal-date-selects');
+        if (dateSelects) {
+            const y = document.getElementById('modal-date-year').value;
+            const m = String(document.getElementById('modal-date-month').value).padStart(2, '0');
+            const d = String(document.getElementById('modal-date-day').value).padStart(2, '0');
+            value = `${y}-${m}-${d}`;
+        } else {
+            const input = document.getElementById('modal-input');
+            value = input ? input.value : '';
+        }
         const callback = this.inputCallback;
         const optional = this.inputOptional;
         
