@@ -1264,7 +1264,7 @@ class GoalManager {
                 id: 'critical_strike',
                 name: 'Critical Strike',
                 icon: '💥',
-                description: '50% chance for +50 bonus damage on boss attacks today',
+                description: '50% chance for +50% bonus damage on boss attacks today',
                 rarity: 'rare',
                 effect: 'boss_crit_chance',
                 multiplier: 1.5,
@@ -4058,11 +4058,11 @@ class GoalManager {
         };
 
         const overlay = document.createElement('div');
-        overlay.className = 'fixed inset-0 bg-black/80 z-[200] flex items-center justify-center px-4';
+        overlay.className = 'fixed inset-0 bg-black/80 z-[200] flex items-center justify-center px-5';
         overlay.style.animation = 'fadeIn 0.3s ease-out';
 
         overlay.innerHTML = `
-            <div class="bg-gradient-to-br ${tier.bg} rounded-2xl border-4 ${tier.border} shadow-2xl ${tier.glow} max-w-sm w-full p-6 transform scale-0" 
+            <div class="bg-gradient-to-br ${tier.bg} rounded-2xl border-4 ${tier.border} shadow-2xl ${tier.glow} max-w-xs w-full p-4 transform scale-0" 
                  style="animation: lootPanelIn 0.4s ease-out 0.1s forwards;">
                 <div class="text-center mb-5">
                     <div class="text-5xl mb-2">${panelIcon}</div>
