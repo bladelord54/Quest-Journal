@@ -4058,12 +4058,11 @@ class GoalManager {
         };
 
         const overlay = document.createElement('div');
-        overlay.className = 'fixed inset-0 bg-black/80 z-[200] flex items-center justify-center px-5';
-        overlay.style.animation = 'fadeIn 0.3s ease-out';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:center;justify-content:center;padding:0 1.25rem;animation:fadeIn 0.3s ease-out;';
 
         overlay.innerHTML = `
-            <div class="bg-gradient-to-br ${tier.bg} rounded-2xl border-4 ${tier.border} shadow-2xl ${tier.glow} w-full p-4 transform scale-0" 
-                 style="animation: lootPanelIn 0.4s ease-out 0.1s forwards; max-width: min(20rem, calc(100vw - 2.5rem)); box-sizing: border-box;">
+            <div class="bg-gradient-to-br ${tier.bg} rounded-2xl border-4 ${tier.border} shadow-2xl ${tier.glow}" 
+                 style="animation: lootPanelIn 0.4s ease-out 0.1s forwards; max-width: min(20rem, calc(100vw - 2.5rem)); width:100%; padding:1rem; box-sizing:border-box; text-align:center;">
                 <div class="text-center mb-5">
                     <div class="text-5xl mb-2">${panelIcon}</div>
                     <h2 class="text-2xl font-bold ${tier.text} medieval-title">${panelTitle}</h2>
