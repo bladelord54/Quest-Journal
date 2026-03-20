@@ -4062,8 +4062,8 @@ class GoalManager {
         overlay.style.animation = 'fadeIn 0.3s ease-out';
 
         overlay.innerHTML = `
-            <div class="bg-gradient-to-br ${tier.bg} rounded-2xl border-4 ${tier.border} shadow-2xl ${tier.glow} max-w-xs w-full p-4 transform scale-0" 
-                 style="animation: lootPanelIn 0.4s ease-out 0.1s forwards;">
+            <div class="bg-gradient-to-br ${tier.bg} rounded-2xl border-4 ${tier.border} shadow-2xl ${tier.glow} w-full p-4 transform scale-0" 
+                 style="animation: lootPanelIn 0.4s ease-out 0.1s forwards; max-width: min(20rem, calc(100vw - 2.5rem)); box-sizing: border-box;">
                 <div class="text-center mb-5">
                     <div class="text-5xl mb-2">${panelIcon}</div>
                     <h2 class="text-2xl font-bold ${tier.text} medieval-title">${panelTitle}</h2>
