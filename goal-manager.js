@@ -32,7 +32,6 @@ class GoalManager {
         this.companion = null; // Legacy - will migrate to companions array
         this.companions = []; // Collection of unlocked companions
         this.activeCompanionId = null; // Currently active companion type id
-        this.statsPanelCollapsed = false;
         this.playerPanelOpen = false;
         
         // Spellbook System
@@ -6941,11 +6940,6 @@ class GoalManager {
         return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
     }
 
-    toggleStatsPanel() {
-        // Legacy - redirects to new player panel
-        this.togglePlayerPanel();
-    }
-
     togglePlayerPanel() {
         this.playerPanelOpen = !this.playerPanelOpen;
         const backdrop = document.getElementById('player-panel-backdrop');
@@ -10488,7 +10482,7 @@ class GoalManager {
                     <!-- Rewards Preview -->
                     ${!isDefeated ? `
                         <div class="mt-3 text-center text-xs text-amber-200/50 fancy-font">
-                            Rewards: ${boss.rewards.xp} XP, ${boss.rewards.gold} Gold${boss.rewards.spellScroll ? ', Spell Scroll' : ''}
+                            Rewards: ${boss.rewards.xp} XP, ${boss.rewards.gold} Gold, + Loot
                         </div>
                     ` : ''}
                 </div>

@@ -986,24 +986,6 @@
     100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
 }
 
-/* Loot items popping in around the chest */
-.chest-loot-item {
-    position: fixed;
-    pointer-events: none;
-    z-index: 9999;
-    font-size: 2.5rem;
-    animation: loot-pop-in 1.5s ease-out forwards;
-    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
-}
-
-@keyframes loot-pop-in {
-    0% { transform: translate(-50%, -50%) scale(0) rotate(-30deg); opacity: 0; }
-    30% { transform: translate(-50%, -50%) scale(1.4) rotate(10deg); opacity: 1; }
-    50% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
-    80% { transform: translate(-50%, calc(-50% - 20px)) scale(1) rotate(0deg); opacity: 1; }
-    100% { transform: translate(-50%, calc(-50% - 40px)) scale(0.8) rotate(0deg); opacity: 0; }
-}
-
 /* Chest coin burst particles */
 .chest-coin-particle {
     position: fixed;
@@ -1032,38 +1014,6 @@
         transform: translate(var(--coin-end-x, 0), var(--coin-end-y, 0)) scale(0);
         opacity: 0;
     }
-}
-
-/* Chest tier label */
-.chest-tier-label {
-    position: fixed;
-    left: 50%;
-    top: 40%;
-    transform: translateX(-50%);
-    font-family: 'MedievalSharp', serif;
-    font-size: 1.6rem;
-    font-weight: bold;
-    pointer-events: none;
-    z-index: 9999;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 4px;
-    animation: chest-label-reveal 2s ease-out forwards;
-    animation-delay: 0.5s;
-    opacity: 0;
-}
-
-.chest-tier-label.bronze { color: #deb887; text-shadow: 0 0 15px #cd853f, 0 2px 4px rgba(0,0,0,0.8); }
-.chest-tier-label.silver { color: #e8e8e8; text-shadow: 0 0 15px #c0c0c0, 0 2px 4px rgba(0,0,0,0.8); }
-.chest-tier-label.gold { color: #fde68a; text-shadow: 0 0 20px #fbbf24, 0 2px 4px rgba(0,0,0,0.8); }
-.chest-tier-label.royal { color: #c4b5fd; text-shadow: 0 0 20px #9333ea, 0 2px 4px rgba(0,0,0,0.8); }
-
-@keyframes chest-label-reveal {
-    0% { transform: translateX(-50%) scale(0.5); opacity: 0; letter-spacing: -2px; }
-    20% { transform: translateX(-50%) scale(1.1); opacity: 1; letter-spacing: 6px; }
-    40% { transform: translateX(-50%) scale(1); opacity: 1; letter-spacing: 4px; }
-    80% { opacity: 1; }
-    100% { transform: translateX(-50%) translateY(-20px) scale(0.9); opacity: 0; }
 }
 
 /* Loot panel animations */

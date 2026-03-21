@@ -156,7 +156,6 @@ function createTestManager(overrides = {}) {
     gm.timezoneOffset = 0;
 
     // Misc
-    gm.statsPanelCollapsed = false;
     gm.actionHistory = [];
     gm.historyIndex = -1;
     gm.saveTimeout = null;
