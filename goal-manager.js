@@ -131,7 +131,7 @@ class GoalManager {
             6: { title: '🎨 Kingdom Themes Unlocked!', text: "You've unlocked the Forest Kingdom theme! Customize your journal's look by visiting the Treasury and selecting Themes. As you level up, more themes will become available — each with unique backgrounds and particle effects!" },
             7: { title: '📖 Monthly Raids & Quest Chains!', text: "Plan bigger with Monthly Raids! Chain multiple tasks into epic multi-step Quest Chains for bonus rewards." },
             9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
-            10: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic rewards. This is a Premium feature — upgrade to unlock the full Boss Battle experience!" }
+            10: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" }
         };
         this.seenFeatureTutorials = [];
         this.progressiveUnlockInitialized = false;
@@ -8469,10 +8469,10 @@ class GoalManager {
                 <div class="p-6">
                     <div class="space-y-3 mb-6">
                         <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
-                            <span class="text-2xl">🐉</span>
+                            <span class="text-2xl">📊</span>
                             <div>
-                                <div class="font-bold text-yellow-200">Boss Battles</div>
-                                <div class="text-xs text-yellow-300/70">Fight weekly & monthly bosses by completing tasks</div>
+                                <div class="font-bold text-yellow-200">Advanced Analytics</div>
+                                <div class="text-xs text-yellow-300/70">Detailed productivity insights and progress tracking</div>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
@@ -8500,14 +8500,14 @@ class GoalManager {
                             <span class="text-2xl">✨</span>
                             <div>
                                 <div class="font-bold text-yellow-200">Enchantments System</div>
-                                <div class="text-xs text-yellow-300/70">Apply permanent buffs to your profile</div>
+                                <div class="text-xs text-yellow-300/70">Apply timed buffs to boost your productivity</div>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 bg-black/20 p-3 rounded-lg">
-                            <span class="text-2xl">📊</span>
+                            <span class="text-2xl">🐾</span>
                             <div>
-                                <div class="font-bold text-yellow-200">Advanced Statistics</div>
-                                <div class="text-xs text-yellow-300/70">Detailed analytics and productivity insights</div>
+                                <div class="font-bold text-yellow-200">Premium Companions</div>
+                                <div class="text-xs text-yellow-300/70">Rare companions with powerful bonus effects</div>
                             </div>
                         </div>
                     </div>
@@ -8831,11 +8831,11 @@ class GoalManager {
                     this.sideQuests = data.sideQuests || [];
                     this.habits = data.habits || this.habits;
                     this.recurringTasks = data.recurringTasks || this.recurringTasks;
-                    this.xp = data.xp || this.xp;
-                    this.level = data.level || this.level;
+                    this.xp = data.xp ?? this.xp;
+                    this.level = data.level ?? this.level;
                     this.badges = data.badges || this.badges;
                     this.archivedGoals = data.archivedGoals || this.archivedGoals;
-                    this.goldCoins = data.goldCoins || this.goldCoins;
+                    this.goldCoins = data.goldCoins ?? this.goldCoins;
                     this.unlockedThemes = data.unlockedThemes || this.unlockedThemes;
                     this.currentTheme = data.currentTheme || this.currentTheme;
                     this.unlockedTitles = data.unlockedTitles || this.unlockedTitles;
@@ -8847,8 +8847,8 @@ class GoalManager {
                     this.activeSpells = data.activeSpells || this.activeSpells;
                     this.activeQuestChains = data.activeQuestChains || this.activeQuestChains;
                     this.completedQuestChains = data.completedQuestChains || this.completedQuestChains;
-                    this.focusCrystals = data.focusCrystals || this.focusCrystals;
-                    this.totalFocusTime = data.totalFocusTime || this.totalFocusTime;
+                    this.focusCrystals = data.focusCrystals ?? this.focusCrystals;
+                    this.totalFocusTime = data.totalFocusTime ?? this.totalFocusTime;
                     this.activeEnchantments = data.activeEnchantments || this.activeEnchantments;
                     this.timezone = data.timezone || this.timezone;
                     this.timezoneOffset = data.timezoneOffset || this.timezoneOffset;
@@ -8857,22 +8857,22 @@ class GoalManager {
                     this.premiumPurchaseDate = data.premiumPurchaseDate || this.premiumPurchaseDate;
                     this.premiumPurchaseToken = data.premiumPurchaseToken || this.premiumPurchaseToken;
                     this.lastLoginBonusDate = data.lastLoginBonusDate || this.lastLoginBonusDate;
-                    this.loginStreak = data.loginStreak || this.loginStreak;
-                    this.chestsOpened = data.chestsOpened || this.chestsOpened;
-                    this.bossesDefeated = data.bossesDefeated || this.bossesDefeated;
-                    this.focusSessionsCompleted = data.focusSessionsCompleted || this.focusSessionsCompleted;
-                    this.spellsCast = data.spellsCast || this.spellsCast;
+                    this.loginStreak = data.loginStreak ?? this.loginStreak;
+                    this.chestsOpened = data.chestsOpened ?? this.chestsOpened;
+                    this.bossesDefeated = data.bossesDefeated ?? this.bossesDefeated;
+                    this.focusSessionsCompleted = data.focusSessionsCompleted ?? this.focusSessionsCompleted;
+                    this.spellsCast = data.spellsCast ?? this.spellsCast;
                     this.dailyBoss = data.dailyBoss || this.dailyBoss;
                     this.weeklyBoss = data.weeklyBoss || this.weeklyBoss;
                     this.monthlyBoss = data.monthlyBoss || this.monthlyBoss;
-                    this.attackCharges = data.attackCharges || this.attackCharges;
+                    this.attackCharges = data.attackCharges ?? this.attackCharges;
                     this.bossLog = data.bossLog || this.bossLog;
                     this.defeatedBossList = data.defeatedBossList || this.defeatedBossList;
-                    this.dailyBossStreak = data.dailyBossStreak || this.dailyBossStreak;
-                    this.weeklyBossStreak = data.weeklyBossStreak || this.weeklyBossStreak;
-                    this.monthlyBossStreak = data.monthlyBossStreak || this.monthlyBossStreak;
-                    this.bossKillsThisMonth = data.bossKillsThisMonth || this.bossKillsThisMonth;
-                    this.bossKillsMonth = data.bossKillsMonth || this.bossKillsMonth;
+                    this.dailyBossStreak = data.dailyBossStreak ?? this.dailyBossStreak;
+                    this.weeklyBossStreak = data.weeklyBossStreak ?? this.weeklyBossStreak;
+                    this.monthlyBossStreak = data.monthlyBossStreak ?? this.monthlyBossStreak;
+                    this.bossKillsThisMonth = data.bossKillsThisMonth ?? this.bossKillsThisMonth;
+                    this.bossKillsMonth = data.bossKillsMonth ?? this.bossKillsMonth;
                     
                     this.saveData();
                     this.render();
