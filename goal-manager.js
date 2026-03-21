@@ -125,7 +125,7 @@ class GoalManager {
         };
         this.featureUnlockTutorials = {
             2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
-            3: { title: '🔮 Arcane Powers Unlocked!', text: "You may have collected spell scrolls from treasure chests — visit Arcane Powers to view your spellbook and cast powerful spells!" },
+            3: { title: '🔮 Arcane Powers Unlocked!', text: "You can earn spells from treasure chests and boss loot — visit Arcane Powers to view your spellbook and cast powerful spells!" },
             4: { title: '⚔️ Weekly Battles & Side Quests!', text: "Your Quest Log now has Weekly Battles and Side Quests! Set weekly goals and track flexible tasks without deadlines." },
             5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
             6: { title: '🎨 Kingdom Themes Unlocked!', text: "You've unlocked the Forest Kingdom theme! Customize your journal's look by visiting the Treasury and selecting Themes. As you level up, more themes will become available — each with unique backgrounds and particle effects!" },
@@ -8762,6 +8762,17 @@ class GoalManager {
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
                 spellsCast: this.spellsCast,
+                dailyBoss: this.dailyBoss,
+                weeklyBoss: this.weeklyBoss,
+                monthlyBoss: this.monthlyBoss,
+                attackCharges: this.attackCharges,
+                bossLog: this.bossLog,
+                defeatedBossList: this.defeatedBossList,
+                dailyBossStreak: this.dailyBossStreak,
+                weeklyBossStreak: this.weeklyBossStreak,
+                monthlyBossStreak: this.monthlyBossStreak,
+                bossKillsThisMonth: this.bossKillsThisMonth,
+                bossKillsMonth: this.bossKillsMonth,
                 exportDate: new Date().toISOString(),
                 version: '3.0'
             };
@@ -8851,6 +8862,17 @@ class GoalManager {
                     this.bossesDefeated = data.bossesDefeated || this.bossesDefeated;
                     this.focusSessionsCompleted = data.focusSessionsCompleted || this.focusSessionsCompleted;
                     this.spellsCast = data.spellsCast || this.spellsCast;
+                    this.dailyBoss = data.dailyBoss || this.dailyBoss;
+                    this.weeklyBoss = data.weeklyBoss || this.weeklyBoss;
+                    this.monthlyBoss = data.monthlyBoss || this.monthlyBoss;
+                    this.attackCharges = data.attackCharges || this.attackCharges;
+                    this.bossLog = data.bossLog || this.bossLog;
+                    this.defeatedBossList = data.defeatedBossList || this.defeatedBossList;
+                    this.dailyBossStreak = data.dailyBossStreak || this.dailyBossStreak;
+                    this.weeklyBossStreak = data.weeklyBossStreak || this.weeklyBossStreak;
+                    this.monthlyBossStreak = data.monthlyBossStreak || this.monthlyBossStreak;
+                    this.bossKillsThisMonth = data.bossKillsThisMonth || this.bossKillsThisMonth;
+                    this.bossKillsMonth = data.bossKillsMonth || this.bossKillsMonth;
                     
                     this.saveData();
                     this.render();
@@ -10352,8 +10374,7 @@ class GoalManager {
                         <div class="flex items-center justify-center gap-3 text-sm">
                             <span class="text-yellow-300">${500 + Math.max(1, this.level) * 50} XP</span>
                             <span class="text-amber-400">${400 + Math.max(1, this.level) * 40} Gold</span>
-                            <span class="text-purple-300">Spell Scroll</span>
-                            <span class="text-pink-300">Epic Chest</span>
+                            <span class="text-purple-300">+ Bonus Loot</span>
                         </div>
                     </div>
                     <button onclick="goalManager.challengeMonthlyBoss()" 
