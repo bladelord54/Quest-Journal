@@ -140,6 +140,13 @@ async function handleSubscribe(request, env) {
   const keyHash = await hashEndpoint(subscription.endpoint);
   const key = `sub:${keyHash}`;
 
+  // Preserve lastPushed* from existing entry so frequent re-syncs don't wipe dedup
+  let existing = null;
+  try {
+    const raw = await env.PUSH_SUBS.get(key);
+    if (raw) existing = JSON.parse(raw);
+  } catch (_) { /* ignore */ }
+
   const data = {
     subscription,
     timezoneOffset: timezoneOffset || 0,
@@ -148,8 +155,8 @@ async function handleSubscribe(request, env) {
     morningEnabled: reminderSettings?.morningReminder !== false,
     eveningEnabled: reminderSettings?.eveningReminder !== false,
     enabled: reminderSettings?.enabled !== false,
-    lastPushedMorning: null,
-    lastPushedEvening: null,
+    lastPushedMorning: existing?.lastPushedMorning || null,
+    lastPushedEvening: existing?.lastPushedEvening || null,
     updatedAt: Date.now(),
   };
 

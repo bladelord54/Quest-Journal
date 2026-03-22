@@ -11885,7 +11885,7 @@ class GoalManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     subscription: subscription.toJSON(),
-                    timezoneOffset: -(this.getTimezoneOffset()), // minutes east of UTC
+                    timezoneOffset: this.getTimezoneOffset() * 60, // minutes east of UTC
                     reminderSettings: this.reminderSettings
                 })
             });
