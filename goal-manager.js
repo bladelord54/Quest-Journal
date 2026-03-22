@@ -3086,6 +3086,8 @@ class GoalManager {
                 // Reset all habits for new day
                 const activeCompanion = this.getActiveCompanion();
                 this.habits.forEach(habit => {
+                    // Always clear rewardedToday so stale dates don't block rewards
+                    habit.rewardedToday = null;
                     if (habit.completedToday) {
                         habit.completedToday = false;
                         habit.lastCompleted = lastReset;
@@ -4425,7 +4427,7 @@ class GoalManager {
                 habit.completionHistory = [];
             }
             
-            if (habit.completedToday && !habit.rewardedToday) {
+            if (habit.completedToday && habit.rewardedToday !== today) {
                 habit.rewardedToday = today;
                 // Precision enchantment: double streak progress
                 const streakInc = this.hasActiveEnchantment('double_streak') ? 2 : 1;
