@@ -96,6 +96,10 @@ class GoalManager {
         this.timezoneOffset = 0;
         this.notificationsEnabled = false;
         
+        // Web Push configuration (set PUSH_WORKER_URL after deploying the Cloudflare Worker)
+        this.PUSH_WORKER_URL = 'https://quest-push-worker.quest-push.workers.dev';
+        this.VAPID_PUBLIC_KEY = 'BEOYktBAvxMuysBxOfSsxQDagGg8-UEqY2u1mYLrfHnRQowjNZmb47OsyKdsw0jCcrpCPdZvY1QEj1s2R-fJxc8';
+        
         // Bulk Actions
         this.bulkSelectionMode = false;
         this.selectedItems = new Set();
@@ -229,6 +233,16 @@ class GoalManager {
             clearTimeout(this.saveTimeout);
             this._doSave();
         }
+    }
+
+    escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     loadData() {
@@ -2759,7 +2773,7 @@ class GoalManager {
                         ${rt.active ? '<i class="ri-checkbox-circle-fill"></i>' : '<i class="ri-checkbox-blank-circle-line"></i>'}
                     </button>
                     <div class="flex-1 min-w-0">
-                        <div class="text-white text-sm font-bold truncate">${rt.title}</div>
+                        <div class="text-white text-sm font-bold truncate">${this.escapeHTML(rt.title)}</div>
                         <div class="text-cyan-300/70 text-xs">${scheduleText}</div>
                     </div>
                     <button onclick="goalManager.deleteRecurringTask(${rt.id})" 
@@ -3019,7 +3033,7 @@ class GoalManager {
                             <input type="checkbox" ${item.completed ? 'checked' : ''} 
                                 onchange="goalManager.toggleChecklistItem('${taskType}', ${task.id}, ${item.id})"
                                 class="mr-2">
-                            <span class="${item.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'} flex-1">${item.text}</span>
+                            <span class="${item.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'} flex-1">${this.escapeHTML(item.text)}</span>
                             <button onclick="goalManager.showConfirm('Delete this item?', () => goalManager.deleteChecklistItem('${taskType}', ${task.id}, ${item.id}))" 
                                 class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 ml-2 text-xs">
                                 <i class="ri-close-circle-line"></i>
@@ -5564,10 +5578,10 @@ class GoalManager {
                             onchange="goalManager.toggleHabit(${habit.id})">
                         <div class="ml-4 flex-1">
                             <div class="flex items-center gap-2">
-                                <span class="text-lg font-bold fancy-font ${habit.completedToday ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${habit.title}</span>
+                                <span class="text-lg font-bold fancy-font ${habit.completedToday ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${this.escapeHTML(habit.title)}</span>
                                 ${habit.streak > 0 ? `<span class="text-xs bg-orange-500 text-white px-2 py-1 rounded-full font-bold">🔥 ${habit.streak} day${habit.streak !== 1 ? 's' : ''}</span>` : ''}
                             </div>
-                            ${habit.description ? `<p class="text-sm text-amber-800 italic mt-1">${habit.description}</p>` : ''}
+                            ${habit.description ? `<p class="text-sm text-amber-800 italic mt-1">${this.escapeHTML(habit.description)}</p>` : ''}
                             <div class="text-xs text-amber-700 mt-1">
                                 Total: ${habit.totalCompletions || 0} completions
                             </div>
@@ -5635,8 +5649,8 @@ class GoalManager {
                                     <span class="text-xs bg-${color}-800/50 text-${color}-200 px-2 py-1 rounded fancy-font capitalize">${goal.type}</span>
                                     ${goal.completed ? '<span class="text-xs text-green-400">✓ Completed</span>' : ''}
                                 </div>
-                                <h4 class="font-bold text-lg text-amber-300 medieval-title mb-1">${goal.title}</h4>
-                                ${goal.description ? `<p class="text-sm text-${color}-200 italic mb-2">${goal.description}</p>` : ''}
+                                <h4 class="font-bold text-lg text-amber-300 medieval-title mb-1">${this.escapeHTML(goal.title)}</h4>
+                                ${goal.description ? `<p class="text-sm text-${color}-200 italic mb-2">${this.escapeHTML(goal.description)}</p>` : ''}
                                 <div class="text-xs text-${color}-300">
                                     Archived: ${new Date(goal.archivedAt).toLocaleDateString()}
                                 </div>
@@ -7663,7 +7677,7 @@ class GoalManager {
                         type="checkbox" 
                         ${task.completed ? 'checked' : ''} 
                         onchange="goalManager.toggleTask(${task.id}, event)">
-                    <span class="ml-4 flex-1 fancy-font font-semibold text-lg ${task.completed ? 'line-through text-amber-600 opacity-60' : 'text-amber-100'}">${task.title}</span>
+                    <span class="ml-4 flex-1 fancy-font font-semibold text-lg ${task.completed ? 'line-through text-amber-600 opacity-60' : 'text-amber-100'}">${this.escapeHTML(task.title)}</span>
                     <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
                         <i class="ri-delete-bin-line"></i>
                     </button>
@@ -7705,8 +7719,8 @@ class GoalManager {
                             onchange="goalManager.toggleLifeGoal(${goal.id}, event)"
                             class="mt-1">
                         <div class="flex-1">
-                            <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h3>
-                            ${goal.description ? `<p class="text-sm text-red-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h3>
+                            ${goal.description ? `<p class="text-sm text-red-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
                             <p class="text-sm text-red-200 mb-3 fancy-font">Created: ${new Date(goal.created).toLocaleDateString()}</p>
                             
                             ${linkedYearly.length > 0 ? `
@@ -7722,7 +7736,7 @@ class GoalManager {
                                             <input type="checkbox" ${yearly.completed ? 'checked' : ''} 
                                                 onchange="goalManager.toggleYearlyGoal(${yearly.id}, event)"
                                                 class="mr-2">
-                                            <span class="${yearly.completed ? 'line-through text-red-400 opacity-60' : 'text-red-100'}">${yearly.title} (${yearly.progress}%)</span>
+                                            <span class="${yearly.completed ? 'line-through text-red-400 opacity-60' : 'text-red-100'}">${this.escapeHTML(yearly.title)} (${yearly.progress}%)</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -7791,15 +7805,15 @@ class GoalManager {
                             ${goal.completed ? 'checked' : ''} 
                             onchange="goalManager.toggleYearlyGoal(${goal.id}, event)">
                         <div class="flex-1">
-                            <h4 class="font-bold text-xl text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
-                            ${goal.description ? `<p class="text-sm text-purple-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
+                            <h4 class="font-bold text-xl text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h4>
+                            ${goal.description ? `<p class="text-sm text-purple-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
                             <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
                                 <div class="mb-2 flex flex-wrap gap-1">
                                     ${parentNames.map(name => `
                                         <span class="text-xs bg-red-700/40 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">
-                                            🎯 ${name}
+                                            🎯 ${this.escapeHTML(name)}
                                         </span>
                                     `).join('')}
                                 </div>
@@ -7818,7 +7832,7 @@ class GoalManager {
                                             <input type="checkbox" ${monthly.completed ? 'checked' : ''} 
                                                 onchange="goalManager.toggleMonthlyGoal(${monthly.id}, event)"
                                                 class="mr-2">
-                                            <span class="${monthly.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'}">${monthly.title} (${monthly.progress}%)</span>
+                                            <span class="${monthly.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'}">${this.escapeHTML(monthly.title)} (${monthly.progress}%)</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -7917,7 +7931,7 @@ class GoalManager {
                                             <input type="checkbox" ${task.completed ? 'checked' : ''} 
                                                 onchange="goalManager.toggleTask(${task.id}, event)"
                                                 class="mr-2">
-                                            <span class="${task.completed ? 'line-through text-blue-400 opacity-60' : isOverdue ? 'text-red-300' : 'text-blue-100'}">${task.title}</span>
+                                            <span class="${task.completed ? 'line-through text-blue-400 opacity-60' : isOverdue ? 'text-red-300' : 'text-blue-100'}">${this.escapeHTML(task.title)}</span>
                                         </div>
                                     `;}).join('')}
                                 </div>
@@ -7957,15 +7971,15 @@ class GoalManager {
                             ${goal.completed ? 'checked' : ''} 
                             onchange="goalManager.toggleMonthlyGoal(${goal.id}, event)">
                         <div class="flex-1">
-                            <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
-                            ${goal.description ? `<p class="text-sm text-blue-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
+                            <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h4>
+                            ${goal.description ? `<p class="text-sm text-blue-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
                             <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
                                 <div class="mb-2 flex flex-wrap gap-1">
                                     ${parentNames.map(name => `
                                         <span class="text-xs bg-purple-700/40 text-purple-200 px-2 py-1 rounded border border-purple-600/40 fancy-font">
-                                            🎯 ${name}
+                                            🎯 ${this.escapeHTML(name)}
                                         </span>
                                     `).join('')}
                                 </div>
@@ -7984,7 +7998,7 @@ class GoalManager {
                                             <input type="checkbox" ${weekly.completed ? 'checked' : ''} 
                                                 onchange="goalManager.toggleWeeklyGoal(${weekly.id}, event)"
                                                 class="mr-2">
-                                            <span class="${weekly.completed ? 'line-through text-blue-400 opacity-60' : 'text-blue-100'}">${weekly.title} (${weekly.progress}%)</span>
+                                            <span class="${weekly.completed ? 'line-through text-blue-400 opacity-60' : 'text-blue-100'}">${this.escapeHTML(weekly.title)} (${weekly.progress}%)</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -8066,7 +8080,7 @@ class GoalManager {
                                             onchange="goalManager.toggleTask(${task.id}, event)"
                                             class="mr-2">
                                         <span class="text-xs text-green-300 mr-2 font-bold">${dayName}</span>
-                                        <span class="${task.completed ? 'line-through text-green-400 opacity-60' : isOverdue ? 'text-red-300 font-semibold' : 'text-green-100'}">${task.title}</span>
+                                        <span class="${task.completed ? 'line-through text-green-400 opacity-60' : isOverdue ? 'text-red-300 font-semibold' : 'text-green-100'}">${this.escapeHTML(task.title)}</span>
                                         ${isOverdue ? '<span class="ml-2 text-xs text-red-400">⚠️ Overdue</span>' : ''}
                                     </div>
                                 `;}).join('')}
@@ -8106,15 +8120,15 @@ class GoalManager {
                             ${goal.completed ? 'checked' : ''} 
                             onchange="goalManager.toggleWeeklyGoal(${goal.id}, event)">
                         <div class="flex-1">
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${goal.title}</h4>
-                            ${goal.description ? `<p class="text-sm text-green-200/80 mb-2 fancy-font">${goal.description}</p>` : ''}
+                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h4>
+                            ${goal.description ? `<p class="text-sm text-green-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
                             <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
                                 <div class="mb-2 flex flex-wrap gap-1">
                                     ${parentNames.map(name => `
                                         <span class="text-xs bg-blue-700/40 text-blue-200 px-2 py-1 rounded border border-blue-600/40 fancy-font">
-                                            🎯 ${name}
+                                            🎯 ${this.escapeHTML(name)}
                                         </span>
                                     `).join('')}
                                 </div>
@@ -8133,7 +8147,7 @@ class GoalManager {
                                             <input type="checkbox" ${task.completed ? 'checked' : ''} 
                                                 onchange="goalManager.toggleTask(${task.id}, event)"
                                                 class="mr-2">
-                                            <span class="${task.completed ? 'line-through text-green-400 opacity-60' : 'text-green-100'}">${task.title}</span>
+                                            <span class="${task.completed ? 'line-through text-green-400 opacity-60' : 'text-green-100'}">${this.escapeHTML(task.title)}</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -8222,15 +8236,15 @@ class GoalManager {
                             onchange="goalManager.toggleTask(${task.id}, event)"
                             class="mt-1">
                         <div class="flex-1">
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${task.completed ? 'line-through opacity-60' : ''}">${task.title}</h4>
-                            ${task.description ? `<p class="text-sm text-amber-200/80 mb-2 fancy-font">${task.description}</p>` : ''}
+                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${task.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(task.title)}</h4>
+                            ${task.description ? `<p class="text-sm text-amber-200/80 mb-2 fancy-font">${this.escapeHTML(task.description)}</p>` : ''}
                             <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
                             
                             ${parentNames.length > 0 ? `
                                 <div class="mb-2 flex flex-wrap gap-1">
                                     ${parentNames.map(name => `
                                         <span class="text-xs bg-green-700/40 text-green-200 px-2 py-1 rounded border border-green-600/40 fancy-font">
-                                            🎯 ${name}
+                                            🎯 ${this.escapeHTML(name)}
                                         </span>
                                     `).join('')}
                                 </div>
@@ -8773,6 +8787,9 @@ class GoalManager {
                 monthlyBossStreak: this.monthlyBossStreak,
                 bossKillsThisMonth: this.bossKillsThisMonth,
                 bossKillsMonth: this.bossKillsMonth,
+                seenFeatureTutorials: this.seenFeatureTutorials,
+                progressiveUnlockInitialized: this.progressiveUnlockInitialized,
+                reminderSettings: this.reminderSettings,
                 exportDate: new Date().toISOString(),
                 version: '3.0'
             };
@@ -8851,7 +8868,7 @@ class GoalManager {
                     this.totalFocusTime = data.totalFocusTime ?? this.totalFocusTime;
                     this.activeEnchantments = data.activeEnchantments || this.activeEnchantments;
                     this.timezone = data.timezone || this.timezone;
-                    this.timezoneOffset = data.timezoneOffset || this.timezoneOffset;
+                    this.timezoneOffset = data.timezoneOffset ?? this.timezoneOffset;
                     this.tutorialCompleted = data.tutorialCompleted || this.tutorialCompleted;
                     this.isPremium = data.isPremium || this.isPremium;
                     this.premiumPurchaseDate = data.premiumPurchaseDate || this.premiumPurchaseDate;
@@ -8873,6 +8890,12 @@ class GoalManager {
                     this.monthlyBossStreak = data.monthlyBossStreak ?? this.monthlyBossStreak;
                     this.bossKillsThisMonth = data.bossKillsThisMonth ?? this.bossKillsThisMonth;
                     this.bossKillsMonth = data.bossKillsMonth ?? this.bossKillsMonth;
+                    this.seenFeatureTutorials = data.seenFeatureTutorials || this.seenFeatureTutorials;
+                    this.progressiveUnlockInitialized = data.progressiveUnlockInitialized || this.progressiveUnlockInitialized;
+                    if (data.reminderSettings) {
+                        this.reminderSettings = data.reminderSettings;
+                        localStorage.setItem('reminderSettings', JSON.stringify(this.reminderSettings));
+                    }
                     
                     this.saveData();
                     this.render();
@@ -8990,8 +9013,8 @@ class GoalManager {
                             <span class="text-xs text-purple-300 fancy-font font-semibold">${result.type}</span>
                             ${result.item.completed ? '<span class="text-xs text-green-400">✓ Completed</span>' : ''}
                         </div>
-                        <p class="text-white font-semibold fancy-font ${result.item.completed ? 'line-through opacity-60' : ''}">${result.item.title}</p>
-                        ${result.item.description ? `<p class="text-sm text-purple-200 italic mt-1">${result.item.description}</p>` : ''}
+                        <p class="text-white font-semibold fancy-font ${result.item.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(result.item.title)}</p>
+                        ${result.item.description ? `<p class="text-sm text-purple-200 italic mt-1">${this.escapeHTML(result.item.description)}</p>` : ''}
                         ${result.dueDate ? `<p class="text-xs text-purple-300 mt-1">Due: ${result.dueDate}</p>` : ''}
                     </div>
                 `).join('')}
@@ -9024,9 +9047,8 @@ class GoalManager {
                     <div class="flex-1">
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-lg">${priorityIcons[quest.priority]}</span>
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title ${quest.completed ? 'line-through opacity-60' : ''}">${quest.title}</h4>
-                        </div>
-                        ${quest.description ? `<p class="text-sm text-${color}-100 mb-2 fancy-font italic">${quest.description}</p>` : ''}
+                            <h4 class="font-bold text-lg text-amber-300 medieval-title ${quest.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(quest.title)}</h4>
+                        ${quest.description ? `<p class="text-sm text-${color}-100 mb-2 fancy-font italic">${this.escapeHTML(quest.description)}</p>` : ''}
                         <div class="flex items-center gap-2 text-xs text-${color}-200">
                             <span class="bg-${color}-800/50 px-2 py-1 rounded fancy-font capitalize">${quest.priority} Priority</span>
                             <span class="fancy-font">Added: ${new Date(quest.created).toLocaleDateString()}</span>
@@ -9209,18 +9231,18 @@ class GoalManager {
                             type="checkbox" 
                             ${task.completed ? 'checked' : ''} 
                             onchange="goalManager.toggleTask(${task.id}, event)">
-                        <span class="ml-4 flex-1 text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-600 opacity-60' : 'text-amber-100'}">${task.title}</span>
+                        <span class="ml-4 flex-1 text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-600 opacity-60' : 'text-amber-100'}">${this.escapeHTML(task.title)}</span>
                         <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
                             <i class="ri-delete-bin-line"></i>
                         </button>
                     </div>
-                    ${task.description ? `<p class="text-sm text-amber-200/70 mt-2 ml-8 fancy-font italic">${task.description}</p>` : ''}
+                    ${task.description ? `<p class="text-sm text-amber-200/70 mt-2 ml-8 fancy-font italic">${this.escapeHTML(task.description)}</p>` : ''}
                     ${task.checklist && task.checklist.length > 0 ? `
                         <div class="ml-8 mt-2 space-y-1">
                             ${task.checklist.map((item, i) => `
                                 <div class="flex items-center gap-2 text-sm text-amber-200/80">
                                     <span>${item.completed ? '☑' : '☐'}</span>
-                                    <span class="${item.completed ? 'line-through opacity-60' : ''}">${item.text}</span>
+                                    <span class="${item.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(item.text)}</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -10280,7 +10302,7 @@ class GoalManager {
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-3">
                             <span class="text-xs bg-${goal.color}-700/50 text-${goal.color}-200 px-2 py-1 rounded fancy-font">${goal.type}</span>
-                            <h4 class="text-lg font-bold text-amber-300 medieval-title">${goal.title}</h4>
+                            <h4 class="text-lg font-bold text-amber-300 medieval-title">${this.escapeHTML(goal.title)}</h4>
                         </div>
                         <span class="text-${goal.color}-300 font-bold">${progress}%</span>
                     </div>
@@ -11511,6 +11533,7 @@ class GoalManager {
             if (this.notificationsEnabled) {
                 localStorage.setItem('notificationsConfirmedWorking', 'true');
                 this.syncReminderSettingsToSW();
+                this.subscribeToPush();
                 this.sendConfirmationNotification();
             }
         } catch (err) {
@@ -11701,6 +11724,9 @@ class GoalManager {
         // Send reminder settings to service worker for persistent background notifications
         this.syncReminderSettingsToSW();
         
+        // Subscribe to Web Push for reliable background notifications
+        this.subscribeToPush();
+        
         // Check for missed reminders on app open (catch-up)
         this.checkMissedReminders();
         
@@ -11788,23 +11814,115 @@ class GoalManager {
         }
     }
     
-    registerPeriodicSync() {
+    async registerPeriodicSync() {
         // Periodic Background Sync lets the service worker wake up periodically
-        // even when the app is closed - ideal for Android notifications
-        if ('serviceWorker' in navigator && 'periodicSync' in (navigator.serviceWorker.ready || {})) {
-            navigator.serviceWorker.ready.then(async registration => {
-                try {
-                    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-                    if (status.state === 'granted' && registration.periodicSync) {
-                        await registration.periodicSync.register('check-reminders', {
-                            minInterval: 60 * 60 * 1000 // Check at least every hour
-                        });
-                    }
-                } catch (e) {
-                    // Periodic sync not supported - fall back to page-based timers
-                }
-            });
+        // even when the app is closed - fallback for when Web Push is unavailable
+        if (!('serviceWorker' in navigator)) return;
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            if (!registration.periodicSync) return;
+            const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+            if (status.state === 'granted') {
+                await registration.periodicSync.register('check-reminders', {
+                    minInterval: 60 * 60 * 1000 // Check at least every hour
+                });
+                console.log('[Reminders] Periodic background sync registered');
+            }
+        } catch (e) {
+            // Periodic sync not supported - fall back to page-based timers
+            console.log('[Reminders] Periodic sync not available:', e.message);
         }
+    }
+
+    // ==================== WEB PUSH SUBSCRIPTION ====================
+
+    async subscribeToPush() {
+        if (!this.notificationsEnabled || !this.PUSH_WORKER_URL) {
+            if (!this.PUSH_WORKER_URL) {
+                console.log('[Push] No worker URL configured, skipping push subscription');
+            }
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+
+            // Check for existing subscription
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+                const applicationServerKey = this._urlBase64ToUint8Array(this.VAPID_PUBLIC_KEY);
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey
+                });
+                console.log('[Push] New push subscription created');
+            }
+
+            // Send subscription + schedule to the push worker
+            await this._syncPushSubscription(subscription);
+            console.log('[Push] Successfully subscribed to push notifications');
+        } catch (err) {
+            console.error('[Push] Failed to subscribe:', err);
+        }
+    }
+
+    async _syncPushSubscription(subscription) {
+        if (!this.PUSH_WORKER_URL || !subscription) return;
+
+        try {
+            const response = await fetch(`${this.PUSH_WORKER_URL}/api/subscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subscription: subscription.toJSON(),
+                    timezoneOffset: -(this.getTimezoneOffset()), // minutes east of UTC
+                    reminderSettings: this.reminderSettings
+                })
+            });
+
+            if (response.ok) {
+                console.log('[Push] Subscription synced with push worker');
+            } else {
+                console.warn('[Push] Sync failed:', response.status);
+            }
+        } catch (err) {
+            console.error('[Push] Failed to sync subscription:', err);
+        }
+    }
+
+    async _unsubscribeFromPush() {
+        if (!this.PUSH_WORKER_URL) return;
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                // Notify server to remove subscription
+                await fetch(`${this.PUSH_WORKER_URL}/api/unsubscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: subscription.endpoint })
+                }).catch(() => {});
+
+                // Unsubscribe locally
+                await subscription.unsubscribe();
+                console.log('[Push] Unsubscribed from push notifications');
+            }
+        } catch (err) {
+            console.error('[Push] Failed to unsubscribe:', err);
+        }
+    }
+
+    _urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; i++) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
     }
 
     scheduleDailyReminders() {
@@ -11930,6 +12048,14 @@ class GoalManager {
         
         // Keep service worker in sync for background notifications
         this.syncReminderSettingsToSW();
+        
+        // Re-sync push subscription so server knows updated schedule
+        this.subscribeToPush();
+        
+        // If reminders fully disabled, unsubscribe from push
+        if (setting === 'enabled' && !value) {
+            this._unsubscribeFromPush();
+        }
     }
 
     renderReminderSettings() {

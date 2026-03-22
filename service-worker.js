@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v264';
+const CACHE_NAME = 'life-quest-journal-v266';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -212,6 +212,78 @@ self.addEventListener('periodicsync', event => {
     event.waitUntil(checkAndSendReminders());
   }
 });
+
+// Web Push event - fired by the Cloudflare push worker at scheduled reminder times
+self.addEventListener('push', event => {
+  event.waitUntil(handlePushEvent());
+});
+
+async function handlePushEvent() {
+  // If the page is currently visible, in-page timers handle reminders — skip
+  const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (clientList.some(c => c.visibilityState === 'visible')) return;
+
+  const data = await loadReminderData();
+  if (!data || !data.settings || !data.settings.enabled) {
+    // Settings disabled or missing — show generic to satisfy push requirement
+    return showFallbackNotification();
+  }
+
+  const settings = data.settings;
+  const counts = data.taskCounts || { todayTasks: 0, incompleteHabits: 0, overdueTasks: 0 };
+  const now = new Date();
+  const currentMins = now.getHours() * 60 + now.getMinutes();
+
+  let type = null;
+
+  // Determine which reminder to show based on proximity to scheduled time
+  if (settings.morningReminder) {
+    const [h, m] = settings.morningTime.split(':').map(Number);
+    const target = h * 60 + m;
+    if (currentMins >= target && currentMins < target + 30) {
+      type = 'morning';
+    }
+  }
+
+  if (!type && settings.eveningReminder) {
+    const [h, m] = settings.eveningTime.split(':').map(Number);
+    const target = h * 60 + m;
+    if (currentMins >= target && currentMins < target + 30) {
+      type = 'evening';
+    }
+  }
+
+  if (type) {
+    // Show the reminder — tag-based replacement handles dedup with in-page timers
+    await sendReminderNotification(type, counts);
+    // Also update sentToday tracking
+    const today = now.toISOString().split('T')[0];
+    const sentToday = data.sentToday || { _date: today };
+    if (sentToday._date !== today) {
+      sentToday._date = today;
+      sentToday.morning = false;
+      sentToday.evening = false;
+    }
+    sentToday[type] = true;
+    await saveReminderData({ ...data, sentToday });
+  } else {
+    // Server pushed but it's not reminder time — show encouraging fallback
+    await showFallbackNotification();
+  }
+}
+
+async function showFallbackNotification() {
+  try {
+    await self.registration.showNotification('⚔️ Quest Journal', {
+      body: 'Stay on track with your quests today!',
+      icon: './icons/icon-192.png',
+      badge: './icons/badge-96.png',
+      tag: 'quest-generic',
+      renotify: false,
+      data: { url: './' }
+    });
+  } catch (e) { /* notification permission may not be granted */ }
+}
 
 // Piggyback reminder check on fetch events (throttled to once per 5 minutes)
 // This is the most reliable way to check reminders since fetch fires whenever
