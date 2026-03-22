@@ -2249,6 +2249,10 @@ class GoalManager {
         toastTitle.textContent = style.title;
         achievementText.textContent = text;
         
+        // Clear any previous hide timers so they don't prematurely hide this toast
+        if (this._toastHideTimer) clearTimeout(this._toastHideTimer);
+        if (this._toastHiddenTimer) clearTimeout(this._toastHiddenTimer);
+        
         toast.classList.remove('hidden', 'scale-0');
         toast.classList.add('scale-100');
         
@@ -2258,10 +2262,10 @@ class GoalManager {
         
         // Loot & achievement toasts stay longer so user can read rewards
         const duration = (type === 'loot' || type === 'achievement' || type === 'companion') ? 6000 : 3000;
-        setTimeout(() => {
+        this._toastHideTimer = setTimeout(() => {
             toast.classList.remove('scale-100');
             toast.classList.add('scale-0');
-            setTimeout(() => {
+            this._toastHiddenTimer = setTimeout(() => {
                 toast.classList.add('hidden');
             }, 300);
         }, duration);
