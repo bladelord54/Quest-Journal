@@ -4463,6 +4463,9 @@ class GoalManager {
                     habit.rewardedToday = null;
                     // Remove from completion history
                     habit.completionHistory = habit.completionHistory.filter(d => d !== today);
+                    // Revoke rewards to prevent check/uncheck exploit
+                    this.xp = Math.max(0, this.xp - 10);
+                    this.attackCharges = Math.max(0, this.attackCharges - 1);
                 }
             }
             
