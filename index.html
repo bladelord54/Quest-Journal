@@ -28,6 +28,20 @@
     <link rel="stylesheet" href="themes.css">
 </head>
 <body class="bg-stone-900" style="color-scheme: dark;">
+    <!-- App Splash Screen -->
+    <div id="splash-screen" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1c1917 0%,#292524 50%,#1c1917 100%);transition:opacity 0.5s ease-out;">
+        <div style="text-align:center;animation:splashFadeIn 0.4s ease-out;">
+            <div style="font-size:4rem;margin-bottom:0.5rem;">⚔️</div>
+            <h1 style="font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:#fbbf24;margin:0 0 0.25rem 0;">Life Quest Journal</h1>
+            <p style="font-family:'Cinzel',serif;font-size:0.75rem;color:#d97706;margin:0 0 1.5rem 0;">Your Adventure Awaits</p>
+            <div style="width:40px;height:40px;border:3px solid #d97706;border-top-color:transparent;border-radius:50%;margin:0 auto;animation:splashSpin 0.8s linear infinite;"></div>
+        </div>
+    </div>
+    <style>
+        @keyframes splashSpin { to { transform: rotate(360deg); } }
+        @keyframes splashFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
     <!-- Theme Particle Container -->
     <div id="theme-particles"></div>
     
@@ -1548,6 +1562,14 @@
                 goalManager = new GoalManager();
                 window.goalManager = goalManager; // Also set on window object
                 console.log('✅ GoalManager created successfully!', goalManager);
+                
+                // Dismiss splash screen
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    splash.style.pointerEvents = 'none';
+                    setTimeout(() => splash.remove(), 500);
+                }
             } catch (err) {
                 console.error('❌ Error creating GoalManager:', err);
                 document.body.innerHTML = `
