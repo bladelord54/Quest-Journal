@@ -11801,6 +11801,7 @@ class GoalManager {
             if (document.visibilityState === 'visible') {
                 this.scheduleDailyReminders();
                 this.syncReminderSettingsToSW(); // Re-sync on every foreground
+                this.subscribeToPush(); // Re-sync timezone offset (handles DST changes)
                 this.checkOverdueTasks();
                 this.checkMissedReminders();
             }
