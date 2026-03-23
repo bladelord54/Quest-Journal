@@ -8653,7 +8653,7 @@ class GoalManager {
 
     // Purchase using Digital Goods API (Google Play Billing)
     async purchaseWithDigitalGoods() {
-        const PREMIUM_SKU = 'premium-upgrade-option'; // Must match Google Play Console product ID
+        const PREMIUM_SKU = 'quest_journal_premium'; // Must match Google Play Console product ID
         
         
         // Get the Digital Goods service
@@ -8736,7 +8736,7 @@ class GoalManager {
                 const service = await window.getDigitalGoodsService('https://play.google.com/billing');
                 const purchases = await service.listPurchases();
                 
-                const premiumPurchase = purchases.find(p => p.itemId === 'premium-upgrade-option');
+                const premiumPurchase = purchases.find(p => p.itemId === 'quest_journal_premium');
                 if (premiumPurchase) {
                     this.onPremiumPurchaseSuccess(premiumPurchase.purchaseToken);
                     this.showAchievement('✅ Premium restored successfully!', 'weekly');
