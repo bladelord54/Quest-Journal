@@ -82,6 +82,7 @@ class GoalManager {
         
         // Focus Timer & Enchantments
         this.focusCrystals = 0;
+        this.focusCrystalShards = 0;
         this.focusTimer = null;
         this.focusTimeRemaining = 0;
         this.focusTimerRunning = false;
@@ -318,6 +319,7 @@ class GoalManager {
                 
                 // Focus & Enchantments
                 this.focusCrystals = data.focusCrystals || 0;
+                this.focusCrystalShards = data.focusCrystalShards || 0;
                 this.totalFocusTime = data.totalFocusTime || 0;
                 this.activeEnchantments = data.activeEnchantments || [];
                 
@@ -445,6 +447,7 @@ class GoalManager {
                 activeQuestChains: this.activeQuestChains,
                 completedQuestChains: this.completedQuestChains,
                 focusCrystals: this.focusCrystals,
+                focusCrystalShards: this.focusCrystalShards,
                 totalFocusTime: this.totalFocusTime,
                 activeEnchantments: this.activeEnchantments,
                 timezone: this.timezone,
@@ -3732,6 +3735,7 @@ class GoalManager {
             if (reward.type === 'gold') this.addGold(reward.amount, 'chest');
             if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
             if (reward.type === 'charges') this.attackCharges += reward.amount;
+            if (reward.type === 'shards') this.addFocusCrystalShards(reward.amount);
             if (reward.type === 'theme') this.tryUnlockRandomTheme();
             if (reward.type === 'companion') this.unlockCompanion(reward.value);
             if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
@@ -3746,14 +3750,17 @@ class GoalManager {
     getMasterLootPool() {
         return {
             common: [
-                { type: 'gold', amount: [25, 50], weight: 30, name: 'Small Gold Pouch', icon: '💰' },
-                { type: 'gold', amount: [50, 100], weight: 20, name: 'Gold Pouch', icon: '💰' },
-                { type: 'xp', amount: [15, 30], weight: 25, name: 'Minor XP Scroll', icon: '📜' },
-                { type: 'spell', spellId: 'minor_wisdom', charges: 1, weight: 15 },
-                { type: 'spell', spellId: 'copper_blessing', charges: 1, weight: 10 },
+                { type: 'gold', amount: [50, 100], weight: 22, name: 'Small Gold Pouch', icon: '💰' },
+                { type: 'gold', amount: [100, 175], weight: 15, name: 'Gold Pouch', icon: '💰' },
+                { type: 'xp', amount: [15, 30], weight: 18, name: 'Minor XP Scroll', icon: '📜' },
+                { type: 'xp', amount: [5, 15], weight: 12, name: 'Tiny XP Scroll', icon: '📜' },
+                { type: 'charges', amount: 1, weight: 10, name: 'Attack Charge', icon: '⚔️' },
+                { type: 'shards', amount: [1, 3], weight: 8, name: 'Focus Crystal Shards', icon: '🔮' },
+                { type: 'spell', spellId: 'minor_wisdom', charges: 1, weight: 10 },
+                { type: 'spell', spellId: 'copper_blessing', charges: 1, weight: 5 },
             ],
             uncommon: [
-                { type: 'gold', amount: [100, 200], weight: 18, name: 'Large Gold Pouch', icon: '💰' },
+                { type: 'gold', amount: [150, 300], weight: 18, name: 'Large Gold Pouch', icon: '💰' },
                 { type: 'xp', amount: [50, 100], weight: 15, name: 'Greater XP Scroll', icon: '📜' },
                 { type: 'charges', amount: 1, weight: 15, name: 'Attack Charge', icon: '⚔️' },
                 { type: 'spell', spellId: 'lucky_draw', charges: 1, weight: 14 },
@@ -3763,7 +3770,7 @@ class GoalManager {
                 { type: 'companion', companions: ['cat', 'rabbit'], weight: 8 },
             ],
             rare: [
-                { type: 'gold', amount: [200, 400], weight: 12, name: 'Grand Gold Pouch', icon: '💰' },
+                { type: 'gold', amount: [300, 550], weight: 12, name: 'Grand Gold Pouch', icon: '💰' },
                 { type: 'xp', amount: [100, 200], weight: 10, name: 'Epic XP Scroll', icon: '📜' },
                 { type: 'charges', amount: 2, weight: 10, name: 'Attack Charges x2', icon: '⚔️' },
                 { type: 'spell', spellId: 'arcane_surge', charges: 2, weight: 15 },
@@ -3779,7 +3786,7 @@ class GoalManager {
                 { type: 'spell', spellId: 'boss_slayer', charges: 1, weight: 15 },
                 { type: 'spell', spellId: 'execute', charges: 1, weight: 10 },
                 { type: 'companion', companions: ['wolf', 'eagle', 'bear', 'unicorn'], weight: 18 },
-                { type: 'gold', amount: [300, 600], weight: 10, name: 'Epic Gold Hoard', icon: '💰' },
+                { type: 'gold', amount: [500, 900], weight: 10, name: 'Epic Gold Hoard', icon: '💰' },
                 { type: 'charges', amount: 3, weight: 7, name: 'Battle Charges x3', icon: '⚔️' },
                 { type: 'theme', weight: 5 },
             ],
@@ -3788,7 +3795,7 @@ class GoalManager {
                 { type: 'spell', spellId: 'double_xp_weekend', charges: 1, weight: 18 },
                 { type: 'spell', spellId: 'time_freeze', charges: 2, weight: 18 },
                 { type: 'companion', companions: ['dragon', 'phoenix', 'lion'], weight: 17 },
-                { type: 'gold', amount: [500, 1000], weight: 12, name: 'Legendary Treasure', icon: '👑' },
+                { type: 'gold', amount: [800, 1500], weight: 12, name: 'Legendary Treasure', icon: '👑' },
                 { type: 'charges', amount: 5, weight: 8, name: 'War Chest x5', icon: '⚔️' },
                 { type: 'theme', weight: 5 },
             ]
@@ -3934,6 +3941,11 @@ class GoalManager {
         if (item.type === 'charges') {
             return { type: 'charges', amount: item.amount, rarity, name: item.name, icon: item.icon };
         }
+        if (item.type === 'shards') {
+            const [min, max] = item.amount;
+            const amount = Math.floor(Math.random() * (max - min + 1)) + min;
+            return { type: 'shards', amount, rarity, name: item.name, icon: item.icon };
+        }
         if (item.type === 'spell') {
             return { type: 'spell', spellId: item.spellId, charges: item.charges, rarity };
         }
@@ -4053,6 +4065,9 @@ class GoalManager {
             }
             if (r.type === 'charges') {
                 return { icon: r.icon || '⚔️', name: r.name || 'Attack Charges', desc: `+${r.amount} charge${r.amount > 1 ? 's' : ''}`, rarity: r.rarity || 'uncommon' };
+            }
+            if (r.type === 'shards') {
+                return { icon: r.icon || '🔮', name: r.name || 'Crystal Shards', desc: `+${r.amount} shard${r.amount > 1 ? 's' : ''} (${this.focusCrystalShards}/10)`, rarity: r.rarity || 'common' };
             }
             if (r.type === 'theme') {
                 return { icon: '🎨', name: 'New Theme', desc: 'A new kingdom theme!', rarity: r.rarity || 'rare' };
@@ -4297,6 +4312,18 @@ class GoalManager {
         }
     }
     
+    addFocusCrystalShards(amount) {
+        this.focusCrystalShards += amount;
+        // Auto-convert every 10 shards into 1 Focus Crystal
+        if (this.focusCrystalShards >= 10) {
+            const crystalsFormed = Math.floor(this.focusCrystalShards / 10);
+            this.focusCrystalShards = this.focusCrystalShards % 10;
+            this.focusCrystals += crystalsFormed;
+            this.showAchievement(`💎 ${crystalsFormed} Focus Crystal${crystalsFormed > 1 ? 's' : ''} formed from shards!`, 'rare', 'rare');
+        }
+        this.saveData();
+    }
+
     checkSerenityBonus() {
         if (this.hasActiveEnchantment('crystal_chance') && Math.random() < 0.2) {
             this.focusCrystals++;
@@ -8771,6 +8798,7 @@ class GoalManager {
                 activeQuestChains: this.activeQuestChains,
                 completedQuestChains: this.completedQuestChains,
                 focusCrystals: this.focusCrystals,
+                focusCrystalShards: this.focusCrystalShards,
                 totalFocusTime: this.totalFocusTime,
                 activeEnchantments: this.activeEnchantments,
                 timezone: this.timezone,
@@ -8874,6 +8902,7 @@ class GoalManager {
                     this.activeQuestChains = data.activeQuestChains || this.activeQuestChains;
                     this.completedQuestChains = data.completedQuestChains || this.completedQuestChains;
                     this.focusCrystals = data.focusCrystals ?? this.focusCrystals;
+                    this.focusCrystalShards = data.focusCrystalShards ?? this.focusCrystalShards;
                     this.totalFocusTime = data.totalFocusTime ?? this.totalFocusTime;
                     this.activeEnchantments = data.activeEnchantments || this.activeEnchantments;
                     this.timezone = data.timezone || this.timezone;
@@ -10924,6 +10953,16 @@ class GoalManager {
         const crystalsDisplay = document.getElementById('focus-crystals-display');
         if (crystalsDisplay) {
             crystalsDisplay.textContent = this.focusCrystals;
+        }
+        
+        const shardsElement = document.getElementById('focus-crystal-shards');
+        if (shardsElement) {
+            shardsElement.textContent = `${this.focusCrystalShards}/10`;
+        }
+        
+        const shardsDisplay = document.getElementById('focus-crystal-shards-display');
+        if (shardsDisplay) {
+            shardsDisplay.textContent = `${this.focusCrystalShards}/10`;
         }
         
         const totalFocusTime = document.getElementById('total-focus-time');
