@@ -6220,6 +6220,7 @@ class GoalManager {
         // Section header for premium spells
         html += `
             <div class="w-full mt-6 mb-2">
+                ${this.getPremiumBannerHTML('Unlock all premium spells & enchantments!')}
                 <h3 class="text-lg font-bold text-yellow-300 medieval-title flex items-center justify-center md:justify-start gap-2">
                     <span>👑</span> Premium Spells <span class="text-sm font-normal text-yellow-400">(${premiumSpells.length} spells)</span>
                 </h3>
@@ -6953,7 +6954,8 @@ class GoalManager {
         const container = document.getElementById('theme-selector-container');
         if (!container) return;
 
-        container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
+        const premiumBanner = this.getPremiumBannerHTML('Unlock exclusive premium themes!');
+        container.innerHTML = premiumBanner + Object.entries(this.themeDefinitions).map(([id, theme]) => {
             const isUnlocked = this.unlockedThemes.includes(id);
             const isSelected = this.currentTheme === id;
             const isPremiumTheme = theme.premium && !this.isPremium;
@@ -8498,6 +8500,22 @@ class GoalManager {
                 </div>
             `;
         }
+    }
+
+    getPremiumBannerHTML(message) {
+        if (this.isPremium) return '';
+        return `
+            <div class="bg-gradient-to-r from-yellow-900/60 to-amber-900/60 border border-yellow-600/50 rounded-xl p-3 mb-4 flex items-center justify-between gap-3 cursor-pointer hover:border-yellow-500/70 transition-colors"
+                 onclick="goalManager.showPremiumPurchaseModal()">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-xl flex-shrink-0">👑</span>
+                    <span class="text-yellow-200 text-sm fancy-font truncate">${message}</span>
+                </div>
+                <button class="bg-gradient-to-r from-yellow-500 to-amber-600 text-black px-3 py-1.5 rounded-lg font-bold text-xs fancy-font flex-shrink-0 shadow-lg hover:from-yellow-400 hover:to-amber-500 transition-all">
+                    Go Premium
+                </button>
+            </div>
+        `;
     }
 
     showPremiumPurchaseModal() {
@@ -10388,7 +10406,7 @@ class GoalManager {
         const container = document.getElementById('boss-arena');
         if (!container) return;
         
-        let html = '';
+        let html = this.getPremiumBannerHTML('Premium unlocks advanced analytics & more!');
         if (this.dailyBoss) html += this.renderBossCard(this.dailyBoss, 'daily');
         if (this.weeklyBoss) html += this.renderBossCard(this.weeklyBoss, 'weekly');
         container.innerHTML = html;
@@ -11099,7 +11117,7 @@ class GoalManager {
             `;
         }).join('');
         
-        container.innerHTML = html;
+        container.innerHTML = this.getPremiumBannerHTML('Unlock powerful enchantments with Premium!') + html;
     }
 
     // Global Search
