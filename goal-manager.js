@@ -1860,7 +1860,7 @@ class GoalManager {
             });
         });
         
-        if (window.audioManager) window.audioManager.play('achievement', 0.5);
+        if (window.audioManager) window.audioManager.playAchievement('weekly');
     }
     
     switchView(viewName) {
