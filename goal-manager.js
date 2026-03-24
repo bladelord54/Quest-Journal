@@ -6954,8 +6954,10 @@ class GoalManager {
         const container = document.getElementById('theme-selector-container');
         if (!container) return;
 
-        const premiumBanner = this.getPremiumBannerHTML('Unlock exclusive premium themes!');
-        container.innerHTML = premiumBanner + Object.entries(this.themeDefinitions).map(([id, theme]) => {
+        const bannerContainer = document.getElementById('theme-premium-banner');
+        if (bannerContainer) bannerContainer.innerHTML = this.getPremiumBannerHTML('Unlock exclusive premium themes!');
+        
+        container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
             const isUnlocked = this.unlockedThemes.includes(id);
             const isSelected = this.currentTheme === id;
             const isPremiumTheme = theme.premium && !this.isPremium;
