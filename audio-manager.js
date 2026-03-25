@@ -65,6 +65,12 @@ class AudioManager {
         // Debounce: skip if same sound played within 150ms
         if (soundId === this._lastPlayedId && now - this._lastPlayedTime < 150) return;
         
+        // Auto-recover if queue has been stuck for more than 5 seconds
+        if (this._soundPlaying && now - this._lastPlayedTime > 5000) {
+            this._soundPlaying = false;
+            this._soundQueue = [];
+        }
+        
         // Cap queue to prevent runaway accumulation
         if (this._soundQueue.length >= 6) this._soundQueue.shift();
         
@@ -93,23 +99,24 @@ class AudioManager {
         this._lastPlayedId = soundId;
         this._lastPlayedTime = Date.now();
         
+        let advanced = false;
+        const advance = () => {
+            if (advanced) return; // Prevent double-advance
+            advanced = true;
+            clearTimeout(safetyTimer);
+            setTimeout(() => this._processSoundQueue(), 100);
+        };
+        
+        // Safety timeout: if ended/error never fire, unblock the queue after 5s
+        const safetyTimer = setTimeout(advance, 5000);
+        
         const clone = sound.cloneNode();
         clone.volume = volumeOverride !== null ? volumeOverride : this.volume;
         
-        // When sound ends, play next in queue with a small gap
-        clone.addEventListener('ended', () => {
-            setTimeout(() => this._processSoundQueue(), 100);
-        });
+        clone.addEventListener('ended', advance);
+        clone.addEventListener('error', advance);
         
-        // Fallback timeout in case 'ended' doesn't fire (e.g. load error)
-        clone.addEventListener('error', () => {
-            setTimeout(() => this._processSoundQueue(), 100);
-        });
-        
-        clone.play().catch(() => {
-            // If play fails, move to next sound
-            setTimeout(() => this._processSoundQueue(), 100);
-        });
+        clone.play().catch(advance);
     }
 
     // Play achievement sound based on tier
