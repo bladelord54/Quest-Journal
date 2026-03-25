@@ -4,3 +4,9 @@ dist/
 .DS_Store
 Thumbs.db
 package-lock.json
+
+# Signing keys
+*.keystore
+*.jks
+*.key
+*.pem
