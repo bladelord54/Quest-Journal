@@ -2177,13 +2177,43 @@ class GoalManager {
     }
     
     showToast(text, type = 'info', soundLevel = null) {
+        // Queue-based toast system: toasts show one at a time sequentially
+        if (!this._toastQueue) this._toastQueue = [];
+        
+        // Prevent duplicate consecutive toasts (same text)
+        const lastInQueue = this._toastQueue.length > 0 
+            ? this._toastQueue[this._toastQueue.length - 1].text 
+            : this._currentToastText;
+        if (text === lastInQueue) return;
+        
+        // Cap queue to prevent runaway accumulation
+        if (this._toastQueue.length >= 8) this._toastQueue.shift();
+        
+        this._toastQueue.push({ text, type, soundLevel });
+        
+        // If not currently showing a toast, start processing
+        if (!this._toastShowing) {
+            this._processToastQueue();
+        }
+    }
+    
+    _processToastQueue() {
+        if (!this._toastQueue || this._toastQueue.length === 0) {
+            this._toastShowing = false;
+            this._currentToastText = null;
+            return;
+        }
+        
+        this._toastShowing = true;
+        const { text, type, soundLevel } = this._toastQueue.shift();
+        this._currentToastText = text;
+        
         const toast = this.getElement('achievement-toast');
         const toastContainer = this.getElement('toast-container');
         const toastIcon = this.getElement('toast-icon');
         const toastTitle = this.getElement('toast-title');
         const achievementText = this.getElement('achievement-text');
         
-        // Define toast styles for different notification types
         const toastStyles = {
             achievement: {
                 gradient: 'from-yellow-600 via-amber-500 to-yellow-700',
@@ -2252,7 +2282,7 @@ class GoalManager {
         toastTitle.textContent = style.title;
         achievementText.textContent = text;
         
-        // Clear any previous hide timers so they don't prematurely hide this toast
+        // Clear any previous timers
         if (this._toastHideTimer) clearTimeout(this._toastHideTimer);
         if (this._toastHiddenTimer) clearTimeout(this._toastHiddenTimer);
         
@@ -2263,13 +2293,22 @@ class GoalManager {
             this.playAchievementSound(soundLevel);
         }
         
-        // Loot & achievement toasts stay longer so user can read rewards
-        const duration = (type === 'loot' || type === 'achievement' || type === 'companion') ? 6000 : 3000;
+        // Shorter durations when more toasts are queued so user isn't waiting forever
+        const hasMore = this._toastQueue.length > 0;
+        let duration;
+        if (hasMore) {
+            duration = (type === 'loot' || type === 'achievement') ? 3500 : 2000;
+        } else {
+            duration = (type === 'loot' || type === 'achievement' || type === 'companion') ? 6000 : 3000;
+        }
+        
         this._toastHideTimer = setTimeout(() => {
             toast.classList.remove('scale-100');
             toast.classList.add('scale-0');
             this._toastHiddenTimer = setTimeout(() => {
                 toast.classList.add('hidden');
+                // Process next toast in queue after fade-out
+                this._processToastQueue();
             }, 300);
         }, duration);
     }

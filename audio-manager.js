@@ -7,6 +7,12 @@ class AudioManager {
         this.enabled = true;
         this.volume = 0.5; // Master volume (0.0 to 1.0)
         
+        // Sound queue system
+        this._soundQueue = [];
+        this._soundPlaying = false;
+        this._lastPlayedId = null;
+        this._lastPlayedTime = 0;
+        
         // Load saved settings
         const savedVolume = localStorage.getItem('audioVolume');
         if (savedVolume !== null) {
@@ -52,15 +58,58 @@ class AudioManager {
         if (!this.enabled) return;
         
         const sound = this.sounds[soundId];
-        if (!sound) {
+        if (!sound) return;
+
+        const now = Date.now();
+        
+        // Debounce: skip if same sound played within 150ms
+        if (soundId === this._lastPlayedId && now - this._lastPlayedTime < 150) return;
+        
+        // Cap queue to prevent runaway accumulation
+        if (this._soundQueue.length >= 6) this._soundQueue.shift();
+        
+        this._soundQueue.push({ soundId, volumeOverride });
+        
+        if (!this._soundPlaying) {
+            this._processSoundQueue();
+        }
+    }
+    
+    _processSoundQueue() {
+        if (this._soundQueue.length === 0) {
+            this._soundPlaying = false;
             return;
         }
-
-        // Clone the audio to allow overlapping sounds
+        
+        this._soundPlaying = true;
+        const { soundId, volumeOverride } = this._soundQueue.shift();
+        
+        const sound = this.sounds[soundId];
+        if (!sound) {
+            this._processSoundQueue();
+            return;
+        }
+        
+        this._lastPlayedId = soundId;
+        this._lastPlayedTime = Date.now();
+        
         const clone = sound.cloneNode();
         clone.volume = volumeOverride !== null ? volumeOverride : this.volume;
         
-        clone.play().catch(() => {}); // Suppress autoplay errors
+        // When sound ends, play next in queue with a small gap
+        clone.addEventListener('ended', () => {
+            setTimeout(() => this._processSoundQueue(), 100);
+        });
+        
+        // Fallback timeout in case 'ended' doesn't fire (e.g. load error)
+        clone.addEventListener('error', () => {
+            setTimeout(() => this._processSoundQueue(), 100);
+        });
+        
+        clone.play().catch(() => {
+            // If play fails, move to next sound
+            setTimeout(() => this._processSoundQueue(), 100);
+        });
     }
 
     // Play achievement sound based on tier
