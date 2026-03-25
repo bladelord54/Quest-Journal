@@ -11988,6 +11988,7 @@ class GoalManager {
                 body: JSON.stringify({
                     subscription: subscription.toJSON(),
                     timezoneOffset: this.getTimezoneOffset() * 60, // minutes east of UTC
+                    timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone, // e.g. 'America/Los_Angeles' (DST-aware)
                     reminderSettings: this.reminderSettings
                 })
             });

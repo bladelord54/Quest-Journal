@@ -108,10 +108,34 @@ async function hashEndpoint(endpoint) {
   return base64urlEncode(hashBuffer).substring(0, 32);
 }
 
-function getSubscriberLocalTime(timezoneOffset) {
+function getSubscriberLocalTime(timezoneName, timezoneOffset) {
+  // Prefer IANA timezone name (DST-aware) over static numeric offset
+  if (timezoneName) {
+    try {
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezoneName,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false,
+      }).formatToParts(now);
+      const get = (type) => parts.find(p => p.type === type)?.value || '0';
+      // Build a Date whose UTC fields represent the subscriber's local time
+      return new Date(Date.UTC(
+        parseInt(get('year')),
+        parseInt(get('month')) - 1,
+        parseInt(get('day')),
+        parseInt(get('hour')),
+        parseInt(get('minute')),
+        parseInt(get('second'))
+      ));
+    } catch (_) {
+      // Fall through to numeric offset
+    }
+  }
+  // Fallback: static numeric offset (not DST-aware)
   // timezoneOffset = minutes east of UTC (e.g., -420 for UTC-7)
-  // In Workers, Date.now() is always UTC
-  return new Date(Date.now() + timezoneOffset * 60 * 1000);
+  return new Date(Date.now() + (timezoneOffset || 0) * 60 * 1000);
 }
 
 function getLocalDateString(localTime) {
@@ -131,7 +155,7 @@ function isWithinWindow(currentMins, targetTime, windowMinutes) {
 
 async function handleSubscribe(request, env) {
   const body = await request.json();
-  const { subscription, timezoneOffset, reminderSettings } = body;
+  const { subscription, timezoneOffset, timezoneName, reminderSettings } = body;
 
   if (!subscription || !subscription.endpoint) {
     return jsonResponse({ error: 'Missing subscription' }, 400);
@@ -150,6 +174,7 @@ async function handleSubscribe(request, env) {
   const data = {
     subscription,
     timezoneOffset: timezoneOffset || 0,
+    timezoneName: timezoneName || existing?.timezoneName || null,
     morningTime: reminderSettings?.morningTime || '09:00',
     eveningTime: reminderSettings?.eveningTime || '18:00',
     morningEnabled: reminderSettings?.morningReminder !== false,
@@ -203,7 +228,7 @@ async function sendWakeUpPushes(env) {
         if (!data.enabled || !data.subscription) return 'skipped';
 
         // Calculate subscriber's local time
-        const localTime = getSubscriberLocalTime(data.timezoneOffset);
+        const localTime = getSubscriberLocalTime(data.timezoneName, data.timezoneOffset);
         const localMins =
           localTime.getUTCHours() * 60 + localTime.getUTCMinutes();
         const today = getLocalDateString(localTime);
