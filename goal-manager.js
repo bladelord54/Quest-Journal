@@ -3127,6 +3127,7 @@ class GoalManager {
                 
                 // Reset all habits for new day
                 const activeCompanion = this.getActiveCompanion();
+                this.earlyBirdTasksToday = 0; // Reset Early Bird enchantment counter for new day
                 this.habits.forEach(habit => {
                     // Always clear rewardedToday so stale dates don't block rewards
                     habit.rewardedToday = null;
@@ -3473,8 +3474,8 @@ class GoalManager {
         // Only drop loot on significant completions
         if (['weekly', 'monthly', 'yearly', 'life'].includes(source)) {
             this.showLootDrop(rarity, reward);
-            this.goldCoins += reward.coins;
-            if (reward.xpBonus) this.xp += reward.xpBonus;
+            this.addGold(reward.coins, 'loot');
+            if (reward.xpBonus) this.addXP(reward.xpBonus, 'loot');
             if (reward.special === 'theme_unlock') this.tryUnlockRandomTheme();
             if (reward.special === 'ability_unlock') this.tryUnlockRandomAbility();
             this.saveData();
@@ -3764,7 +3765,7 @@ class GoalManager {
         // Consume Lucky Draw spell if active
         if (luckyDrawActive) {
             this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'lucky_draw');
-            this.showAchievement('🎲 Lucky Draw! Guaranteed rare loot!', 'rare', false);
+            this.showAchievement('🎲 Lucky Draw! Guaranteed rare loot!', 'monthly', false);
         }
         
         // Apply rewards - suppress sub-reward sounds so only chest sound plays
@@ -4358,7 +4359,7 @@ class GoalManager {
             const crystalsFormed = Math.floor(this.focusCrystalShards / 10);
             this.focusCrystalShards = this.focusCrystalShards % 10;
             this.focusCrystals += crystalsFormed;
-            this.showAchievement(`💎 ${crystalsFormed} Focus Crystal${crystalsFormed > 1 ? 's' : ''} formed from shards!`, 'rare', 'rare');
+            this.showAchievement(`💎 ${crystalsFormed} Focus Crystal${crystalsFormed > 1 ? 's' : ''} formed from shards!`, 'weekly');
         }
         this.saveData();
     }
@@ -4399,7 +4400,7 @@ class GoalManager {
         return 0;
     }
 
-    levelUp() {
+    levelUp(depth = 0) {
         this.level++;
         const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
         const title = titles[Math.min(this.level - 1, titles.length - 1)];
@@ -4417,10 +4418,12 @@ class GoalManager {
         // Check for progressive feature unlocks
         this.checkFeatureUnlocks();
         
-        // Check if can level up again (in case of large XP gain)
-        const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
-        if (this.xp >= nextLevelXP) {
-            this.levelUp();
+        // Check if can level up again (in case of large XP gain), cap recursion to prevent stack overflow
+        if (depth < 50) {
+            const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
+            if (this.xp >= nextLevelXP) {
+                this.levelUp(depth + 1);
+            }
         }
     }
 
