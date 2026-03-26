@@ -3446,6 +3446,7 @@ class GoalManager {
         const finalGold = Math.floor(amount * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         this.goldCoins += finalGold;
+        if (!this._suppressRewardSounds && window.audioManager) window.audioManager.playGoldEarned();
         this.checkRewardUnlocks();
     }
 
@@ -4926,6 +4927,7 @@ class GoalManager {
                 this.grantAttackCharge(1, 'task');
                 this.checkSerenityBonus();
                 this.showAchievement('Quest Task Completed! +15 XP ⚔️', 'daily');
+                if (window.audioManager) window.audioManager.playDailyAchievement();
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
             }

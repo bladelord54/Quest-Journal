@@ -60,6 +60,8 @@ class AudioManager {
         this._soundPaths['sword-slice'] = './sounds/sword-slice.mp3';
         this._soundPaths['loot-coin'] = './sounds/loot-coin.mp3';
         this._soundPaths['chest-open'] = './sounds/chest-open.mp3';
+        this._soundPaths['gold-earned'] = './sounds/gold-earned.mp3';
+        this._soundPaths['daily-achievement'] = './sounds/daily-achievement.mp3';
         
         // Pre-warm audio buffers on first user interaction
         const warmUp = () => {
@@ -228,6 +230,16 @@ class AudioManager {
     // Play chest opening celebration sound
     playChestOpen() {
         this.play('chest-open');
+    }
+
+    // Play gold earned sound
+    playGoldEarned() {
+        this.play('gold-earned', 0.5);
+    }
+
+    // Play daily task completion sound
+    playDailyAchievement() {
+        this.play('daily-achievement', 0.5);
     }
 
     // Set master volume
