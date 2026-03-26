@@ -3,7 +3,9 @@
 
 class AudioManager {
     constructor() {
-        this.sounds = {};
+        this._soundPaths = {};
+        this._audioBuffers = {};
+        this._ctx = null;
         this.enabled = true;
         this.volume = 0.5; // Master volume (0.0 to 1.0)
         
@@ -24,41 +26,60 @@ class AudioManager {
             this.enabled = savedEnabled === 'true';
         }
         
+        // Legacy compat: some code checks window.audioManager.sounds
+        this.sounds = {};
+        
         this.init();
     }
 
-    init() {
-        // Preload all sound files
-        // You can add your sound files to the /sounds/ folder
-        this.loadSound('achievement-daily', './sounds/achievement-daily.wav');
-        this.loadSound('achievement-weekly', './sounds/achievement-weekly.wav');
-        this.loadSound('achievement-monthly', './sounds/achievement-monthly.wav');
-        this.loadSound('achievement-yearly', './sounds/achievement-yearly.wav');
-        this.loadSound('achievement-life', './sounds/achievement-life.wav');
-        this.loadSound('notification', './sounds/notification.wav');
-        this.loadSound('spell', './sounds/spells.mp3');
-        this.loadSound('level-up', './sounds/level-up.wav');
-        this.loadSound('boss-damage', './sounds/boss-damage.mp3');
-        this.loadSound('boss-defeated', './sounds/boss-defeated.mp3');
-        this.loadSound('crystal-earn', './sounds/crystal-earn.wav');
-        
+    _getContext() {
+        if (!this._ctx || this._ctx.state === 'closed') {
+            this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this._ctx.state === 'suspended') {
+            this._ctx.resume().catch(() => {});
+        }
+        return this._ctx;
     }
 
-    loadSound(id, path) {
-        const audio = new Audio();
-        audio.src = path;
-        audio.preload = 'auto';
-        audio.volume = this.volume;
+    init() {
+        // Register sound file paths (loaded on-demand via fetch + Web Audio API)
+        this._soundPaths['achievement-daily'] = './sounds/achievement-daily.wav';
+        this._soundPaths['achievement-weekly'] = './sounds/achievement-weekly.wav';
+        this._soundPaths['achievement-monthly'] = './sounds/achievement-monthly.wav';
+        this._soundPaths['achievement-yearly'] = './sounds/achievement-yearly.wav';
+        this._soundPaths['achievement-life'] = './sounds/achievement-life.wav';
+        this._soundPaths['notification'] = './sounds/notification.wav';
+        this._soundPaths['spell'] = './sounds/spells.mp3';
+        this._soundPaths['level-up'] = './sounds/level-up.wav';
+        this._soundPaths['boss-damage'] = './sounds/boss-damage.mp3';
+        this._soundPaths['boss-defeated'] = './sounds/boss-defeated.mp3';
+        this._soundPaths['crystal-earn'] = './sounds/crystal-earn.wav';
+    }
+
+    async _loadBuffer(soundId) {
+        if (this._audioBuffers[soundId]) return this._audioBuffers[soundId];
         
-        audio.addEventListener('error', () => {}); // Suppress load errors
-        this.sounds[id] = audio;
+        const path = this._soundPaths[soundId];
+        if (!path) return null;
+        
+        try {
+            const response = await fetch(path);
+            if (!response.ok) return null;
+            const arrayBuffer = await response.arrayBuffer();
+            const ctx = this._getContext();
+            const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            this._audioBuffers[soundId] = audioBuffer;
+            return audioBuffer;
+        } catch (e) {
+            console.warn(`[Audio] Failed to load ${soundId}:`, e.message);
+            return null;
+        }
     }
 
     play(soundId, volumeOverride = null) {
         if (!this.enabled) return;
-        
-        const sound = this.sounds[soundId];
-        if (!sound) return;
+        if (!this._soundPaths[soundId]) return;
 
         const now = Date.now();
         
@@ -81,7 +102,7 @@ class AudioManager {
         }
     }
     
-    _processSoundQueue() {
+    async _processSoundQueue() {
         if (this._soundQueue.length === 0) {
             this._soundPlaying = false;
             return;
@@ -90,33 +111,35 @@ class AudioManager {
         this._soundPlaying = true;
         const { soundId, volumeOverride } = this._soundQueue.shift();
         
-        const sound = this.sounds[soundId];
-        if (!sound) {
-            this._processSoundQueue();
-            return;
-        }
-        
         this._lastPlayedId = soundId;
         this._lastPlayedTime = Date.now();
         
-        let advanced = false;
-        const advance = () => {
-            if (advanced) return; // Prevent double-advance
-            advanced = true;
-            clearTimeout(safetyTimer);
-            setTimeout(() => this._processSoundQueue(), 100);
-        };
-        
-        // Safety timeout: if ended/error never fire, unblock the queue after 5s
-        const safetyTimer = setTimeout(advance, 5000);
-        
-        const clone = sound.cloneNode();
-        clone.volume = volumeOverride !== null ? volumeOverride : this.volume;
-        
-        clone.addEventListener('ended', advance);
-        clone.addEventListener('error', advance);
-        
-        clone.play().catch(advance);
+        try {
+            const buffer = await this._loadBuffer(soundId);
+            if (!buffer) {
+                setTimeout(() => this._processSoundQueue(), 50);
+                return;
+            }
+            
+            const ctx = this._getContext();
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            
+            const gainNode = ctx.createGain();
+            gainNode.gain.value = volumeOverride !== null ? volumeOverride : this.volume;
+            
+            source.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            
+            source.onended = () => {
+                setTimeout(() => this._processSoundQueue(), 100);
+            };
+            
+            source.start(0);
+        } catch (e) {
+            console.warn(`[Audio] Play failed for ${soundId}:`, e.message);
+            setTimeout(() => this._processSoundQueue(), 50);
+        }
     }
 
     // Play achievement sound based on tier
@@ -158,11 +181,7 @@ class AudioManager {
         if (!this.enabled) return;
         
         try {
-            // Reuse a persistent AudioContext (creating new ones fails on Android)
-            if (!this._slashCtx || this._slashCtx.state === 'closed') {
-                this._slashCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            const ctx = this._slashCtx;
+            const ctx = this._getContext();
             
             // Resume if suspended (required on mobile after user gesture)
             if (ctx.state === 'suspended') {
@@ -249,11 +268,6 @@ class AudioManager {
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume)); // Clamp between 0 and 1
         
-        // Update all loaded sounds
-        Object.values(this.sounds).forEach(sound => {
-            sound.volume = this.volume;
-        });
-        
         // Save to localStorage
         localStorage.setItem('audioVolume', this.volume.toString());
     }
@@ -321,16 +335,8 @@ function updateVolume(value) {
 }
 
 function testSound() {
-    // Try to play the achievement sound first
-    const sound = window.audioManager.sounds['achievement-weekly'];
-    
-    // Check if the sound file loaded successfully
-    if (sound && sound.readyState >= 2) {
-        window.audioManager.playAchievement('weekly');
-    } else {
-        // Fallback: Generate a pleasant test beep using Web Audio API
-        playTestBeep();
-    }
+    // Play achievement sound via Web Audio API (fetched from SW cache)
+    window.audioManager.playAchievement('weekly');
 }
 
 function playTestBeep() {
