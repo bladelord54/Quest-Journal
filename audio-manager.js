@@ -57,6 +57,8 @@ class AudioManager {
         this._soundPaths['boss-damage'] = './sounds/boss-damage.mp3';
         this._soundPaths['boss-defeated'] = './sounds/boss-defeated.mp3';
         this._soundPaths['crystal-earn'] = './sounds/crystal-earn.wav';
+        this._soundPaths['sword-slice'] = './sounds/sword-slice.mp3';
+        this._soundPaths['loot-coin'] = './sounds/loot-coin.mp3';
         
         // Pre-warm audio buffers on first user interaction
         const warmUp = () => {
@@ -202,82 +204,9 @@ class AudioManager {
         this.play('boss-damage', 0.4);
     }
 
-    // Play synthesized slash/swoosh sound (sword swing)
+    // Play sword slice sound (boss attacks)
     playSlash(isCrit = false) {
-        if (!this.enabled) return;
-        
-        try {
-            const ctx = this._getContext();
-            
-            // Resume if suspended (required on mobile after user gesture)
-            if (ctx.state === 'suspended') {
-                ctx.resume().then(() => this._doPlaySlash(ctx, isCrit)).catch(() => this.play('boss-damage', 0.4));
-                return;
-            }
-            
-            this._doPlaySlash(ctx, isCrit);
-        } catch (e) {
-            // Fallback to boss-damage file sound
-            this.play('boss-damage', 0.4);
-        }
-    }
-    
-    _doPlaySlash(ctx, isCrit) {
-        try {
-            const vol = ctx.createGain();
-            vol.connect(ctx.destination);
-            vol.gain.setValueAtTime(this.volume * 0.5, ctx.currentTime);
-            
-            // Noise burst for the "whoosh" of the swing
-            const bufferSize = ctx.sampleRate * 0.15;
-            const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const noiseData = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                noiseData[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
-            }
-            
-            const noise = ctx.createBufferSource();
-            noise.buffer = noiseBuffer;
-            
-            // Bandpass filter for metallic swoosh character
-            const filter = ctx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.setValueAtTime(isCrit ? 3000 : 2200, ctx.currentTime);
-            filter.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.12);
-            filter.Q.value = isCrit ? 3 : 2;
-            
-            // Envelope - quick attack, fast decay
-            const envelope = ctx.createGain();
-            envelope.gain.setValueAtTime(0, ctx.currentTime);
-            envelope.gain.linearRampToValueAtTime(isCrit ? 1.0 : 0.8, ctx.currentTime + 0.01);
-            envelope.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (isCrit ? 0.18 : 0.12));
-            
-            noise.connect(filter);
-            filter.connect(envelope);
-            envelope.connect(vol);
-            
-            // Metallic ring overtone for blade impact
-            const ring = ctx.createOscillator();
-            ring.type = 'sine';
-            ring.frequency.setValueAtTime(isCrit ? 1800 : 1400, ctx.currentTime);
-            ring.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.08);
-            
-            const ringEnv = ctx.createGain();
-            ringEnv.gain.setValueAtTime(0, ctx.currentTime);
-            ringEnv.gain.linearRampToValueAtTime(isCrit ? 0.25 : 0.15, ctx.currentTime + 0.005);
-            ringEnv.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-            
-            ring.connect(ringEnv);
-            ringEnv.connect(vol);
-            
-            noise.start(ctx.currentTime);
-            ring.start(ctx.currentTime);
-            noise.stop(ctx.currentTime + 0.2);
-            ring.stop(ctx.currentTime + 0.15);
-        } catch (e) {
-            // Fallback to boss-damage file sound
-            this.play('boss-damage', 0.4);
-        }
+        this.play('sword-slice', isCrit ? this.volume : 0.5);
     }
 
     // Play boss defeated sound
@@ -288,6 +217,11 @@ class AudioManager {
     // Play crystal earn sound
     playCrystalEarn() {
         this.play('crystal-earn', 0.6);
+    }
+
+    // Play loot coin sound (chest rewards, loot drops)
+    playLootCoin() {
+        this.play('loot-coin', 0.5);
     }
 
     // Set master volume

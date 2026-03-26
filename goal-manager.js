@@ -4082,6 +4082,7 @@ class GoalManager {
     }
 
     showLootPanel(type, rewards) {
+        if (window.audioManager) window.audioManager.playLootCoin();
         const companions = this.getCompanionDefinitions();
         const tierColors = {
             bronze: { bg: 'from-amber-900 to-amber-950', border: 'border-amber-600', text: 'text-amber-300', glow: 'shadow-amber-500/30', title: 'Bronze Chest Opened!', icon: '🎁' },
