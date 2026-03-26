@@ -1838,14 +1838,14 @@ class GoalManager {
     showFeatureUnlockPopup(title, text) {
         const emoji = title.split(' ')[0];
         const overlay = document.createElement('div');
-        overlay.className = 'fixed inset-0 bg-black/80 z-[200] flex items-center justify-center px-4';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:center;justify-content:center;padding:0 1rem;';
         overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
         overlay.innerHTML = `
-            <div class="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 rounded-2xl shadow-2xl border-4 border-yellow-500 max-w-md w-full p-8 text-center transform scale-0 transition-transform duration-500" id="unlock-popup-inner">
+            <div class="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 rounded-2xl shadow-2xl border-4 border-yellow-500" id="unlock-popup-inner" style="max-width:28rem;width:100%;padding:2rem;text-align:center;transform:scale(0);transition:transform 0.5s;">
                 <div class="text-7xl mb-4 animate-bounce">${emoji}</div>
                 <h2 class="text-2xl font-bold text-yellow-300 medieval-title mb-4">${title}</h2>
                 <p class="text-amber-200 fancy-font text-lg mb-6 leading-relaxed">${text}</p>
-                <button onclick="this.closest('.fixed').remove()" class="px-8 py-3 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white font-bold rounded-xl fancy-font text-lg border-2 border-yellow-400 transition-all hover:scale-105">
+                <button onclick="this.parentElement.parentElement.remove()" class="px-8 py-3 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white font-bold rounded-xl fancy-font text-lg border-2 border-yellow-400 transition-all hover:scale-105">
                     Awesome!
                 </button>
             </div>
@@ -8569,8 +8569,8 @@ class GoalManager {
 
         const modal = document.createElement('div');
         modal.id = 'premium-purchase-modal';
-        modal.className = 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center overflow-hidden';
-        modal.style.cssText = 'padding: 16px;';
+        modal.className = 'bg-black/80';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:16px;';
         modal.innerHTML = `
             <div class="bg-gradient-to-br from-yellow-800 to-amber-950 rounded-xl shadow-2xl border-4 border-yellow-500 overflow-hidden" style="width: 100%; max-width: min(500px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto;">
                 <div class="bg-black/30 p-6 text-center border-b-2 border-yellow-600">
@@ -9720,8 +9720,8 @@ class GoalManager {
         // Create slideshow modal
         const modal = document.createElement('div');
         modal.id = 'period-transition-modal';
-        modal.className = 'fixed inset-0 bg-black/80 z-[100] flex items-center justify-center overflow-hidden';
-        modal.style.cssText = 'padding: 16px;';
+        modal.className = 'bg-black/80';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:16px;';
         modal.innerHTML = `
             <div class="bg-gradient-to-br ${config.bg} rounded-2xl shadow-2xl border-4 ${config.border} overflow-hidden" style="width: 100%; max-width: min(512px, calc(100vw - 32px));">
                 <!-- Header with icon -->
@@ -12372,8 +12372,8 @@ class GoalManager {
         
         const modal = document.createElement('div');
         modal.id = 'custom-confirm-modal';
-        modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center p-4';
-        modal.style.zIndex = '99999';
+        modal.className = 'bg-black/70';
+        modal.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;z-index:99999;';
         
         // Support multi-line messages (convert \n to <br>)
         const formattedMsg = message.replace(/\n/g, '<br>');
@@ -12421,7 +12421,8 @@ class GoalManager {
         
         const modal = document.createElement('div');
         modal.id = 'custom-confirm-modal';
-        modal.className = 'fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4';
+        modal.className = 'bg-black/70';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;';
         
         const formattedMsg = message.replace(/\n/g, '<br>');
         
@@ -13225,7 +13226,8 @@ class GoalManager {
     showStarterTasksModal() {
         const modal = document.createElement('div');
         modal.id = 'starter-tasks-modal';
-        modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
+        modal.className = 'bg-black/80';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:1rem;';
         modal.innerHTML = `
             <div class="bg-gradient-to-b from-amber-900 to-stone-900 rounded-xl border-2 border-amber-600 max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
                 <div class="p-6 border-b border-amber-700">
