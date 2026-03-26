@@ -8998,6 +8998,8 @@ class GoalManager {
                     }
                     
                     this.saveData();
+                    this.updateNavVisibility();
+                    this.loadTheme();
                     this.render();
                     this.showSuccessNotification('Your quest data has been restored successfully!');
                     this.showAchievement('📥 Data Imported Successfully!', 'weekly');
