@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v285';
+const CACHE_NAME = 'life-quest-journal-v286';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -34,7 +34,8 @@ const localUrlsToCache = [
   './sounds/boss-damage.mp3',
   './sounds/boss-defeated.mp3',
   './sounds/sword-slice.mp3',
-  './sounds/loot-coin.mp3'
+  './sounds/loot-coin.mp3',
+  './sounds/chest-open.mp3'
 ];
 
 // CDN files: best-effort caching — failure must NOT block SW install/activation

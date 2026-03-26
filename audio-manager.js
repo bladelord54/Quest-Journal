@@ -59,6 +59,7 @@ class AudioManager {
         this._soundPaths['crystal-earn'] = './sounds/crystal-earn.wav';
         this._soundPaths['sword-slice'] = './sounds/sword-slice.mp3';
         this._soundPaths['loot-coin'] = './sounds/loot-coin.mp3';
+        this._soundPaths['chest-open'] = './sounds/chest-open.mp3';
         
         // Pre-warm audio buffers on first user interaction
         const warmUp = () => {
@@ -222,6 +223,11 @@ class AudioManager {
     // Play loot coin sound (chest rewards, loot drops)
     playLootCoin() {
         this.play('loot-coin', 0.5);
+    }
+
+    // Play chest opening celebration sound
+    playChestOpen() {
+        this.play('chest-open');
     }
 
     // Set master volume

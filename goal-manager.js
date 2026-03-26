@@ -4029,7 +4029,7 @@ class GoalManager {
     }
 
     celebrateChestOpen(type, rewards) {
-        if (window.audioManager) window.audioManager.playAchievement('life');
+        if (window.audioManager) window.audioManager.playChestOpen();
         const chestIcons = { bronze: '🟫', silver: '⬜', gold: '🟨', royal: '🟪' };
         const chestIcon = chestIcons[type] || '🎁';
 
