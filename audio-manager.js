@@ -6,8 +6,10 @@ class AudioManager {
         this._soundPaths = {};
         this._audioBuffers = {};
         this._ctx = null;
+        this._warmedUp = false;
         this.enabled = true;
         this.volume = 0.5; // Master volume (0.0 to 1.0)
+        this.version = 283; // For debugging: confirms which code is running
         
         // Sound queue system
         this._soundQueue = [];
@@ -55,6 +57,21 @@ class AudioManager {
         this._soundPaths['boss-damage'] = './sounds/boss-damage.mp3';
         this._soundPaths['boss-defeated'] = './sounds/boss-defeated.mp3';
         this._soundPaths['crystal-earn'] = './sounds/crystal-earn.wav';
+        
+        // Pre-warm audio buffers on first user interaction
+        const warmUp = () => {
+            if (this._warmedUp) return;
+            this._warmedUp = true;
+            document.removeEventListener('touchstart', warmUp);
+            document.removeEventListener('click', warmUp);
+            // Initialize AudioContext and pre-fetch all sounds in background
+            try { this._getContext(); } catch(e) {}
+            Object.keys(this._soundPaths).forEach(id => {
+                this._loadBuffer(id).catch(() => {});
+            });
+        };
+        document.addEventListener('touchstart', warmUp, { once: true });
+        document.addEventListener('click', warmUp, { once: true });
     }
 
     async _loadBuffer(soundId) {
@@ -72,7 +89,6 @@ class AudioManager {
             this._audioBuffers[soundId] = audioBuffer;
             return audioBuffer;
         } catch (e) {
-            console.warn(`[Audio] Failed to load ${soundId}:`, e.message);
             return null;
         }
     }
@@ -114,31 +130,41 @@ class AudioManager {
         this._lastPlayedId = soundId;
         this._lastPlayedTime = Date.now();
         
+        const vol = volumeOverride !== null ? volumeOverride : this.volume;
+        const advance = () => setTimeout(() => this._processSoundQueue(), 100);
+        
+        // Strategy 1: Web Audio API (uses fetch → service worker cache)
         try {
             const buffer = await this._loadBuffer(soundId);
-            if (!buffer) {
-                setTimeout(() => this._processSoundQueue(), 50);
-                return;
+            if (buffer) {
+                const ctx = this._getContext();
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                
+                const gainNode = ctx.createGain();
+                gainNode.gain.value = vol;
+                
+                source.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                source.onended = advance;
+                source.start(0);
+                return; // Success — done
             }
-            
-            const ctx = this._getContext();
-            const source = ctx.createBufferSource();
-            source.buffer = buffer;
-            
-            const gainNode = ctx.createGain();
-            gainNode.gain.value = volumeOverride !== null ? volumeOverride : this.volume;
-            
-            source.connect(gainNode);
-            gainNode.connect(ctx.destination);
-            
-            source.onended = () => {
-                setTimeout(() => this._processSoundQueue(), 100);
-            };
-            
-            source.start(0);
+        } catch (e) {}
+        
+        // Strategy 2: HTML Audio element fallback
+        try {
+            const audio = new Audio(this._soundPaths[soundId]);
+            audio.volume = vol;
+            audio.onended = advance;
+            audio.onerror = advance;
+            const playPromise = audio.play();
+            if (playPromise) {
+                playPromise.catch(advance);
+            }
         } catch (e) {
-            console.warn(`[Audio] Play failed for ${soundId}:`, e.message);
-            setTimeout(() => this._processSoundQueue(), 50);
+            advance();
         }
     }
 
@@ -335,8 +361,15 @@ function updateVolume(value) {
 }
 
 function testSound() {
+    // Show version to confirm latest code is running
+    const ver = window.audioManager ? window.audioManager.version : '?';
+    if (window.goalManager) {
+        window.goalManager.showToast(`Audio v${ver} — playing test sound…`, 'info', null);
+    }
     // Play achievement sound via Web Audio API (fetched from SW cache)
-    window.audioManager.playAchievement('weekly');
+    if (window.audioManager) {
+        window.audioManager.playAchievement('weekly');
+    }
 }
 
 function playTestBeep() {
