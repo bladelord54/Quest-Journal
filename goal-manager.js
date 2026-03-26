@@ -4926,7 +4926,7 @@ class GoalManager {
                 this.addXP(15, 'daily');
                 this.grantAttackCharge(1, 'task');
                 this.checkSerenityBonus();
-                this.showAchievement('Quest Task Completed! +15 XP ⚔️', 'daily');
+                this.showAchievement('Quest Task Completed! +15 XP ⚔️', 'daily', false);
                 if (window.audioManager) window.audioManager.playDailyAchievement();
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
