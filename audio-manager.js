@@ -9,7 +9,6 @@ class AudioManager {
         this._warmedUp = false;
         this.enabled = true;
         this.volume = 0.5; // Master volume (0.0 to 1.0)
-        this.version = 283; // For debugging: confirms which code is running
         
         // Sound queue system
         this._soundQueue = [];
@@ -327,52 +326,8 @@ function updateVolume(value) {
 }
 
 function testSound() {
-    // Show version to confirm latest code is running
-    const ver = window.audioManager ? window.audioManager.version : '?';
-    if (window.goalManager) {
-        window.goalManager.showToast(`Audio v${ver} — playing test sound…`, 'info', null);
-    }
-    // Play achievement sound via Web Audio API (fetched from SW cache)
     if (window.audioManager) {
         window.audioManager.playAchievement('weekly');
-    }
-}
-
-function playTestBeep() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const volume = window.audioManager.getVolume();
-        
-        // Create a pleasant two-tone chime
-        const playTone = (frequency, startTime, duration) => {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime + startTime);
-            gainNode.gain.linearRampToValueAtTime(volume * 0.3, audioContext.currentTime + startTime + 0.02);
-            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + startTime + duration);
-            
-            oscillator.start(audioContext.currentTime + startTime);
-            oscillator.stop(audioContext.currentTime + startTime + duration);
-        };
-        
-        // Play a pleasant ascending chime (C5 -> E5 -> G5)
-        playTone(523.25, 0, 0.15);      // C5
-        playTone(659.25, 0.1, 0.15);    // E5
-        playTone(783.99, 0.2, 0.25);    // G5
-        
-    } catch (e) {
-        console.error('Could not play test sound:', e);
-        // Show notification that sound couldn't play
-        if (window.goalManager) {
-            window.goalManager.showErrorNotification('Could not play test sound. Check browser audio permissions.');
-        }
     }
 }
 
