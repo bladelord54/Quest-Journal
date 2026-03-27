@@ -87,13 +87,17 @@ class AudioManager {
         
         try {
             const response = await fetch(path);
-            if (!response.ok) return null;
+            if (!response.ok) {
+                console.error(`[Audio] Fetch failed for ${soundId}: ${response.status} ${response.statusText}`);
+                return null;
+            }
             const arrayBuffer = await response.arrayBuffer();
             const ctx = this._getContext();
             const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
             this._audioBuffers[soundId] = audioBuffer;
             return audioBuffer;
         } catch (e) {
+            console.error(`[Audio] Failed to load/decode ${soundId}:`, e.message);
             return null;
         }
     }
@@ -237,9 +241,19 @@ class AudioManager {
         this.play('gold-earned', 0.5);
     }
 
-    // Play daily task completion sound
+    // Play daily task completion sound (direct play, bypasses queue)
     playDailyAchievement() {
-        this.play('daily-achievement', 0.5);
+        if (!this.enabled) return;
+        try {
+            const audio = new Audio(this._soundPaths['daily-achievement']);
+            audio.volume = Math.min(0.5, this.volume);
+            audio.play().catch(() => {
+                // Fallback: play regular achievement sound via queue
+                this.play('achievement-daily', 0.5);
+            });
+        } catch(e) {
+            this.play('achievement-daily', 0.5);
+        }
     }
 
     // Set master volume
