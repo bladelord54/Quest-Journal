@@ -4524,7 +4524,8 @@ class GoalManager {
                 } else if (habit.streak === 100) {
                     this.showAchievement('👑 100-Day Streak! ULTIMATE MASTERY!', 'life');
                 } else {
-                    this.showAchievement('Daily Ritual Completed! 🕯️', 'daily');
+                    this.showAchievement('Daily Ritual Completed! 🕯️', 'daily', false);
+                    if (window.audioManager) window.audioManager.playDailyAchievement();
                 }
             } else if (!habit.completedToday) {
                 // Only reverse streak/history if it was rewarded (not just toggled visually)
