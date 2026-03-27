@@ -9004,6 +9004,15 @@ class GoalManager {
                     this.updateNavVisibility();
                     this.loadTheme();
                     this.render();
+                    // Re-warm audio after import (file picker can suspend AudioContext)
+                    if (window.audioManager) {
+                        if (window.audioManager._ctx) {
+                            window.audioManager._ctx.resume().catch(() => {});
+                        }
+                        // Reset queue in case it got stuck during import
+                        window.audioManager._soundPlaying = false;
+                        window.audioManager._soundQueue = [];
+                    }
                     this.showSuccessNotification('Your quest data has been restored successfully!');
                     this.showAchievement('📥 Data Imported Successfully!', 'weekly');
                 });
