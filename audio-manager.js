@@ -306,13 +306,13 @@ function toggleAudio() {
     if (enabled) {
         toggleBtn.classList.remove('bg-gray-600');
         toggleBtn.classList.add('bg-green-600');
-        toggleCircle.classList.add('translate-x-6');
-        toggleCircle.classList.remove('translate-x-1');
+        toggleCircle.classList.add('translate-x-5');
+        toggleCircle.classList.remove('translate-x-0');
     } else {
         toggleBtn.classList.remove('bg-green-600');
         toggleBtn.classList.add('bg-gray-600');
-        toggleCircle.classList.remove('translate-x-6');
-        toggleCircle.classList.add('translate-x-1');
+        toggleCircle.classList.remove('translate-x-5');
+        toggleCircle.classList.add('translate-x-0');
     }
 }
 
@@ -389,13 +389,13 @@ window.addEventListener('load', () => {
         if (enabled) {
             toggleBtn.classList.add('bg-green-600');
             toggleBtn.classList.remove('bg-gray-600');
-            toggleCircle.classList.add('translate-x-6');
-            toggleCircle.classList.remove('translate-x-1');
+            toggleCircle.classList.add('translate-x-5');
+            toggleCircle.classList.remove('translate-x-0');
         } else {
             toggleBtn.classList.add('bg-gray-600');
             toggleBtn.classList.remove('bg-green-600');
-            toggleCircle.classList.remove('translate-x-6');
-            toggleCircle.classList.add('translate-x-1');
+            toggleCircle.classList.remove('translate-x-5');
+            toggleCircle.classList.add('translate-x-0');
         }
     }
     
