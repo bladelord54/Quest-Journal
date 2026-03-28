@@ -8638,7 +8638,7 @@ class GoalManager {
                         <i class="ri-shopping-cart-2-fill mr-2"></i> Purchase Premium
                     </button>
                     
-                    <button onclick="this.closest('.fixed').remove()" 
+                    <button onclick="document.getElementById('premium-purchase-modal')?.remove()" 
                         class="w-full bg-transparent hover:bg-black/20 text-yellow-300 px-4 py-2 rounded-lg font-semibold transition-all fancy-font">
                         Maybe Later
                     </button>
