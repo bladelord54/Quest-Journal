@@ -48,7 +48,7 @@ class AudioManager {
         this._soundPaths['achievement-daily'] = './sounds/achievement-daily.wav';
         this._soundPaths['achievement-weekly'] = './sounds/achievement-weekly.wav';
         this._soundPaths['achievement-monthly'] = './sounds/achievement-monthly.wav';
-        this._soundPaths['achievement-yearly'] = './sounds/achievement-yearly.wav';
+        this._soundPaths['achievement-yearly'] = './sounds/achievement-yearly.mp3';
         this._soundPaths['achievement-life'] = './sounds/achievement-life.wav';
         this._soundPaths['notification'] = './sounds/notification.wav';
         this._soundPaths['spell'] = './sounds/spells.mp3';

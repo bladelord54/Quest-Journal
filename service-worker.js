@@ -25,7 +25,7 @@ const localUrlsToCache = [
   './sounds/achievement-daily.wav',
   './sounds/achievement-weekly.wav',
   './sounds/achievement-monthly.wav',
-  './sounds/achievement-yearly.wav',
+  './sounds/achievement-yearly.mp3',
   './sounds/achievement-life.wav',
   './sounds/spells.mp3',
   './sounds/notification.wav',
