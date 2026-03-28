@@ -5,6 +5,15 @@ let installButton;
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
+  let refreshing = false;
+
+  // Auto-reload when a new SW takes control (ensures users see latest version)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./service-worker.js')
       .then(registration => {
