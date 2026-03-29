@@ -11,6 +11,11 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
     refreshing = true;
+    // Flush any pending debounced save before reloading to prevent data loss
+    if (typeof goalManager !== 'undefined' && goalManager.saveTimeout) {
+      clearTimeout(goalManager.saveTimeout);
+      goalManager._doSave();
+    }
     window.location.reload();
   });
 
@@ -18,10 +23,15 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js')
       .then(registration => {
         
-        // Check for updates periodically
+        // Check for updates periodically (30 min) and on foreground
         setInterval(() => {
           registration.update();
-        }, 60000); // Check every minute
+        }, 30 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update();
+          }
+        });
       })
       .catch(error => {
         console.error('Service Worker registration failed:', error);
@@ -82,13 +92,6 @@ window.addEventListener('appinstalled', () => {
     goalManager.showAchievement('📱 Life Quest Journal installed! Welcome, hero!', 'yearly');
   }
 });
-
-// Detect if running as installed PWA
-function isRunningStandalone() {
-  return (window.matchMedia('(display-mode: standalone)').matches) || 
-         (window.navigator.standalone) || 
-         document.referrer.includes('android-app://');
-}
 
 // Export install function for use in HTML
 window.installPWA = installPWA;

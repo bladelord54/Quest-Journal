@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v301';
+const CACHE_NAME = 'life-quest-journal-v302';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -97,12 +97,28 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Known CDN origins we want to cache for offline use
+const knownCDNOrigins = [
+  'https://cdn.tailwindcss.com',
+  'https://cdn.jsdelivr.net',
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com'
+];
+
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
   // Piggyback: check reminders on fetch activity (throttled)
   maybeCheckReminders();
   
+  // Skip non-GET requests (POST, PUT, etc.) — Cache API only supports GET
+  if (event.request.method !== 'GET') return;
+
   const url = new URL(event.request.url);
+
+  // Determine if this response should be cached on network fetch
+  const isSameOrigin = url.origin === self.location.origin;
+  const isKnownCDN = knownCDNOrigins.some(cdn => url.href.startsWith(cdn));
+  const shouldCache = isSameOrigin || isKnownCDN;
 
   // Determine if this is a lazy-cacheable asset (large theme backgrounds)
   const isLazyAsset = lazyAssets.some(asset => url.pathname.endsWith(asset.replace('./', '')));
@@ -120,26 +136,26 @@ self.addEventListener('fetch', event => {
 
         return fetch(fetchRequest).then(response => {
           // Check if valid response
-          if (!response || response.status !== 200) {
+          if (!response || response.status !== 200 || response.type === 'opaque') {
             return response;
           }
 
-          // Clone the response
-          const responseToCache = response.clone();
-
-          // Put lazy assets in the lazy cache, everything else in the main cache
-          const targetCache = isLazyAsset ? LAZY_CACHE_NAME : CACHE_NAME;
-          caches.open(targetCache)
-            .then(cache => {
-              if (event.request.url.indexOf('http') === 0) {
-                cache.put(event.request, responseToCache);
-              }
-            });
+          // Only cache same-origin and known CDN responses
+          if (shouldCache) {
+            const responseToCache = response.clone();
+            const targetCache = isLazyAsset ? LAZY_CACHE_NAME : CACHE_NAME;
+            caches.open(targetCache)
+              .then(cache => cache.put(event.request, responseToCache));
+          }
 
           return response;
         }).catch(() => {
-          // Network failed, try to serve offline page if available
-          return caches.match('./index.html');
+          // Network failed — for navigation requests, serve the cached shell
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+          // For other requests (images, scripts), just fail
+          return new Response('', { status: 503, statusText: 'Offline' });
         });
       })
   );
