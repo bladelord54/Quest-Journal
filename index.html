@@ -186,15 +186,15 @@
             
             <div class="flex items-center justify-between mt-8">
                 <div class="text-sm text-amber-400 fancy-font">
-                    Step <span id="tutorial-step-number">1 / 14</span>
+                    Step <span id="tutorial-step-number">1 / 5</span>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="goalManager.skipTutorial()" 
                         class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
                         Skip Tutorial
                     </button>
-                    <button onclick="goalManager.previousTutorialStep()" 
-                        class="bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                    <button id="tutorial-back-btn" onclick="goalManager.previousTutorialStep()" 
+                        class="bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all" style="display:none">
                         ← Back
                     </button>
                     <button id="tutorial-next-btn" onclick="goalManager.nextTutorialStep()" 

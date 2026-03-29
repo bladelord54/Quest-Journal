@@ -3252,6 +3252,9 @@ class GoalManager {
 
     // Daily Login Bonus System
     checkDailyLoginBonus() {
+        // Defer until tutorial is complete so toast doesn't overlap tutorial overlay
+        if (this.tutorialActive) return;
+        
         const today = this.getTodayDateString();
         
         // Already claimed today
@@ -13130,10 +13133,14 @@ class GoalManager {
         document.getElementById('tutorial-content').innerHTML = step.content.replace(/\n/g, '<br>');
         document.getElementById('tutorial-step-number').textContent = `${this.currentTutorialStep + 1} / ${this.tutorialSteps.length}`;
         
-        // Update button text
+        // Update button text and visibility
         const nextBtn = document.getElementById('tutorial-next-btn');
         if (nextBtn) {
             nextBtn.textContent = this.currentTutorialStep === this.tutorialSteps.length - 1 ? '🎉 Start My Adventure!' : 'Next →';
+        }
+        const backBtn = document.getElementById('tutorial-back-btn');
+        if (backBtn) {
+            backBtn.style.display = this.currentTutorialStep === 0 ? 'none' : '';
         }
 
         // Execute step action after a small delay to let the view render
@@ -13260,6 +13267,9 @@ class GoalManager {
         
         // Show starter tasks modal after tutorial
         setTimeout(() => this.showStarterTasksModal(), 500);
+        
+        // Trigger deferred daily login bonus now that tutorial is done
+        setTimeout(() => this.checkDailyLoginBonus(), 2000);
     }
 
     restartTutorial() {
@@ -13304,6 +13314,71 @@ class GoalManager {
     };
 
     showStarterTasksModal() {
+        const weeklyUnlocked = this.isGoalTabUnlocked('weekly');
+        const monthlyUnlocked = this.isGoalTabUnlocked('monthly');
+        
+        // Build quick-start packs — only show packs whose content is accessible
+        const packs = [
+            { id: 'wellness', color: 'green', icon: '🌿', name: 'Wellness Starter', desc: 'Daily: Water, Exercise, Meditate, Sleep', show: true },
+            { id: 'productivity', color: 'blue', icon: '⚡', name: 'Productivity Starter', desc: weeklyUnlocked ? 'Daily: Read, Journal + Weekly: Goals Review' : 'Daily: Read, Journal', show: true },
+            { id: 'fitness', color: 'red', icon: '💪', name: 'Fitness Starter', desc: weeklyUnlocked ? 'Daily: Exercise, Walk + Weekly: 3 Workouts' : 'Daily: Exercise, Walk', show: true },
+            { id: 'balanced', color: 'purple', icon: '⚖️', name: 'Balanced Life', desc: 'Mix of health, productivity & personal tasks', show: true }
+        ];
+        
+        const packsHTML = packs.filter(p => p.show).map(p => `
+            <button onclick="goalManager.addStarterPack('${p.id}')" class="bg-${p.color}-800/50 hover:bg-${p.color}-700/50 border border-${p.color}-600 rounded-lg p-4 text-left transition-all">
+                <div class="text-${p.color}-300 font-bold">${p.icon} ${p.name}</div>
+                <div class="text-${p.color}-200/70 text-xs mt-1">${p.desc}</div>
+            </button>
+        `).join('');
+        
+        // Build individual task sections — only show unlocked types
+        let individualHTML = `
+            <div class="mb-4">
+                <div class="text-amber-400 font-semibold mb-2 text-sm">Daily Quests</div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-daily-tasks">
+                    ${this.starterTaskPresets.daily.map((task, i) => `
+                        <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
+                            <input type="checkbox" class="starter-task-checkbox" data-type="daily" data-index="${i}" class="rounded">
+                            <span class="text-stone-200 text-xs">${task.name}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        if (weeklyUnlocked) {
+            individualHTML += `
+                <div class="mb-4">
+                    <div class="text-amber-400 font-semibold mb-2 text-sm">Weekly Quests</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-weekly-tasks">
+                        ${this.starterTaskPresets.weekly.map((task, i) => `
+                            <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
+                                <input type="checkbox" class="starter-task-checkbox" data-type="weekly" data-index="${i}" class="rounded">
+                                <span class="text-stone-200 text-xs">${task.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (monthlyUnlocked) {
+            individualHTML += `
+                <div class="mb-4">
+                    <div class="text-amber-400 font-semibold mb-2 text-sm">Monthly Quests</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-monthly-tasks">
+                        ${this.starterTaskPresets.monthly.map((task, i) => `
+                            <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
+                                <input type="checkbox" class="starter-task-checkbox" data-type="monthly" data-index="${i}" class="rounded">
+                                <span class="text-stone-200 text-xs">${task.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
         const modal = document.createElement('div');
         modal.id = 'starter-tasks-modal';
         modal.className = 'bg-black/80';
@@ -13320,67 +13395,14 @@ class GoalManager {
                     <div class="mb-6">
                         <h3 class="text-lg font-bold text-yellow-300 mb-3">🚀 Quick Start Packs</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <button onclick="goalManager.addStarterPack('wellness')" class="bg-green-800/50 hover:bg-green-700/50 border border-green-600 rounded-lg p-4 text-left transition-all">
-                                <div class="text-green-300 font-bold">🌿 Wellness Starter</div>
-                                <div class="text-green-200/70 text-xs mt-1">Daily: Water, Exercise, Meditate, Sleep</div>
-                            </button>
-                            <button onclick="goalManager.addStarterPack('productivity')" class="bg-blue-800/50 hover:bg-blue-700/50 border border-blue-600 rounded-lg p-4 text-left transition-all">
-                                <div class="text-blue-300 font-bold">⚡ Productivity Starter</div>
-                                <div class="text-blue-200/70 text-xs mt-1">Daily: Read, Journal + Weekly: Goals Review</div>
-                            </button>
-                            <button onclick="goalManager.addStarterPack('fitness')" class="bg-red-800/50 hover:bg-red-700/50 border border-red-600 rounded-lg p-4 text-left transition-all">
-                                <div class="text-red-300 font-bold">💪 Fitness Starter</div>
-                                <div class="text-red-200/70 text-xs mt-1">Daily: Exercise, Walk + Weekly: 3 Workouts</div>
-                            </button>
-                            <button onclick="goalManager.addStarterPack('balanced')" class="bg-purple-800/50 hover:bg-purple-700/50 border border-purple-600 rounded-lg p-4 text-left transition-all">
-                                <div class="text-purple-300 font-bold">⚖️ Balanced Life</div>
-                                <div class="text-purple-200/70 text-xs mt-1">Mix of health, productivity & social tasks</div>
-                            </button>
+                            ${packsHTML}
                         </div>
                     </div>
                     
                     <!-- Custom Selection -->
                     <div class="border-t border-amber-700/50 pt-6">
                         <h3 class="text-lg font-bold text-yellow-300 mb-3">📋 Or Pick Individual Tasks</h3>
-                        
-                        <!-- Daily Tasks -->
-                        <div class="mb-4">
-                            <div class="text-amber-400 font-semibold mb-2 text-sm">Daily Quests</div>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-daily-tasks">
-                                ${this.starterTaskPresets.daily.map((task, i) => `
-                                    <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
-                                        <input type="checkbox" class="starter-task-checkbox" data-type="daily" data-index="${i}" class="rounded">
-                                        <span class="text-stone-200 text-xs">${task.name}</span>
-                                    </label>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <!-- Weekly Tasks -->
-                        <div class="mb-4">
-                            <div class="text-amber-400 font-semibold mb-2 text-sm">Weekly Quests</div>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-weekly-tasks">
-                                ${this.starterTaskPresets.weekly.map((task, i) => `
-                                    <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
-                                        <input type="checkbox" class="starter-task-checkbox" data-type="weekly" data-index="${i}" class="rounded">
-                                        <span class="text-stone-200 text-xs">${task.name}</span>
-                                    </label>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <!-- Monthly Tasks -->
-                        <div class="mb-4">
-                            <div class="text-amber-400 font-semibold mb-2 text-sm">Monthly Quests</div>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-monthly-tasks">
-                                ${this.starterTaskPresets.monthly.map((task, i) => `
-                                    <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
-                                        <input type="checkbox" class="starter-task-checkbox" data-type="monthly" data-index="${i}" class="rounded">
-                                        <span class="text-stone-200 text-xs">${task.name}</span>
-                                    </label>
-                                `).join('')}
-                            </div>
-                        </div>
+                        ${individualHTML}
                     </div>
                 </div>
                 
@@ -13400,6 +13422,15 @@ class GoalManager {
     closeStarterTasksModal() {
         const modal = document.getElementById('starter-tasks-modal');
         if (modal) modal.remove();
+        
+        // If user has no tasks yet, nudge them toward adding their first one
+        const todaysTasks = this.dailyTasks.filter(task => this.isToday(task.dueDate));
+        if (todaysTasks.length === 0) {
+            this.switchView('daily');
+            setTimeout(() => {
+                this.showAchievement('💡 Tap the + button below to add your first daily quest!', 'daily');
+            }, 500);
+        }
     }
 
     addStarterPack(packType) {
@@ -13449,42 +13480,46 @@ class GoalManager {
             }
         });
 
-        // Add weekly tasks
-        pack.weekly.forEach(index => {
-            const task = this.starterTaskPresets.weekly[index];
-            if (task) {
-                this.weeklyGoals.push({
-                    id: this.uniqueId(),
-                    title: task.name,
-                    description: '',
-                    monthlyGoalIds: [],
-                    created: new Date().toISOString(),
-                    completed: false,
-                    progress: 0,
-                    checklist: [],
-                    priority: 'medium'
-                });
-                added++;
-            }
-        });
+        // Add weekly tasks (only if weekly tab is unlocked)
+        if (this.isGoalTabUnlocked('weekly')) {
+            pack.weekly.forEach(index => {
+                const task = this.starterTaskPresets.weekly[index];
+                if (task) {
+                    this.weeklyGoals.push({
+                        id: this.uniqueId(),
+                        title: task.name,
+                        description: '',
+                        monthlyGoalIds: [],
+                        created: new Date().toISOString(),
+                        completed: false,
+                        progress: 0,
+                        checklist: [],
+                        priority: 'medium'
+                    });
+                    added++;
+                }
+            });
+        }
 
-        // Add monthly tasks
-        pack.monthly.forEach(index => {
-            const task = this.starterTaskPresets.monthly[index];
-            if (task) {
-                this.monthlyGoals.push({
-                    id: this.uniqueId(),
-                    title: task.name,
-                    description: '',
-                    yearlyGoalIds: [],
-                    created: new Date().toISOString(),
-                    completed: false,
-                    progress: 0,
-                    priority: 'medium'
-                });
-                added++;
-            }
-        });
+        // Add monthly tasks (only if monthly tab is unlocked)
+        if (this.isGoalTabUnlocked('monthly')) {
+            pack.monthly.forEach(index => {
+                const task = this.starterTaskPresets.monthly[index];
+                if (task) {
+                    this.monthlyGoals.push({
+                        id: this.uniqueId(),
+                        title: task.name,
+                        description: '',
+                        yearlyGoalIds: [],
+                        created: new Date().toISOString(),
+                        completed: false,
+                        progress: 0,
+                        priority: 'medium'
+                    });
+                    added++;
+                }
+            });
+        }
 
         this.saveData();
         this.closeStarterTasksModal();
@@ -13502,6 +13537,10 @@ class GoalManager {
             const task = this.starterTaskPresets[type][index];
 
             if (task) {
+                // Skip locked task types as a safety check
+                if ((type === 'weekly' && !this.isGoalTabUnlocked('weekly')) ||
+                    (type === 'monthly' && !this.isGoalTabUnlocked('monthly'))) return;
+                
                 const baseTask = {
                     id: this.uniqueId(),
                     title: task.name,
