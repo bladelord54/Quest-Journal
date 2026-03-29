@@ -9,6 +9,7 @@ class GoalManager {
         this.sideQuests = [];
         this.habits = [];
         this.recurringTasks = []; // Tasks that repeat on schedule
+        this._lastId = 0;
         this.currentCalendarDate = new Date();
         this.selectedDate = null;
         this.sideQuestFilter = 'all';
@@ -244,6 +245,12 @@ class GoalManager {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    uniqueId() {
+        const now = Date.now();
+        this._lastId = now > this._lastId ? now : this._lastId + 1;
+        return this._lastId;
     }
 
     loadData() {
@@ -2328,7 +2335,7 @@ class GoalManager {
                 optional: true
             }, (description) => {
                 const goal = {
-                    id: Date.now(),
+                    id: this.uniqueId(),
                     title: title.trim(),
                     description: (description || '').trim(),
                     created: new Date().toISOString(),
@@ -2357,7 +2364,7 @@ class GoalManager {
             }, (description) => {
                 this.showPriorityModal('medium', (priority) => {
                     const goal = {
-                        id: Date.now(),
+                        id: this.uniqueId(),
                         title: title.trim(),
                         description: (description || '').trim(),
                         lifeGoalIds: parentLifeGoalId ? [parentLifeGoalId] : [],
@@ -2390,7 +2397,7 @@ class GoalManager {
             }, (description) => {
                 this.showPriorityModal('medium', (priority) => {
                     const goal = {
-                        id: Date.now(),
+                        id: this.uniqueId(),
                         title: title.trim(),
                         description: (description || '').trim(),
                         yearlyGoalIds: parentYearlyGoalId ? [parentYearlyGoalId] : [],
@@ -2423,7 +2430,7 @@ class GoalManager {
             }, (description) => {
                 this.showPriorityModal('medium', (priority) => {
                     const goal = {
-                        id: Date.now(),
+                        id: this.uniqueId(),
                         title: title.trim(),
                         description: (description || '').trim(),
                         monthlyGoalIds: parentMonthlyGoalId ? [parentMonthlyGoalId] : [],
@@ -2457,7 +2464,7 @@ class GoalManager {
             }, (description) => {
                 const finishAddingTask = (dueDate) => {
                     const task = {
-                        id: Date.now(),
+                        id: this.uniqueId(),
                         title: title.trim(),
                         description: (description || '').trim(),
                         weeklyGoalIds: parentWeeklyGoalId ? [parentWeeklyGoalId] : [],
@@ -2537,7 +2544,7 @@ class GoalManager {
 
         const createTask = (recurrence) => {
             const recurringTask = {
-                id: Date.now(),
+                id: this.uniqueId(),
                 title: title,
                 description: description,
                 recurrence: recurrence,
@@ -2741,7 +2748,7 @@ class GoalManager {
             
             if (shouldGenerate) {
                 const task = {
-                    id: Date.now() + Math.random(),
+                    id: this.uniqueId(),
                     title: rt.title,
                     description: rt.description,
                     weeklyGoalIds: [],
@@ -2785,9 +2792,17 @@ class GoalManager {
         
         if (this.recurringTasks.length === 0) {
             container.innerHTML = `
-                <p class="text-cyan-300/70 text-sm text-center fancy-font py-2">
-                    No recurring tasks yet. Add one to auto-generate tasks on schedule!
-                </p>
+                <div class="text-center py-12 px-8">
+                    <div class="text-6xl mb-4">🔄</div>
+                    <h3 class="text-xl font-bold text-cyan-300 medieval-title mb-2">Forge Recurring Quests</h3>
+                    <p class="text-cyan-200/70 fancy-font text-sm mb-4 max-w-sm mx-auto">
+                        Set up tasks that repeat on a schedule. They'll auto-generate so you never forget!
+                    </p>
+                    <button onclick="goalManager.addRecurringTask()"
+                        class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-5 py-2.5 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-cyan-400 text-sm">
+                        <i class="ri-repeat-line mr-2"></i>Add Recurring Task
+                    </button>
+                </div>
             `;
             return;
         }
@@ -2847,7 +2862,7 @@ class GoalManager {
             }, (description) => {
                 this.showPriorityModal('medium', (priority) => {
                     const quest = {
-                        id: Date.now(),
+                        id: this.uniqueId(),
                         title: title.trim(),
                         description: (description || '').trim(),
                         priority: priority,
@@ -2934,7 +2949,7 @@ class GoalManager {
             }
             
             const checklistItem = {
-                id: Date.now(),
+                id: this.uniqueId(),
                 text: itemText,
                 completed: false
             };
@@ -3100,7 +3115,8 @@ class GoalManager {
     checkHabitReset() {
         const saved = localStorage.getItem('lifeOrganizeData');
         if (saved) {
-            const data = JSON.parse(saved);
+            let data;
+            try { data = JSON.parse(saved); } catch (e) { console.error('checkHabitReset: corrupt data', e); return; }
             const lastReset = data.lastHabitReset;
             const lastWeekReset = data.lastWeekReset;
             const today = this.getTodayDateString();
@@ -3306,7 +3322,7 @@ class GoalManager {
                 optional: true
             }, (description) => {
                 const habit = {
-                    id: Date.now(),
+                    id: this.uniqueId(),
                     title: title.trim(),
                     description: (description || '').trim(),
                     created: new Date().toISOString(),
@@ -5321,6 +5337,9 @@ class GoalManager {
             this.updateGoalTabVisibility();
             this.updateArcaneTabVisibility();
             
+        } catch (renderError) {
+            console.error('Render error:', renderError);
+            this.showErrorNotification('A display error occurred. Try switching views or reloading.');
         } finally {
             this.isRendering = false;
         }
@@ -5359,7 +5378,7 @@ class GoalManager {
         const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
         const xpIntoCurrentLevel = this.xp - currentLevelXP;
         const xpNeededForLevel = nextLevelXP - currentLevelXP;
-        const xpProgress = (xpIntoCurrentLevel / xpNeededForLevel) * 100;
+        const xpProgress = Math.max(0, Math.min(100, (xpIntoCurrentLevel / xpNeededForLevel) * 100));
         
         // Use cached DOM elements for better performance
         const playerLevel = this.getElement('player-level');
@@ -5414,10 +5433,6 @@ class GoalManager {
             miniRing.className = `w-14 h-14 rounded-full bg-gradient-to-br ${ring.from} ${ring.to} p-0.5 shadow-2xl border-2 ${ring.border} transition-all group-hover:scale-110 group-hover:shadow-purple-500/30`;
         }
         
-        // Apply current theme
-        if (this.currentTheme && this.currentTheme !== 'default') {
-            this.applyColorTheme();
-        }
     }
 
     getAchievementDefinitions() {
@@ -5548,7 +5563,9 @@ class GoalManager {
 
     generateHabitHeatMap(habit) {
         const history = habit.completionHistory || [];
+        const historySet = new Set(history);
         const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
         const daysToShow = 84; // 12 weeks
         const weeksToShow = 12;
         
@@ -5561,7 +5578,7 @@ class GoalManager {
             const dayOfWeek = date.getDay();
             days.push({
                 date: dateStr,
-                completed: history.includes(dateStr),
+                completed: historySet.has(dateStr),
                 dayOfWeek: dayOfWeek
             });
         }
@@ -5589,9 +5606,7 @@ class GoalManager {
             week.forEach(day => {
                 const level = day.completed ? 3 : 0;
                 const title = `${day.date}${day.completed ? ' ✓ Completed' : ' - Click to mark complete'}`;
-                const isPast = new Date(day.date) < today;
-                const isToday = day.date === today.toISOString().split('T')[0];
-                const clickable = (isPast || isToday) && !day.completed;
+                const clickable = (day.date <= todayStr) && !day.completed;
                 html += `<div class="heatmap-cell level-${level} ${clickable ? 'cursor-pointer hover:opacity-70' : ''}" 
                     title="${title}"
                     ${clickable ? `onclick="goalManager.markHabitPastCompletion(${habit.id}, '${day.date}')"` : ''}
@@ -6052,7 +6067,15 @@ class GoalManager {
         // Companion Collection Grid
         if (collectionGrid) {
             if (this.companions.length === 0) {
-                collectionGrid.innerHTML = `<p class="text-green-300 fancy-font text-center col-span-full">No companions collected yet.</p>`;
+                collectionGrid.innerHTML = `
+                    <div class="col-span-full text-center py-12 px-8">
+                        <div class="text-6xl mb-4">🐾</div>
+                        <h3 class="text-xl font-bold text-green-300 medieval-title mb-2">No Companions Yet</h3>
+                        <p class="text-green-200/70 fancy-font text-sm max-w-sm mx-auto">
+                            Open treasure chests to discover loyal companions who will aid your journey!
+                        </p>
+                    </div>
+                `;
             } else {
                 const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
                 const sortedCompanions = [...this.companions].sort((a, b) => 
@@ -6731,6 +6754,10 @@ class GoalManager {
     applyThemeToCards() {
         const themeDef = this.themeDefinitions[this.currentTheme];
         const isThemed = this.currentTheme && this.currentTheme !== 'default' && themeDef && themeDef.cardFrom;
+        
+        // Skip querySelectorAll entirely when on default theme and no cleanup needed
+        if (!isThemed && !this._themeApplied) return;
+        
         const cards = document.querySelectorAll('.quest-card');
         
         if (!isThemed) {
@@ -6740,6 +6767,7 @@ class GoalManager {
                 card.style.removeProperty('background-image');
                 card.style.removeProperty('border-color');
             });
+            this._themeApplied = false;
             return;
         }
         
@@ -6751,6 +6779,7 @@ class GoalManager {
             card.style.setProperty('background-image', bg, 'important');
             card.style.setProperty('border-color', themeDef.border, 'important');
         });
+        this._themeApplied = true;
     }
     
     updateThemeVideoBackground() {
@@ -7230,28 +7259,32 @@ class GoalManager {
         }
     }
 
+    _deepClone(obj) {
+        return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj));
+    }
+
     captureState() {
         return {
-            lifeGoals: JSON.parse(JSON.stringify(this.lifeGoals)),
-            yearlyGoals: JSON.parse(JSON.stringify(this.yearlyGoals)),
-            monthlyGoals: JSON.parse(JSON.stringify(this.monthlyGoals)),
-            weeklyGoals: JSON.parse(JSON.stringify(this.weeklyGoals)),
-            dailyTasks: JSON.parse(JSON.stringify(this.dailyTasks)),
-            sideQuests: JSON.parse(JSON.stringify(this.sideQuests)),
-            habits: JSON.parse(JSON.stringify(this.habits)),
+            lifeGoals: this._deepClone(this.lifeGoals),
+            yearlyGoals: this._deepClone(this.yearlyGoals),
+            monthlyGoals: this._deepClone(this.monthlyGoals),
+            weeklyGoals: this._deepClone(this.weeklyGoals),
+            dailyTasks: this._deepClone(this.dailyTasks),
+            sideQuests: this._deepClone(this.sideQuests),
+            habits: this._deepClone(this.habits),
             xp: this.xp,
             level: this.level
         };
     }
 
     restoreState(state) {
-        this.lifeGoals = JSON.parse(JSON.stringify(state.lifeGoals));
-        this.yearlyGoals = JSON.parse(JSON.stringify(state.yearlyGoals));
-        this.monthlyGoals = JSON.parse(JSON.stringify(state.monthlyGoals));
-        this.weeklyGoals = JSON.parse(JSON.stringify(state.weeklyGoals));
-        this.dailyTasks = JSON.parse(JSON.stringify(state.dailyTasks));
-        this.sideQuests = JSON.parse(JSON.stringify(state.sideQuests));
-        this.habits = JSON.parse(JSON.stringify(state.habits));
+        this.lifeGoals = this._deepClone(state.lifeGoals);
+        this.yearlyGoals = this._deepClone(state.yearlyGoals);
+        this.monthlyGoals = this._deepClone(state.monthlyGoals);
+        this.weeklyGoals = this._deepClone(state.weeklyGoals);
+        this.dailyTasks = this._deepClone(state.dailyTasks);
+        this.sideQuests = this._deepClone(state.sideQuests);
+        this.habits = this._deepClone(state.habits);
         this.xp = state.xp;
         this.level = state.level;
     }
@@ -8007,11 +8040,10 @@ class GoalManager {
                             <div class="bg-blue-950/40 p-3 rounded-lg border border-blue-700/30">
                                 <p class="text-sm text-blue-300 font-semibold mb-2">${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} Week</p>
                                 <div class="space-y-1">
-                                    ${weekTasks.map(task => {
+                                    ${(() => { const _todayStr = this._cachedToday || this.getTodayDateString(); const _todayDate = new Date(_todayStr + 'T00:00:00'); return weekTasks.map(task => {
                                         const [ty, tm, td] = task.dueDate.split('-').map(Number);
                                         const taskDate = new Date(ty, tm - 1, td);
-                                        const todayDate = new Date(this.getTodayDateString());
-                                        const isOverdue = taskDate < todayDate && !this.isToday(task.dueDate) && !task.completed;
+                                        const isOverdue = taskDate < _todayDate && task.dueDate !== _todayStr && !task.completed;
                                         return `
                                         <div class="flex items-center text-xs ${isOverdue ? 'bg-red-900/20 p-1 rounded' : ''}">
                                             <input type="checkbox" ${task.completed ? 'checked' : ''} 
@@ -8019,7 +8051,7 @@ class GoalManager {
                                                 class="mr-2">
                                             <span class="${task.completed ? 'line-through text-blue-400 opacity-60' : isOverdue ? 'text-red-300' : 'text-blue-100'}">${this.escapeHTML(task.title)}</span>
                                         </div>
-                                    `;}).join('')}
+                                    `;}).join(''); })()}
                                 </div>
                             </div>
                         `;}).join('')}
@@ -8153,13 +8185,11 @@ class GoalManager {
                             <p class="text-xs text-green-200 mb-3 fancy-font">${thisWeeksTasks.filter(t => t.completed).length}/${thisWeeksTasks.length} tasks complete</p>
                             
                             <div class="mt-3 pl-4 border-l-2 border-green-600/40 space-y-2">
-                                ${thisWeeksTasks.map(task => {
-                                    // Parse date as local time to avoid timezone issues
+                                ${(() => { const _todayStr = this._cachedToday || this.getTodayDateString(); const _todayDate = new Date(_todayStr + 'T00:00:00'); return thisWeeksTasks.map(task => {
                                     const [year, month, day] = task.dueDate.split('-').map(Number);
                                     const taskDate = new Date(year, month - 1, day);
                                     const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][taskDate.getDay()];
-                                    const todayDate = new Date(this.getTodayDateString());
-                                    const isOverdue = taskDate < todayDate && !this.isToday(task.dueDate) && !task.completed;
+                                    const isOverdue = taskDate < _todayDate && task.dueDate !== _todayStr && !task.completed;
                                     return `
                                     <div class="flex items-center text-sm ${isOverdue ? 'bg-red-900/20 p-2 rounded' : ''}">
                                         <input type="checkbox" ${task.completed ? 'checked' : ''} 
@@ -8169,7 +8199,7 @@ class GoalManager {
                                         <span class="${task.completed ? 'line-through text-green-400 opacity-60' : isOverdue ? 'text-red-300 font-semibold' : 'text-green-100'}">${this.escapeHTML(task.title)}</span>
                                         ${isOverdue ? '<span class="ml-2 text-xs text-red-400">⚠️ Overdue</span>' : ''}
                                     </div>
-                                `;}).join('')}
+                                `;}).join(''); })()}
                             </div>
                         </div>
                     </div>
@@ -8943,30 +8973,31 @@ class GoalManager {
                         localStorage.setItem('lifeOrganizeData_pre_import_backup', currentData);
                     }
                     
-                    this.lifeGoals = data.lifeGoals || [];
-                    this.yearlyGoals = data.yearlyGoals || [];
-                    this.monthlyGoals = data.monthlyGoals || [];
-                    this.weeklyGoals = data.weeklyGoals || [];
-                    this.dailyTasks = data.dailyTasks || [];
-                    this.sideQuests = data.sideQuests || [];
-                    this.habits = data.habits || this.habits;
-                    this.recurringTasks = data.recurringTasks || this.recurringTasks;
-                    this.xp = data.xp ?? this.xp;
-                    this.level = data.level ?? this.level;
-                    this.badges = data.badges || this.badges;
-                    this.archivedGoals = data.archivedGoals || this.archivedGoals;
-                    this.goldCoins = data.goldCoins ?? this.goldCoins;
-                    this.unlockedThemes = data.unlockedThemes || this.unlockedThemes;
+                    const arr = (v, fallback) => Array.isArray(v) ? v : fallback;
+                    this.lifeGoals = arr(data.lifeGoals, []);
+                    this.yearlyGoals = arr(data.yearlyGoals, []);
+                    this.monthlyGoals = arr(data.monthlyGoals, []);
+                    this.weeklyGoals = arr(data.weeklyGoals, []);
+                    this.dailyTasks = arr(data.dailyTasks, []);
+                    this.sideQuests = arr(data.sideQuests, []);
+                    this.habits = arr(data.habits, this.habits);
+                    this.recurringTasks = arr(data.recurringTasks, this.recurringTasks);
+                    this.xp = typeof data.xp === 'number' ? data.xp : this.xp;
+                    this.level = typeof data.level === 'number' ? Math.max(1, data.level) : this.level;
+                    this.badges = arr(data.badges, this.badges);
+                    this.archivedGoals = arr(data.archivedGoals, this.archivedGoals);
+                    this.goldCoins = typeof data.goldCoins === 'number' ? Math.max(0, data.goldCoins) : this.goldCoins;
+                    this.unlockedThemes = arr(data.unlockedThemes, this.unlockedThemes);
                     this.currentTheme = data.currentTheme || this.currentTheme;
-                    this.unlockedTitles = data.unlockedTitles || this.unlockedTitles;
+                    this.unlockedTitles = arr(data.unlockedTitles, this.unlockedTitles);
                     this.currentTitle = data.currentTitle || this.currentTitle;
-                    this.treasureChests = data.treasureChests || this.treasureChests;
-                    this.companions = data.companions || this.companions;
+                    this.treasureChests = arr(data.treasureChests, this.treasureChests);
+                    this.companions = arr(data.companions, this.companions);
                     this.activeCompanionId = data.activeCompanionId || this.activeCompanionId;
-                    this.spellbook = data.spellbook || this.spellbook;
-                    this.activeSpells = data.activeSpells || this.activeSpells;
-                    this.activeQuestChains = data.activeQuestChains || this.activeQuestChains;
-                    this.completedQuestChains = data.completedQuestChains || this.completedQuestChains;
+                    this.spellbook = arr(data.spellbook, this.spellbook);
+                    this.activeSpells = arr(data.activeSpells, this.activeSpells);
+                    this.activeQuestChains = arr(data.activeQuestChains, this.activeQuestChains);
+                    this.completedQuestChains = arr(data.completedQuestChains, this.completedQuestChains);
                     this.focusCrystals = data.focusCrystals ?? this.focusCrystals;
                     this.focusCrystalShards = data.focusCrystalShards ?? this.focusCrystalShards;
                     this.totalFocusTime = data.totalFocusTime ?? this.totalFocusTime;
@@ -9198,7 +9229,7 @@ class GoalManager {
 
     // Date utility methods
     isToday(dateString) {
-        return dateString === this.getTodayDateString();
+        return dateString === (this._cachedToday || this.getTodayDateString());
     }
 
     isThisWeek(dateString) {
@@ -9270,6 +9301,15 @@ class GoalManager {
         const calendarDays = document.getElementById('calendar-days');
         calendarDays.innerHTML = '';
         
+        // Pre-index tasks by date for O(1) lookup per calendar day
+        const tasksByDate = {};
+        this.dailyTasks.forEach(t => {
+            if (!tasksByDate[t.dueDate]) tasksByDate[t.dueDate] = { total: 0, completed: 0 };
+            tasksByDate[t.dueDate].total++;
+            if (t.completed) tasksByDate[t.dueDate].completed++;
+        });
+        const todayStr = this._cachedToday || this.getTodayDateString();
+        
         // Add empty cells for days before month starts
         for (let i = 0; i < firstDay; i++) {
             const emptyDay = document.createElement('div');
@@ -9280,11 +9320,11 @@ class GoalManager {
         // Add days of the month
         for (let day = 1; day <= daysInMonth; day++) {
             const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const tasksForDay = this.dailyTasks.filter(t => t.dueDate === dateString);
-            const completedTasks = tasksForDay.filter(t => t.completed).length;
-            const totalTasks = tasksForDay.length;
+            const dayData = tasksByDate[dateString] || { total: 0, completed: 0 };
+            const completedTasks = dayData.completed;
+            const totalTasks = dayData.total;
             
-            const isToday = dateString === this.getTodayDateString();
+            const isToday = dateString === todayStr;
             
             const dayElement = document.createElement('div');
             dayElement.className = `calendar-day p-3 rounded-lg cursor-pointer transition-all hover:scale-105 ${
@@ -10040,7 +10080,7 @@ class GoalManager {
                                             onchange="goalManager.toggleParentConnection('${goalType}', ${goalId}, ${parent.id}, '${parentIdField}')"
                                             class="w-5 h-5">
                                         <label for="parent-${parent.id}" class="flex-1 text-amber-200 fancy-font cursor-pointer">
-                                            ${parent.title}
+                                            ${this.escapeHTML(parent.title)}
                                         </label>
                                         ${isConnected ? '<span class="text-green-400 text-xl">✓</span>' : ''}
                                     </div>
@@ -11293,8 +11333,8 @@ class GoalManager {
                             <div class="text-3xl">${result.icon}</div>
                             <div class="flex-1">
                                 <div class="text-xs text-amber-400 fancy-font mb-1">${result.type}</div>
-                                <div class="text-lg font-bold text-amber-200 medieval-title ${result.item.completed ? 'line-through opacity-60' : ''}">${result.item.title}</div>
-                                ${result.item.description ? `<div class="text-sm text-amber-300 fancy-font mt-1">${result.item.description}</div>` : ''}
+                                <div class="text-lg font-bold text-amber-200 medieval-title ${result.item.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(result.item.title)}</div>
+                                ${result.item.description ? `<div class="text-sm text-amber-300 fancy-font mt-1">${this.escapeHTML(result.item.description)}</div>` : ''}
                             </div>
                             ${result.item.completed ? '<div class="text-green-400 text-2xl">✓</div>' : ''}
                         </div>
@@ -11430,11 +11470,13 @@ class GoalManager {
                         <textarea id="modal-input" 
                             class="w-full p-3 rounded-lg bg-gray-700/50 border-2 border-amber-600/50 text-white placeholder-gray-400 focus:border-amber-500 focus:outline-none fancy-font resize-none"
                             placeholder="${placeholder}"
+                            maxlength="1000"
                             rows="3">${defaultValue}</textarea>
                     ` : `
                         <input type="${inputType}" id="modal-input" 
                             class="w-full p-3 rounded-lg bg-gray-700/50 border-2 border-amber-600/50 text-white placeholder-gray-400 focus:border-amber-500 focus:outline-none fancy-font"
                             placeholder="${placeholder}"
+                            maxlength="200"
                             value="${defaultValue}">
                     `}
                     <div class="flex gap-3">
@@ -11455,6 +11497,28 @@ class GoalManager {
         document.body.appendChild(modal);
         this.inputCallback = callback;
         this.inputOptional = optional;
+
+        // For date selects, add change listeners to update day options based on month/year
+        if (inputType === 'date') {
+            setTimeout(() => {
+                const monthSel = document.getElementById('modal-date-month');
+                const daySel = document.getElementById('modal-date-day');
+                const yearSel = document.getElementById('modal-date-year');
+                if (monthSel && daySel && yearSel) {
+                    const updateDays = () => {
+                        const m = parseInt(monthSel.value);
+                        const y = parseInt(yearSel.value);
+                        const maxDay = new Date(y, m, 0).getDate();
+                        const curDay = parseInt(daySel.value);
+                        daySel.innerHTML = Array.from({length: maxDay}, (_, i) =>
+                            `<option value="${i+1}" ${i+1 === Math.min(curDay, maxDay) ? 'selected' : ''}>${i+1}</option>`
+                        ).join('');
+                    };
+                    monthSel.addEventListener('change', updateDays);
+                    yearSel.addEventListener('change', updateDays);
+                }
+            }, 50);
+        }
 
         // Focus and select input
         setTimeout(() => {
@@ -11831,8 +11895,9 @@ class GoalManager {
         // Load reminder settings
         const savedSettings = localStorage.getItem('reminderSettings');
         if (savedSettings) {
-            this.reminderSettings = JSON.parse(savedSettings);
-        } else {
+            try { this.reminderSettings = JSON.parse(savedSettings); } catch (e) { console.error('Corrupt reminderSettings, using defaults', e); }
+        }
+        if (!this.reminderSettings) {
             this.reminderSettings = {
                 enabled: true,
                 morningReminder: true,
@@ -11885,7 +11950,8 @@ class GoalManager {
         const today = now.toISOString().split('T')[0];
         
         // Check what was already sent today (stored in localStorage)
-        const sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}');
+        let sentData;
+        try { sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}'); } catch (e) { sentData = {}; }
         if (sentData._date !== today) {
             sentData._date = today;
             sentData.morning = false;
@@ -12098,7 +12164,8 @@ class GoalManager {
     
     _markReminderSent(type) {
         const today = new Date().toISOString().split('T')[0];
-        const sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}');
+        let sentData;
+        try { sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}'); } catch (e) { sentData = {}; }
         if (sentData._date !== today) {
             sentData._date = today;
             sentData.morning = false;
@@ -12297,7 +12364,7 @@ class GoalManager {
                 <i class="ri-error-warning-line text-2xl text-red-300"></i>
                 <div class="flex-1">
                     <div class="font-bold fancy-font">Quest Failed!</div>
-                    <div class="text-sm text-red-200">${message}</div>
+                    <div class="text-sm text-red-200">${this.escapeHTML(message)}</div>
                 </div>
                 <button onclick="this.parentElement.parentElement.remove()" class="text-red-300 hover:text-white">
                     <i class="ri-close-line text-xl"></i>
@@ -12328,7 +12395,7 @@ class GoalManager {
                 <i class="ri-lock-line text-2xl text-gray-300"></i>
                 <div class="flex-1">
                     <div class="font-bold fancy-font">Locked</div>
-                    <div class="text-sm text-gray-300">${message}</div>
+                    <div class="text-sm text-gray-300">${this.escapeHTML(message)}</div>
                 </div>
                 <button onclick="this.parentElement.parentElement.remove()" class="text-gray-300 hover:text-white">
                     <i class="ri-close-line text-xl"></i>
@@ -12359,7 +12426,7 @@ class GoalManager {
                 <i class="ri-checkbox-circle-line text-2xl text-green-300"></i>
                 <div class="flex-1">
                     <div class="font-bold fancy-font">Success!</div>
-                    <div class="text-sm text-green-200">${message}</div>
+                    <div class="text-sm text-green-200">${this.escapeHTML(message)}</div>
                 </div>
                 <button onclick="this.parentElement.parentElement.remove()" class="text-green-300 hover:text-white">
                     <i class="ri-close-line text-xl"></i>
@@ -13369,7 +13436,7 @@ class GoalManager {
             const task = this.starterTaskPresets.daily[index];
             if (task) {
                 this.dailyTasks.push({
-                    id: Date.now() + added,
+                    id: this.uniqueId(),
                     title: task.name,
                     description: '',
                     weeklyGoalIds: [],
@@ -13387,7 +13454,7 @@ class GoalManager {
             const task = this.starterTaskPresets.weekly[index];
             if (task) {
                 this.weeklyGoals.push({
-                    id: Date.now() + added,
+                    id: this.uniqueId(),
                     title: task.name,
                     description: '',
                     monthlyGoalIds: [],
@@ -13406,7 +13473,7 @@ class GoalManager {
             const task = this.starterTaskPresets.monthly[index];
             if (task) {
                 this.monthlyGoals.push({
-                    id: Date.now() + added,
+                    id: this.uniqueId(),
                     title: task.name,
                     description: '',
                     yearlyGoalIds: [],
@@ -13436,7 +13503,7 @@ class GoalManager {
 
             if (task) {
                 const baseTask = {
-                    id: Date.now() + added,
+                    id: this.uniqueId(),
                     title: task.name,
                     description: '',
                     created: new Date().toISOString(),
@@ -13470,7 +13537,7 @@ class GoalManager {
         if (!template) return;
 
         const newChain = {
-            id: Date.now(),
+            id: this.uniqueId(),
             templateId: templateId,
             startedAt: new Date().toISOString(),
             currentChapterIndex: 0,

@@ -19,7 +19,8 @@ class AudioManager {
         // Load saved settings
         const savedVolume = localStorage.getItem('audioVolume');
         if (savedVolume !== null) {
-            this.volume = parseFloat(savedVolume);
+            const parsed = parseFloat(savedVolume);
+            if (!isNaN(parsed)) this.volume = Math.max(0, Math.min(1, parsed));
         }
         
         const savedEnabled = localStorage.getItem('audioEnabled');
@@ -301,6 +302,7 @@ function toggleAudio() {
     const enabled = window.audioManager.toggle();
     const toggleBtn = document.getElementById('audio-toggle-btn');
     const toggleCircle = document.getElementById('audio-toggle-circle');
+    if (!toggleBtn || !toggleCircle) return;
     
     if (enabled) {
         toggleBtn.classList.remove('bg-gray-600');

@@ -208,6 +208,14 @@
         padding: 1rem !important;
     }
     
+    /* Word-break on task/goal titles to prevent horizontal overflow */
+    .goal-item h3,
+    .goal-item h4,
+    .task-item h4 {
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+    }
+
     /* Goal items - keep checkbox inline with title, stack actions below */
     .goal-item > .flex.items-start {
         flex-wrap: wrap !important;
@@ -258,7 +266,7 @@
     }
     
     .goal-item .border-l-2 .flex.items-center {
-        flex-wrap: nowrap !important;
+        flex-wrap: wrap !important;
     }
 
     /* Titles - Smaller */
@@ -300,8 +308,8 @@
         overflow-y: auto;
     }
 
-    /* Button adjustments */
-    button {
+    /* Button adjustments — exclude small icon-only and inline action buttons */
+    button:not([class*="text-xl"]):not([class*="text-2xl"]):not([class*="text-xs"]):not([class*="p-2"]):not([class*="p-1"]):not(#mobile-nav-toggle) {
         padding: 0.75rem 1rem !important;
         font-size: 0.875rem !important;
     }
