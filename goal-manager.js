@@ -117,8 +117,8 @@ class GoalManager {
             rewards: 2,
             arcane: 3,
             focus: 5,
-            questchains: 7,
-            bossbattles: 10
+            bossbattles: 6,
+            questchains: 8
         };
         this.goalTabUnlockLevels = {
             weekly: 4, sidequests: 4,
@@ -131,13 +131,14 @@ class GoalManager {
         };
         this.featureUnlockTutorials = {
             2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
-            3: { title: '🔮 Arcane Powers Unlocked!', text: "You can earn spells from treasure chests and boss loot — visit Arcane Powers to view your spellbook and cast powerful spells!" },
+            3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
             4: { title: '⚔️ Weekly Battles & Side Quests!', text: "Your Quest Log now has Weekly Battles and Side Quests! Set weekly goals and track flexible tasks without deadlines." },
             5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
-            6: { title: '🎨 Kingdom Themes Unlocked!', text: "You've unlocked the Forest Kingdom theme! Customize your journal's look by visiting the Treasury and selecting Themes. As you level up, more themes will become available — each with unique backgrounds and particle effects!" },
-            7: { title: '📖 Monthly Raids & Quest Chains!', text: "Plan bigger with Monthly Raids! Chain multiple tasks into epic multi-step Quest Chains for bonus rewards." },
+            6: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
+            7: { title: '📖 Monthly Raids & Kingdom Themes!', text: "Plan bigger with Monthly Raids! You've also unlocked the Forest Kingdom theme — customize your journal's look in the Treasury." },
+            8: { title: '🔗 Quest Chains Unlocked!', text: "Chain multiple tasks into epic multi-step Quest Chains for massive bonus rewards! Check them out in Arcane Powers." },
             9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
-            10: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" }
+            10: { title: '👑 Legend Status Achieved!', text: "You've reached Level 10 — the rank of Legend! All features are now unlocked. Your dedication is truly epic!" }
         };
         this.seenFeatureTutorials = [];
         this.progressiveUnlockInitialized = false;
@@ -229,6 +230,11 @@ class GoalManager {
         if (this.midnightResetTimeout) {
             clearTimeout(this.midnightResetTimeout);
         }
+        // Reminder timers and intervals
+        if (this._morningTimer) clearTimeout(this._morningTimer);
+        if (this._eveningTimer) clearTimeout(this._eveningTimer);
+        if (this._overdueCheckInterval) clearInterval(this._overdueCheckInterval);
+        if (this._swSyncInterval) clearInterval(this._swSyncInterval);
         
         // Force save any pending data
         if (this.saveTimeout) {
@@ -1830,6 +1836,12 @@ class GoalManager {
         const tutorial = this.featureUnlockTutorials[this.level];
         if (tutorial && !this.seenFeatureTutorials.includes(this.level)) {
             this.seenFeatureTutorials.push(this.level);
+            
+            // Grant a free welcome spell when Arcane Powers unlocks at Lv3
+            if (this.level === 3 && this.spellbook.length === 0) {
+                this.spellbook.push({ spellId: 'minor_wisdom', charges: 2 });
+            }
+            
             this.saveData();
             
             // Delay so it doesn't overlap level-up celebration
@@ -3280,21 +3292,32 @@ class GoalManager {
             this.loginStreak = 1;
         }
         
-        // Calculate bonus based on streak (base 25, max 75 at 7+ day streak)
+        // Calculate bonus based on streak (base 25, max 73 at 7+ day streak)
         const streakBonus = Math.min(this.loginStreak - 1, 6) * 8; // +8 per streak day, max +48
         const baseBonus = 25;
         const totalBonus = baseBonus + streakBonus;
         
+        // XP bonus from login (base 10, +5 per streak day, max +30)
+        const xpBonus = 10 + Math.min(this.loginStreak - 1, 6) * 5;
+        
         // Award the bonus
         this.goldCoins += totalBonus;
+        this.xp += xpBonus;
         this.lastLoginBonusDate = today;
+        
+        // Check for level up from login XP
+        const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
+        if (this.xp >= xpForNextLevel) {
+            this.levelUp();
+        }
+        
         this.saveData();
         
         // Show achievement with streak info
         if (this.loginStreak > 1) {
-            this.showAchievement(`☀️ Daily Login Bonus! +${totalBonus} Gold (${this.loginStreak}-day streak!)`, 'daily');
+            this.showAchievement(`☀️ Daily Login! +${totalBonus} Gold, +${xpBonus} XP (${this.loginStreak}-day streak!)`, 'daily');
         } else {
-            this.showAchievement(`☀️ Daily Login Bonus! +${totalBonus} Gold`, 'daily');
+            this.showAchievement(`☀️ Daily Login! +${totalBonus} Gold, +${xpBonus} XP`, 'daily');
         }
         
         this.render();
@@ -11677,7 +11700,10 @@ class GoalManager {
             }
             
             // If permission hasn't been asked yet, show a prompt after a short delay
-            if (!this.notificationsEnabled && Notification.permission === 'default' && !localStorage.getItem('notificationPromptDismissed')) {
+            // Re-prompt after 7 days if user previously dismissed
+            const dismissedAt = localStorage.getItem('notificationPromptDismissed');
+            const dismissExpired = dismissedAt && (Date.now() - parseInt(dismissedAt)) > 7 * 24 * 60 * 60 * 1000;
+            if (!this.notificationsEnabled && Notification.permission === 'default' && (!dismissedAt || dismissExpired)) {
                 setTimeout(() => this.showNotificationPrompt(), 3000);
             }
         }
@@ -11837,7 +11863,7 @@ class GoalManager {
                             class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold">
                             Enable Notifications
                         </button>
-                        <button onclick="document.getElementById('notification-prompt')?.remove(); localStorage.setItem('notificationPromptDismissed', 'true');"
+                        <button onclick="document.getElementById('notification-prompt')?.remove(); localStorage.setItem('notificationPromptDismissed', Date.now().toString());"
                             class="bg-stone-700 hover:bg-stone-600 text-amber-200 px-4 py-1.5 rounded-lg text-xs">
                             Not Now
                         </button>
@@ -11848,7 +11874,7 @@ class GoalManager {
         document.body.appendChild(prompt);
     }
 
-    showNotification(title, body, icon = '⚔️') {
+    showNotification(title, body, icon = '⚔️', tag = null) {
         // Re-check permission state
         if ('Notification' in window) {
             this.notificationsEnabled = Notification.permission === 'granted';
@@ -11867,7 +11893,7 @@ class GoalManager {
             body: body,
             icon: './icons/icon-192.png',
             badge: './icons/badge-96.png',
-            tag: 'quest-journal-' + Date.now(),
+            tag: tag || ('quest-journal-' + Date.now()),
             renotify: true,
             vibrate: [200, 100, 200],
             data: { url: './' }
@@ -11939,10 +11965,10 @@ class GoalManager {
         
         // Check for overdue tasks periodically
         this.checkOverdueTasks();
-        setInterval(() => this.checkOverdueTasks(), 30 * 60 * 1000); // Every 30 minutes
+        this._overdueCheckInterval = setInterval(() => this.checkOverdueTasks(), 30 * 60 * 1000); // Every 30 minutes
         
         // Re-sync task counts to SW periodically (tasks may change during the day)
-        setInterval(() => this.syncReminderSettingsToSW(), 15 * 60 * 1000); // Every 15 minutes
+        this._swSyncInterval = setInterval(() => this.syncReminderSettingsToSW(), 15 * 60 * 1000); // Every 15 minutes
     }
     
     checkMissedReminders() {
@@ -12160,6 +12186,8 @@ class GoalManager {
                 this._eveningTimer = setTimeout(() => {
                     this.sendEveningReminder();
                     this._markReminderSent('evening');
+                    // Reschedule for next day
+                    setTimeout(() => this.scheduleDailyReminders(), 1000);
                 }, delay);
             }
         }
@@ -12192,7 +12220,7 @@ class GoalManager {
                 body += (body ? ' • ' : '') + `🔄 ${incompleteHabits.length} habit${incompleteHabits.length !== 1 ? 's' : ''} to complete`;
             }
             
-            this.showNotification('🌅 Good Morning, Adventurer!', body);
+            this.showNotification('🌅 Good Morning, Adventurer!', body, '⚔️', 'quest-reminder-morning');
         }
     }
 
@@ -12210,9 +12238,9 @@ class GoalManager {
                 body += (incompleteTasks.length > 0 ? ', ' : '') + `${incompleteHabits.length} habit${incompleteHabits.length !== 1 ? 's' : ''} to complete`;
             }
             
-            this.showNotification('🌆 Evening Check-in', body);
+            this.showNotification('🌙 Evening Quest Report', body, '⚔️', 'quest-reminder-evening');
         } else {
-            this.showNotification('🏆 Quest Complete!', 'Amazing! All tasks and habits done for today!');
+            this.showNotification('🏆 Quest Complete!', 'Amazing! All tasks and habits done for today!', '⚔️', 'quest-reminder-evening');
         }
     }
 
@@ -12224,13 +12252,19 @@ class GoalManager {
             !t.completed && t.dueDate < todayStr
         );
         
-        // Only notify once per session for overdue tasks
+        // Only notify once per day for overdue tasks (reset when date changes)
+        if (this._overdueNotificationDate !== todayStr) {
+            this.overdueNotificationSent = false;
+        }
         if (overdueTasks.length > 0 && !this.overdueNotificationSent) {
             this.showNotification(
                 '⚠️ Overdue Quests!',
-                `You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} that need attention`
+                `You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} that need attention`,
+                '⚔️',
+                'quest-overdue'
             );
             this.overdueNotificationSent = true;
+            this._overdueNotificationDate = todayStr;
         }
     }
 
@@ -13262,8 +13296,11 @@ class GoalManager {
             overlay.classList.add('hidden');
         }
         
+        // Grant starter gold to help new users reach their first treasure chest
+        this.goldCoins += 100;
+        
         this.saveData();
-        this.showAchievement('🎓 Tutorial completed! You\'re ready to conquer your quests!', 'weekly');
+        this.showAchievement('🎓 Tutorial completed! +100 Gold starter bonus! You\'re ready to conquer your quests!', 'weekly');
         
         // Show starter tasks modal after tutorial
         setTimeout(() => this.showStarterTasksModal(), 500);

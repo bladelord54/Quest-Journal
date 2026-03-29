@@ -29,7 +29,9 @@ window.audioManager = {
     playAchievement: jest.fn(),
     playTaskComplete: jest.fn(),
     playHabitComplete: jest.fn(),
-    playSlash: jest.fn()
+    playSlash: jest.fn(),
+    playGoldEarned: jest.fn(),
+    playDailyAchievement: jest.fn()
 };
 window.confirm = jest.fn(() => true);
 window.alert = jest.fn();
@@ -173,19 +175,27 @@ function createTestManager(overrides = {}) {
     // Feature unlock tutorials (set in constructor)
     gm.featureUnlockTutorials = {
         2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
-        3: { title: '🔮 Arcane Powers Unlocked!', text: "You may have collected spell scrolls from treasure chests — visit Arcane Powers to view your spellbook and cast powerful spells!" },
+        3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
         4: { title: '⚔️ Weekly Battles & Side Quests!', text: "Your Quest Log now has Weekly Battles and Side Quests! Set weekly goals and track flexible tasks without deadlines." },
         5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
-        6: { title: '🎨 Kingdom Themes Unlocked!', text: "You've unlocked the Forest Kingdom theme! Customize your journal's look by visiting the Treasury and selecting Themes. As you level up, more themes will become available — each with unique backgrounds and particle effects!" },
-        7: { title: '📖 Monthly Raids & Quest Chains!', text: "Plan bigger with Monthly Raids! Chain multiple tasks into epic multi-step Quest Chains for bonus rewards." },
+        6: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
+        7: { title: '📖 Monthly Raids & Kingdom Themes!', text: "Plan bigger with Monthly Raids! You've also unlocked the Forest Kingdom theme — customize your journal's look in the Treasury." },
+        8: { title: '🔗 Quest Chains Unlocked!', text: "Chain multiple tasks into epic multi-step Quest Chains for massive bonus rewards! Check them out in Arcane Powers." },
         9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
-        10: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic rewards. This is a Premium feature — upgrade to unlock the full Boss Battle experience!" }
+        10: { title: '� Legend Status Achieved!', text: "You've reached Level 10 — the rank of Legend! All features are now unlocked. Your dedication is truly epic!" }
     };
     gm.seenFeatureTutorials = [];
     gm.progressiveUnlockInitialized = false;
+    gm.featureUnlockLevels = {
+        dashboard: 1, goals: 1, daily: 1, calendar: 1, tools: 1,
+        rewards: 2, arcane: 3, focus: 5, bossbattles: 6, questchains: 8
+    };
+    gm.goalTabUnlockLevels = {
+        weekly: 4, sidequests: 4, monthly: 7, yearly: 9, 'life-goals': 9
+    };
     gm.navUnlockLevels = { treasury: 2, 'arcane-powers': 3, 'quest-log': 4, focus: 5, calendar: 1 };
     gm.arcaneTabUnlockLevels = { spellbook: 3, enchantments: 5 };
-    gm.questLogTabUnlockLevels = { weekly: 4, side: 4, monthly: 7, yearly: 9, life: 9, chains: 7 };
+    gm.questLogTabUnlockLevels = { weekly: 4, side: 4, monthly: 7, yearly: 9, life: 9, chains: 8 };
     gm.lastVisitDate = null;
     gm.lastWeekNumber = null;
     gm.lastMonth = null;
@@ -572,6 +582,7 @@ describe('GoalManager', () => {
 
         test('addSelectedStarterTasks creates tasks with title property', () => {
             const gm = createTestManager();
+            gm.level = 10; // Unlock all goal tabs so weekly/monthly tasks are added
             gm.getTodayDateString = jest.fn(() => '2025-01-15');
 
             // Mock DOM checkboxes
@@ -1416,17 +1427,17 @@ describe('GoalManager', () => {
         test('feature unlock tutorials cover levels 2-10', () => {
             const gm = createTestManager();
             const unlockLevels = Object.keys(gm.featureUnlockTutorials).map(Number);
-            expect(unlockLevels).toEqual(expect.arrayContaining([2, 3, 4, 5, 6, 7, 9, 10]));
+            expect(unlockLevels).toEqual(expect.arrayContaining([2, 3, 4, 5, 6, 7, 8, 9, 10]));
         });
 
-        test('level 6 feature unlock is Kingdom Themes', () => {
+        test('level 6 feature unlock is Boss Battles', () => {
             const gm = createTestManager();
-            expect(gm.featureUnlockTutorials[6].title).toContain('Kingdom Themes');
+            expect(gm.featureUnlockTutorials[6].title).toContain('Boss Battles');
         });
 
-        test('level 10 Boss Battles mentions Premium', () => {
+        test('level 10 is Legend Status celebration', () => {
             const gm = createTestManager();
-            expect(gm.featureUnlockTutorials[10].text).toContain('Premium');
+            expect(gm.featureUnlockTutorials[10].title).toContain('Legend Status');
         });
     });
 

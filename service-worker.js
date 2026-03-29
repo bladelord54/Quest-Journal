@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v297';
+const CACHE_NAME = 'life-quest-journal-v299';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -260,7 +260,7 @@ async function handlePushEvent() {
 
   if (type) {
     // Show the reminder — tag-based replacement handles dedup with in-page timers
-    await sendReminderNotification(type, counts);
+    await sendReminderNotification(type, counts, data.lastSync);
     // Also update sentToday tracking
     const today = now.toISOString().split('T')[0];
     const sentToday = data.sentToday || { _date: today };
@@ -329,7 +329,7 @@ async function checkAndSendReminders() {
     const targetMins = th * 60 + tm;
     // Fire if we're past the reminder time (within a 2-hour catch-up window)
     if (currentMins >= targetMins && currentMins < targetMins + 120) {
-      await sendReminderNotification('morning', counts);
+      await sendReminderNotification('morning', counts, data.lastSync);
       sentToday.morning = true;
       updated = true;
     }
@@ -340,7 +340,7 @@ async function checkAndSendReminders() {
     const [th, tm] = settings.eveningTime.split(':').map(Number);
     const targetMins = th * 60 + tm;
     if (currentMins >= targetMins && currentMins < targetMins + 120) {
-      await sendReminderNotification('evening', counts);
+      await sendReminderNotification('evening', counts, data.lastSync);
       sentToday.evening = true;
       updated = true;
     }
@@ -352,20 +352,31 @@ async function checkAndSendReminders() {
   }
 }
 
-async function sendReminderNotification(type, counts) {
+async function sendReminderNotification(type, counts, lastSync) {
+  // If counts are stale (>4 hours old), use generic wording
+  const isStale = !lastSync || (Date.now() - lastSync) > 4 * 60 * 60 * 1000;
+  
   let title, body;
   if (type === 'morning') {
     title = '🌅 Good Morning, Adventurer!';
-    body = '';
-    if (counts.todayTasks > 0) body += `📋 ${counts.todayTasks} task${counts.todayTasks !== 1 ? 's' : ''} for today`;
-    if (counts.incompleteHabits > 0) body += (body ? ' • ' : '') + `🔄 ${counts.incompleteHabits} habit${counts.incompleteHabits !== 1 ? 's' : ''} to complete`;
-    if (!body) body = 'Ready for a new day of quests!';
+    if (isStale) {
+      body = 'Time to check your quests for today!';
+    } else {
+      body = '';
+      if (counts.todayTasks > 0) body += `📋 ${counts.todayTasks} task${counts.todayTasks !== 1 ? 's' : ''} for today`;
+      if (counts.incompleteHabits > 0) body += (body ? ' • ' : '') + `🔄 ${counts.incompleteHabits} habit${counts.incompleteHabits !== 1 ? 's' : ''} to complete`;
+      if (!body) body = 'Ready for a new day of quests!';
+    }
   } else {
     title = '🌙 Evening Quest Report';
-    body = '';
-    if (counts.todayTasks > 0) body += `📋 ${counts.todayTasks} task${counts.todayTasks !== 1 ? 's' : ''} remaining`;
-    if (counts.overdueTasks > 0) body += (body ? ' • ' : '') + `⚠️ ${counts.overdueTasks} overdue`;
-    if (!body) body = 'All quests completed! Well done!';
+    if (isStale) {
+      body = 'Check in on your remaining quests before the day ends!';
+    } else {
+      body = '';
+      if (counts.todayTasks > 0) body += `📋 ${counts.todayTasks} task${counts.todayTasks !== 1 ? 's' : ''} remaining`;
+      if (counts.overdueTasks > 0) body += (body ? ' • ' : '') + `⚠️ ${counts.overdueTasks} overdue`;
+      if (!body) body = 'All quests completed! Well done!';
+    }
   }
   
   try {
