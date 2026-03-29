@@ -193,7 +193,7 @@ class AudioManager {
 
     // Play notification sound
     playNotification() {
-        this.play('notification', 0.3); // Quieter
+        this.play('notification', this.volume * 0.6);
     }
 
     // Play spell casting sound
@@ -208,12 +208,12 @@ class AudioManager {
 
     // Play boss damage sound
     playBossDamage() {
-        this.play('boss-damage', 0.4);
+        this.play('boss-damage', this.volume * 0.8);
     }
 
     // Play sword slice sound (boss attacks)
     playSlash(isCrit = false) {
-        this.play('sword-slice', isCrit ? this.volume : 0.5);
+        this.play('sword-slice', isCrit ? this.volume : this.volume * 0.6);
     }
 
     // Play boss defeated sound
@@ -223,12 +223,12 @@ class AudioManager {
 
     // Play crystal earn sound
     playCrystalEarn() {
-        this.play('crystal-earn', 0.6);
+        this.play('crystal-earn', this.volume * 0.8);
     }
 
     // Play loot coin sound (chest rewards, loot drops)
     playLootCoin() {
-        this.play('loot-coin', 0.5);
+        this.play('loot-coin', this.volume);
     }
 
     // Play chest opening celebration sound
@@ -238,22 +238,12 @@ class AudioManager {
 
     // Play gold earned sound
     playGoldEarned() {
-        this.play('gold-earned', 0.5);
+        this.play('gold-earned', this.volume);
     }
 
-    // Play daily task completion sound (direct play, bypasses queue)
+    // Play daily task completion sound
     playDailyAchievement() {
-        if (!this.enabled) return;
-        try {
-            const audio = new Audio(this._soundPaths['daily-achievement']);
-            audio.volume = Math.min(0.5, this.volume);
-            audio.play().catch(() => {
-                // Fallback: play regular achievement sound via queue
-                this.play('achievement-daily', 0.5);
-            });
-        } catch(e) {
-            this.play('achievement-daily', 0.5);
-        }
+        this.play('daily-achievement', this.volume * 0.8);
     }
 
     // Set master volume

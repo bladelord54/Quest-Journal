@@ -433,6 +433,23 @@ class GoalManager {
     
     _doSave() {
         try {
+            // Prune old archived goals to prevent unbounded localStorage growth
+            // Keep all archives < 6 months old, then cap at 500 most recent
+            if (this.archivedGoals.length > 500) {
+                const sixMonthsAgo = new Date();
+                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+                const cutoff = sixMonthsAgo.toISOString();
+                // Sort by archived date descending, keep recent ones
+                this.archivedGoals.sort((a, b) => 
+                    (b.archivedAt || b.archivedDate || '') > (a.archivedAt || a.archivedDate || '') ? 1 : -1
+                );
+                this.archivedGoals = this.archivedGoals.slice(0, 500);
+            }
+            // Cap boss log at 200 entries (keep most recent)
+            if (this.bossLog.length > 200) {
+                this.bossLog = this.bossLog.slice(-200);
+            }
+
             const dataToSave = JSON.stringify({
                 lifeGoals: this.lifeGoals,
                 yearlyGoals: this.yearlyGoals,
@@ -496,6 +513,11 @@ class GoalManager {
                 progressiveUnlockInitialized: this.progressiveUnlockInitialized
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
+            // Proactive storage warning when approaching typical 5MB limit
+            if (dataToSave.length > 4 * 1024 * 1024 && !this._storageWarningShown) {
+                this._storageWarningShown = true;
+                this.showErrorNotification('⚠️ Storage is nearly full! Please export a backup and archive old quests.');
+            }
         } catch (error) {
             console.error('Error saving data:', error);
             if (error.name === 'QuotaExceededError') {
@@ -3125,6 +3147,11 @@ class GoalManager {
 
     // Habit/Recurring Task System
     checkHabitReset() {
+        // Flush any pending debounced save so we read fresh lastHabitReset
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+            this._doSave();
+        }
         const saved = localStorage.getItem('lifeOrganizeData');
         if (saved) {
             let data;
@@ -8948,6 +8975,10 @@ class GoalManager {
                 bossKillsMonth: this.bossKillsMonth,
                 seenFeatureTutorials: this.seenFeatureTutorials,
                 progressiveUnlockInitialized: this.progressiveUnlockInitialized,
+                lastVisitDate: this.lastVisitDate,
+                lastWeekNumber: this.lastWeekNumber,
+                lastMonth: this.lastMonth,
+                lastYear: this.lastYear,
                 reminderSettings: this.reminderSettings,
                 exportDate: new Date().toISOString(),
                 version: '3.0'
@@ -9053,6 +9084,10 @@ class GoalManager {
                     this.bossKillsMonth = data.bossKillsMonth ?? this.bossKillsMonth;
                     this.seenFeatureTutorials = data.seenFeatureTutorials || this.seenFeatureTutorials;
                     this.progressiveUnlockInitialized = data.progressiveUnlockInitialized || this.progressiveUnlockInitialized;
+                    this.lastVisitDate = data.lastVisitDate || this.lastVisitDate;
+                    this.lastWeekNumber = data.lastWeekNumber || this.lastWeekNumber;
+                    this.lastMonth = data.lastMonth ?? this.lastMonth;
+                    this.lastYear = data.lastYear ?? this.lastYear;
                     if (data.reminderSettings) {
                         this.reminderSettings = data.reminderSettings;
                         localStorage.setItem('reminderSettings', JSON.stringify(this.reminderSettings));
@@ -9112,6 +9147,17 @@ class GoalManager {
             localStorage.removeItem('lifeOrganizeData_pre_import_backup');
             localStorage.removeItem('audioEnabled');
             localStorage.removeItem('audioVolume');
+            localStorage.removeItem('questTheme');
+            localStorage.removeItem('reminderSettings');
+            localStorage.removeItem('remindersSentToday');
+            localStorage.removeItem('notificationsConfirmedWorking');
+            localStorage.removeItem('notificationPromptDismissed');
+            // Remove any timestamped corruption backups
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('lifeOrganizeData_backup_')) {
+                    localStorage.removeItem(key);
+                }
+            });
 
             // Reload the app fresh
             window.location.reload();
