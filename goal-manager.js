@@ -9152,6 +9152,7 @@ class GoalManager {
             localStorage.removeItem('remindersSentToday');
             localStorage.removeItem('notificationsConfirmedWorking');
             localStorage.removeItem('notificationPromptDismissed');
+            localStorage.removeItem('mobileNavCollapsed');
             // Remove any timestamped corruption backups
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('lifeOrganizeData_backup_')) {

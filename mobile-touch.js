@@ -143,10 +143,10 @@ class MobileTouchHandler {
 
         if (taskId && typeof goalManager !== 'undefined') {
             // Complete task
-            const task = goalManager.dailyGoals.find(t => t.id === taskId);
+            const task = goalManager.dailyTasks.find(t => t.id === Number(taskId));
             if (task && !task.completed) {
                 this.vibrateSuccess();
-                goalManager.toggleTask(taskId);
+                goalManager.toggleTask(Number(taskId));
             }
         } else if (goalId && typeof goalManager !== 'undefined') {
             // Complete goal
@@ -214,34 +214,16 @@ class MobileTouchHandler {
         const taskId = element.dataset.taskId;
         if (!taskId || typeof goalManager === 'undefined') return;
 
-        // Simple action menu - can be enhanced with custom modal
-        const actions = [
-            '✓ Complete',
-            '✏️ Edit',
-            '🗑️ Delete',
-            '📋 Duplicate',
-            '❌ Cancel'
-        ];
-
         goalManager.showConfirm('Complete this task?', () => {
-            goalManager.toggleTask(taskId);
+            goalManager.toggleTask(Number(taskId));
             this.vibrateSuccess();
         });
     }
 
     // Prevent double-tap zoom on buttons and interactive elements
     preventDoubleTapZoom() {
-        let lastTouchEnd = 0;
-        
-        document.addEventListener('touchend', (e) => {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, { passive: false });
-
-        // Prevent zoom on specific elements
+        // Use CSS touch-action: manipulation (prevents double-tap zoom without
+        // blocking legitimate interactions like text selection)
         const style = document.createElement('style');
         style.textContent = `
             button, input, select, textarea, a, .quest-card {
@@ -297,7 +279,7 @@ if (typeof goalManager !== 'undefined' && mobileTouchHandler.isMobile) {
     // Add haptic feedback to task completion
     const originalToggleTask = goalManager.toggleTask;
     goalManager.toggleTask = function(taskId) {
-        const task = this.dailyGoals.find(t => t.id === taskId);
+        const task = this.dailyTasks.find(t => t.id === taskId);
         if (task && !task.completed) {
             mobileTouchHandler.vibrateSuccess();
         }
@@ -305,17 +287,19 @@ if (typeof goalManager !== 'undefined' && mobileTouchHandler.isMobile) {
     };
 
     // Add haptic feedback to level up
-    const originalCheckLevelUp = goalManager.checkLevelUp;
-    goalManager.checkLevelUp = function() {
-        const oldLevel = this.level;
-        originalCheckLevelUp.call(this);
-        if (this.level > oldLevel) {
-            // Epic vibration for level up!
-            if (navigator.vibrate) {
-                navigator.vibrate([100, 50, 100, 50, 200]);
+    const originalLevelUp = goalManager.levelUp;
+    if (originalLevelUp) {
+        goalManager.levelUp = function() {
+            const oldLevel = this.level;
+            originalLevelUp.call(this);
+            if (this.level > oldLevel) {
+                // Epic vibration for level up!
+                if (navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100, 50, 200]);
+                }
             }
-        }
-    };
+        };
+    }
 }
 
 // Export for use in other modules

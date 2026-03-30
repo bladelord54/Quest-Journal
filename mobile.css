@@ -522,6 +522,11 @@
     .quest-card:hover::after {
         left: -100%;
     }
+    
+    /* Make hover-only elements always visible on touch devices */
+    .group-hover\:opacity-100 {
+        opacity: 0.7 !important;
+    }
 }
 
 /* Touch/Active state for cards */
