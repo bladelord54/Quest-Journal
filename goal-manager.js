@@ -1058,7 +1058,9 @@ class GoalManager {
         
         const xpSource = bossType === 'monthly' ? 'monthly' : bossType === 'daily' ? 'daily' : 'weekly';
         this.addXP(xpReward, xpSource);
-        this.goldCoins += goldReward;
+        this._suppressRewardSounds = true;
+        this.addGold(goldReward, 'boss');
+        this._suppressRewardSounds = false;
         
         // Generate bonus loot drops
         const loot = this.generateBossLoot(bossType);
@@ -3193,36 +3195,20 @@ class GoalManager {
                     // Always clear rewardedToday so stale dates don't block rewards
                     habit.rewardedToday = null;
                     if (habit.completedToday) {
+                        // Habit was completed yesterday — mark it and check for multi-day gaps
                         habit.completedToday = false;
                         habit.lastCompleted = lastReset;
                         habit.streak = habit.streak || 0;
-                        // If skipped a day, reset streak (unless protected)
+                        // If skipped a day (e.g. app not opened for 2+ days), reset streak
                         const lastDate = new Date(lastReset);
                         const todayDate = new Date(today);
                         const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
                         if (dayDiff > 1) {
-                            // Check for Streak Shield spell first
-                            if (streakShieldActive && habit.streak > 0) {
-                                this.showAchievement(`🛡️ STREAK SHIELD! Your ${habit.title} streak of ${habit.streak} days was protected!`, 'life');
-                                // Don't reset - spell protects all streaks for its duration
-                            }
-                            // Then check for streak protection companion
-                            else {
-                                const maxProtections = activeCompanion?.bonusAmount || 0;
-                                const usedProtections = activeCompanion?.protectionsUsedThisWeek || 0;
-                                
-                                if (activeCompanion && 
-                                    activeCompanion.bonusType === 'streak_protection' && 
-                                    usedProtections < maxProtections &&
-                                    habit.streak > 0) {
-                                    // Companion protects the streak!
-                                    activeCompanion.protectionsUsedThisWeek = usedProtections + 1;
-                                    this.showAchievement(`${activeCompanion.icon} ${activeCompanion.name.toUpperCase()} PROTECTS! Your ${habit.title} streak of ${habit.streak} days was saved! (${maxProtections - usedProtections - 1} protections left this week)`, 'life');
-                                } else {
-                                    habit.streak = 0;
-                                }
-                            }
+                            this._applyStreakBreak(habit, streakShieldActive, activeCompanion);
                         }
+                    } else if (habit.streak > 0) {
+                        // Habit was NOT completed yesterday — streak should break
+                        this._applyStreakBreak(habit, streakShieldActive, activeCompanion);
                     }
                 });
                 
@@ -3260,6 +3246,32 @@ class GoalManager {
                 
                 this.saveData();
             }
+        }
+    }
+    
+    _applyStreakBreak(habit, streakShieldActive, activeCompanion) {
+        // Check for Streak Shield spell first
+        if (streakShieldActive && habit.streak > 0) {
+            this.showAchievement(`🛡️ STREAK SHIELD! Your ${habit.title} streak of ${habit.streak} days was protected!`, 'life');
+            return; // Spell protects all streaks for its duration
+        }
+        // Check for Streak Shield enchantment (Enchantment of Resilience)
+        if (this.hasActiveEnchantment('streak_shield') && habit.streak > 0) {
+            this.showAchievement(`🛡️ Enchantment of Resilience! Your ${habit.title} streak of ${habit.streak} days was protected!`, 'life');
+            return;
+        }
+        // Then check for streak protection companion
+        const maxProtections = activeCompanion?.bonusAmount || 0;
+        const usedProtections = activeCompanion?.protectionsUsedThisWeek || 0;
+        
+        if (activeCompanion && 
+            activeCompanion.bonusType === 'streak_protection' && 
+            usedProtections < maxProtections &&
+            habit.streak > 0) {
+            activeCompanion.protectionsUsedThisWeek = usedProtections + 1;
+            this.showAchievement(`${activeCompanion.icon} ${activeCompanion.name.toUpperCase()} PROTECTS! Your ${habit.title} streak of ${habit.streak} days was saved! (${maxProtections - usedProtections - 1} protections left this week)`, 'life');
+        } else {
+            habit.streak = 0;
         }
     }
     
@@ -3446,6 +3458,7 @@ class GoalManager {
         const questDoublerActive = this.activeSpells.find(s => s.spellId === 'quest_doubler');
         if (questDoublerActive) {
             questDoublerMultiplier = 2;
+            this._questDoublerGoldPending = 2; // Flag for addGold to pick up
             // Consume the spell after use
             this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'quest_doubler');
             this.showAchievement('📋 QUEST DOUBLER! 2x XP & Gold earned!', 'weekly');
@@ -3511,7 +3524,13 @@ class GoalManager {
     }
 
     // Gold Coin System
-    addGold(amount, source, questDoublerMultiplier = 1) {
+    addGold(amount, source) {
+        // Pick up pending Quest Doubler from addXP if present
+        let questDoublerMultiplier = 1;
+        if (this._questDoublerGoldPending) {
+            questDoublerMultiplier = this._questDoublerGoldPending;
+            this._questDoublerGoldPending = null;
+        }
         // Apply spell multipliers
         const goldMultiplier = this.getActiveSpellMultiplier('gold_multiplier');
         // Apply enchantment multipliers
@@ -3553,7 +3572,12 @@ class GoalManager {
             this.addGold(reward.coins, 'loot');
             if (reward.xpBonus) this.addXP(reward.xpBonus, 'loot');
             if (reward.special === 'theme_unlock') this.tryUnlockRandomTheme();
-            if (reward.special === 'ability_unlock') this.tryUnlockRandomAbility();
+            if (reward.special === 'ability_unlock') {
+                // Give a random spell as the "ability" reward
+                const freeSpells = ['lucky_draw', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'instant_archive'];
+                const randomSpell = freeSpells[Math.floor(Math.random() * freeSpells.length)];
+                this.addSpellToBook(randomSpell, 1);
+            }
             this.saveData();
         }
     }
@@ -3810,7 +3834,9 @@ class GoalManager {
             return { unlocked: true, id: randomTheme, name: themeName };
         } else {
             // All available themes already unlocked, give bonus gold instead
-            this.goldCoins += 100;
+            this._suppressRewardSounds = true;
+            this.addGold(100, 'theme_duplicate');
+            this._suppressRewardSounds = false;
             this.showAchievement('💰 All themes unlocked! +100 gold bonus!', 'daily');
             return { duplicate: true, gold: 100 };
         }
@@ -4387,7 +4413,9 @@ class GoalManager {
         if (alreadyHave) {
             // Already have this companion - give bonus gold
             const bonusGold = { common: 50, uncommon: 100, rare: 200, epic: 400, legendary: 800 }[companionData.rarity];
-            this.goldCoins += bonusGold;
+            this._suppressRewardSounds = true;
+            this.addGold(bonusGold, 'companion_duplicate');
+            this._suppressRewardSounds = false;
             if (!this._suppressRewardToasts) this.showAchievement(`Already have ${companionData.name}! +${bonusGold} Gold instead`, 'daily');
             this.saveData();
             return { duplicate: true, gold: bonusGold, name: companionData.name, icon: companionData.icon };
@@ -4478,11 +4506,14 @@ class GoalManager {
         
         companion.xp = (companion.xp || 0) + xpGain;
         
-        // Level up: 100 * currentLevel XP needed
-        const xpNeeded = 100 * (companion.level || 1);
-        if (companion.xp >= xpNeeded) {
-            companion.xp -= xpNeeded;
+        // Level up: 100 * currentLevel XP needed (loop for multi-level-ups on large XP gains)
+        let leveled = false;
+        while (companion.xp >= 100 * (companion.level || 1)) {
+            companion.xp -= 100 * (companion.level || 1);
             companion.level = (companion.level || 1) + 1;
+            leveled = true;
+        }
+        if (leveled) {
             this.showAchievement(`${companion.icon} ${companion.name} leveled up to Lv.${companion.level}!`, 'weekly');
         }
     }
@@ -4964,7 +4995,12 @@ class GoalManager {
             goal.progress = this.calculateProgress(goal.id, this.dailyTasks, 'weeklyGoalIds');
             if (goal.progress === 100 && !goal.completed) {
                 goal.completed = true;
-                this.showAchievement('Weekly Quest Auto-Completed! 🛡️', 'weekly');
+                if (!goal.rewarded) {
+                    goal.rewarded = true;
+                    this.addXP(50, 'weekly');
+                    this.grantAttackCharge(2, 'weekly');
+                }
+                this.showAchievement('Weekly Quest Auto-Completed! +50 XP 🛡️', 'weekly');
             }
         });
 
@@ -4973,7 +5009,12 @@ class GoalManager {
             goal.progress = this.calculateProgress(goal.id, this.weeklyGoals, 'monthlyGoalIds');
             if (goal.progress === 100 && !goal.completed) {
                 goal.completed = true;
-                this.showAchievement('Monthly Victory Auto-Achieved! 👑', 'monthly');
+                if (!goal.rewarded) {
+                    goal.rewarded = true;
+                    this.addXP(200, 'monthly');
+                    this.grantAttackCharge(3, 'monthly');
+                }
+                this.showAchievement('Monthly Victory Auto-Achieved! +200 XP 👑', 'monthly');
             }
         });
 
@@ -4982,7 +5023,8 @@ class GoalManager {
             goal.progress = this.calculateProgress(goal.id, this.monthlyGoals, 'yearlyGoalIds');
             if (goal.progress === 100 && !goal.completed) {
                 goal.completed = true;
-                this.showAchievement('Yearly Campaign Auto-Completed! 🏆', 'yearly');
+                this.addXP(1000, 'yearly');
+                this.showAchievement('Yearly Campaign Auto-Completed! +1000 XP 🏆', 'yearly');
             }
         });
 
@@ -4991,7 +5033,8 @@ class GoalManager {
             goal.progress = this.calculateProgress(goal.id, this.yearlyGoals, 'lifeGoalIds');
             if (goal.progress === 100 && !goal.completed) {
                 goal.completed = true;
-                this.showAchievement('LIFE GOAL AUTO-MASTERED! ⚡👑⚡', 'life');
+                this.addXP(5000, 'life');
+                this.showAchievement('LIFE GOAL AUTO-MASTERED! +5000 XP ⚡👑⚡', 'life');
             }
             // Check for boss defeat
             this.checkBossDefeat(goal);

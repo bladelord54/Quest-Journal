@@ -336,10 +336,12 @@ describe('GoalManager', () => {
             expect(gm.goldCoins).toBe(120);
         });
 
-        test('addGold applies quest doubler multiplier', () => {
+        test('addGold applies quest doubler multiplier via pending flag', () => {
             const gm = createTestManager();
-            gm.addGold(100, 'daily', 2);
+            gm._questDoublerGoldPending = 2;
+            gm.addGold(100, 'daily');
             expect(gm.goldCoins).toBe(200);
+            expect(gm._questDoublerGoldPending).toBeNull();
         });
     });
 
