@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Life Quest Journal - Life Adventures</title>
     
     <!-- PWA Meta Tags -->
@@ -62,7 +62,7 @@
     </div>
 
     <!-- Notification Toast -->
-    <div id="achievement-toast" class="hidden fixed top-8 right-8 z-50 transform transition-all duration-300 scale-0">
+    <div id="achievement-toast" class="hidden fixed top-8 right-8 z-50 transform transition-all duration-300 scale-0" role="status" aria-live="polite">
         <div id="toast-container" class="bg-gradient-to-br from-yellow-600 via-amber-500 to-yellow-700 text-white p-6 rounded-lg shadow-2xl border-4 border-yellow-400 quest-card">
             <div class="flex items-center space-x-4">
                 <div id="toast-icon" class="text-6xl animate-bounce">⚔️</div>
@@ -75,7 +75,7 @@
     </div>
 
     <!-- Global Search Modal -->
-    <div id="search-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm">
+    <div id="search-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Search quests">
         <div class="flex items-start justify-center min-h-screen pt-20">
             <div class="bg-gradient-to-br from-gray-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 w-full max-w-3xl mx-4">
                 <!-- Search Header -->
@@ -89,8 +89,8 @@
                             class="flex-1 bg-stone-800 text-amber-100 px-4 py-3 rounded-lg border-2 border-amber-700 focus:border-amber-500 focus:outline-none fancy-font text-lg"
                             onkeyup="goalManager.performSearch(this.value)"
                         >
-                        <button onclick="goalManager.closeSearch()" class="text-amber-400 hover:text-amber-300 text-3xl">
-                            <i class="ri-close-line"></i>
+                        <button onclick="goalManager.closeSearch()" class="text-amber-400 hover:text-amber-300 text-3xl" aria-label="Close search">
+                            <i class="ri-close-line" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="text-xs text-amber-400 mt-2 fancy-font">Press Ctrl+K or / to open search • Esc to close</div>
@@ -108,7 +108,7 @@
     </div>
 
     <!-- Quick Add Modal -->
-    <div id="quick-add-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm">
+    <div id="quick-add-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Quick add task">
         <div class="flex items-center justify-center min-h-screen">
             <div class="bg-gradient-to-br from-gray-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-green-600 w-full max-w-lg mx-4">
                 <div class="p-6">
@@ -171,7 +171,7 @@
     </div>
 
     <!-- Tutorial Overlay -->
-    <div id="tutorial-overlay" class="hidden fixed inset-0 bg-black bg-opacity-40" style="z-index: 9990;">
+    <div id="tutorial-overlay" class="hidden fixed inset-0 bg-black bg-opacity-40" style="z-index: 9990;" role="dialog" aria-modal="true" aria-label="Tutorial">
         <!-- Spotlight highlight -->
         <div id="tutorial-spotlight" class="pointer-events-none border-4 border-yellow-300 rounded-lg" style="display: none; position: fixed; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 30px 8px rgba(250, 204, 21, 0.9), 0 0 60px 20px rgba(250, 204, 21, 0.4); z-index: 9991; animation: spotlight-pulse 1.5s ease-in-out infinite;"></div>
         
@@ -224,7 +224,7 @@
                 <p class="text-center text-xs text-amber-400 mt-2 fancy-font">Your Life's Grand Adventure</p>
             </div>
             
-            <nav class="mt-6 space-y-1 relative z-10">
+            <nav class="mt-6 space-y-1 relative z-10" aria-label="Main navigation">
                 <a href="#dashboard" class="nav-link active flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="dashboard">
                     <i class="ri-dashboard-line mr-3 text-2xl text-amber-400"></i>
                     <span class="fancy-font text-lg">Your Castle</span>
@@ -285,8 +285,8 @@
             </button>
 
             <!-- Player Panel - Expanded Character Sheet -->
-            <div id="player-panel-backdrop" class="fixed inset-0 bg-black/50 z-[60] hidden" onclick="if(window.goalManager) goalManager.togglePlayerPanel();"></div>
-            <div id="player-panel-sheet" class="fixed top-0 right-0 h-full w-80 max-w-[85vw] z-[70] transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto">
+            <div id="player-panel-backdrop" class="fixed inset-0 bg-black/50 z-[60] hidden" onclick="if(window.goalManager) goalManager.togglePlayerPanel();" aria-hidden="true"></div>
+            <div id="player-panel-sheet" class="fixed top-0 right-0 h-full w-80 max-w-[85vw] z-[70] transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto" role="dialog" aria-modal="true" aria-label="Character sheet">
                 <div class="min-h-full bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 border-l-4 border-purple-700/50 p-5">
                     <!-- Close Button -->
                     <button onclick="if(window.goalManager) goalManager.togglePlayerPanel();" class="absolute top-3 right-3 text-gray-400 hover:text-white text-xl transition-colors" aria-label="Close character sheet">
@@ -300,7 +300,7 @@
                                 <span id="panel-avatar-icon" class="text-5xl">⚔️</span>
                             </div>
                         </div>
-                        <div onclick="goalManager.openTitleHall()" class="cursor-pointer hover:opacity-80 transition-opacity">
+                        <div onclick="goalManager.openTitleHall()" class="cursor-pointer hover:opacity-80 transition-opacity" role="button" tabindex="0">
                             <div id="player-title" class="text-lg font-bold text-amber-300 medieval-title">Peasant</div>
                             <div id="current-prefix" class="text-sm text-yellow-400 italic fancy-font mt-1"></div>
                             <div class="text-xs text-amber-500 fancy-font mt-1"><i class="ri-medal-line mr-1"></i>Tap to manage titles</div>
@@ -316,7 +316,7 @@
                             <span class="text-xs text-purple-300 fancy-font"><span id="player-xp">0</span> XP</span>
                         </div>
                         <div class="w-full bg-purple-950 rounded-full h-3 border border-purple-700 mb-2">
-                            <div id="xp-progress" class="bg-gradient-to-r from-purple-500 to-purple-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            <div id="xp-progress" class="bg-gradient-to-r from-purple-500 to-purple-400 h-3 rounded-full transition-all duration-500" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="XP progress"></div>
                         </div>
                         <div class="text-xs text-purple-300 fancy-font text-center">
                             <span id="xp-to-next">500 XP</span> to next level
@@ -331,7 +331,7 @@
                             <div class="text-xs text-yellow-400 fancy-font">Gold</div>
                         </div>
                         <div onclick="goalManager.switchView('arcane'); goalManager.switchArcaneTab('enchantments'); goalManager.togglePlayerPanel();" 
-                            class="quest-card bg-gradient-to-br from-cyan-800/60 to-cyan-900/60 rounded-xl p-3 border-2 border-cyan-600/50 text-center cursor-pointer hover:border-cyan-400/70 transition-colors">
+                            class="quest-card bg-gradient-to-br from-cyan-800/60 to-cyan-900/60 rounded-xl p-3 border-2 border-cyan-600/50 text-center cursor-pointer hover:border-cyan-400/70 transition-colors" role="button" tabindex="0" aria-label="View Focus Crystals">
                             <div class="text-2xl mb-1">💎</div>
                             <div class="text-xl font-bold text-cyan-200 fancy-font" id="focus-crystals">0</div>
                             <div class="text-xs text-cyan-400 fancy-font">Crystals</div>
@@ -345,7 +345,7 @@
                             <i class="ri-star-fill mr-2 text-yellow-400"></i> Today's Glory
                         </div>
                         <div class="w-full bg-amber-950 rounded-full h-3 mb-2 border border-amber-700">
-                            <div id="daily-progress" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            <div id="daily-progress" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-3 rounded-full transition-all duration-500" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Daily quest progress"></div>
                         </div>
                         <div class="flex justify-between text-xs text-amber-300 fancy-font">
                             <span><span id="completed-count">0</span> completed</span>
@@ -354,7 +354,7 @@
                     </div>
 
                     <!-- Active Companion -->
-                    <div id="panel-companion-section" class="quest-card bg-gradient-to-br from-green-900/50 to-green-950/50 rounded-xl p-4 border-2 border-green-700/50 mb-4 cursor-pointer hover:border-green-500 transition-all" onclick="goalManager.openCompanionDen()">
+                    <div id="panel-companion-section" class="quest-card bg-gradient-to-br from-green-900/50 to-green-950/50 rounded-xl p-4 border-2 border-green-700/50 mb-4 cursor-pointer hover:border-green-500 transition-all" onclick="goalManager.openCompanionDen()" role="button" tabindex="0" aria-label="Open companion den">
                         <div class="text-sm font-bold text-green-300 fancy-font mb-2 flex items-center justify-center">
                             <i class="ri-bear-smile-line mr-2"></i> Companion <i class="ri-arrow-right-s-line ml-auto text-green-500"></i>
                         </div>
@@ -379,7 +379,7 @@
 
                     <!-- Badges -->
                     <div onclick="goalManager.switchView('badges'); goalManager.togglePlayerPanel();"
-                        class="quest-card bg-gradient-to-br from-amber-900/40 to-amber-950/40 rounded-xl p-4 border-2 border-amber-700/40 mb-4 cursor-pointer hover:border-amber-500 transition-all">
+                        class="quest-card bg-gradient-to-br from-amber-900/40 to-amber-950/40 rounded-xl p-4 border-2 border-amber-700/40 mb-4 cursor-pointer hover:border-amber-500 transition-all" role="button" tabindex="0" aria-label="View badges">
                         <div class="text-sm font-bold text-amber-300 fancy-font mb-2 flex items-center justify-center">
                             <i class="ri-medal-line mr-2"></i> Badges Earned <i class="ri-arrow-right-s-line ml-auto text-amber-500"></i>
                         </div>
@@ -392,7 +392,7 @@
 
                     <!-- Quest Analytics -->
                     <div onclick="goalManager.switchView('analytics'); goalManager.togglePlayerPanel();" 
-                        class="quest-card bg-gradient-to-br from-blue-900/50 to-blue-950/50 rounded-xl p-4 border-2 border-blue-700/40 mb-4 cursor-pointer hover:border-blue-500 transition-all">
+                        class="quest-card bg-gradient-to-br from-blue-900/50 to-blue-950/50 rounded-xl p-4 border-2 border-blue-700/40 mb-4 cursor-pointer hover:border-blue-500 transition-all" role="button" tabindex="0" aria-label="View quest analytics">
                         <div class="text-sm font-bold text-blue-300 fancy-font mb-2 flex items-center justify-center">
                             <i class="ri-line-chart-line mr-2"></i> Quest Analytics <i class="ri-arrow-right-s-line ml-auto text-blue-500"></i>
                         </div>
@@ -494,7 +494,7 @@
 
                 <!-- Stats Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('life-goals');" class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform cursor-pointer">
+                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('life-goals');" class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform cursor-pointer" role="button" tabindex="0" aria-label="View Epic Quests">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-red-200 text-sm fancy-font">Epic Quests</p>
@@ -505,7 +505,7 @@
                         <div class="text-sm text-red-200 fancy-font">Legendary Goals</div>
                     </div>
                     
-                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('monthly');" class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 text-white p-6 rounded-xl shadow-2xl border-4 border-blue-700 hover:scale-105 transition-transform cursor-pointer">
+                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('monthly');" class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 text-white p-6 rounded-xl shadow-2xl border-4 border-blue-700 hover:scale-105 transition-transform cursor-pointer" role="button" tabindex="0" aria-label="View Monthly Raids">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-blue-200 text-sm fancy-font">Monthly Raids</p>
@@ -516,7 +516,7 @@
                         <div class="text-sm text-blue-200 fancy-font">This month's conquests</div>
                     </div>
                     
-                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('weekly');" class="quest-card bg-gradient-to-br from-green-900 to-green-950 text-white p-6 rounded-xl shadow-2xl border-4 border-green-700 hover:scale-105 transition-transform cursor-pointer">
+                    <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('weekly');" class="quest-card bg-gradient-to-br from-green-900 to-green-950 text-white p-6 rounded-xl shadow-2xl border-4 border-green-700 hover:scale-105 transition-transform cursor-pointer" role="button" tabindex="0" aria-label="View Weekly Battles">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-green-200 text-sm fancy-font">Weekly Battles</p>
@@ -527,7 +527,7 @@
                         <div class="text-sm text-green-200 fancy-font">This week's missions</div>
                     </div>
                     
-                    <div onclick="goalManager.switchView('daily')" class="quest-card bg-gradient-to-br from-orange-900 to-amber-950 text-white p-6 rounded-xl shadow-2xl border-4 border-orange-700 hover:scale-105 transition-transform cursor-pointer">
+                    <div onclick="goalManager.switchView('daily')" class="quest-card bg-gradient-to-br from-orange-900 to-amber-950 text-white p-6 rounded-xl shadow-2xl border-4 border-orange-700 hover:scale-105 transition-transform cursor-pointer" role="button" tabindex="0" aria-label="View daily quests">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-orange-200 text-sm fancy-font">Victories Today</p>

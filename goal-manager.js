@@ -11881,15 +11881,233 @@ class GoalManager {
             localStorage.removeItem('notificationsConfirmedWorking');
             this.notificationsEnabled = false;
             this.renderReminderSettings();
-            
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                 document.referrer.includes('android-app://');
-            if (isStandalone) {
-                this.showAchievement('⚠️ Notifications blocked at the Android level. Go to your device Settings → Apps → Life Quest Journal → Notifications and enable them.', 'daily');
-            } else {
-                this.showAchievement('⚠️ Notification failed — your browser may be blocking them', 'daily');
-            }
+            this.showNotificationSettingsGuide();
         }
+    }
+
+    showNotificationSettingsGuide() {
+        // Remove any existing guide
+        const existing = document.getElementById('notification-settings-guide');
+        if (existing) existing.remove();
+
+        // Platform detection
+        const ua = navigator.userAgent || '';
+        const isAndroid = /android/i.test(ua);
+        const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isTWA = document.referrer.includes('android-app://') || window.matchMedia('(display-mode: standalone)').matches;
+
+        let steps = '';
+        let platformLabel = '';
+
+        if (isAndroid) {
+            platformLabel = 'Android';
+            if (isTWA) {
+                steps = `
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                            <span class="text-amber-100 text-sm">Open your device <strong>Settings</strong> app</span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                            <span class="text-amber-100 text-sm">Tap <strong>Apps</strong> (or "Apps & notifications")</span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                            <span class="text-amber-100 text-sm">Find and tap <strong>Life Quest Journal</strong></span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                            <span class="text-amber-100 text-sm">Tap <strong>Notifications</strong> and toggle them <strong>ON</strong></span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                            <span class="text-amber-100 text-sm">Come back here — we'll detect the change automatically!</span>
+                        </div>
+                    </div>`;
+            } else {
+                steps = `
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                            <span class="text-amber-100 text-sm">Tap the <strong>⋮ menu</strong> (top-right) in Chrome</span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                            <span class="text-amber-100 text-sm">Tap <strong>Settings → Site settings → Notifications</strong></span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                            <span class="text-amber-100 text-sm">Find this site and change to <strong>Allow</strong></span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                            <span class="text-amber-100 text-sm">Come back here — we'll detect the change automatically!</span>
+                        </div>
+                    </div>`;
+            }
+        } else if (isIOS) {
+            platformLabel = 'iOS';
+            steps = `
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <span class="text-amber-100 text-sm">Open the <strong>Settings</strong> app on your device</span>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <span class="text-amber-100 text-sm">Scroll down and tap <strong>Safari</strong> (or your browser)</span>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <span class="text-amber-100 text-sm">Tap <strong>Notifications</strong> and find <strong>Life Quest Journal</strong></span>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                        <span class="text-amber-100 text-sm">Toggle <strong>Allow Notifications</strong> ON</span>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                        <span class="text-amber-100 text-sm">Come back here — we'll detect the change automatically!</span>
+                    </div>
+                </div>
+                <p class="text-amber-400/60 text-xs mt-3 text-center">Note: iOS requires Safari 16.4+ and the app must be added to your Home Screen.</p>`;
+        } else {
+            platformLabel = 'Desktop';
+            steps = `
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                        <span class="text-amber-100 text-sm">Click the <strong>lock icon</strong> (or tune icon) in the address bar</span>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                        <span class="text-amber-100 text-sm">Find <strong>Notifications</strong> and change to <strong>Allow</strong></span>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="bg-amber-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                        <span class="text-amber-100 text-sm">Reload this page — we'll detect the change automatically!</span>
+                    </div>
+                </div>`;
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'notification-settings-guide';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Enable notifications guide');
+        modal.className = 'bg-black/70';
+        modal.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;z-index:99999;';
+
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-4 border-amber-600 w-full max-w-sm p-5" style="max-width: min(400px, 100%);">
+                <div class="text-center mb-4">
+                    <div class="text-4xl mb-2" aria-hidden="true">🔔</div>
+                    <h3 class="text-lg font-bold text-amber-300 fancy-font">Enable Notifications</h3>
+                    <p class="text-amber-100/60 text-xs mt-1">${platformLabel} • Step-by-step</p>
+                </div>
+                ${steps}
+                <div class="mt-4 pt-3 border-t border-amber-700/40">
+                    <div id="notif-guide-status" class="flex items-center justify-center gap-2 text-sm mb-3">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span class="text-red-300 fancy-font">Waiting for permission...</span>
+                    </div>
+                    <button onclick="document.getElementById('notification-settings-guide')?.remove(); goalManager._stopPermissionWatch();"
+                        class="w-full bg-stone-700 hover:bg-stone-600 text-amber-200 px-4 py-2.5 rounded-lg text-sm font-bold fancy-font transition-all">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+                this._stopPermissionWatch();
+            }
+        });
+
+        document.body.appendChild(modal);
+
+        // Start watching for permission changes
+        this._watchForPermissionChange();
+    }
+
+    _watchForPermissionChange() {
+        // Use Permissions API to watch for real-time permission changes
+        if (navigator.permissions) {
+            navigator.permissions.query({ name: 'notifications' }).then(status => {
+                this._permissionWatchStatus = status;
+                status.onchange = () => {
+                    console.log('[Notifications] Permission state changed to:', status.state);
+                    if (status.state === 'granted') {
+                        this._onPermissionGrantedFromSettings();
+                    }
+                };
+            }).catch(() => {});
+        }
+
+        // Fallback: also poll on visibilitychange (user switches back from Settings)
+        this._permissionVisibilityHandler = () => {
+            if (document.visibilityState === 'visible') {
+                this._checkPermissionAfterReturn();
+            }
+        };
+        document.addEventListener('visibilitychange', this._permissionVisibilityHandler);
+    }
+
+    _stopPermissionWatch() {
+        if (this._permissionWatchStatus) {
+            this._permissionWatchStatus.onchange = null;
+            this._permissionWatchStatus = null;
+        }
+        if (this._permissionVisibilityHandler) {
+            document.removeEventListener('visibilitychange', this._permissionVisibilityHandler);
+            this._permissionVisibilityHandler = null;
+        }
+    }
+
+    async _checkPermissionAfterReturn() {
+        // Called when user returns to the app — re-check if permission was granted in settings
+        if ('Notification' in window && Notification.permission === 'granted') {
+            this._onPermissionGrantedFromSettings();
+            return;
+        }
+        // TWA fallback
+        if (navigator.permissions) {
+            try {
+                const status = await navigator.permissions.query({ name: 'notifications' });
+                if (status.state === 'granted') {
+                    this._onPermissionGrantedFromSettings();
+                }
+            } catch (e) {}
+        }
+    }
+
+    _onPermissionGrantedFromSettings() {
+        this._stopPermissionWatch();
+        this.notificationsEnabled = true;
+        localStorage.setItem('notificationsConfirmedWorking', 'true');
+
+        // Update the guide modal status if still open
+        const statusEl = document.getElementById('notif-guide-status');
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                <span class="text-green-300 fancy-font">Notifications enabled!</span>
+            `;
+            // Auto-close guide after a moment
+            setTimeout(() => {
+                document.getElementById('notification-settings-guide')?.remove();
+            }, 1500);
+        }
+
+        this.syncReminderSettingsToSW();
+        this.subscribeToPush();
+        this.renderReminderSettings();
+        this.showAchievement('🔔 Notifications enabled! Quest reminders are active.', 'daily');
+        this.sendConfirmationNotification();
     }
 
     showNotificationPrompt() {
@@ -12416,11 +12634,18 @@ class GoalManager {
                         </span>
                     </div>
                     ${!this.notificationsEnabled ? `
+                    ${'Notification' in window && Notification.permission === 'denied' ? `
+                    <button onclick="goalManager.showNotificationSettingsGuide()"
+                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2.5 rounded-lg text-sm fancy-font flex items-center justify-center gap-2">
+                        <i class="ri-settings-3-line"></i> How to Enable Notifications
+                    </button>
+                    <p class="text-red-400/80 text-xs mt-2 text-center">Notifications are blocked. Tap above for step-by-step instructions.</p>
+                    ` : `
                     <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
                         class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
                         Enable Notifications
                     </button>
-                    ${'Notification' in window && Notification.permission === 'denied' ? '<p class="text-red-400/80 text-xs mt-2 text-center">⚠️ Notifications were blocked. Go to your device Settings → Apps → Life Quest Journal → Notifications to re-enable.</p>' : ''}
+                    `}
                     ` : `
                     <button onclick="goalManager.sendConfirmationNotification()"
                         class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
@@ -12440,18 +12665,20 @@ class GoalManager {
             errorToast = document.createElement('div');
             errorToast.id = 'error-toast';
             errorToast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md';
+            errorToast.setAttribute('role', 'alert');
+            errorToast.setAttribute('aria-live', 'assertive');
             document.body.appendChild(errorToast);
         }
         
         errorToast.innerHTML = `
             <div class="bg-gradient-to-r from-red-900 to-red-800 text-white px-6 py-4 rounded-lg shadow-2xl border-2 border-red-500 flex items-center gap-3 animate-slide-down">
-                <i class="ri-error-warning-line text-2xl text-red-300"></i>
+                <i class="ri-error-warning-line text-2xl text-red-300" aria-hidden="true"></i>
                 <div class="flex-1">
                     <div class="font-bold fancy-font">Quest Failed!</div>
                     <div class="text-sm text-red-200">${this.escapeHTML(message)}</div>
                 </div>
-                <button onclick="this.parentElement.parentElement.remove()" class="text-red-300 hover:text-white">
-                    <i class="ri-close-line text-xl"></i>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-red-300 hover:text-white" aria-label="Dismiss error">
+                    <i class="ri-close-line text-xl" aria-hidden="true"></i>
                 </button>
             </div>
         `;
@@ -12471,18 +12698,20 @@ class GoalManager {
             lockedToast = document.createElement('div');
             lockedToast.id = 'locked-toast';
             lockedToast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md';
+            lockedToast.setAttribute('role', 'status');
+            lockedToast.setAttribute('aria-live', 'polite');
             document.body.appendChild(lockedToast);
         }
         
         lockedToast.innerHTML = `
             <div class="bg-gradient-to-r from-gray-800 to-gray-700 text-white px-6 py-4 rounded-lg shadow-2xl border-2 border-gray-500 flex items-center gap-3 animate-slide-down">
-                <i class="ri-lock-line text-2xl text-gray-300"></i>
+                <i class="ri-lock-line text-2xl text-gray-300" aria-hidden="true"></i>
                 <div class="flex-1">
                     <div class="font-bold fancy-font">Locked</div>
                     <div class="text-sm text-gray-300">${this.escapeHTML(message)}</div>
                 </div>
-                <button onclick="this.parentElement.parentElement.remove()" class="text-gray-300 hover:text-white">
-                    <i class="ri-close-line text-xl"></i>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-gray-300 hover:text-white" aria-label="Dismiss notification">
+                    <i class="ri-close-line text-xl" aria-hidden="true"></i>
                 </button>
             </div>
         `;
@@ -12502,18 +12731,20 @@ class GoalManager {
             successToast = document.createElement('div');
             successToast.id = 'success-toast';
             successToast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md';
+            successToast.setAttribute('role', 'status');
+            successToast.setAttribute('aria-live', 'polite');
             document.body.appendChild(successToast);
         }
         
         successToast.innerHTML = `
             <div class="bg-gradient-to-r from-green-900 to-green-800 text-white px-6 py-4 rounded-lg shadow-2xl border-2 border-green-500 flex items-center gap-3 animate-slide-down">
-                <i class="ri-checkbox-circle-line text-2xl text-green-300"></i>
+                <i class="ri-checkbox-circle-line text-2xl text-green-300" aria-hidden="true"></i>
                 <div class="flex-1">
                     <div class="font-bold fancy-font">Success!</div>
                     <div class="text-sm text-green-200">${this.escapeHTML(message)}</div>
                 </div>
-                <button onclick="this.parentElement.parentElement.remove()" class="text-green-300 hover:text-white">
-                    <i class="ri-close-line text-xl"></i>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-green-300 hover:text-white" aria-label="Dismiss notification">
+                    <i class="ri-close-line text-xl" aria-hidden="true"></i>
                 </button>
             </div>
         `;
@@ -12536,6 +12767,9 @@ class GoalManager {
         const modal = document.createElement('div');
         modal.id = 'custom-confirm-modal';
         modal.className = 'bg-black/70';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Confirmation');
         modal.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;z-index:99999;';
         
         // Support multi-line messages (convert \n to <br>)
@@ -12543,7 +12777,7 @@ class GoalManager {
         
         modal.innerHTML = `
             <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-4 border-amber-600 w-full max-w-sm p-6 text-center" style="max-width: min(400px, 100%);">
-                <div class="text-3xl mb-3">⚔️</div>
+                <div class="text-3xl mb-3" aria-hidden="true">⚔️</div>
                 <div class="text-amber-100 fancy-font text-base mb-6 leading-relaxed">${formattedMsg}</div>
                 <div class="flex gap-3 justify-center">
                     <button id="confirm-cancel-btn" class="flex-1 px-4 py-2.5 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded-lg font-bold fancy-font transition-all border-2 border-stone-500">Cancel</button>
@@ -12574,6 +12808,21 @@ class GoalManager {
             }
         });
         
+        // Escape key dismisses modal + focus trap
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                cleanup();
+                if (onCancel) onCancel();
+            }
+            if (e.key === 'Tab') {
+                const focusable = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        });
+        
         // Focus the confirm button
         setTimeout(() => modal.querySelector('#confirm-ok-btn')?.focus(), 50);
     }
@@ -12585,16 +12834,20 @@ class GoalManager {
         const modal = document.createElement('div');
         modal.id = 'custom-confirm-modal';
         modal.className = 'bg-black/70';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Confirm action');
         modal.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;';
         
         const formattedMsg = message.replace(/\n/g, '<br>');
         
         modal.innerHTML = `
             <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-4 border-red-600 w-full max-w-sm p-6 text-center" style="max-width: min(400px, 100%);">
-                <div class="text-3xl mb-3">⚠️</div>
+                <div class="text-3xl mb-3" aria-hidden="true">⚠️</div>
                 <div class="text-red-100 fancy-font text-base mb-4 leading-relaxed">${formattedMsg}</div>
                 <input type="text" id="prompt-input" placeholder="Type ${expectedValue} to confirm" 
-                    class="w-full bg-stone-700 text-white px-4 py-2.5 rounded-lg border-2 border-stone-500 focus:border-red-400 outline-none fancy-font text-center mb-4">
+                    class="w-full bg-stone-700 text-white px-4 py-2.5 rounded-lg border-2 border-stone-500 focus:border-red-400 outline-none fancy-font text-center mb-4"
+                    aria-label="Type ${expectedValue} to confirm">
                 <div class="flex gap-3 justify-center">
                     <button id="prompt-cancel-btn" class="flex-1 px-4 py-2.5 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded-lg font-bold fancy-font transition-all border-2 border-stone-500">Cancel</button>
                     <button id="prompt-ok-btn" class="flex-1 px-4 py-2.5 bg-red-700 hover:bg-red-600 text-white rounded-lg font-bold fancy-font transition-all border-2 border-red-500">Confirm</button>
@@ -12627,6 +12880,21 @@ class GoalManager {
             }
         });
         
+        // Escape key dismisses modal + focus trap
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                cleanup();
+                if (onCancel) onCancel();
+            }
+            if (e.key === 'Tab') {
+                const focusable = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        });
+        
         setTimeout(() => modal.querySelector('#prompt-input')?.focus(), 50);
     }
 
@@ -12636,6 +12904,9 @@ class GoalManager {
         const modal = document.createElement('div');
         modal.id = 'search-modal';
         modal.className = 'bg-black/70';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Search quests');
         modal.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:3rem 1rem 1rem;';
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         
