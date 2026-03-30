@@ -1070,8 +1070,14 @@ class GoalManager {
             if (reward.type === 'gold') this.addGold(reward.amount, 'boss');
             if (reward.type === 'xp') this.addXP(reward.amount, 'boss');
             if (reward.type === 'charges') this.attackCharges += reward.amount;
-            if (reward.type === 'theme') this.tryUnlockRandomTheme();
-            if (reward.type === 'companion') this.unlockCompanion(reward.value);
+            if (reward.type === 'theme') {
+                const result = this.tryUnlockRandomTheme();
+                if (result) reward._resolved = result;
+            }
+            if (reward.type === 'companion') {
+                const result = this.unlockCompanion(reward.value);
+                if (result) reward._resolved = result;
+            }
             if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
         });
         this._suppressRewardSounds = false;
@@ -3799,12 +3805,16 @@ class GoalManager {
         const lockedThemes = allThemes.filter(t => !this.unlockedThemes.includes(t));
         if (lockedThemes.length > 0) {
             const randomTheme = lockedThemes[Math.floor(Math.random() * lockedThemes.length)];
-            this.unlockTheme(randomTheme, this.themeDefinitions[randomTheme].name);
+            const themeName = this.themeDefinitions[randomTheme].name;
+            this.unlockTheme(randomTheme, themeName);
+            return { unlocked: true, id: randomTheme, name: themeName };
         } else if (!this.isPremium) {
             // No free themes left to unlock, give bonus gold instead
             this.goldCoins += 100;
             this.showAchievement('💰 All free themes unlocked! +100 gold bonus!', 'daily');
+            return { duplicate: true, gold: 100 };
         }
+        return { duplicate: true, gold: 0 };
     }
 
     // Treasure Chest System
@@ -3846,8 +3856,14 @@ class GoalManager {
             if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
             if (reward.type === 'charges') this.attackCharges += reward.amount;
             if (reward.type === 'shards') this.addFocusCrystalShards(reward.amount);
-            if (reward.type === 'theme') this.tryUnlockRandomTheme();
-            if (reward.type === 'companion') this.unlockCompanion(reward.value);
+            if (reward.type === 'theme') {
+                const result = this.tryUnlockRandomTheme();
+                if (result) reward._resolved = result;
+            }
+            if (reward.type === 'companion') {
+                const result = this.unlockCompanion(reward.value);
+                if (result) reward._resolved = result;
+            }
             if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
         });
         this._suppressRewardSounds = false;
@@ -4181,10 +4197,17 @@ class GoalManager {
                 return { icon: r.icon || '🔮', name: r.name || 'Crystal Shards', desc: `+${r.amount} shard${r.amount > 1 ? 's' : ''} (${this.focusCrystalShards}/10)`, rarity: r.rarity || 'common' };
             }
             if (r.type === 'theme') {
-                return { icon: '🎨', name: 'New Theme', desc: 'A new kingdom theme!', rarity: r.rarity || 'rare' };
+                if (r._resolved?.duplicate) {
+                    return { icon: '💰', name: 'Theme → Gold', desc: `All themes owned! +${r._resolved.gold} gold`, rarity: r.rarity || 'rare' };
+                }
+                const themeName = r._resolved?.name || 'Mystery Theme';
+                return { icon: '🎨', name: themeName, desc: 'New kingdom theme unlocked!', rarity: r.rarity || 'rare' };
             }
             if (r.type === 'companion') {
                 const c = companions[r.value];
+                if (r._resolved?.duplicate) {
+                    return { icon: c?.icon || '💰', name: `${r._resolved.name} → Gold`, desc: `Already owned! +${r._resolved.gold} gold`, rarity: r.rarity || c?.rarity || 'common' };
+                }
                 return { icon: c?.icon || '🐾', name: c?.name || 'Companion', desc: c?.description || 'A loyal companion', rarity: r.rarity || c?.rarity || 'common' };
             }
             if (r.type === 'spell') {
@@ -4367,6 +4390,8 @@ class GoalManager {
             const bonusGold = { common: 50, uncommon: 100, rare: 200, epic: 400, legendary: 800 }[companionData.rarity];
             this.goldCoins += bonusGold;
             if (!this._suppressRewardToasts) this.showAchievement(`Already have ${companionData.name}! +${bonusGold} Gold instead`, 'daily');
+            this.saveData();
+            return { duplicate: true, gold: bonusGold, name: companionData.name, icon: companionData.icon };
         } else {
             // New companion - add to collection
             const newCompanion = { 
@@ -4403,6 +4428,7 @@ class GoalManager {
             this.companion = this.getActiveCompanion();
         }
         this.saveData();
+        return { duplicate: false, name: companionData.name, icon: companionData.icon };
     }
     
     getActiveCompanion() {
