@@ -3808,13 +3808,12 @@ class GoalManager {
             const themeName = this.themeDefinitions[randomTheme].name;
             this.unlockTheme(randomTheme, themeName);
             return { unlocked: true, id: randomTheme, name: themeName };
-        } else if (!this.isPremium) {
-            // No free themes left to unlock, give bonus gold instead
+        } else {
+            // All available themes already unlocked, give bonus gold instead
             this.goldCoins += 100;
-            this.showAchievement('💰 All free themes unlocked! +100 gold bonus!', 'daily');
+            this.showAchievement('💰 All themes unlocked! +100 gold bonus!', 'daily');
             return { duplicate: true, gold: 100 };
         }
-        return { duplicate: true, gold: 0 };
     }
 
     // Treasure Chest System
