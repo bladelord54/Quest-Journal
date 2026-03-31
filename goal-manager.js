@@ -3496,6 +3496,9 @@ class GoalManager {
             setTimeout(() => xpBar.classList.remove('xp-gaining'), 800);
         }
         
+        // Skip toast during suppressed reward sequences (e.g. boss loot processing)
+        if (this._suppressRewardToasts) return;
+        
         // Show the floating XP toast bar
         this.showXPToast(amount, oldXP, oldLevel);
     }
@@ -3532,18 +3535,14 @@ class GoalManager {
             document.body.appendChild(toast);
         }
         
-        // Clear any pending hide timers
+        // Clear any pending hide timer
         if (this._xpToastTimer) {
             clearTimeout(this._xpToastTimer);
             this._xpToastTimer = null;
         }
-        if (this._xpToastLevelUpTimer) {
-            clearTimeout(this._xpToastLevelUpTimer);
-            this._xpToastLevelUpTimer = null;
-        }
         
-        // Reset level-up state
-        toast.classList.remove('xp-toast-levelup', 'xp-toast-hiding');
+        // Reset state
+        toast.classList.remove('xp-toast-hiding');
         
         // Set initial state
         const amountEl = toast.querySelector('.xp-toast-amount');
@@ -3568,41 +3567,14 @@ class GoalManager {
                 barFill.style.transition = 'width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
                 
                 if (willLevelUp) {
-                    // Animate to 100% first
+                    // Animate bar to 100% — the full-screen createLevelUpBurst
+                    // handles the dramatic level-up celebration, so we just fill
+                    // the bar and dismiss to avoid a lingering duplicate
                     barFill.style.width = '100%';
                     xpText.textContent = `${xpNeededForLevel} / ${xpNeededForLevel} XP`;
                     
-                    // After bar fills, trigger level-up flash
-                    this._xpToastLevelUpTimer = setTimeout(() => {
-                        toast.classList.add('xp-toast-levelup');
-                        const newLevel = oldLevel + 1;
-                        const newTitle = titles[Math.min(newLevel - 1, titles.length - 1)];
-                        amountEl.textContent = `🎉 LEVEL UP!`;
-                        levelEl.textContent = `Lv ${newLevel} · ${newTitle}`;
-                        
-                        // Show new level's progress
-                        const newLevelXP = this.getTotalXPForLevel(newLevel);
-                        const newNextLevelXP = this.getTotalXPForLevel(newLevel + 1);
-                        const newNeeded = newNextLevelXP - newLevelXP;
-                        const newXP = oldXP + amount;
-                        const xpIntoNewLevel = Math.max(0, newXP - newLevelXP);
-                        const newLevelProgress = Math.min(100, (xpIntoNewLevel / newNeeded) * 100);
-                        
-                        // Reset bar and animate to new level progress
-                        barFill.style.transition = 'none';
-                        barFill.style.width = '0%';
-                        
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                barFill.style.transition = 'width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                                barFill.style.width = `${newLevelProgress}%`;
-                                xpText.textContent = `${xpIntoNewLevel} / ${newNeeded} XP`;
-                            });
-                        });
-                    }, 900);
-                    
-                    // Hide after level-up animation completes
-                    this._xpToastTimer = setTimeout(() => this._hideXPToast(), 4000);
+                    // Dismiss before the full-screen level-up animation takes over
+                    this._xpToastTimer = setTimeout(() => this._hideXPToast(), 1200);
                 } else {
                     // Normal XP gain — just animate to new progress
                     barFill.style.width = `${newProgress}%`;
@@ -3618,12 +3590,14 @@ class GoalManager {
     _hideXPToast() {
         const toast = document.getElementById('xp-toast');
         if (!toast) return;
+        // Clear any pending timers
+        if (this._xpToastTimer) {
+            clearTimeout(this._xpToastTimer);
+            this._xpToastTimer = null;
+        }
         toast.classList.remove('xp-toast-visible');
         toast.classList.add('xp-toast-hiding');
-        // Clean up after transition
-        setTimeout(() => {
-            toast.classList.remove('xp-toast-hiding', 'xp-toast-levelup');
-        }, 500);
+        setTimeout(() => toast.classList.remove('xp-toast-hiding'), 500);
     }
 
     // Gold Coin System
@@ -6811,6 +6785,9 @@ class GoalManager {
     }
 
     createLevelUpBurst(level, title) {
+        // Dismiss XP toast so it doesn't linger behind the full-screen celebration
+        this._hideXPToast();
+        
         // 1. Full-screen golden flash
         const flash = document.createElement('div');
         flash.className = 'levelup-flash';
@@ -11009,6 +10986,9 @@ class GoalManager {
     
     // Old boss system code removed - new system uses renderBossArena/renderBossCard above
     celebrateBossDefeat(boss, bossIcon, xpReward, goldReward) {
+        // Dismiss XP toast so it doesn't linger behind the full-screen celebration
+        this._hideXPToast();
+        
         // 1. Screen shake
         document.body.classList.add('boss-defeat-shake');
         setTimeout(() => document.body.classList.remove('boss-defeat-shake'), 600);
