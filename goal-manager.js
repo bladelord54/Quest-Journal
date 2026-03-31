@@ -4715,7 +4715,7 @@ class GoalManager {
         const today = this.getTodayDateString();
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayStr = this.dateToLocalString(yesterday);
         
         // Check if completed today or yesterday (streak is active)
         if (!sortedHistory.includes(today) && !sortedHistory.includes(yesterdayStr)) {
@@ -4729,7 +4729,7 @@ class GoalManager {
         
         // Start from today and go backwards
         for (let i = 0; i < 365; i++) { // Max 365 day streak check
-            const dateStr = currentDate.toISOString().split('T')[0];
+            const dateStr = this.dateToLocalString(currentDate);
             
             if (sortedHistory.includes(dateStr)) {
                 streak++;
@@ -5477,7 +5477,7 @@ class GoalManager {
     // Cached date helpers - call refreshDateCache() at start of render cycle
     refreshDateCache() {
         const now = new Date();
-        this._cachedToday = now.toISOString().split('T')[0];
+        this._cachedToday = this.getTodayDateString();
         this._cachedNow = now;
     }
     
@@ -5686,7 +5686,7 @@ class GoalManager {
         const history = habit.completionHistory || [];
         const historySet = new Set(history);
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const todayStr = this.getTodayDateString();
         const daysToShow = 84; // 12 weeks
         const weeksToShow = 12;
         
@@ -5695,7 +5695,7 @@ class GoalManager {
         for (let i = daysToShow - 1; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = this.dateToLocalString(date);
             const dayOfWeek = date.getDay();
             days.push({
                 date: dateStr,
@@ -7693,11 +7693,13 @@ class GoalManager {
 
     getTodayDateString() {
         // Get current date in the selected timezone
-        const now = new Date();
+        return this.dateToLocalString(new Date());
+    }
+
+    dateToLocalString(date) {
+        // Convert any Date object to YYYY-MM-DD in the user's timezone
         const offset = this.getTimezoneOffset();
-        
-        // Get UTC time in milliseconds and add timezone offset
-        const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
         const timezoneTime = new Date(utcTime + (offset * 3600000));
         
         const year = timezoneTime.getFullYear();
@@ -10392,7 +10394,7 @@ class GoalManager {
             for (let day = 0; day < 7; day++) {
                 const date = new Date(today);
                 date.setDate(date.getDate() - ((11 - week) * 7 + (6 - day)));
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = this.dateToLocalString(date);
                 const count = completionData[dateStr] || 0;
                 
                 let color = 'bg-stone-700';
@@ -10433,7 +10435,7 @@ class GoalManager {
         for (let i = days - 1; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = this.dateToLocalString(date);
             const xp = dailyXP[dateStr] || 0;
             const height = maxXP > 0 ? (xp / maxXP) * 100 : 0;
             const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
@@ -12309,7 +12311,7 @@ class GoalManager {
         
         const now = new Date();
         const currentMins = now.getHours() * 60 + now.getMinutes();
-        const today = now.toISOString().split('T')[0];
+        const today = this.getTodayDateString();
         
         // Check what was already sent today (stored in localStorage)
         let sentData;
@@ -12527,7 +12529,7 @@ class GoalManager {
     }
     
     _markReminderSent(type) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = this.getTodayDateString();
         let sentData;
         try { sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}'); } catch (e) { sentData = {}; }
         if (sentData._date !== today) {
