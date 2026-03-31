@@ -295,6 +295,119 @@ button:active {
     animation: fadeIn 0.2s ease-out;
 }
 
+/* Floating XP Toast Bar */
+.xp-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    z-index: 9999;
+    width: min(360px, calc(100vw - 32px));
+    background: linear-gradient(135deg, rgba(30, 20, 50, 0.95), rgba(45, 25, 70, 0.95));
+    border: 1px solid rgba(147, 51, 234, 0.5);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(147, 51, 234, 0.2);
+    backdrop-filter: blur(12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.xp-toast.xp-toast-visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.xp-toast.xp-toast-hiding {
+    transform: translateX(-50%) translateY(120px);
+    opacity: 0;
+}
+
+.xp-toast-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.xp-toast-amount {
+    font-size: 15px;
+    font-weight: 700;
+    color: #a78bfa;
+    text-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+}
+
+.xp-toast-level {
+    font-size: 12px;
+    font-weight: 600;
+    color: #d4d4d8;
+}
+
+.xp-toast-bar-bg {
+    width: 100%;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+.xp-toast-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa, #c084fc);
+    border-radius: 5px;
+    transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.5);
+}
+
+.xp-toast-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    animation: xpShimmer 1.5s ease-in-out;
+}
+
+@keyframes xpShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.xp-toast-xp-text {
+    font-size: 11px;
+    color: #a1a1aa;
+    margin-top: 6px;
+    text-align: right;
+}
+
+.xp-toast-levelup {
+    animation: xpLevelUpPulse 0.6s ease-out;
+    border-color: rgba(250, 204, 21, 0.7) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 30px rgba(250, 204, 21, 0.3) !important;
+}
+
+.xp-toast-levelup .xp-toast-bar-fill {
+    background: linear-gradient(90deg, #eab308, #facc15, #fde047) !important;
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.6) !important;
+}
+
+.xp-toast-levelup .xp-toast-amount {
+    color: #facc15 !important;
+    text-shadow: 0 0 10px rgba(250, 204, 21, 0.5) !important;
+}
+
+@keyframes xpLevelUpPulse {
+    0% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.05); }
+    100% { transform: translateX(-50%) scale(1); }
+}
+
 /* Player Panel */
 #player-panel-toggle {
     transition: opacity 0.3s ease-in-out;

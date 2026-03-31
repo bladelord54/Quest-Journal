@@ -3469,11 +3469,13 @@ class GoalManager {
         // Grant companion XP (Bonding enchantment doubles it)
         this.grantCompanionXP(finalXP);
         
+        const oldXP = this.xp;
+        const oldLevel = this.level;
         this.xp += finalXP;
         const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
         
-        // Trigger XP bar animation
-        this.animateXPGain(finalXP);
+        // Trigger floating XP toast bar animation
+        this.animateXPGain(finalXP, oldXP, oldLevel);
         
         if (this.xp >= xpForNextLevel) {
             this.levelUp();
@@ -3485,42 +3487,143 @@ class GoalManager {
         this.saveData();
     }
     
-    // XP Bar Animation
-    animateXPGain(amount) {
+    // Floating XP Toast Bar
+    animateXPGain(amount, oldXP, oldLevel) {
+        // Also update the player panel XP bar if visible
         const xpBar = document.getElementById('xp-progress');
         if (xpBar) {
-            // Add glow and shimmer animation class
             xpBar.classList.add('xp-gaining');
-            
-            // Remove class after animation completes
-            setTimeout(() => {
-                xpBar.classList.remove('xp-gaining');
-            }, 800);
+            setTimeout(() => xpBar.classList.remove('xp-gaining'), 800);
         }
         
-        // Show floating XP text
-        this.showFloatingXP(amount);
+        // Show the floating XP toast bar
+        this.showXPToast(amount, oldXP, oldLevel);
     }
     
-    showFloatingXP(amount) {
-        // Get XP bar position for floating text
-        const xpBar = document.getElementById('xp-progress');
-        if (!xpBar) return;
+    showXPToast(amount, oldXP, oldLevel) {
+        const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
+        const title = titles[Math.min(oldLevel - 1, titles.length - 1)];
         
-        const rect = xpBar.getBoundingClientRect();
+        const currentLevelXP = this.getTotalXPForLevel(oldLevel);
+        const nextLevelXP = this.getTotalXPForLevel(oldLevel + 1);
+        const xpNeededForLevel = nextLevelXP - currentLevelXP;
         
-        const floatText = document.createElement('div');
-        floatText.className = 'xp-gain-float';
-        floatText.textContent = `+${amount} XP`;
-        floatText.style.left = `${rect.left + rect.width / 2}px`;
-        floatText.style.top = `${rect.top}px`;
+        const oldProgress = Math.max(0, Math.min(100, ((oldXP - currentLevelXP) / xpNeededForLevel) * 100));
+        const newXPIntoLevel = (oldXP + amount) - currentLevelXP;
+        const newProgress = Math.max(0, Math.min(100, (newXPIntoLevel / xpNeededForLevel) * 100));
+        const willLevelUp = (oldXP + amount) >= nextLevelXP;
         
-        document.body.appendChild(floatText);
+        // Get or create toast element
+        let toast = document.getElementById('xp-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'xp-toast';
+            toast.className = 'xp-toast';
+            toast.innerHTML = `
+                <div class="xp-toast-header">
+                    <span class="xp-toast-amount"></span>
+                    <span class="xp-toast-level"></span>
+                </div>
+                <div class="xp-toast-bar-bg">
+                    <div class="xp-toast-bar-fill"></div>
+                </div>
+                <div class="xp-toast-xp-text"></div>
+            `;
+            document.body.appendChild(toast);
+        }
         
-        // Remove after animation
+        // Clear any pending hide timers
+        if (this._xpToastTimer) {
+            clearTimeout(this._xpToastTimer);
+            this._xpToastTimer = null;
+        }
+        if (this._xpToastLevelUpTimer) {
+            clearTimeout(this._xpToastLevelUpTimer);
+            this._xpToastLevelUpTimer = null;
+        }
+        
+        // Reset level-up state
+        toast.classList.remove('xp-toast-levelup', 'xp-toast-hiding');
+        
+        // Set initial state
+        const amountEl = toast.querySelector('.xp-toast-amount');
+        const levelEl = toast.querySelector('.xp-toast-level');
+        const barFill = toast.querySelector('.xp-toast-bar-fill');
+        const xpText = toast.querySelector('.xp-toast-xp-text');
+        
+        amountEl.textContent = `⚔️ +${amount} XP`;
+        levelEl.textContent = `Lv ${oldLevel} · ${title}`;
+        xpText.textContent = `${Math.max(0, oldXP - currentLevelXP)} / ${xpNeededForLevel} XP`;
+        
+        // Set bar to old progress (no transition initially)
+        barFill.style.transition = 'none';
+        barFill.style.width = `${oldProgress}%`;
+        
+        // Show the toast
+        toast.classList.add('xp-toast-visible');
+        
+        // Animate the bar fill after a brief delay
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                barFill.style.transition = 'width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                
+                if (willLevelUp) {
+                    // Animate to 100% first
+                    barFill.style.width = '100%';
+                    xpText.textContent = `${xpNeededForLevel} / ${xpNeededForLevel} XP`;
+                    
+                    // After bar fills, trigger level-up flash
+                    this._xpToastLevelUpTimer = setTimeout(() => {
+                        toast.classList.add('xp-toast-levelup');
+                        const newLevel = oldLevel + 1;
+                        const newTitle = titles[Math.min(newLevel - 1, titles.length - 1)];
+                        amountEl.textContent = `🎉 LEVEL UP!`;
+                        levelEl.textContent = `Lv ${newLevel} · ${newTitle}`;
+                        
+                        // Show new level's progress
+                        const newLevelXP = this.getTotalXPForLevel(newLevel);
+                        const newNextLevelXP = this.getTotalXPForLevel(newLevel + 1);
+                        const newNeeded = newNextLevelXP - newLevelXP;
+                        const newXP = oldXP + amount;
+                        const xpIntoNewLevel = Math.max(0, newXP - newLevelXP);
+                        const newLevelProgress = Math.min(100, (xpIntoNewLevel / newNeeded) * 100);
+                        
+                        // Reset bar and animate to new level progress
+                        barFill.style.transition = 'none';
+                        barFill.style.width = '0%';
+                        
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                barFill.style.transition = 'width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                                barFill.style.width = `${newLevelProgress}%`;
+                                xpText.textContent = `${xpIntoNewLevel} / ${newNeeded} XP`;
+                            });
+                        });
+                    }, 900);
+                    
+                    // Hide after level-up animation completes
+                    this._xpToastTimer = setTimeout(() => this._hideXPToast(), 4000);
+                } else {
+                    // Normal XP gain — just animate to new progress
+                    barFill.style.width = `${newProgress}%`;
+                    xpText.textContent = `${Math.max(0, Math.round(newXPIntoLevel))} / ${xpNeededForLevel} XP`;
+                    
+                    // Hide after delay
+                    this._xpToastTimer = setTimeout(() => this._hideXPToast(), 3000);
+                }
+            });
+        });
+    }
+    
+    _hideXPToast() {
+        const toast = document.getElementById('xp-toast');
+        if (!toast) return;
+        toast.classList.remove('xp-toast-visible');
+        toast.classList.add('xp-toast-hiding');
+        // Clean up after transition
         setTimeout(() => {
-            floatText.remove();
-        }, 1500);
+            toast.classList.remove('xp-toast-hiding', 'xp-toast-levelup');
+        }, 500);
     }
 
     // Gold Coin System
