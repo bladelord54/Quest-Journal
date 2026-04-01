@@ -1056,18 +1056,17 @@ class GoalManager {
         const xpReward = Math.round(boss.rewards.xp * streakMultiplier);
         const goldReward = Math.round(boss.rewards.gold * streakMultiplier);
         
-        const xpSource = bossType === 'monthly' ? 'monthly' : bossType === 'daily' ? 'daily' : 'weekly';
-        this.addXP(xpReward, xpSource);
-        this._suppressRewardSounds = true;
-        this.addGold(goldReward, 'boss');
-        this._suppressRewardSounds = false;
-        
-        // Generate bonus loot drops
-        const loot = this.generateBossLoot(bossType);
-        
-        // Apply loot rewards
+        // Suppress ALL toasts and sounds during reward processing
+        // to prevent notification overlap and sound delays
         this._suppressRewardSounds = true;
         this._suppressRewardToasts = true;
+        
+        const xpSource = bossType === 'monthly' ? 'monthly' : bossType === 'daily' ? 'daily' : 'weekly';
+        this.addXP(xpReward, xpSource);
+        this.addGold(goldReward, 'boss');
+        
+        // Generate and apply bonus loot drops
+        const loot = this.generateBossLoot(bossType);
         loot.forEach(reward => {
             if (reward.type === 'gold') this.addGold(reward.amount, 'boss');
             if (reward.type === 'xp') this.addXP(reward.amount, 'boss');
@@ -1082,6 +1081,7 @@ class GoalManager {
             }
             if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.charges);
         });
+        
         this._suppressRewardSounds = false;
         this._suppressRewardToasts = false;
         
@@ -1101,8 +1101,12 @@ class GoalManager {
         const streakText = streak > 1 ? ` (x${streak} streak!)` : '';
         this.addBossLog(`🏆 ${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold${streakText}`);
         
-        // Play boss defeated sound and celebration
-        if (window.audioManager) window.audioManager.playBossDefeated();
+        // Clear any queued sounds so boss defeated sound plays immediately
+        if (window.audioManager) {
+            window.audioManager._soundQueue = [];
+            window.audioManager._soundPlaying = false;
+            window.audioManager.playBossDefeated();
+        }
         this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward);
         this.createConfetti();
         
@@ -1114,9 +1118,7 @@ class GoalManager {
             }, 3500);
         }
         
-        // Check badges/titles
-        this.checkBadges();
-        this.checkTitleUnlocks();
+        // Note: checkBadges/checkTitleUnlocks already ran inside addXP
         
         this.saveData();
         this.renderBossBattles();
@@ -2200,6 +2202,7 @@ class GoalManager {
     }
 
     showAchievement(text, level = 'daily', playSound = true) {
+        if (this._suppressRewardToasts) return;
         if (this._suppressRewardSounds) playSound = false;
         // For backwards compatibility, map old calls to new toast system
         // Determine notification type based on text content
@@ -3647,7 +3650,14 @@ class GoalManager {
         if (['weekly', 'monthly', 'yearly', 'life'].includes(source)) {
             this.showLootDrop(rarity, reward);
             this.addGold(reward.coins, 'loot');
-            if (reward.xpBonus) this.addXP(reward.xpBonus, 'loot');
+            // Add loot bonus XP directly (not through addXP) to avoid
+            // recursive notification chain — the loot toast already shows the XP
+            if (reward.xpBonus) {
+                this.xp += reward.xpBonus;
+                this.grantCompanionXP(reward.xpBonus);
+                const xpForNext = this.getTotalXPForLevel(this.level + 1);
+                if (this.xp >= xpForNext) this.levelUp();
+            }
             if (reward.special === 'theme_unlock') this.tryUnlockRandomTheme();
             if (reward.special === 'ability_unlock') {
                 // Give a random spell as the "ability" reward
