@@ -3620,7 +3620,11 @@ class GoalManager {
         const finalGold = Math.floor(amount * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         this.goldCoins += finalGold;
-        if (!this._suppressRewardSounds && window.audioManager) window.audioManager.playGoldEarned();
+        // Skip gold sound for routine task/habit completions (they have their own sound)
+        const quietSources = ['daily', 'habit', 'weekly', 'monthly'];
+        if (!this._suppressRewardSounds && !quietSources.includes(source) && window.audioManager) {
+            window.audioManager.playGoldEarned();
+        }
         this.checkRewardUnlocks();
     }
 
