@@ -4725,6 +4725,7 @@ class GoalManager {
                 
                 // Add XP for habit
                 this.addXP(10, 'habit');
+                this.addGold(3, 'habit');
                 this.grantAttackCharge(1, 'habit');
                 this.checkSerenityBonus();
                 
@@ -5149,9 +5150,10 @@ class GoalManager {
             if (task.completed && !task.rewarded) {
                 task.rewarded = true;
                 this.addXP(15, 'daily');
+                this.addGold(5, 'daily');
                 this.grantAttackCharge(1, 'task');
                 this.checkSerenityBonus();
-                this.showAchievement('Quest Task Completed! +15 XP ⚔️', 'daily', false);
+                this.showAchievement('Quest Task Completed! +15 XP, +5 Gold ⚔️', 'daily', false);
                 if (window.audioManager) window.audioManager.playDailyAchievement();
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
@@ -5178,9 +5180,10 @@ class GoalManager {
             if (goal.completed && !goal.rewarded) {
                 goal.rewarded = true;
                 this.addXP(50, 'weekly');
+                this.addGold(15, 'weekly');
                 this.grantAttackCharge(2, 'weekly');
                 this.checkSerenityBonus();
-                this.showAchievement('Weekly Quest Conquered! +50 XP 🛡️', 'weekly');
+                this.showAchievement('Weekly Quest Conquered! +50 XP, +15 Gold 🛡️', 'weekly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
             }
@@ -5197,9 +5200,10 @@ class GoalManager {
             if (goal.completed && !goal.rewarded) {
                 goal.rewarded = true;
                 this.addXP(200, 'monthly');
+                this.addGold(50, 'monthly');
                 this.grantAttackCharge(3, 'monthly');
                 this.checkSerenityBonus();
-                this.showAchievement('Monthly Victory Achieved! +200 XP 👑', 'monthly');
+                this.showAchievement('Monthly Victory Achieved! +200 XP, +50 Gold 👑', 'monthly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
             }
@@ -13778,10 +13782,10 @@ class GoalManager {
         }
         
         // Grant starter gold to help new users reach their first treasure chest
-        this.goldCoins += 100;
+        this.goldCoins += 150;
         
         this.saveData();
-        this.showAchievement('🎓 Tutorial completed! +100 Gold starter bonus! You\'re ready to conquer your quests!', 'weekly');
+        this.showAchievement('🎓 Tutorial completed! +150 Gold starter bonus! You\'re ready to conquer your quests!', 'weekly');
         
         // Show starter tasks modal after tutorial
         setTimeout(() => this.showStarterTasksModal(), 500);
