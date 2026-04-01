@@ -8926,6 +8926,7 @@ class GoalManager {
     async initiatePremiumPurchase() {
         // Check if Digital Goods API is available (TWA on Android)
         if ('getDigitalGoodsService' in window) {
+            this.showAchievement('🔍 Digital Goods API found, initiating...', 'daily');
             try {
                 await this.purchaseWithDigitalGoods();
                 return;
@@ -8952,10 +8953,11 @@ class GoalManager {
                 this.showWebPurchaseFallback();
             }
         } else if (window.Android && window.Android.purchasePremium) {
-            // Legacy Android bridge fallback
+            this.showAchievement('🔍 Using Android bridge...', 'daily');
             window.Android.purchasePremium();
         } else {
-            // Web fallback - show restore option for users who purchased on Android
+            // No billing API available
+            this.showAchievement(`⚠️ No billing API detected. Cache: v318`, 'daily');
             this.showWebPurchaseFallback();
         }
     }
