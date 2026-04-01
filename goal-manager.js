@@ -8948,6 +8948,7 @@ class GoalManager {
                 // All other failures (unsupported context, service unavailable, 
                 // billing not supported, etc.) - fall through to web fallback
                 console.warn('Digital Goods not available, showing fallback. Reason:', error.message);
+                this.showAchievement(`⚠️ Billing error: ${error.message}`, 'daily');
                 this.showWebPurchaseFallback();
             }
         } else if (window.Android && window.Android.purchasePremium) {
