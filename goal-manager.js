@@ -1110,12 +1110,24 @@ class GoalManager {
         this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward);
         this.createConfetti();
         
-        // Show loot panel after celebration finishes
+        // Show deferred level-up celebration after boss celebration finishes
+        const hadPendingLevelUp = !!this._pendingLevelUp;
+        if (this._pendingLevelUp) {
+            const pending = this._pendingLevelUp;
+            this._pendingLevelUp = null;
+            setTimeout(() => {
+                if (window.audioManager) window.audioManager.playLevelUp();
+                this.createLevelUpBurst(pending.level, pending.title);
+            }, 3500);
+        }
+        
+        // Show loot panel after celebrations finish (delay further if level-up plays too)
         if (loot.length > 0) {
             const bossLootType = `boss_${bossType}`;
+            const lootDelay = hadPendingLevelUp ? 6000 : 3500;
             setTimeout(() => {
                 this.showLootPanel(bossLootType, loot);
-            }, 3500);
+            }, lootDelay);
         }
         
         // Note: checkBadges/checkTitleUnlocks already ran inside addXP
@@ -4623,13 +4635,13 @@ class GoalManager {
         const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
         const title = titles[Math.min(this.level - 1, titles.length - 1)];
         
-        // Play level up sound
-        if (window.audioManager) {
-            window.audioManager.playLevelUp();
+        // Defer level-up visuals if inside a boss defeat sequence
+        if (this._suppressRewardToasts) {
+            this._pendingLevelUp = { level: this.level, title };
+        } else {
+            if (window.audioManager) window.audioManager.playLevelUp();
+            this.createLevelUpBurst(this.level, title);
         }
-        
-        // Epic celebration animation!
-        this.createLevelUpBurst(this.level, title);
         
         this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐', true);
         
@@ -11042,7 +11054,7 @@ class GoalManager {
         // 6. Boss name below
         const nameEl = document.createElement('div');
         nameEl.className = 'boss-defeat-name';
-        nameEl.textContent = boss.title;
+        nameEl.textContent = boss.name;
         document.body.appendChild(nameEl);
         setTimeout(() => nameEl.remove(), 3000);
 
