@@ -22,7 +22,6 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;700&family=Uncial+Antiqua&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="dark-mode.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
     <link rel="stylesheet" href="themes.css">
@@ -434,14 +433,9 @@
                         <button onclick="goalManager.openSearchModal(); goalManager.togglePlayerPanel();" class="w-full text-sm bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-2.5 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-indigo-500 flex items-center justify-center">
                             <i class="ri-search-line mr-2"></i> Search Quests
                         </button>
-                        <div class="flex gap-2">
-                            <button onclick="goalManager.switchView('tools'); goalManager.togglePlayerPanel();" class="flex-1 text-sm bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-500">
-                                ⚙️ Settings
-                            </button>
-                            <button onclick="goalManager.toggleDarkMode()" id="theme-toggle" class="flex-1 text-sm bg-stone-700 hover:bg-stone-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-stone-500">
-                                🌙 Theme
-                            </button>
-                        </div>
+                        <button onclick="goalManager.switchView('tools'); goalManager.togglePlayerPanel();" class="w-full text-sm bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-500">
+                            ⚙️ Settings
+                        </button>
                     </div>
                 </div>
             </div>

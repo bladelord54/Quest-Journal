@@ -99,14 +99,35 @@
 
 ---
 
-## 5. Integrations
+## 5. Cloud Sync & Backup
+
+**Concept:** Allow users to back up and sync their data across devices, eliminating the single-device localStorage limitation.
+
+### Options (in order of complexity)
+- **Manual Export/Import** (simplest) — Export data as a JSON file to device storage or Google Drive. Import on another device. No server needed.
+- **Firebase Firestore** — Real-time cloud sync with Google sign-in. Data stored per-user in the cloud. Enables cross-device play.
+- **Supabase** — Open-source Firebase alternative with PostgreSQL. Self-hostable.
+
+### What syncs
+- All tasks, habits, goals, streaks
+- Player state: level, XP, gold, crystals, inventory, companions, themes
+- Premium status
+- Settings & preferences
+
+### Premium Angle
+- Free users: Manual export/import
+- Premium users: Automatic cloud sync
+
+---
+
+## 6. Integrations
 
 - Calendar/scheduling integration (Google Calendar, etc.)
 - Analytics export (PDF reports)
 
 ---
 
-## 6. Extended Title Tiers
+## 7. Extended Title Tiers
 
 Current titles cap at level 10 ("Legend"). Add more tiers:
 - Level 12: Mythic
@@ -119,9 +140,26 @@ Current titles cap at level 10 ("Legend"). Add more tiers:
 
 ---
 
-## 7. Native Mobile App
+## 8. Native Mobile App (Capacitor Migration)
 
-Consider building a native Android/iOS app if the PWA/TWA approach hits limitations.
+**Recommended path:** Wrap existing PWA in Capacitor for native Android + iOS support.
+
+### Benefits over current TWA
+- Removes Chrome dependency (notifications, background tasks use native OS APIs)
+- iOS App Store support
+- Native in-app purchases (no Digital Goods API workaround)
+- Better offline support and background sync
+- Access to native device APIs (haptics, biometrics, etc.)
+
+### Migration steps
+1. Initialize Capacitor project wrapping existing web code
+2. Replace service worker notifications with `@capacitor/local-notifications`
+3. Replace Digital Goods API with `@capawesome/capacitor-in-app-purchases`
+4. Replace localStorage with `@capacitor/preferences` (or keep localStorage — Capacitor supports it)
+5. Build & sign for Android (.apk/.aab) and iOS (.ipa)
+6. Publish to both Play Store and App Store
+
+### Timeline estimate: 1-3 days for basic migration, 1-2 weeks for full native feature parity
 
 ---
 

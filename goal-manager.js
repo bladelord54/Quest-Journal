@@ -16,7 +16,6 @@ class GoalManager {
         this.xp = 0;
         this.level = 1;
         this.badges = [];
-        this.darkMode = false;
         this.actionHistory = [];
         this.historyIndex = -1;
         this.archivedGoals = [];
@@ -6913,37 +6912,9 @@ class GoalManager {
         }
     }
 
-    // Dark Mode & Theme System
+    // Theme System
     loadTheme() {
-        const savedTheme = localStorage.getItem('questTheme');
-        this.darkMode = savedTheme === 'dark';
-        this.applyTheme();
         this.applyColorTheme();
-    }
-
-    toggleDarkMode() {
-        this.darkMode = !this.darkMode;
-        if (this.darkMode) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-        }
-        this.saveData();
-        
-        // Update toggle button text
-        const toggleBtn = document.getElementById('theme-toggle');
-        if (toggleBtn) {
-            toggleBtn.innerHTML = this.darkMode ? '☀️' : '🌙';
-        }
-    }
-
-    applyTheme() {
-        const body = document.body;
-        if (this.darkMode) {
-            body.classList.add('dark-mode');
-        } else {
-            body.classList.remove('dark-mode');
-        }
     }
 
     // Color Theme System
