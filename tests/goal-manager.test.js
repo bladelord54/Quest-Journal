@@ -188,14 +188,14 @@ function createTestManager(overrides = {}) {
     gm.progressiveUnlockInitialized = false;
     gm.featureUnlockLevels = {
         dashboard: 1, goals: 1, daily: 1, calendar: 1, tools: 1,
-        rewards: 2, arcane: 3, focus: 5, bossbattles: 6, questchains: 8
+        rewards: 2, arcane: 3, bossbattles: 4, focus: 5, questchains: 6
     };
     gm.goalTabUnlockLevels = {
-        weekly: 4, sidequests: 4, monthly: 7, yearly: 9, 'life-goals': 9
+        weekly: 6, sidequests: 6, monthly: 7, yearly: 9, 'life-goals': 9
     };
     gm.navUnlockLevels = { treasury: 2, 'arcane-powers': 3, 'quest-log': 4, focus: 5, calendar: 1 };
     gm.arcaneTabUnlockLevels = { spellbook: 3, enchantments: 5 };
-    gm.questLogTabUnlockLevels = { weekly: 4, side: 4, monthly: 7, yearly: 9, life: 9, chains: 8 };
+    gm.questLogTabUnlockLevels = { weekly: 6, side: 6, monthly: 7, yearly: 9, life: 9, chains: 6 };
     gm.lastVisitDate = null;
     gm.lastWeekNumber = null;
     gm.lastMonth = null;

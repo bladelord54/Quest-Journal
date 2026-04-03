@@ -115,12 +115,12 @@ class GoalManager {
             dashboard: 1, goals: 1, daily: 1, calendar: 1, tools: 1,
             rewards: 2,
             arcane: 3,
+            bossbattles: 4,
             focus: 5,
-            bossbattles: 6,
-            questchains: 8
+            questchains: 6
         };
         this.goalTabUnlockLevels = {
-            weekly: 4, sidequests: 4,
+            weekly: 6, sidequests: 6,
             monthly: 7,
             yearly: 9, 'life-goals': 9
         };
@@ -131,11 +131,10 @@ class GoalManager {
         this.featureUnlockTutorials = {
             2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
             3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
-            4: { title: '⚔️ Weekly Battles & Side Quests!', text: "Your Quest Log now has Weekly Battles and Side Quests! Set weekly goals and track flexible tasks without deadlines." },
+            4: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
             5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
-            6: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
-            7: { title: '📖 Monthly Raids & Kingdom Themes!', text: "Plan bigger with Monthly Raids! You've also unlocked the Forest Kingdom theme — customize your journal's look in the Treasury." },
-            8: { title: '🔗 Quest Chains Unlocked!', text: "Chain multiple tasks into epic multi-step Quest Chains for massive bonus rewards! Check them out in Arcane Powers." },
+            6: { title: '⚔️ New Quest Types & Chains!', text: "Your Quest Log now has Weekly Battles and Side Quests! Plus, Quest Chains let you link tasks into epic multi-step adventures for bonus rewards. You've also unlocked the Forest Kingdom theme!" },
+            7: { title: '📖 Monthly Raids Unlocked!', text: "Plan bigger with Monthly Raids! Set monthly goals and conquer larger challenges over longer timeframes." },
             9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
             10: { title: '👑 Legend Status Achieved!', text: "You've reached Level 10 — the rank of Legend! All features are now unlocked. Your dedication is truly epic!" }
         };
