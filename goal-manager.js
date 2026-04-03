@@ -157,7 +157,11 @@ class GoalManager {
         
         this.loadData();
         
+        this.checkNotificationPermission();
+        this.checkHabitReset();
+        
         // Progressive unlock: existing users get past tutorials auto-dismissed
+        // (must run AFTER checkHabitReset so saveData doesn't clobber lastHabitReset)
         if (!this.progressiveUnlockInitialized) {
             this.progressiveUnlockInitialized = true;
             if (this.level > 1) {
@@ -169,9 +173,6 @@ class GoalManager {
             }
             this.saveData();
         }
-        
-        this.checkNotificationPermission();
-        this.checkHabitReset();
         this.generateBosses(); // Generate daily/weekly bosses
         this.scheduleMidnightReset(); // Schedule automatic habit reset at midnight
         this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
@@ -3174,12 +3175,14 @@ class GoalManager {
 
     // Habit/Recurring Task System
     checkHabitReset() {
-        // Flush any pending debounced save so we read fresh lastHabitReset
+        // Read lastHabitReset BEFORE flushing pending saves.
+        // _doSave() computes lastHabitReset = today at write time, so flushing
+        // first would overwrite yesterday's date and trick us into skipping reset.
+        const saved = localStorage.getItem('lifeOrganizeData');
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
             this._doSave();
         }
-        const saved = localStorage.getItem('lifeOrganizeData');
         if (saved) {
             let data;
             try { data = JSON.parse(saved); } catch (e) { console.error('checkHabitReset: corrupt data', e); return; }
