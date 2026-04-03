@@ -1697,8 +1697,14 @@ class GoalManager {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const view = link.getAttribute('data-view');
-                // Skip locked nav links
-                if (link.classList.contains('nav-locked')) return;
+                // Show toast for locked nav links
+                if (link.classList.contains('nav-locked')) {
+                    const requiredLevel = this.featureUnlockLevels[view];
+                    const featureNames = { rewards: 'Treasury & Rewards', arcane: 'Arcane Powers', focus: 'Focus Timer', bossbattles: 'Boss Battles', questchains: 'Quest Chains' };
+                    const name = featureNames[view] || view;
+                    this.showAchievement(`🔒 ${name} unlocks at Level ${requiredLevel}!`, 'locked');
+                    return;
+                }
                 this.switchView(view);
                 
                 document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -1765,7 +1771,7 @@ class GoalManager {
                 // Lock: gray out and add lock badge
                 link.classList.add('nav-locked');
                 link.style.opacity = '0.4';
-                link.style.pointerEvents = 'none';
+                link.style.cursor = 'not-allowed';
                 let badge = link.querySelector('.nav-lock-badge');
                 if (!badge) {
                     badge = document.createElement('span');
@@ -1780,7 +1786,7 @@ class GoalManager {
                 // Unlock: restore normal appearance
                 link.classList.remove('nav-locked');
                 link.style.opacity = '';
-                link.style.pointerEvents = '';
+                link.style.cursor = '';
                 const badge = link.querySelector('.nav-lock-badge');
                 if (badge) badge.remove();
                 const textSpan = link.querySelector('span.fancy-font:not(.nav-lock-badge)');
