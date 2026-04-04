@@ -1911,7 +1911,7 @@ class GoalManager {
         overlay.innerHTML = `
             <div class="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 rounded-2xl shadow-2xl border-4 border-yellow-500" id="unlock-popup-inner" style="max-width:28rem;width:100%;padding:2rem;text-align:center;transform:scale(0);transition:transform 0.5s;">
                 <div class="text-7xl mb-4 animate-bounce">${emoji}</div>
-                <h2 class="text-2xl font-bold text-yellow-300 medieval-title mb-4">${title}</h2>
+                <h2 class="text-2xl font-bold text-yellow-300 medieval-title mb-4">${title.split(' ').slice(1).join(' ')}</h2>
                 <p class="text-amber-200 fancy-font text-lg mb-6 leading-relaxed">${text}</p>
                 <button onclick="this.parentElement.parentElement.remove()" class="px-8 py-3 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white font-bold rounded-xl fancy-font text-lg border-2 border-yellow-400 transition-all hover:scale-105">
                     Awesome!
