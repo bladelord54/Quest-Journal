@@ -155,6 +155,10 @@ class GoalManager {
         this.lastLoginBonusDate = null;
         this.loginStreak = 0;
         
+        // Beginner's Blessing (2x XP & Gold for first 3 calendar days)
+        this.accountCreatedDate = null;
+        this.BEGINNER_BLESSING_DAYS = 3;
+        
         this.loadData();
         
         this.checkNotificationPermission();
@@ -361,6 +365,14 @@ class GoalManager {
                 this.lastLoginBonusDate = data.lastLoginBonusDate || null;
                 this.loginStreak = data.loginStreak || 0;
                 
+                // Beginner's Blessing
+                if (data.accountCreatedDate) {
+                    this.accountCreatedDate = data.accountCreatedDate;
+                } else {
+                    // Migration: give blessing to existing users still in early levels
+                    this.accountCreatedDate = this.level <= 3 ? this.getTodayDateString() : '2020-01-01';
+                }
+                
                 // Stats tracking for titles
                 this.chestsOpened = data.chestsOpened || 0;
                 this.bossesDefeated = data.bossesDefeated || 0;
@@ -508,6 +520,7 @@ class GoalManager {
                 monthlyBossStreak: this.monthlyBossStreak,
                 bossKillsThisMonth: this.bossKillsThisMonth,
                 bossKillsMonth: this.bossKillsMonth,
+                accountCreatedDate: this.accountCreatedDate,
                 seenFeatureTutorials: this.seenFeatureTutorials,
                 progressiveUnlockInitialized: this.progressiveUnlockInitialized
             });
@@ -3387,6 +3400,24 @@ class GoalManager {
             this.showAchievement(`☀️ Daily Login! +${totalBonus} Gold, +${xpBonus} XP`, 'daily');
         }
         
+        // Beginner's Blessing status messages
+        const blessingDays = this.getBlessingDaysRemaining();
+        if (blessingDays > 0 && blessingDays < this.BEGINNER_BLESSING_DAYS) {
+            setTimeout(() => {
+                this.showAchievement(`✨ Beginner's Blessing: 2x XP & Gold — ${blessingDays} day${blessingDays > 1 ? 's' : ''} remaining!`, 'daily');
+            }, 3000);
+        } else if (blessingDays === 0 && this.accountCreatedDate && !this._blessingExpiredNotified) {
+            const created = new Date(this.accountCreatedDate + 'T00:00:00');
+            const todayDate = new Date(today + 'T00:00:00');
+            const daysSince = Math.floor((todayDate - created) / (1000 * 60 * 60 * 24));
+            if (daysSince === this.BEGINNER_BLESSING_DAYS) {
+                this._blessingExpiredNotified = true;
+                setTimeout(() => {
+                    this.showAchievement('✨ Your Beginner\'s Blessing has ended — your adventure continues!', 'weekly');
+                }, 3000);
+            }
+        }
+        
         this.render();
     }
     
@@ -3430,6 +3461,23 @@ class GoalManager {
         });
     }
 
+    // Beginner's Blessing System
+    isBeginnerBlessingActive() {
+        if (!this.accountCreatedDate) return false;
+        const created = new Date(this.accountCreatedDate + 'T00:00:00');
+        const today = new Date(this.getTodayDateString() + 'T00:00:00');
+        const daysSinceCreation = Math.floor((today - created) / (1000 * 60 * 60 * 24));
+        return daysSinceCreation < this.BEGINNER_BLESSING_DAYS;
+    }
+    
+    getBlessingDaysRemaining() {
+        if (!this.accountCreatedDate) return 0;
+        const created = new Date(this.accountCreatedDate + 'T00:00:00');
+        const today = new Date(this.getTodayDateString() + 'T00:00:00');
+        const daysSinceCreation = Math.floor((today - created) / (1000 * 60 * 60 * 24));
+        return Math.max(0, this.BEGINNER_BLESSING_DAYS - daysSinceCreation);
+    }
+
     // XP and Leveling System
     getXPForLevel(level) {
         // Progressive scaling: Each level requires more XP
@@ -3468,6 +3516,9 @@ class GoalManager {
             this.momentumStack = 0;
         }
         
+        // Beginner's Blessing: 2x XP during first 3 days
+        const blessingMultiplier = this.isBeginnerBlessingActive() ? 2 : 1;
+        
         // Apply spell multipliers
         const xpMultiplier = this.getActiveSpellMultiplier('xp_multiplier') * this.getActiveSpellMultiplier('xp_boost');
         // Apply enchantment multipliers
@@ -3486,7 +3537,7 @@ class GoalManager {
             this.showAchievement('📋 QUEST DOUBLER! 2x XP & Gold earned!', 'weekly');
         }
         
-        const finalXP = Math.floor(amount * xpMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
+        const finalXP = Math.floor(amount * blessingMultiplier * xpMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         // Grant companion XP (Bonding enchantment doubles it)
         this.grantCompanionXP(finalXP);
@@ -3630,13 +3681,15 @@ class GoalManager {
             questDoublerMultiplier = this._questDoublerGoldPending;
             this._questDoublerGoldPending = null;
         }
+        // Beginner's Blessing: 2x Gold during first 3 days
+        const blessingMultiplier = this.isBeginnerBlessingActive() ? 2 : 1;
         // Apply spell multipliers
         const goldMultiplier = this.getActiveSpellMultiplier('gold_multiplier');
         // Apply enchantment multipliers
         const enchantmentMultiplier = this.getEnchantmentMultiplier('gold');
         // Apply companion bonus (Dragon: +15% gold)
         const companionBonus = 1 + this.getCompanionBonus('gold');
-        const finalGold = Math.floor(amount * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
+        const finalGold = Math.floor(amount * blessingMultiplier * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         this.goldCoins += finalGold;
         // Skip gold sound for routine task/habit completions (they have their own sound)
@@ -5631,6 +5684,24 @@ class GoalManager {
         if (xpToNext) xpToNext.textContent = `${nextLevelXP - this.xp} XP`;
         if (badgeCount) badgeCount.textContent = this.badges.length;
         if (goldCoins) goldCoins.textContent = this.goldCoins;
+        
+        // Beginner's Blessing indicator
+        let blessingEl = document.getElementById('blessing-indicator');
+        if (this.isBeginnerBlessingActive()) {
+            const daysLeft = this.getBlessingDaysRemaining();
+            if (!blessingEl) {
+                blessingEl = document.createElement('div');
+                blessingEl.id = 'blessing-indicator';
+                blessingEl.className = 'flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-600/30 to-amber-600/30 border border-yellow-500/50 text-xs text-yellow-300 font-bold animate-pulse cursor-help';
+                blessingEl.title = `Beginner's Blessing: 2x XP & Gold for your first ${this.BEGINNER_BLESSING_DAYS} days!`;
+                // Insert after xp-to-next or near player panel
+                const xpRow = xpToNext?.parentElement;
+                if (xpRow) xpRow.appendChild(blessingEl);
+            }
+            blessingEl.innerHTML = `<span class="text-yellow-400">✨</span> 2x Blessing <span class="text-yellow-400/70">(${daysLeft}d)</span>`;
+        } else if (blessingEl) {
+            blessingEl.remove();
+        }
         
         // Show current title/prefix
         const prefixEl = document.getElementById('current-prefix');
@@ -13782,8 +13853,21 @@ class GoalManager {
         // Grant starter gold to help new users reach their first treasure chest
         this.goldCoins += 150;
         
+        // Set account creation date for Beginner's Blessing
+        if (!this.accountCreatedDate) {
+            this.accountCreatedDate = this.getTodayDateString();
+        }
+        
         this.saveData();
         this.showAchievement('🎓 Tutorial completed! +150 Gold starter bonus! You\'re ready to conquer your quests!', 'weekly');
+        
+        // Announce Beginner's Blessing
+        setTimeout(() => {
+            this.showFeatureUnlockPopup(
+                '✨ Beginner\'s Blessing!',
+                `The gods smile upon new adventurers! You have been granted <b>2x XP & Gold</b> for your first <b>${this.BEGINNER_BLESSING_DAYS} days</b>. Complete quests to level up fast and unlock powerful features!`
+            );
+        }, 4000);
         
         // Show starter tasks modal after tutorial
         setTimeout(() => this.showStarterTasksModal(), 500);
