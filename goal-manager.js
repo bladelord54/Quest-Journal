@@ -3380,16 +3380,12 @@ class GoalManager {
         // XP bonus from login (base 10, +5 per streak day, max +30)
         const xpBonus = 10 + Math.min(this.loginStreak - 1, 6) * 5;
         
-        // Award the bonus
-        this.goldCoins += totalBonus;
-        this.xp += xpBonus;
+        // Award the bonus (routed through addXP/addGold so Beginner's Blessing applies)
+        this._suppressRewardSounds = true;
+        this.addXP(xpBonus, 'login');
+        this.addGold(totalBonus, 'login');
+        this._suppressRewardSounds = false;
         this.lastLoginBonusDate = today;
-        
-        // Check for level up from login XP
-        const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
-        if (this.xp >= xpForNextLevel) {
-            this.levelUp();
-        }
         
         this.saveData();
         
@@ -12811,46 +12807,46 @@ class GoalManager {
                 <div class="flex items-center justify-between">
                     <span class="text-amber-200 fancy-font">Enable Reminders</span>
                     <button onclick="goalManager.updateReminderSettings('enabled', ${!settings.enabled}); goalManager.renderReminderSettings();"
-                        class="w-14 h-8 rounded-full transition-all ${settings.enabled ? 'bg-green-600' : 'bg-gray-600'} relative">
-                        <span class="absolute w-6 h-6 bg-white rounded-full top-1 transition-all ${settings.enabled ? 'left-7' : 'left-1'}"></span>
+                        class="w-12 h-7 rounded-full transition-all duration-200 ${settings.enabled ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
+                        <span class="absolute w-5 h-5 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.enabled ? 'left-6' : 'left-1'}"></span>
                     </button>
                 </div>
                 
                 ${settings.enabled ? `
                 <!-- Morning Reminder -->
-                <div class="flex items-center justify-between">
-                    <span class="text-amber-200 fancy-font text-sm">🌅 Morning Reminder</span>
-                    <div class="flex items-center gap-2">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-amber-200 fancy-font text-sm whitespace-nowrap">🌅 Morning</span>
                         <input type="time" value="${settings.morningTime}" 
                             onchange="goalManager.updateReminderSettings('morningTime', this.value)"
-                            class="bg-amber-900/50 text-white px-2 py-1 rounded border border-amber-600 text-sm">
-                        <button onclick="goalManager.updateReminderSettings('morningReminder', ${!settings.morningReminder}); goalManager.renderReminderSettings();"
-                            class="w-10 h-6 rounded-full transition-all ${settings.morningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
-                            <span class="absolute w-4 h-4 bg-white rounded-full top-1 transition-all ${settings.morningReminder ? 'left-5' : 'left-1'}"></span>
-                        </button>
+                            class="bg-amber-900/50 text-white px-1.5 py-0.5 rounded border border-amber-600 text-xs w-[5.5rem]">
                     </div>
+                    <button onclick="goalManager.updateReminderSettings('morningReminder', ${!settings.morningReminder}); goalManager.renderReminderSettings();"
+                        class="w-12 h-7 rounded-full transition-all duration-200 ${settings.morningReminder ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
+                        <span class="absolute w-5 h-5 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.morningReminder ? 'left-6' : 'left-1'}"></span>
+                    </button>
                 </div>
                 
                 <!-- Evening Reminder -->
-                <div class="flex items-center justify-between">
-                    <span class="text-amber-200 fancy-font text-sm">🌆 Evening Reminder</span>
-                    <div class="flex items-center gap-2">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-amber-200 fancy-font text-sm whitespace-nowrap">🌆 Evening</span>
                         <input type="time" value="${settings.eveningTime}" 
                             onchange="goalManager.updateReminderSettings('eveningTime', this.value)"
-                            class="bg-amber-900/50 text-white px-2 py-1 rounded border border-amber-600 text-sm">
-                        <button onclick="goalManager.updateReminderSettings('eveningReminder', ${!settings.eveningReminder}); goalManager.renderReminderSettings();"
-                            class="w-10 h-6 rounded-full transition-all ${settings.eveningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
-                            <span class="absolute w-4 h-4 bg-white rounded-full top-1 transition-all ${settings.eveningReminder ? 'left-5' : 'left-1'}"></span>
-                        </button>
+                            class="bg-amber-900/50 text-white px-1.5 py-0.5 rounded border border-amber-600 text-xs w-[5.5rem]">
                     </div>
+                    <button onclick="goalManager.updateReminderSettings('eveningReminder', ${!settings.eveningReminder}); goalManager.renderReminderSettings();"
+                        class="w-12 h-7 rounded-full transition-all duration-200 ${settings.eveningReminder ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
+                        <span class="absolute w-5 h-5 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.eveningReminder ? 'left-6' : 'left-1'}"></span>
+                    </button>
                 </div>
                 
                 <!-- Overdue Alert -->
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between gap-3">
                     <span class="text-amber-200 fancy-font text-sm">⚠️ Overdue Alerts</span>
                     <button onclick="goalManager.updateReminderSettings('overdueAlert', ${!settings.overdueAlert}); goalManager.renderReminderSettings();"
-                        class="w-10 h-6 rounded-full transition-all ${settings.overdueAlert ? 'bg-green-600' : 'bg-gray-600'} relative">
-                        <span class="absolute w-4 h-4 bg-white rounded-full top-1 transition-all ${settings.overdueAlert ? 'left-5' : 'left-1'}"></span>
+                        class="w-12 h-7 rounded-full transition-all duration-200 ${settings.overdueAlert ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
+                        <span class="absolute w-5 h-5 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.overdueAlert ? 'left-6' : 'left-1'}"></span>
                     </button>
                 </div>
                 ` : '<p class="text-gray-400 text-sm text-center">Enable reminders to configure notification times</p>'}
