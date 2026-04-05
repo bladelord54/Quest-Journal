@@ -12807,8 +12807,8 @@ class GoalManager {
                 <div class="flex items-center justify-between">
                     <span class="text-amber-200 fancy-font">Enable Reminders</span>
                     <button onclick="goalManager.updateReminderSettings('enabled', ${!settings.enabled}); goalManager.renderReminderSettings();"
-                        class="w-14 h-8 rounded-full transition-all duration-200 ${settings.enabled ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
-                        <span class="absolute w-6 h-6 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.enabled ? 'left-7' : 'left-1'}"></span>
+                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.enabled ? 'bg-green-600' : 'bg-gray-600'} relative">
+                        <span style="width:24px;height:24px;top:4px;${settings.enabled ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
                     </button>
                 </div>
                 
@@ -12819,11 +12819,11 @@ class GoalManager {
                         <span class="text-amber-200 fancy-font text-sm whitespace-nowrap">🌅 Morning</span>
                         <input type="time" value="${settings.morningTime}" 
                             onchange="goalManager.updateReminderSettings('morningTime', this.value)"
-                            class="bg-amber-900/50 text-white px-1.5 py-0.5 rounded border border-amber-600 text-xs w-[5.5rem]">
+                            class="bg-amber-900/50 text-white rounded border border-amber-600" style="padding:2px 6px;font-size:12px;width:5.5rem">
                     </div>
                     <button onclick="goalManager.updateReminderSettings('morningReminder', ${!settings.morningReminder}); goalManager.renderReminderSettings();"
-                        class="w-14 h-8 rounded-full transition-all duration-200 ${settings.morningReminder ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
-                        <span class="absolute w-6 h-6 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.morningReminder ? 'left-7' : 'left-1'}"></span>
+                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.morningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
+                        <span style="width:24px;height:24px;top:4px;${settings.morningReminder ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
                     </button>
                 </div>
                 
@@ -12833,11 +12833,11 @@ class GoalManager {
                         <span class="text-amber-200 fancy-font text-sm whitespace-nowrap">🌆 Evening</span>
                         <input type="time" value="${settings.eveningTime}" 
                             onchange="goalManager.updateReminderSettings('eveningTime', this.value)"
-                            class="bg-amber-900/50 text-white px-1.5 py-0.5 rounded border border-amber-600 text-xs w-[5.5rem]">
+                            class="bg-amber-900/50 text-white rounded border border-amber-600" style="padding:2px 6px;font-size:12px;width:5.5rem">
                     </div>
                     <button onclick="goalManager.updateReminderSettings('eveningReminder', ${!settings.eveningReminder}); goalManager.renderReminderSettings();"
-                        class="w-14 h-8 rounded-full transition-all duration-200 ${settings.eveningReminder ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
-                        <span class="absolute w-6 h-6 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.eveningReminder ? 'left-7' : 'left-1'}"></span>
+                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.eveningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
+                        <span style="width:24px;height:24px;top:4px;${settings.eveningReminder ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
                     </button>
                 </div>
                 
@@ -12845,8 +12845,8 @@ class GoalManager {
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-amber-200 fancy-font text-sm">⚠️ Overdue Alerts</span>
                     <button onclick="goalManager.updateReminderSettings('overdueAlert', ${!settings.overdueAlert}); goalManager.renderReminderSettings();"
-                        class="w-14 h-8 rounded-full transition-all duration-200 ${settings.overdueAlert ? 'bg-green-600' : 'bg-gray-600'} relative flex-shrink-0">
-                        <span class="absolute w-6 h-6 bg-white rounded-full top-1 transition-all duration-200 shadow ${settings.overdueAlert ? 'left-7' : 'left-1'}"></span>
+                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.overdueAlert ? 'bg-green-600' : 'bg-gray-600'} relative">
+                        <span style="width:24px;height:24px;top:4px;${settings.overdueAlert ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
                     </button>
                 </div>
                 ` : '<p class="text-gray-400 text-sm text-center">Enable reminders to configure notification times</p>'}
