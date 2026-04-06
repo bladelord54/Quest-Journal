@@ -6398,7 +6398,23 @@ class GoalManager {
             { type: 'royal', name: 'Royal Chest', cost: 5000, color: 'purple', icon: '⭐' }
         ];
 
-        container.innerHTML = chestTypes.map(chest => {
+        // Daily Free Wooden Chest at the top
+        const canClaimWooden = this.canClaimWoodenChest();
+        const woodenChestHTML = `
+            <div class="quest-card bg-gradient-to-br from-yellow-900/80 to-amber-950/80 p-5 rounded-xl shadow-xl border-3 border-yellow-600 text-center relative overflow-hidden">
+                ${canClaimWooden ? '<div class="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full fancy-font animate-pulse">FREE</div>' : ''}
+                <div class="text-6xl mb-3 ${canClaimWooden ? 'animate-bounce' : 'opacity-40'}">🪵</div>
+                <h4 class="text-xl font-bold text-yellow-300 medieval-title mb-2">Wooden Chest</h4>
+                <p class="text-yellow-200 text-lg font-bold mb-2">Free Daily!</p>
+                <button onclick="goalManager.claimWoodenChest()" 
+                    class="w-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105 ${!canClaimWooden ? 'opacity-50 cursor-not-allowed' : ''}"
+                    ${!canClaimWooden ? 'disabled' : ''}>
+                    ${canClaimWooden ? '🪵 Open Chest!' : '✅ Claimed Today'}
+                </button>
+            </div>
+        `;
+
+        container.innerHTML = woodenChestHTML + chestTypes.map(chest => {
             const canAfford = this.goldCoins >= chest.cost;
             const timesOpened = this.treasureChests.filter(c => c.type === chest.type).length;
             
