@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v327';
+const CACHE_NAME = 'life-quest-journal-v328';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -59,17 +59,25 @@ const lazyAssets = [
 ];
 
 // Install event - cache resources
+// Uses cache:'reload' to bypass browser/CDN HTTP cache, ensuring fresh files on every SW update
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        // Cache local files (must succeed)
-        const localPromise = cache.addAll(localUrlsToCache);
+        // Cache local files with cache-busting (must succeed)
+        const localPromise = Promise.all(
+          localUrlsToCache.map(url =>
+            fetch(url, { cache: 'reload' }).then(response => {
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              return cache.put(url, response);
+            })
+          )
+        );
         
         // Cache CDN files individually — failures are logged but don't block install
         const cdnPromise = Promise.all(
           cdnUrlsToCache.map(url =>
-            fetch(url).then(response => {
+            fetch(url, { cache: 'reload' }).then(response => {
               if (response.ok) return cache.put(url, response);
             }).catch(err => console.warn('[SW] CDN cache skipped:', url, err.message))
           )
