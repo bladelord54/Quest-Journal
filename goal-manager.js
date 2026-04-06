@@ -80,6 +80,13 @@ class GoalManager {
         // DOM element cache for frequently accessed elements
         this.domCache = {};
         
+        // Daily Quest Board
+        this.dailyQuestBoard = null; // { date, quests: [{id, completed}], allClaimedBonus }
+        this.dailyTracking = null; // { date, xpEarned, goldEarned, tasksCompleted, habitsCompleted, tasksCreated, chestsOpened, spellsCast, bossAttacks, chargesEarned, focusSessions, crystalsEarned, sideQuestsCompleted, weeklyProgress }
+        
+        // Daily Free Wooden Chest
+        this.lastWoodenChestDate = null;
+        
         // Focus Timer & Enchantments
         this.focusCrystals = 0;
         this.focusCrystalShards = 0;
@@ -178,9 +185,11 @@ class GoalManager {
             this.saveData();
         }
         this.generateBosses(); // Generate daily/weekly bosses
+        this.generateDailyQuestBoard(); // Generate daily quest board
         this.scheduleMidnightReset(); // Schedule automatic habit reset at midnight
         this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
         this.initializeReminders(); // Set up task reminders
+        this.scheduleDay2Notification(); // Day 2 return notification for new users
         
         // Listen for service worker taking control (after skipWaiting + clients.claim)
         if ('serviceWorker' in navigator) {
@@ -350,6 +359,11 @@ class GoalManager {
                 this.seenFeatureTutorials = data.seenFeatureTutorials || [];
                 this.progressiveUnlockInitialized = data.progressiveUnlockInitialized || false;
                 
+                // Daily Quest Board & Wooden Chest
+                this.dailyQuestBoard = data.dailyQuestBoard || null;
+                this.dailyTracking = data.dailyTracking || null;
+                this.lastWoodenChestDate = data.lastWoodenChestDate || null;
+                
                 // Period Transition Tracking
                 this.lastVisitDate = data.lastVisitDate || null;
                 this.lastWeekNumber = data.lastWeekNumber || null;
@@ -372,6 +386,11 @@ class GoalManager {
                     // Migration: give blessing to existing users still in early levels
                     this.accountCreatedDate = this.level <= 3 ? this.getTodayDateString() : '2020-01-01';
                 }
+                
+                // Daily Quest Board & Tracking
+                this.dailyQuestBoard = data.dailyQuestBoard || null;
+                this.dailyTracking = data.dailyTracking || null;
+                this.lastWoodenChestDate = data.lastWoodenChestDate || null;
                 
                 // Stats tracking for titles
                 this.chestsOpened = data.chestsOpened || 0;
@@ -522,7 +541,10 @@ class GoalManager {
                 bossKillsMonth: this.bossKillsMonth,
                 accountCreatedDate: this.accountCreatedDate,
                 seenFeatureTutorials: this.seenFeatureTutorials,
-                progressiveUnlockInitialized: this.progressiveUnlockInitialized
+                progressiveUnlockInitialized: this.progressiveUnlockInitialized,
+                dailyQuestBoard: this.dailyQuestBoard,
+                dailyTracking: this.dailyTracking,
+                lastWoodenChestDate: this.lastWoodenChestDate
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
             // Proactive storage warning when approaching typical 5MB limit
@@ -874,6 +896,7 @@ class GoalManager {
             amount *= 2;
         }
         this.attackCharges += amount;
+        this.trackDaily('chargesEarned', amount);
         this.saveData();
         
         // Update attack counter in UI if visible
@@ -890,6 +913,7 @@ class GoalManager {
         if (!boss || boss.defeated || this.attackCharges <= 0) return;
         
         this.attackCharges--;
+        this.trackDaily('bossAttacks');
         
         // Calculate damage (scales +1 per 10 player levels)
         let damage = 1 + Math.floor(this.level / 10);
@@ -2549,6 +2573,7 @@ class GoalManager {
                         checklist: []
                     };
                     this.dailyTasks.push(task);
+                    this.trackDaily('tasksCreated');
                     this.saveData();
                     this.render();
                 };
@@ -2972,6 +2997,7 @@ class GoalManager {
                 this.addXP(xpReward, 'side');
                 this.grantAttackCharge(1, 'sidequest');
                 this.checkSerenityBonus();
+                this.trackDaily('sideQuestsCompleted');
                 this.showAchievement(`Side Quest Completed! +${xpReward} XP 🧭`, 'daily');
             }
             this.saveData();
@@ -3427,6 +3453,281 @@ class GoalManager {
         return `${d.getFullYear()}-W${weekNo}`;
     }
 
+    // ==================== DAILY QUEST BOARD ====================
+    
+    DAILY_QUEST_POOL = [
+        // Always available (Level 1+)
+        { id: 'early_bird', name: 'Early Bird', desc: 'Complete a task before noon', icon: '🌅', minLevel: 1, xp: 15, gold: 10, check: (t) => t.tasksBeforeNoon >= 1 },
+        { id: 'triple_threat', name: 'Triple Threat', desc: 'Complete 3 tasks today', icon: '⚔️', minLevel: 1, xp: 20, gold: 15, check: (t) => t.tasksCompleted >= 3 },
+        { id: 'questmaster', name: 'Questmaster', desc: 'Complete 5 tasks today', icon: '👑', minLevel: 1, xp: 35, gold: 25, check: (t) => t.tasksCompleted >= 5 },
+        { id: 'ritual_keeper', name: 'Ritual Keeper', desc: 'Complete all your habits', icon: '🔥', minLevel: 1, xp: 25, gold: 15, check: (t) => t.allHabitsComplete },
+        { id: 'habit_starter', name: 'Habit Starter', desc: 'Complete at least 1 habit', icon: '✅', minLevel: 1, xp: 10, gold: 5, check: (t) => t.habitsCompleted >= 1 },
+        { id: 'productive_day', name: 'Productive Day', desc: 'Complete 3 tasks and 2 habits', icon: '📋', minLevel: 1, xp: 30, gold: 20, check: (t) => t.tasksCompleted >= 3 && t.habitsCompleted >= 2 },
+        { id: 'new_quest', name: 'New Quest', desc: 'Create a new task today', icon: '📝', minLevel: 1, xp: 10, gold: 5, check: (t) => t.tasksCreated >= 1 },
+        { id: 'night_owl', name: 'Night Owl', desc: 'Complete a task after 6pm', icon: '🦉', minLevel: 1, xp: 15, gold: 10, check: (t) => t.tasksAfter6pm >= 1 },
+        { id: 'xp_seeker', name: 'XP Seeker', desc: 'Earn 50+ XP today', icon: '⭐', minLevel: 1, xp: 15, gold: 10, check: (t) => t.xpEarned >= 50 },
+        { id: 'xp_hunter', name: 'XP Hunter', desc: 'Earn 150+ XP today', icon: '💫', minLevel: 1, xp: 30, gold: 20, check: (t) => t.xpEarned >= 150 },
+        { id: 'gold_earner', name: 'Gold Earner', desc: 'Earn 30+ gold today', icon: '💰', minLevel: 1, xp: 15, gold: 10, check: (t) => t.goldEarned >= 30 },
+        // Treasury (Level 2+)
+        { id: 'treasure_hunter', name: 'Treasure Hunter', desc: 'Open a treasure chest', icon: '🎁', minLevel: 2, xp: 20, gold: 10, check: (t) => t.chestsOpened >= 1 },
+        { id: 'gold_hoarder', name: 'Gold Hoarder', desc: 'Earn 50+ gold today', icon: '🏆', minLevel: 2, xp: 15, gold: 10, check: (t) => t.goldEarned >= 50 },
+        // Arcane (Level 3+)
+        { id: 'spell_slinger', name: 'Spell Slinger', desc: 'Cast a spell today', icon: '🔮', minLevel: 3, xp: 20, gold: 15, check: (t) => t.spellsCast >= 1 },
+        // Boss Battles (Level 4+)
+        { id: 'boss_striker', name: 'Boss Striker', desc: 'Deal boss damage today', icon: '💀', minLevel: 4, xp: 25, gold: 15, check: (t) => t.bossAttacks >= 1 },
+        { id: 'charge_collector', name: 'Charge Collector', desc: 'Earn 3+ attack charges', icon: '⚡', minLevel: 4, xp: 20, gold: 10, check: (t) => t.chargesEarned >= 3 },
+        // Focus Timer (Level 5+)
+        { id: 'deep_focus', name: 'Deep Focus', desc: 'Complete a focus session', icon: '🎯', minLevel: 5, xp: 25, gold: 20, check: (t) => t.focusSessions >= 1 },
+        { id: 'crystal_miner', name: 'Crystal Miner', desc: 'Earn 2+ Focus Crystals', icon: '💎', minLevel: 5, xp: 20, gold: 15, check: (t) => t.crystalsEarned >= 2 },
+        // Weekly/Side Quests (Level 6+)
+        { id: 'side_adventurer', name: 'Side Adventurer', desc: 'Complete a side quest', icon: '🧭', minLevel: 6, xp: 20, gold: 15, check: (t) => t.sideQuestsCompleted >= 1 },
+        { id: 'weekly_warrior', name: 'Weekly Warrior', desc: 'Progress on a weekly goal', icon: '🛡️', minLevel: 6, xp: 20, gold: 15, check: (t) => t.weeklyProgress >= 1 },
+    ];
+
+    ensureDailyTracking() {
+        const today = this.getTodayDateString();
+        if (!this.dailyTracking || this.dailyTracking.date !== today) {
+            this.dailyTracking = {
+                date: today,
+                xpEarned: 0, goldEarned: 0,
+                tasksCompleted: 0, habitsCompleted: 0,
+                tasksCreated: 0, tasksBeforeNoon: 0, tasksAfter6pm: 0,
+                chestsOpened: 0, spellsCast: 0,
+                bossAttacks: 0, chargesEarned: 0,
+                focusSessions: 0, crystalsEarned: 0,
+                sideQuestsCompleted: 0, weeklyProgress: 0,
+                allHabitsComplete: false
+            };
+        }
+        return this.dailyTracking;
+    }
+
+    trackDaily(field, amount = 1) {
+        const t = this.ensureDailyTracking();
+        t[field] = (t[field] || 0) + amount;
+        this.checkDailyQuestCompletion();
+    }
+
+    generateDailyQuestBoard() {
+        const today = this.getTodayDateString();
+        if (this.dailyQuestBoard && this.dailyQuestBoard.date === today) return;
+        
+        // Filter quests by player level
+        const eligible = this.DAILY_QUEST_POOL.filter(q => this.level >= q.minLevel);
+        
+        // Seeded shuffle by date for deterministic selection
+        const seed = today.split('-').join('');
+        const shuffled = [...eligible];
+        let s = parseInt(seed) % 2147483647;
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            s = (s * 16807) % 2147483647;
+            const j = s % (i + 1);
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        
+        const selected = shuffled.slice(0, 3);
+        this.dailyQuestBoard = {
+            date: today,
+            quests: selected.map(q => ({ id: q.id, completed: false, claimed: false })),
+            allClaimedBonus: false
+        };
+        this.saveData();
+    }
+
+    checkDailyQuestCompletion() {
+        if (!this.dailyQuestBoard || this.dailyQuestBoard.date !== this.getTodayDateString()) return;
+        const tracking = this.dailyTracking;
+        if (!tracking) return;
+        
+        // Check habits complete status
+        if (this.habits.length > 0) {
+            tracking.allHabitsComplete = this.habits.every(h => h.completedToday);
+        }
+        
+        let anyNewCompletion = false;
+        this.dailyQuestBoard.quests.forEach(quest => {
+            if (quest.completed) return;
+            const def = this.DAILY_QUEST_POOL.find(q => q.id === quest.id);
+            if (def && def.check(tracking)) {
+                quest.completed = true;
+                anyNewCompletion = true;
+            }
+        });
+        
+        if (anyNewCompletion) {
+            this.saveData();
+            this.render();
+        }
+    }
+
+    claimDailyQuest(questId) {
+        if (!this.dailyQuestBoard) return;
+        const quest = this.dailyQuestBoard.quests.find(q => q.id === questId);
+        if (!quest || !quest.completed || quest.claimed) return;
+        
+        const def = this.DAILY_QUEST_POOL.find(q => q.id === questId);
+        if (!def) return;
+        
+        quest.claimed = true;
+        this.addXP(def.xp, 'daily');
+        this.addGold(def.gold, 'daily');
+        this.showAchievement(`📜 ${def.name} complete! +${def.xp} XP, +${def.gold} Gold`, 'daily');
+        
+        // Check if all 3 claimed — bonus reward
+        const allClaimed = this.dailyQuestBoard.quests.every(q => q.claimed);
+        if (allClaimed && !this.dailyQuestBoard.allClaimedBonus) {
+            this.dailyQuestBoard.allClaimedBonus = true;
+            setTimeout(() => {
+                this.addXP(25, 'daily');
+                this.addGold(15, 'daily');
+                this.showAchievement('🏅 Daily Board Sweep! Bonus +25 XP, +15 Gold!', 'weekly');
+            }, 1000);
+        }
+        
+        this.saveData();
+        this.render();
+    }
+
+    renderDailyQuestBoard() {
+        const container = document.getElementById('daily-quest-board');
+        if (!container) return;
+        
+        this.generateDailyQuestBoard();
+        if (!this.dailyQuestBoard) return;
+        
+        const tracking = this.ensureDailyTracking();
+        const quests = this.dailyQuestBoard.quests;
+        const allDone = quests.every(q => q.claimed);
+        
+        container.innerHTML = quests.map(quest => {
+            const def = this.DAILY_QUEST_POOL.find(q => q.id === quest.id);
+            if (!def) return '';
+            const progress = def.check(tracking);
+            const statusClass = quest.claimed ? 'opacity-50' : quest.completed ? 'border-green-500/70 bg-green-900/20' : '';
+            const statusIcon = quest.claimed ? '✅' : quest.completed ? '🎉' : '○';
+            
+            return `
+                <div class="flex items-center gap-3 p-3 rounded-lg border-2 border-amber-700/40 ${statusClass} transition-all">
+                    <span class="text-2xl">${quest.claimed ? '✅' : def.icon}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-amber-100 font-bold text-sm fancy-font">${def.name}</div>
+                        <div class="text-amber-300/70 text-xs">${def.desc}</div>
+                    </div>
+                    <div class="flex-shrink-0 text-right">
+                        ${quest.claimed ? '<span class="text-green-400 text-xs font-bold">CLAIMED</span>' :
+                          quest.completed ? `<button onclick="goalManager.claimDailyQuest('${quest.id}')" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold fancy-font shadow transition-all hover:scale-105">Claim</button>` :
+                          `<span class="text-amber-400/60 text-xs">${def.xp} XP</span>`}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Sweep bonus indicator
+        if (allDone) {
+            container.innerHTML += `<div class="text-center text-green-400 text-sm font-bold fancy-font mt-2">🏅 Board Swept! All bonuses claimed!</div>`;
+        } else {
+            const claimed = quests.filter(q => q.claimed).length;
+            container.innerHTML += `<div class="text-center text-amber-400/60 text-xs mt-2">${claimed}/3 complete — sweep the board for a bonus!</div>`;
+        }
+    }
+
+    // ==================== DAILY FREE WOODEN CHEST ====================
+    
+    canClaimWoodenChest() {
+        return this.lastWoodenChestDate !== this.getTodayDateString();
+    }
+    
+    claimWoodenChest() {
+        if (!this.canClaimWoodenChest()) {
+            this.showAchievement('🪵 You already claimed today\'s Wooden Chest! Return tomorrow.', 'daily');
+            return;
+        }
+        
+        this.lastWoodenChestDate = this.getTodayDateString();
+        
+        // Generate small random loot (weaker than bronze chest)
+        const lootTable = [
+            { type: 'gold', amount: 15, weight: 35, label: '15 Gold' },
+            { type: 'gold', amount: 25, weight: 20, label: '25 Gold' },
+            { type: 'xp', amount: 20, weight: 25, label: '20 XP' },
+            { type: 'xp', amount: 35, weight: 10, label: '35 XP' },
+            { type: 'charges', amount: 1, weight: 8, label: '1 Attack Charge' },
+            { type: 'shards', amount: 3, weight: 2, label: '3 Crystal Shards' },
+        ];
+        
+        const totalWeight = lootTable.reduce((sum, item) => sum + item.weight, 0);
+        let roll = Math.random() * totalWeight;
+        let reward = lootTable[0];
+        for (const item of lootTable) {
+            roll -= item.weight;
+            if (roll <= 0) { reward = item; break; }
+        }
+        
+        // Apply reward
+        if (reward.type === 'gold') this.addGold(reward.amount, 'chest');
+        if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
+        if (reward.type === 'charges') this.attackCharges += reward.amount;
+        if (reward.type === 'shards') this.addFocusCrystalShards(reward.amount);
+        
+        this.showAchievement(`🪵 Wooden Chest opened! Found: ${reward.label}`, 'daily');
+        this.saveData();
+        this.render();
+    }
+
+    renderWoodenChest() {
+        const container = document.getElementById('daily-wooden-chest');
+        if (!container) return;
+        
+        if (this.canClaimWoodenChest()) {
+            container.innerHTML = `
+                <div class="text-6xl mb-3 animate-bounce">🪵</div>
+                <p class="text-amber-200/80 fancy-font text-sm mb-4">A free chest awaits you each day!</p>
+                <button onclick="goalManager.claimWoodenChest()" 
+                    class="bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-yellow-400/60">
+                    <i class="ri-gift-line mr-2"></i>Open Chest
+                </button>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="text-5xl mb-3 opacity-40">🪵</div>
+                <p class="text-amber-200/50 fancy-font text-sm mb-2">Already claimed today!</p>
+                <p class="text-amber-400/40 text-xs fancy-font">Return tomorrow for another chest</p>
+            `;
+        }
+    }
+
+    // ==================== DAY 2 RETURN NOTIFICATION ====================
+    
+    scheduleDay2Notification() {
+        if (!this.accountCreatedDate) return;
+        const today = this.getTodayDateString();
+        // Only schedule on the account creation day itself
+        if (this.accountCreatedDate !== today) return;
+        // Don't re-send if we already sent
+        if (localStorage.getItem('day2NotificationScheduled')) return;
+        
+        localStorage.setItem('day2NotificationScheduled', 'true');
+        
+        // Schedule for ~20 hours from now
+        const delay = 20 * 60 * 60 * 1000;
+        setTimeout(() => {
+            this.showNotification(
+                '✨ Your Blessing Awaits!',
+                'Your Beginner\'s Blessing is active — 2x XP & Gold! Complete quests today to level up fast.',
+                '✨',
+                'day2-return'
+            );
+        }, delay);
+        
+        // Also send to push worker for background delivery
+        if (navigator.serviceWorker?.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'SCHEDULE_DAY2',
+                delay: delay
+            });
+        }
+    }
+
     addHabit() {
         this.showInputModal({
             title: 'New Daily Ritual',
@@ -3541,6 +3842,7 @@ class GoalManager {
         const oldXP = this.xp;
         const oldLevel = this.level;
         this.xp += finalXP;
+        this.trackDaily('xpEarned', finalXP);
         const xpForNextLevel = this.getTotalXPForLevel(this.level + 1);
         
         // Trigger floating XP toast bar animation
@@ -3688,6 +3990,7 @@ class GoalManager {
         const finalGold = Math.floor(amount * blessingMultiplier * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         this.goldCoins += finalGold;
+        this.trackDaily('goldEarned', finalGold);
         // Skip gold sound for routine task/habit completions (they have their own sound)
         const quietSources = ['daily', 'habit', 'weekly', 'monthly'];
         if (!this._suppressRewardSounds && !quietSources.includes(source) && window.audioManager) {
@@ -4011,6 +4314,7 @@ class GoalManager {
         
         this.goldCoins -= costs[type];
         this.chestsOpened++; // Track for titles
+        this.trackDaily('chestsOpened');
         
         // Record the purchase
         this.treasureChests.push({
@@ -4800,6 +5104,7 @@ class GoalManager {
                 this.addGold(3, 'habit');
                 this.grantAttackCharge(1, 'habit');
                 this.checkSerenityBonus();
+                this.trackDaily('habitsCompleted');
                 
                 // Special achievements for streaks
                 if (habit.streak === 7) {
@@ -4997,6 +5302,8 @@ class GoalManager {
         this.focusCrystals += crystalsEarned;
         this.totalFocusTime += sessionLength;
         this.focusSessionsCompleted++; // Track for titles
+        this.trackDaily('focusSessions');
+        this.trackDaily('crystalsEarned', crystalsEarned);
         this.grantAttackCharge(1, 'focus');
         
         // Play crystal earn sound
@@ -5225,6 +5532,10 @@ class GoalManager {
                 this.addGold(5, 'daily');
                 this.grantAttackCharge(1, 'task');
                 this.checkSerenityBonus();
+                this.trackDaily('tasksCompleted');
+                const hour = new Date().getHours();
+                if (hour < 12) this.trackDaily('tasksBeforeNoon');
+                if (hour >= 18) this.trackDaily('tasksAfter6pm');
                 this.showAchievement('Quest Task Completed! +15 XP, +5 Gold ⚔️', 'daily', false);
                 if (window.audioManager) window.audioManager.playDailyAchievement();
                 // Trigger completion animation
@@ -5255,6 +5566,7 @@ class GoalManager {
                 this.addGold(15, 'weekly');
                 this.grantAttackCharge(2, 'weekly');
                 this.checkSerenityBonus();
+                this.trackDaily('weeklyProgress');
                 this.showAchievement('Weekly Quest Conquered! +50 XP, +15 Gold 🛡️', 'weekly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
@@ -6695,6 +7007,7 @@ class GoalManager {
         // Use a charge
         spellEntry.charges--;
         this.spellsCast++; // Track for titles
+        this.trackDaily('spellsCast');
 
         // Apply spell effect
         if (spell.duration > 0) {
@@ -8082,6 +8395,12 @@ class GoalManager {
                 </div>
             `).join('');
         }
+        
+        // Render Daily Quest Board
+        this.renderDailyQuestBoard();
+        
+        // Render Daily Wooden Chest
+        this.renderWoodenChest();
     }
 
     renderLifeGoals() {
@@ -9209,6 +9528,9 @@ class GoalManager {
                 lastMonth: this.lastMonth,
                 lastYear: this.lastYear,
                 reminderSettings: this.reminderSettings,
+                dailyQuestBoard: this.dailyQuestBoard,
+                dailyTracking: this.dailyTracking,
+                lastWoodenChestDate: this.lastWoodenChestDate,
                 exportDate: new Date().toISOString(),
                 version: '3.0'
             };
@@ -9317,6 +9639,9 @@ class GoalManager {
                     this.lastWeekNumber = data.lastWeekNumber || this.lastWeekNumber;
                     this.lastMonth = data.lastMonth ?? this.lastMonth;
                     this.lastYear = data.lastYear ?? this.lastYear;
+                    this.dailyQuestBoard = data.dailyQuestBoard || this.dailyQuestBoard;
+                    this.dailyTracking = data.dailyTracking || this.dailyTracking;
+                    this.lastWoodenChestDate = data.lastWoodenChestDate || this.lastWoodenChestDate;
                     if (data.reminderSettings) {
                         this.reminderSettings = data.reminderSettings;
                         localStorage.setItem('reminderSettings', JSON.stringify(this.reminderSettings));

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v328';
+const CACHE_NAME = 'life-quest-journal-v329';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -198,6 +198,20 @@ async function loadReminderData() {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  
+  // Schedule Day 2 return notification for new users
+  if (event.data && event.data.type === 'SCHEDULE_DAY2') {
+    const delay = event.data.delay || (20 * 60 * 60 * 1000);
+    setTimeout(() => {
+      self.registration.showNotification('✨ Your Blessing Awaits!', {
+        body: "Your Beginner's Blessing is active — 2x XP & Gold! Complete quests today to level up fast.",
+        icon: './icons/icon-192.png',
+        badge: './icons/badge-96.png',
+        tag: 'day2-return',
+        data: { url: './' }
+      });
+    }, delay);
   }
   
   // Receive reminder settings and task counts from the app — persist to Cache API

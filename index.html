@@ -486,6 +486,24 @@
                     </div>
                 </div>
 
+                <!-- Daily Quest Board + Wooden Chest Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Daily Quest Board -->
+                    <div class="lg:col-span-2 quest-card bg-gradient-to-br from-indigo-900/80 to-indigo-950/80 rounded-xl shadow-2xl p-6 border-4 border-indigo-700/60">
+                        <h3 class="text-xl font-bold text-indigo-300 medieval-title mb-4">📜 Daily Quest Board</h3>
+                        <div id="daily-quest-board" class="space-y-3">
+                            <div class="text-indigo-200/60 text-center py-4 fancy-font">Loading quests...</div>
+                        </div>
+                    </div>
+                    <!-- Daily Free Wooden Chest -->
+                    <div class="quest-card bg-gradient-to-br from-yellow-900/70 to-amber-950/70 rounded-xl shadow-2xl p-6 border-4 border-yellow-700/50 flex flex-col items-center justify-center text-center">
+                        <h3 class="text-xl font-bold text-yellow-300 medieval-title mb-3">🪵 Daily Wooden Chest</h3>
+                        <div id="daily-wooden-chest" class="w-full">
+                            <div class="text-amber-200/60 text-center py-4 fancy-font">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Stats Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('life-goals');" class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform cursor-pointer" role="button" tabindex="0" aria-label="View Epic Quests">
