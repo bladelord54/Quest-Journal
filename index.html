@@ -463,14 +463,23 @@
                         </button>
                     </div>
 
-                    <!-- Quick Search -->
-                    <div class="mt-6 flex justify-center">
-                        <button onclick="goalManager.openSearchModal()" class="min-h-[48px] bg-gradient-to-r from-indigo-700 to-indigo-800 hover:from-indigo-600 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-indigo-500 flex items-center justify-center gap-2">
-                            <i class="ri-search-line text-lg"></i>
-                            <span>Search All Quests</span>
-                        </button>
-                    </div>
                 </header>
+
+                <!-- Daily Quest Board + Wooden Chest -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="lg:col-span-2 quest-card bg-gradient-to-br from-indigo-900/80 to-indigo-950/80 rounded-xl shadow-2xl p-6 border-4 border-indigo-700/60">
+                        <h3 class="text-xl font-bold text-indigo-300 medieval-title mb-4">📜 Daily Quest Board</h3>
+                        <div id="daily-quest-board" class="space-y-3">
+                            <div class="text-indigo-200/60 text-center py-4 fancy-font">Loading quests...</div>
+                        </div>
+                    </div>
+                    <div class="quest-card bg-gradient-to-br from-yellow-900/70 to-amber-950/70 rounded-xl shadow-2xl p-6 border-4 border-yellow-700/50 flex flex-col items-center justify-center text-center">
+                        <h3 class="text-xl font-bold text-yellow-300 medieval-title mb-3">🪵 Daily Wooden Chest</h3>
+                        <div id="daily-wooden-chest" class="w-full">
+                            <div class="text-amber-200/60 text-center py-4 fancy-font">Loading...</div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Today's Quests (moved to top for quick access) -->
                 <div class="quest-card bg-gradient-to-br from-amber-900 to-amber-950 rounded-xl shadow-2xl p-8 border-4 border-amber-700 mb-8">
@@ -483,24 +492,6 @@
                     
                     <div id="today-tasks-list" class="space-y-3">
                         <div class="text-amber-200 text-center py-8 fancy-font">No quests for today. Begin your adventure!</div>
-                    </div>
-                </div>
-
-                <!-- Daily Quest Board + Wooden Chest Row -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <!-- Daily Quest Board -->
-                    <div class="lg:col-span-2 quest-card bg-gradient-to-br from-indigo-900/80 to-indigo-950/80 rounded-xl shadow-2xl p-6 border-4 border-indigo-700/60">
-                        <h3 class="text-xl font-bold text-indigo-300 medieval-title mb-4">📜 Daily Quest Board</h3>
-                        <div id="daily-quest-board" class="space-y-3">
-                            <div class="text-indigo-200/60 text-center py-4 fancy-font">Loading quests...</div>
-                        </div>
-                    </div>
-                    <!-- Daily Free Wooden Chest -->
-                    <div class="quest-card bg-gradient-to-br from-yellow-900/70 to-amber-950/70 rounded-xl shadow-2xl p-6 border-4 border-yellow-700/50 flex flex-col items-center justify-center text-center">
-                        <h3 class="text-xl font-bold text-yellow-300 medieval-title mb-3">🪵 Daily Wooden Chest</h3>
-                        <div id="daily-wooden-chest" class="w-full">
-                            <div class="text-amber-200/60 text-center py-4 fancy-font">Loading...</div>
-                        </div>
                     </div>
                 </div>
 
