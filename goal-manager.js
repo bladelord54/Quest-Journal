@@ -3567,7 +3567,7 @@ class GoalManager {
                 }
                 .streak-confetti { position:absolute; font-size:20px; animation: confettiDrift 2s ease-out forwards; pointer-events:none; }
             </style>
-            <div style="animation:streakSlideUp 0.5s ease-out;max-width:380px;width:100%;" class="relative">
+            <div style="animation:streakSlideUp 0.5s ease-out;max-width:380px;width:100%;" class="relative" onclick="event.stopPropagation()">
                 ${isMilestone ? `
                     <div class="streak-confetti" style="top:-10px;left:10%;animation-delay:0.2s">✨</div>
                     <div class="streak-confetti" style="top:-5px;left:30%;animation-delay:0.4s">🎉</div>
@@ -3575,7 +3575,12 @@ class GoalManager {
                     <div class="streak-confetti" style="top:-8px;left:75%;animation-delay:0.5s">🎊</div>
                     <div class="streak-confetti" style="top:-12px;left:90%;animation-delay:0.3s">✨</div>
                 ` : ''}
-                <div class="bg-gradient-to-br ${bgGradient} p-6 rounded-2xl ${glowClass} border-4 ${borderColor}">
+                <div class="bg-gradient-to-br ${bgGradient} p-6 rounded-2xl ${glowClass} border-4 ${borderColor} relative">
+                    <!-- Close X button -->
+                    <button onclick="goalManager.closeLoginStreakModal()" 
+                        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
+                        <i class="ri-close-line"></i>
+                    </button>
                     <!-- Header -->
                     <div class="text-center mb-4">
                         <div class="text-lg text-amber-400/70 fancy-font mb-1">${isMilestone ? '🏆 Milestone Reached!' : 'Daily Login'}</div>
@@ -3608,8 +3613,7 @@ class GoalManager {
                     
                     <!-- Claim Button -->
                     <button onclick="goalManager.closeLoginStreakModal()" 
-                        style="animation:streakPulse 1.5s ease-in-out infinite;"
-                        class="w-full mt-5 py-3.5 rounded-xl font-bold text-lg fancy-font transition-all
+                        class="w-full mt-5 py-3.5 rounded-xl font-bold text-lg fancy-font transition-all hover:scale-[1.02] active:scale-95
                         ${isMilestone ? 
                             'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black shadow-lg shadow-yellow-500/30' :
                             'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg'}">
