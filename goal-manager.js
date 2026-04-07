@@ -6710,63 +6710,78 @@ class GoalManager {
         const lockedGrid = document.getElementById('titles-locked-grid');
         if (!container) return;
 
-        // All possible titles from checkTitleUnlocks
-        const allTitles = [
-            // Early Game
-            { id: 'beginner', name: 'The Beginner', description: 'Complete your first task' },
-            { id: 'habit_starter', name: 'Habit Starter', description: 'Create your first habit' },
-            { id: 'apprentice', name: 'The Apprentice', description: 'Reach Level 5' },
-            // Task Milestones
-            { id: 'determined', name: 'The Determined', description: 'Complete 10 tasks' },
-            { id: 'dedicated', name: 'The Dedicated', description: 'Complete 50 tasks' },
-            { id: 'seasoned_adventurer', name: 'Seasoned Adventurer', description: 'Complete 100 tasks' },
-            { id: 'relentless', name: 'The Relentless', description: 'Complete 250 tasks' },
-            { id: 'quest_master', name: 'Quest Master', description: 'Complete 500 tasks' },
-            { id: 'grand_master', name: 'Grand Master', description: 'Complete 1000 tasks' },
-            // Habit Streaks
-            { id: 'consistent', name: 'The Consistent', description: 'Maintain a 3-day streak' },
-            { id: 'disciplined', name: 'The Disciplined', description: 'Maintain a 7-day streak' },
-            { id: 'devoted', name: 'The Devoted', description: 'Maintain a 14-day streak' },
-            { id: 'unstoppable', name: 'The Unstoppable', description: 'Maintain a 30-day streak' },
-            { id: 'iron_will', name: 'Iron Will', description: 'Maintain a 60-day streak' },
-            { id: 'the_ascended', name: 'The Ascended', description: 'Maintain a 100-day streak' },
-            { id: 'eternal', name: 'The Eternal', description: 'Maintain a 365-day streak' },
-            // Levels
-            { id: 'journeyman', name: 'Journeyman', description: 'Reach Level 10' },
-            { id: 'veteran', name: 'Veteran', description: 'Reach Level 25' },
-            { id: 'elite', name: 'Elite', description: 'Reach Level 50' },
-            { id: 'legendary_hero', name: 'Legendary Hero', description: 'Reach Level 100' },
-            // Goal Types
-            { id: 'legendary', name: 'The Legendary', description: 'Complete a life goal' },
-            { id: 'dream_chaser', name: 'Dream Chaser', description: 'Complete 5 life goals' },
-            { id: 'weekly_warrior', name: 'Weekly Warrior', description: 'Complete 10 weekly goals' },
-            { id: 'monthly_champion', name: 'Monthly Champion', description: 'Complete 6 monthly goals' },
-            { id: 'visionary', name: 'The Visionary', description: 'Complete a yearly goal' },
-            // Wealth
-            { id: 'wealthy', name: 'The Wealthy', description: 'Accumulate 1,000 gold' },
-            { id: 'rich', name: 'The Rich', description: 'Accumulate 10,000 gold' },
-            { id: 'tycoon', name: 'Tycoon', description: 'Accumulate 100,000 gold' },
-            // Features
-            { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open your first chest' },
-            { id: 'loot_seeker', name: 'Loot Seeker', description: 'Open 25 chests' },
-            { id: 'chest_master', name: 'Chest Master', description: 'Open 100 chests' },
-            { id: 'focused', name: 'The Focused', description: 'Complete your first focus session' },
-            { id: 'zen_master', name: 'Zen Master', description: 'Complete 25 focus sessions' },
-            { id: 'meditation_guru', name: 'Meditation Guru', description: 'Complete 100 focus sessions' },
-            { id: 'spellcaster', name: 'Spellcaster', description: 'Cast your first spell' },
-            { id: 'mage', name: 'Mage', description: 'Cast 25 spells' },
-            { id: 'archmage', name: 'Archmage', description: 'Cast 50 spells' },
-            { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss' },
-            { id: 'champion', name: 'Champion', description: 'Defeat 10 bosses' },
-            { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 50 bosses' },
-            // Companions
-            { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion' },
-            { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions' },
-            { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions' },
-            // Login Streak Milestones
-            { id: 'centurion', name: '🌟 Centurion', description: '100-day login streak' },
-            { id: 'mythic_warrior', name: '🏆 Mythic Warrior', description: '365-day login streak' },
+        // Title categories with icons and color accents
+        const titleCategories = [
+            { key: 'early', icon: '⚔️', label: 'Early Game', color: 'green', titles: [
+                { id: 'beginner', name: 'The Beginner', description: 'Complete your first task' },
+                { id: 'habit_starter', name: 'Habit Starter', description: 'Create your first habit' },
+                { id: 'apprentice', name: 'The Apprentice', description: 'Reach Level 5' },
+            ]},
+            { key: 'tasks', icon: '📜', label: 'Quest Milestones', color: 'amber', titles: [
+                { id: 'determined', name: 'The Determined', description: 'Complete 10 tasks' },
+                { id: 'dedicated', name: 'The Dedicated', description: 'Complete 50 tasks' },
+                { id: 'seasoned_adventurer', name: 'Seasoned Adventurer', description: 'Complete 100 tasks' },
+                { id: 'relentless', name: 'The Relentless', description: 'Complete 250 tasks' },
+                { id: 'quest_master', name: 'Quest Master', description: 'Complete 500 tasks' },
+                { id: 'grand_master', name: 'Grand Master', description: 'Complete 1000 tasks' },
+            ]},
+            { key: 'streaks', icon: '🔥', label: 'Habit Streaks', color: 'orange', titles: [
+                { id: 'consistent', name: 'The Consistent', description: 'Maintain a 3-day streak' },
+                { id: 'disciplined', name: 'The Disciplined', description: 'Maintain a 7-day streak' },
+                { id: 'devoted', name: 'The Devoted', description: 'Maintain a 14-day streak' },
+                { id: 'unstoppable', name: 'The Unstoppable', description: 'Maintain a 30-day streak' },
+                { id: 'iron_will', name: 'Iron Will', description: 'Maintain a 60-day streak' },
+                { id: 'the_ascended', name: 'The Ascended', description: 'Maintain a 100-day streak' },
+                { id: 'eternal', name: 'The Eternal', description: 'Maintain a 365-day streak' },
+            ]},
+            { key: 'levels', icon: '⬆️', label: 'Level Milestones', color: 'blue', titles: [
+                { id: 'journeyman', name: 'Journeyman', description: 'Reach Level 10' },
+                { id: 'veteran', name: 'Veteran', description: 'Reach Level 25' },
+                { id: 'elite', name: 'Elite', description: 'Reach Level 50' },
+                { id: 'legendary_hero', name: 'Legendary Hero', description: 'Reach Level 100' },
+            ]},
+            { key: 'goals', icon: '🏰', label: 'Goal Conqueror', color: 'purple', titles: [
+                { id: 'legendary', name: 'The Legendary', description: 'Complete a life goal' },
+                { id: 'dream_chaser', name: 'Dream Chaser', description: 'Complete 5 life goals' },
+                { id: 'weekly_warrior', name: 'Weekly Warrior', description: 'Complete 10 weekly goals' },
+                { id: 'monthly_champion', name: 'Monthly Champion', description: 'Complete 6 monthly goals' },
+                { id: 'visionary', name: 'The Visionary', description: 'Complete a yearly goal' },
+            ]},
+            { key: 'wealth', icon: '💰', label: 'Wealth & Treasury', color: 'yellow', titles: [
+                { id: 'wealthy', name: 'The Wealthy', description: 'Accumulate 1,000 gold' },
+                { id: 'rich', name: 'The Rich', description: 'Accumulate 10,000 gold' },
+                { id: 'tycoon', name: 'Tycoon', description: 'Accumulate 100,000 gold' },
+                { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open your first chest' },
+                { id: 'loot_seeker', name: 'Loot Seeker', description: 'Open 25 chests' },
+                { id: 'chest_master', name: 'Chest Master', description: 'Open 100 chests' },
+            ]},
+            { key: 'arcane', icon: '✨', label: 'Arcane Mastery', color: 'indigo', titles: [
+                { id: 'focused', name: 'The Focused', description: 'Complete your first focus session' },
+                { id: 'zen_master', name: 'Zen Master', description: 'Complete 25 focus sessions' },
+                { id: 'meditation_guru', name: 'Meditation Guru', description: 'Complete 100 focus sessions' },
+                { id: 'spellcaster', name: 'Spellcaster', description: 'Cast your first spell' },
+                { id: 'mage', name: 'Mage', description: 'Cast 25 spells' },
+                { id: 'archmage', name: 'Archmage', description: 'Cast 50 spells' },
+            ]},
+            { key: 'combat', icon: '🐉', label: 'Combat & Companions', color: 'red', titles: [
+                { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss' },
+                { id: 'champion', name: 'Champion', description: 'Defeat 10 bosses' },
+                { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 50 bosses' },
+                { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion' },
+                { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions' },
+                { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions' },
+            ]},
+            { key: 'login', icon: '👑', label: 'Login Streak Milestones', color: 'yellow', titles: [
+                { id: 'centurion', name: '🌟 Centurion', description: '100-day login streak' },
+                { id: 'mythic_warrior', name: '🏆 Mythic Warrior', description: '365-day login streak' },
+            ]},
         ];
+
+        const unlockedIds = new Set(this.unlockedTitles.map(t => t.id));
+        const unlockedMap = {};
+        this.unlockedTitles.forEach(t => { unlockedMap[t.id] = t; });
+        const totalUnlocked = this.unlockedTitles.length;
+        const totalTitles = titleCategories.reduce((sum, cat) => sum + cat.titles.length, 0);
 
         // Current Active Title Display
         if (activeDisplay) {
@@ -6797,64 +6812,90 @@ class GoalManager {
             }
         }
 
-        // Earned Titles Grid
-        if (this.unlockedTitles.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-3 text-center py-12 text-amber-200">
-                    <div class="text-6xl mb-4">🎖️</div>
-                    <p class="fancy-font text-lg">Complete achievements to earn prestigious titles!</p>
+        // Progress summary
+        const progressPct = totalTitles > 0 ? Math.round((totalUnlocked / totalTitles) * 100) : 0;
+        let html = `
+            <div class="mb-4 p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-amber-300 fancy-font text-sm font-bold">Title Collection</span>
+                    <span class="text-amber-200/70 text-xs fancy-font">${totalUnlocked} / ${totalTitles} (${progressPct}%)</span>
                 </div>
-            `;
-        } else {
-            container.innerHTML = this.unlockedTitles.map(title => {
-                const active = this.currentTitle === title.id;
-                return `
-                    <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 p-5 rounded-xl shadow-xl border-3 border-purple-600 ${active ? 'ring-4 ring-yellow-400' : ''}">
-                        <div class="text-4xl mb-2 text-center">🎖️</div>
-                        <h4 class="text-xl font-bold text-amber-300 medieval-title mb-2 text-center">"${title.name}"</h4>
-                        <p class="text-purple-300 text-sm mb-3 text-center italic">${title.description}</p>
-                        ${active ? `
-                            <div class="bg-yellow-500/20 border-2 border-yellow-400 rounded-lg px-3 py-2 text-yellow-300 text-sm font-bold text-center">
-                                ✓ Displaying
+                <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all" style="width:${progressPct}%"></div>
+                </div>
+            </div>
+        `;
+
+        // Render each category as a collapsible section
+        titleCategories.forEach(cat => {
+            const earned = cat.titles.filter(t => unlockedIds.has(t.id));
+            const locked = cat.titles.filter(t => !unlockedIds.has(t.id));
+            const catComplete = locked.length === 0;
+            const catPct = Math.round((earned.length / cat.titles.length) * 100);
+            // Default open if category has any earned titles, or is Early Game
+            const defaultOpen = earned.length > 0 || cat.key === 'early';
+
+            html += `
+                <div class="mb-3">
+                    <button onclick="this.parentElement.querySelector('.title-cat-body').classList.toggle('hidden');this.querySelector('.title-cat-arrow').classList.toggle('rotate-90')"
+                        class="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/40 transition-all cursor-pointer text-left">
+                        <span class="text-2xl">${cat.icon}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-${cat.color}-300 font-bold fancy-font text-sm">${cat.label}</span>
+                                ${catComplete ? '<span class="text-xs px-1.5 py-0.5 rounded bg-green-700/50 text-green-300 font-bold">✓ COMPLETE</span>' : ''}
                             </div>
+                            <div class="flex items-center gap-2 mt-1">
+                                <div class="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-${cat.color}-500 rounded-full transition-all" style="width:${catPct}%"></div>
+                                </div>
+                                <span class="text-gray-400 text-xs">${earned.length}/${cat.titles.length}</span>
+                            </div>
+                        </div>
+                        <i class="ri-arrow-right-s-line text-gray-400 text-lg title-cat-arrow transition-transform ${defaultOpen ? 'rotate-90' : ''}"></i>
+                    </button>
+                    <div class="title-cat-body ${defaultOpen ? '' : 'hidden'} mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pl-2">
+            `;
+
+            // Earned titles in this category
+            earned.forEach(t => {
+                const titleData = unlockedMap[t.id] || t;
+                const active = this.currentTitle === t.id;
+                html += `
+                    <div class="bg-gradient-to-br from-purple-900/80 to-purple-950/80 p-4 rounded-xl shadow-lg border-2 ${active ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-purple-600/60'} text-center">
+                        <div class="text-3xl mb-1">🎖️</div>
+                        <h5 class="font-bold text-amber-300 text-sm medieval-title mb-1">"${titleData.name}"</h5>
+                        <p class="text-purple-300 text-xs mb-2 italic">${t.description}</p>
+                        ${active ? `
+                            <div class="bg-yellow-500/20 border border-yellow-400/50 rounded-lg px-2 py-1 text-yellow-300 text-xs font-bold">✓ Equipped</div>
                         ` : `
-                            <button onclick="goalManager.selectTitle('${title.id}')" 
-                                class="w-full bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold fancy-font shadow-lg transition-transform hover:scale-105">
-                                Equip Title
+                            <button onclick="goalManager.selectTitle('${t.id}')" 
+                                class="w-full bg-purple-700/80 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold fancy-font transition-all hover:scale-105">
+                                Equip
                             </button>
                         `}
                     </div>
                 `;
-            }).join('');
-        }
+            });
 
-        // Locked Titles Grid
-        if (lockedGrid) {
-            const unlockedIds = this.unlockedTitles.map(t => t.id);
-            const lockedTitles = allTitles.filter(t => !unlockedIds.includes(t.id));
-
-            if (lockedTitles.length === 0) {
-                lockedGrid.innerHTML = `
-                    <div class="text-center py-6">
-                        <div class="text-4xl mb-2">🏆</div>
-                        <p class="text-amber-300 fancy-font font-bold text-lg">All titles unlocked!</p>
-                        <p class="text-amber-200 text-sm">You've earned every title. Truly legendary!</p>
+            // Locked titles in this category
+            locked.forEach(t => {
+                html += `
+                    <div class="bg-gradient-to-br from-stone-800/60 to-stone-900/60 p-4 rounded-xl border-2 border-stone-700/40 text-center opacity-50">
+                        <div class="text-3xl mb-1">🔒</div>
+                        <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
+                        <p class="text-xs text-stone-500">${t.description}</p>
                     </div>
                 `;
-            } else {
-                lockedGrid.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        ${lockedTitles.map(title => `
-                            <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-xl border-2 border-stone-600 text-center opacity-60">
-                                <div class="text-4xl mb-2">🔒</div>
-                                <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
-                                <p class="text-xs text-stone-500">${title.description}</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            }
-        }
+            });
+
+            html += `</div></div>`;
+        });
+
+        container.innerHTML = html;
+
+        // Hide legacy locked grid since everything is now in the categorized container
+        if (lockedGrid) lockedGrid.innerHTML = '';
     }
 
     openCompanionDen() {
@@ -11619,29 +11660,100 @@ class GoalManager {
             `;
             return;
         }
-        
-        container.innerHTML = this.defeatedBossList.map(boss => {
-            const date = new Date(boss.defeatedAt).toLocaleDateString();
-            const typeLabel = boss.type === 'daily' ? 'Daily' : boss.type === 'weekly' ? 'Weekly' : 'Monthly';
-            return `
-                <div class="bg-gradient-to-br from-green-900/30 to-stone-900/30 p-4 rounded-lg border border-green-600/30 relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-t from-green-500/5 to-transparent"></div>
-                    <div class="relative z-10">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="text-3xl grayscale opacity-60">${boss.icon}</span>
-                            <div>
-                                <h4 class="text-sm font-bold text-green-300 medieval-title">${boss.name}</h4>
-                                <span class="text-xs text-green-200/60 fancy-font">${typeLabel} Lv.${boss.level} (${boss.maxHP} HP)</span>
-                            </div>
-                        </div>
-                        <div class="flex justify-between text-xs text-amber-300/60 fancy-font">
-                            <span>+${boss.rewards.xp} XP, +${boss.rewards.gold} Gold</span>
-                            <span>${date}</span>
-                        </div>
+
+        // Time period boundaries
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dayOfWeek = startOfToday.getDay(); // 0=Sun
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfToday.getDate() - dayOfWeek);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        // Bucket bosses into time periods
+        const periods = [
+            { key: 'week', label: 'This Week', icon: '⚔️', color: 'green', bosses: [] },
+            { key: 'month', label: 'This Month', icon: '🗓️', color: 'blue', bosses: [] },
+            { key: 'older', label: 'Older Victories', icon: '📜', color: 'stone', bosses: [] },
+        ];
+
+        this.defeatedBossList.forEach(boss => {
+            const d = new Date(boss.defeatedAt);
+            if (d >= startOfWeek) periods[0].bosses.push(boss);
+            else if (d >= startOfMonth) periods[1].bosses.push(boss);
+            else periods[2].bosses.push(boss);
+        });
+
+        // Summary stats
+        const totalXP = this.defeatedBossList.reduce((s, b) => s + (b.rewards?.xp || 0), 0);
+        const totalGold = this.defeatedBossList.reduce((s, b) => s + (b.rewards?.gold || 0), 0);
+
+        let html = `
+            <div class="col-span-full mb-4 p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="text-amber-300 fancy-font text-sm font-bold">Total Victories: ${this.defeatedBossList.length}</span>
+                    <div class="flex gap-4 text-xs text-amber-200/70 fancy-font">
+                        <span>⚡ ${totalXP.toLocaleString()} XP earned</span>
+                        <span>💰 ${totalGold.toLocaleString()} Gold plundered</span>
                     </div>
                 </div>
+            </div>
+        `;
+
+        // Render each time period as a collapsible section
+        periods.forEach(period => {
+            if (period.bosses.length === 0) return;
+            const periodXP = period.bosses.reduce((s, b) => s + (b.rewards?.xp || 0), 0);
+            const periodGold = period.bosses.reduce((s, b) => s + (b.rewards?.gold || 0), 0);
+            // This Week starts open, others collapsed
+            const defaultOpen = period.key === 'week';
+
+            html += `
+                <div class="col-span-full mb-3">
+                    <button onclick="this.parentElement.querySelector('.boss-period-body').classList.toggle('hidden');this.querySelector('.boss-period-arrow').classList.toggle('rotate-90')"
+                        class="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/40 transition-all cursor-pointer text-left">
+                        <span class="text-2xl">${period.icon}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-${period.color}-300 font-bold fancy-font text-sm">${period.label}</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded bg-${period.color}-700/30 text-${period.color}-300/80 font-bold">${period.bosses.length} ${period.bosses.length === 1 ? 'boss' : 'bosses'}</span>
+                            </div>
+                            <div class="flex gap-3 mt-1 text-xs text-gray-400 fancy-font">
+                                <span>⚡ ${periodXP.toLocaleString()} XP</span>
+                                <span>💰 ${periodGold.toLocaleString()} Gold</span>
+                            </div>
+                        </div>
+                        <i class="ri-arrow-right-s-line text-gray-400 text-lg boss-period-arrow transition-transform ${defaultOpen ? 'rotate-90' : ''}"></i>
+                    </button>
+                    <div class="boss-period-body ${defaultOpen ? '' : 'hidden'} mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             `;
-        }).join('');
+
+            period.bosses.forEach(boss => {
+                const date = new Date(boss.defeatedAt).toLocaleDateString();
+                const typeLabel = boss.type === 'daily' ? 'Daily' : boss.type === 'weekly' ? 'Weekly' : 'Monthly';
+                html += `
+                    <div class="bg-gradient-to-br from-green-900/30 to-stone-900/30 p-4 rounded-lg border border-green-600/30 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-t from-green-500/5 to-transparent"></div>
+                        <div class="relative z-10">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-3xl grayscale opacity-60">${boss.icon}</span>
+                                <div>
+                                    <h4 class="text-sm font-bold text-green-300 medieval-title">${boss.name}</h4>
+                                    <span class="text-xs text-green-200/60 fancy-font">${typeLabel} Lv.${boss.level} (${boss.maxHP} HP)</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs text-amber-300/60 fancy-font">
+                                <span>+${boss.rewards.xp} XP, +${boss.rewards.gold} Gold</span>
+                                <span>${date}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+        });
+
+        container.innerHTML = html;
     }
 
     // Legacy boss methods kept for backward compatibility with old save data
