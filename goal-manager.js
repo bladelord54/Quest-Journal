@@ -3369,8 +3369,20 @@ class GoalManager {
     }
 
     // Daily Login Bonus System
+    // Login Streak Milestone Rewards
+    LOGIN_STREAK_MILESTONES = [
+        { day: 3,   icon: '🎁', label: '3-Day Streak!',   xpBonus: 25,  goldBonus: 30,  extra: null },
+        { day: 7,   icon: '🥈', label: 'Weekly Warrior!',  xpBonus: 50,  goldBonus: 75,  extra: { type: 'chest', tier: 'silver', label: 'Free Silver Chest' } },
+        { day: 14,  icon: '🥇', label: 'Fortnight Hero!',  xpBonus: 100, goldBonus: 150, extra: { type: 'chest', tier: 'gold', label: 'Free Gold Chest' } },
+        { day: 21,  icon: '💎', label: 'Three-Week Legend!', xpBonus: 150, goldBonus: 200, extra: { type: 'charges', amount: 3, label: '+3 Attack Charges' } },
+        { day: 30,  icon: '👑', label: 'Monthly Monarch!',  xpBonus: 200, goldBonus: 300, extra: { type: 'chest', tier: 'royal', label: 'Free Royal Chest' } },
+        { day: 50,  icon: '🔱', label: 'Devoted Champion!', xpBonus: 300, goldBonus: 500, extra: { type: 'chest', tier: 'royal', label: 'Free Royal Chest' } },
+        { day: 100, icon: '🌟', label: 'Centurion!',        xpBonus: 500, goldBonus: 1000, extra: { type: 'title', id: 'centurion', name: '🌟 Centurion', label: 'Exclusive Title: Centurion' } },
+        { day: 365, icon: '🏆', label: 'Year-Long Legend!', xpBonus: 1000, goldBonus: 2000, extra: { type: 'title', id: 'mythic_warrior', name: '🏆 Mythic Warrior', label: 'Exclusive Title: Mythic Warrior' } },
+    ];
+
     checkDailyLoginBonus() {
-        // Defer until tutorial is complete so toast doesn't overlap tutorial overlay
+        // Defer until tutorial is complete so modal doesn't overlap tutorial overlay
         if (this.tutorialActive) return;
         
         const today = this.getTodayDateString();
@@ -3381,53 +3393,79 @@ class GoalManager {
         }
         
         // Calculate streak
+        const prevStreak = this.loginStreak || 0;
         if (this.lastLoginBonusDate) {
             const lastDate = new Date(this.lastLoginBonusDate);
             const todayDate = new Date(today);
             const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
             
             if (dayDiff === 1) {
-                // Consecutive day - increase streak
                 this.loginStreak = (this.loginStreak || 0) + 1;
             } else if (dayDiff > 1) {
-                // Missed days - reset streak
                 this.loginStreak = 1;
             }
         } else {
-            // First login ever
             this.loginStreak = 1;
         }
         
-        // Calculate bonus based on streak (base 25, max 73 at 7+ day streak)
-        const streakBonus = Math.min(this.loginStreak - 1, 6) * 8; // +8 per streak day, max +48
-        const baseBonus = 25;
-        const totalBonus = baseBonus + streakBonus;
+        // Escalating daily gold: base 15, +5 per streak day (caps at day 7 = 45)
+        const goldReward = 15 + Math.min(this.loginStreak - 1, 6) * 5;
+        // Escalating daily XP: base 10, +3 per streak day (caps at day 7 = 28)
+        const xpReward = 10 + Math.min(this.loginStreak - 1, 6) * 3;
         
-        // XP bonus from login (base 10, +5 per streak day, max +30)
-        const xpBonus = 10 + Math.min(this.loginStreak - 1, 6) * 5;
+        // Check for milestone bonus
+        const milestone = this.LOGIN_STREAK_MILESTONES.find(m => m.day === this.loginStreak);
         
-        // Award the bonus (routed through addXP/addGold so Beginner's Blessing applies)
+        // Total rewards include milestone bonuses
+        const totalXP = xpReward + (milestone ? milestone.xpBonus : 0);
+        const totalGold = goldReward + (milestone ? milestone.goldBonus : 0);
+        
+        // Award base + milestone rewards (routed through addXP/addGold so Beginner's Blessing applies)
         this._suppressRewardSounds = true;
-        this.addXP(xpBonus, 'login');
-        this.addGold(totalBonus, 'login');
+        this.addXP(totalXP, 'login');
+        this.addGold(totalGold, 'login');
         this._suppressRewardSounds = false;
-        this.lastLoginBonusDate = today;
         
-        this.saveData();
-        
-        // Show achievement with streak info
-        if (this.loginStreak > 1) {
-            this.showAchievement(`☀️ Daily Login! +${totalBonus} Gold, +${xpBonus} XP (${this.loginStreak}-day streak!)`, 'daily');
-        } else {
-            this.showAchievement(`☀️ Daily Login! +${totalBonus} Gold, +${xpBonus} XP`, 'daily');
+        // Award milestone extras
+        if (milestone && milestone.extra) {
+            const extra = milestone.extra;
+            if (extra.type === 'chest') {
+                // Don't open chest UI — just silently award the loot equivalent
+                // We'll show it in the modal instead
+            }
+            if (extra.type === 'charges') {
+                this.attackCharges += extra.amount;
+            }
+            if (extra.type === 'title') {
+                if (!this.unlockedTitles.find(t => (typeof t === 'object' ? t.id : t) === extra.id)) {
+                    this.unlockedTitles.push({ id: extra.id, name: extra.name, unlockedAt: new Date().toISOString() });
+                }
+            }
         }
         
-        // Beginner's Blessing status messages
+        this.lastLoginBonusDate = today;
+        this.saveData();
+        
+        // Find next milestone for preview
+        const nextMilestone = this.LOGIN_STREAK_MILESTONES.find(m => m.day > this.loginStreak);
+        
+        // Show the streak modal
+        this.showLoginStreakModal({
+            streak: this.loginStreak,
+            prevStreak: prevStreak,
+            streakBroken: prevStreak > 1 && this.loginStreak === 1,
+            xp: totalXP,
+            gold: totalGold,
+            milestone: milestone,
+            nextMilestone: nextMilestone
+        });
+        
+        // Beginner's Blessing status messages (show after modal dismissal)
         const blessingDays = this.getBlessingDaysRemaining();
         if (blessingDays > 0 && blessingDays < this.BEGINNER_BLESSING_DAYS) {
             setTimeout(() => {
                 this.showAchievement(`✨ Beginner's Blessing: 2x XP & Gold — ${blessingDays} day${blessingDays > 1 ? 's' : ''} remaining!`, 'daily');
-            }, 3000);
+            }, 5000);
         } else if (blessingDays === 0 && this.accountCreatedDate && !this._blessingExpiredNotified) {
             const created = new Date(this.accountCreatedDate + 'T00:00:00');
             const todayDate = new Date(today + 'T00:00:00');
@@ -3436,11 +3474,180 @@ class GoalManager {
                 this._blessingExpiredNotified = true;
                 setTimeout(() => {
                     this.showAchievement('✨ Your Beginner\'s Blessing has ended — your adventure continues!', 'weekly');
-                }, 3000);
+                }, 5000);
             }
         }
         
         this.render();
+    }
+
+    showLoginStreakModal({ streak, prevStreak, streakBroken, xp, gold, milestone, nextMilestone }) {
+        const existing = document.getElementById('login-streak-modal');
+        if (existing) existing.remove();
+
+        // Build the 7-day calendar strip (showing last 7 days relative to streak)
+        const calendarDays = [];
+        for (let i = 6; i >= 0; i--) {
+            const dayNum = streak - i;
+            if (dayNum < 1) {
+                calendarDays.push({ label: '—', active: false, today: false });
+            } else if (i === 0) {
+                calendarDays.push({ label: `${dayNum}`, active: true, today: true });
+            } else {
+                calendarDays.push({ label: `${dayNum}`, active: true, today: false });
+            }
+        }
+
+        const calendarHTML = calendarDays.map(d => `
+            <div class="flex flex-col items-center gap-1">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all
+                    ${d.today ? 'bg-amber-500 text-black ring-2 ring-amber-300 ring-offset-2 ring-offset-gray-900 scale-110' : 
+                      d.active ? 'bg-green-600/80 text-green-100' : 'bg-gray-700/50 text-gray-500'}">
+                    ${d.active ? (d.today ? '🔥' : '✓') : '·'}
+                </div>
+                <span class="text-xs ${d.today ? 'text-amber-300 font-bold' : d.active ? 'text-green-300/70' : 'text-gray-600'}">${d.label}</span>
+            </div>
+        `).join('');
+
+        // Streak fire emoji scaling
+        const fireEmoji = streak >= 30 ? '🔥🔥🔥' : streak >= 14 ? '🔥🔥' : streak >= 3 ? '🔥' : '☀️';
+        
+        // Milestone celebration or standard reward display
+        const isMilestone = !!milestone;
+        const borderColor = isMilestone ? 'border-yellow-400' : 'border-amber-600';
+        const bgGradient = isMilestone ? 'from-yellow-900/95 via-amber-900/95 to-orange-950/95' : 'from-gray-800/95 to-gray-900/95';
+        const glowClass = isMilestone ? 'shadow-[0_0_60px_rgba(255,200,0,0.3)]' : 'shadow-2xl';
+        
+        let milestoneHTML = '';
+        if (isMilestone) {
+            milestoneHTML = `
+                <div class="mt-4 p-4 rounded-xl bg-gradient-to-r from-yellow-800/50 to-amber-800/50 border-2 border-yellow-500/50 text-center">
+                    <div class="text-4xl mb-2">${milestone.icon}</div>
+                    <div class="text-yellow-300 font-bold text-lg medieval-title">${milestone.label}</div>
+                    <div class="text-yellow-200/80 text-sm fancy-font mt-1">Milestone Bonus: +${milestone.xpBonus} XP, +${milestone.goldBonus} Gold</div>
+                    ${milestone.extra ? `<div class="mt-2 text-yellow-100 font-bold fancy-font text-sm bg-yellow-700/30 rounded-lg px-3 py-1.5 inline-block">🎁 ${milestone.extra.label}</div>` : ''}
+                </div>
+            `;
+        }
+
+        // Streak broken warning
+        let brokenHTML = '';
+        if (streakBroken) {
+            brokenHTML = `
+                <div class="mt-3 p-3 rounded-lg bg-red-900/40 border border-red-500/40 text-center">
+                    <div class="text-red-300 text-sm fancy-font">⚠️ Your ${prevStreak}-day streak was lost! Start building again.</div>
+                </div>
+            `;
+        }
+
+        // Next milestone preview
+        let nextHTML = '';
+        if (nextMilestone) {
+            const daysUntil = nextMilestone.day - streak;
+            nextHTML = `
+                <div class="mt-3 text-center">
+                    <div class="text-amber-400/50 text-xs fancy-font">Next milestone in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}</div>
+                    <div class="text-amber-300/60 text-xs mt-0.5">${nextMilestone.icon} ${nextMilestone.label} — ${nextMilestone.extra ? nextMilestone.extra.label : `+${nextMilestone.xpBonus} XP`}</div>
+                </div>
+            `;
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'login-streak-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50 overflow-hidden';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 0.3s ease-out;';
+        modal.innerHTML = `
+            <style>
+                @keyframes streakSlideUp { from { opacity:0; transform:translateY(40px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+                @keyframes streakPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.08); } }
+                @keyframes streakNumber { from { opacity:0; transform:scale(0.5) rotate(-10deg); } to { opacity:1; transform:scale(1) rotate(0deg); } }
+                @keyframes confettiDrift {
+                    0% { transform: translateY(0) rotate(0deg); opacity:1; }
+                    100% { transform: translateY(120px) rotate(360deg); opacity:0; }
+                }
+                .streak-confetti { position:absolute; font-size:20px; animation: confettiDrift 2s ease-out forwards; pointer-events:none; }
+            </style>
+            <div style="animation:streakSlideUp 0.5s ease-out;max-width:380px;width:100%;" class="relative">
+                ${isMilestone ? `
+                    <div class="streak-confetti" style="top:-10px;left:10%;animation-delay:0.2s">✨</div>
+                    <div class="streak-confetti" style="top:-5px;left:30%;animation-delay:0.4s">🎉</div>
+                    <div class="streak-confetti" style="top:-15px;left:55%;animation-delay:0.1s">⭐</div>
+                    <div class="streak-confetti" style="top:-8px;left:75%;animation-delay:0.5s">🎊</div>
+                    <div class="streak-confetti" style="top:-12px;left:90%;animation-delay:0.3s">✨</div>
+                ` : ''}
+                <div class="bg-gradient-to-br ${bgGradient} p-6 rounded-2xl ${glowClass} border-4 ${borderColor}">
+                    <!-- Header -->
+                    <div class="text-center mb-4">
+                        <div class="text-lg text-amber-400/70 fancy-font mb-1">${isMilestone ? '🏆 Milestone Reached!' : 'Daily Login'}</div>
+                        <div style="animation:streakNumber 0.6s ease-out 0.2s both;" class="text-6xl font-bold medieval-title text-amber-300 my-2">
+                            ${fireEmoji} ${streak}
+                        </div>
+                        <div class="text-amber-200/80 fancy-font text-base">Day Streak</div>
+                    </div>
+                    
+                    <!-- 7-Day Calendar Strip -->
+                    <div class="flex justify-center gap-2 mb-4 px-2">
+                        ${calendarHTML}
+                    </div>
+                    
+                    <!-- Rewards -->
+                    <div class="flex justify-center gap-6 mb-2">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-yellow-300">+${gold}</div>
+                            <div class="text-yellow-400/60 text-xs fancy-font">Gold</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-blue-300">+${xp}</div>
+                            <div class="text-blue-400/60 text-xs fancy-font">XP</div>
+                        </div>
+                    </div>
+                    
+                    ${milestoneHTML}
+                    ${brokenHTML}
+                    ${nextHTML}
+                    
+                    <!-- Claim Button -->
+                    <button onclick="goalManager.closeLoginStreakModal()" 
+                        style="animation:streakPulse 1.5s ease-in-out infinite;"
+                        class="w-full mt-5 py-3.5 rounded-xl font-bold text-lg fancy-font transition-all
+                        ${isMilestone ? 
+                            'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black shadow-lg shadow-yellow-500/30' :
+                            'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg'}">
+                        ${isMilestone ? '🏆 Claim Milestone Rewards!' : '✨ Continue Adventure'}
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Play sound if available
+        if (isMilestone && window.audioManager) {
+            window.audioManager.playWeeklyAchievement?.() || window.audioManager.playDailyAchievement?.();
+        } else if (window.audioManager) {
+            window.audioManager.playDailyAchievement?.();
+        }
+        
+        // If milestone has a chest extra, open it after modal closes
+        if (milestone?.extra?.type === 'chest') {
+            this._pendingMilestoneChest = milestone.extra.tier;
+        }
+    }
+
+    closeLoginStreakModal() {
+        const modal = document.getElementById('login-streak-modal');
+        if (modal) {
+            modal.style.animation = 'fadeIn 0.2s ease-out reverse forwards';
+            setTimeout(() => {
+                modal.remove();
+                // Open pending milestone chest
+                if (this._pendingMilestoneChest) {
+                    const tier = this._pendingMilestoneChest;
+                    this._pendingMilestoneChest = null;
+                    this.openTreasureChest(tier, true);
+                }
+            }, 200);
+        }
     }
     
     getWeekString(date) {
@@ -4107,8 +4314,8 @@ class GoalManager {
         if (totalCompletedTasks >= 50 && !hasTitle('dedicated')) {
             this.unlockTitle('dedicated', 'The Dedicated', 'Complete 50 tasks');
         }
-        if (totalCompletedTasks >= 100 && !hasTitle('centurion')) {
-            this.unlockTitle('centurion', 'Centurion', 'Complete 100 tasks');
+        if (totalCompletedTasks >= 100 && !hasTitle('seasoned_adventurer')) {
+            this.unlockTitle('seasoned_adventurer', 'Seasoned Adventurer', 'Complete 100 tasks');
         }
         if (totalCompletedTasks >= 250 && !hasTitle('relentless')) {
             this.unlockTitle('relentless', 'The Relentless', 'Complete 250 tasks');
@@ -4136,8 +4343,8 @@ class GoalManager {
         if (maxStreak >= 60 && !hasTitle('iron_will')) {
             this.unlockTitle('iron_will', 'Iron Will', 'Maintain a 60-day streak');
         }
-        if (maxStreak >= 100 && !hasTitle('habit_king')) {
-            this.unlockTitle('habit_king', 'Habit King', 'Maintain a 100-day streak');
+        if (maxStreak >= 100 && !hasTitle('the_ascended')) {
+            this.unlockTitle('the_ascended', 'The Ascended', 'Maintain a 100-day streak');
         }
         if (maxStreak >= 365 && !hasTitle('eternal')) {
             this.unlockTitle('eternal', 'The Eternal', 'Maintain a 365-day streak');
@@ -4206,6 +4413,9 @@ class GoalManager {
         }
         if (totalSpellsCast >= 1 && !hasTitle('spellcaster')) {
             this.unlockTitle('spellcaster', 'Spellcaster', 'Cast your first spell');
+        }
+        if (totalSpellsCast >= 25 && !hasTitle('mage')) {
+            this.unlockTitle('mage', 'Mage', 'Cast 25 spells');
         }
         if (totalSpellsCast >= 50 && !hasTitle('archmage')) {
             this.unlockTitle('archmage', 'Archmage', 'Cast 50 spells');
@@ -4305,14 +4515,14 @@ class GoalManager {
     }
 
     // Treasure Chest System
-    openTreasureChest(type) {
+    openTreasureChest(type, free = false) {
         const costs = { bronze: 200, silver: 600, gold: 1500, royal: 5000 };
-        if (this.goldCoins < costs[type]) {
+        if (!free && this.goldCoins < costs[type]) {
             this.showAchievement(`💰 Not enough gold! Need ${costs[type]} coins.`, 'daily');
             return;
         }
         
-        this.goldCoins -= costs[type];
+        if (!free) this.goldCoins -= costs[type];
         this.chestsOpened++; // Track for titles
         this.trackDaily('chestsOpened');
         
@@ -6502,26 +6712,60 @@ class GoalManager {
 
         // All possible titles from checkTitleUnlocks
         const allTitles = [
-            { id: 'first_quest', name: 'Adventurer', description: 'Complete your first quest' },
-            { id: 'early_bird', name: 'Early Bird', description: 'Complete a task before 8 AM' },
-            { id: 'night_owl', name: 'Night Owl', description: 'Complete a task after midnight' },
-            { id: 'streak_3', name: 'Determined', description: 'Maintain a 3-day streak' },
-            { id: 'streak_7', name: 'Relentless', description: 'Maintain a 7-day streak' },
-            { id: 'streak_30', name: 'Unstoppable', description: 'Maintain a 30-day streak' },
-            { id: 'task_10', name: 'Squire', description: 'Complete 10 tasks' },
-            { id: 'task_50', name: 'Knight', description: 'Complete 50 tasks' },
-            { id: 'task_100', name: 'Champion', description: 'Complete 100 tasks' },
-            { id: 'task_500', name: 'Legend', description: 'Complete 500 tasks' },
+            // Early Game
+            { id: 'beginner', name: 'The Beginner', description: 'Complete your first task' },
+            { id: 'habit_starter', name: 'Habit Starter', description: 'Create your first habit' },
+            { id: 'apprentice', name: 'The Apprentice', description: 'Reach Level 5' },
+            // Task Milestones
+            { id: 'determined', name: 'The Determined', description: 'Complete 10 tasks' },
+            { id: 'dedicated', name: 'The Dedicated', description: 'Complete 50 tasks' },
+            { id: 'seasoned_adventurer', name: 'Seasoned Adventurer', description: 'Complete 100 tasks' },
+            { id: 'relentless', name: 'The Relentless', description: 'Complete 250 tasks' },
+            { id: 'quest_master', name: 'Quest Master', description: 'Complete 500 tasks' },
+            { id: 'grand_master', name: 'Grand Master', description: 'Complete 1000 tasks' },
+            // Habit Streaks
+            { id: 'consistent', name: 'The Consistent', description: 'Maintain a 3-day streak' },
+            { id: 'disciplined', name: 'The Disciplined', description: 'Maintain a 7-day streak' },
+            { id: 'devoted', name: 'The Devoted', description: 'Maintain a 14-day streak' },
+            { id: 'unstoppable', name: 'The Unstoppable', description: 'Maintain a 30-day streak' },
+            { id: 'iron_will', name: 'Iron Will', description: 'Maintain a 60-day streak' },
+            { id: 'the_ascended', name: 'The Ascended', description: 'Maintain a 100-day streak' },
+            { id: 'eternal', name: 'The Eternal', description: 'Maintain a 365-day streak' },
+            // Levels
+            { id: 'journeyman', name: 'Journeyman', description: 'Reach Level 10' },
+            { id: 'veteran', name: 'Veteran', description: 'Reach Level 25' },
+            { id: 'elite', name: 'Elite', description: 'Reach Level 50' },
+            { id: 'legendary_hero', name: 'Legendary Hero', description: 'Reach Level 100' },
+            // Goal Types
+            { id: 'legendary', name: 'The Legendary', description: 'Complete a life goal' },
+            { id: 'dream_chaser', name: 'Dream Chaser', description: 'Complete 5 life goals' },
+            { id: 'weekly_warrior', name: 'Weekly Warrior', description: 'Complete 10 weekly goals' },
+            { id: 'monthly_champion', name: 'Monthly Champion', description: 'Complete 6 monthly goals' },
+            { id: 'visionary', name: 'The Visionary', description: 'Complete a yearly goal' },
+            // Wealth
+            { id: 'wealthy', name: 'The Wealthy', description: 'Accumulate 1,000 gold' },
+            { id: 'rich', name: 'The Rich', description: 'Accumulate 10,000 gold' },
+            { id: 'tycoon', name: 'Tycoon', description: 'Accumulate 100,000 gold' },
+            // Features
+            { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open your first chest' },
+            { id: 'loot_seeker', name: 'Loot Seeker', description: 'Open 25 chests' },
+            { id: 'chest_master', name: 'Chest Master', description: 'Open 100 chests' },
+            { id: 'focused', name: 'The Focused', description: 'Complete your first focus session' },
+            { id: 'zen_master', name: 'Zen Master', description: 'Complete 25 focus sessions' },
+            { id: 'meditation_guru', name: 'Meditation Guru', description: 'Complete 100 focus sessions' },
+            { id: 'spellcaster', name: 'Spellcaster', description: 'Cast your first spell' },
+            { id: 'mage', name: 'Mage', description: 'Cast 25 spells' },
+            { id: 'archmage', name: 'Archmage', description: 'Cast 50 spells' },
+            { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss' },
+            { id: 'champion', name: 'Champion', description: 'Defeat 10 bosses' },
+            { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 50 bosses' },
+            // Companions
             { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion' },
             { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions' },
             { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions' },
-            { id: 'level_5', name: 'Apprentice', description: 'Reach level 5' },
-            { id: 'level_10', name: 'Journeyman', description: 'Reach level 10' },
-            { id: 'level_25', name: 'Master', description: 'Reach level 25' },
-            { id: 'level_50', name: 'Grandmaster', description: 'Reach level 50' },
-            { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss' },
-            { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 5 bosses' },
-            { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 10 bosses' },
+            // Login Streak Milestones
+            { id: 'centurion', name: '🌟 Centurion', description: '100-day login streak' },
+            { id: 'mythic_warrior', name: '🏆 Mythic Warrior', description: '365-day login streak' },
         ];
 
         // Current Active Title Display
@@ -8039,6 +8283,13 @@ class GoalManager {
             
             // Escape to close modals
             if (e.key === 'Escape') {
+                const loginStreakModal = document.getElementById('login-streak-modal');
+                if (loginStreakModal) {
+                    e.preventDefault();
+                    this.closeLoginStreakModal();
+                    return;
+                }
+                
                 const inputModal = document.getElementById('input-modal');
                 const selectModal = document.getElementById('select-modal');
                 const multiselectModal = document.getElementById('multiselect-modal');
