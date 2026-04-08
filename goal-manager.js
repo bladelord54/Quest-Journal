@@ -3239,6 +3239,13 @@ class GoalManager {
                 if (timeFreezeActive) {
                     // Time Freeze prevents habit reset - consume the spell
                     this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'time_freeze');
+                    // Also carry over daily quest board and tracking to today
+                    if (this.dailyQuestBoard && this.dailyQuestBoard.date !== today) {
+                        this.dailyQuestBoard.date = today;
+                    }
+                    if (this.dailyTracking && this.dailyTracking.date !== today) {
+                        this.dailyTracking.date = today;
+                    }
                     this.showAchievement('❄️ TIME FREEZE! Daily reset was prevented!', 'life');
                     this.saveData();
                     return; // Skip the entire reset
@@ -6530,60 +6537,61 @@ class GoalManager {
         const historySet = new Set(history);
         const today = new Date();
         const todayStr = this.getTodayDateString();
-        const daysToShow = 84; // 12 weeks
         const weeksToShow = 12;
         
-        // Create array of last N days
-        const days = [];
-        for (let i = daysToShow - 1; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateStr = this.dateToLocalString(date);
-            const dayOfWeek = date.getDay();
-            days.push({
-                date: dateStr,
-                completed: historySet.has(dateStr),
-                dayOfWeek: dayOfWeek
-            });
-        }
+        // Find the Sunday that starts the oldest week (12 weeks back)
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - (weeksToShow * 7 - 1) - today.getDay());
         
-        // Group by weeks
+        // Build calendar-aligned weeks (each row = Sun-Sat)
         const weeks = [];
-        for (let i = 0; i < days.length; i += 7) {
-            weeks.push(days.slice(i, i + 7));
+        for (let w = 0; w < weeksToShow; w++) {
+            const week = [];
+            for (let d = 0; d < 7; d++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + w * 7 + d);
+                const dateStr = this.dateToLocalString(date);
+                week.push({
+                    date: dateStr,
+                    completed: historySet.has(dateStr),
+                    isFuture: dateStr > todayStr
+                });
+            }
+            weeks.push(week);
         }
         
-        // Generate heat map HTML
+        // Generate calendar-style heat map HTML
         let html = '<div class="habit-heatmap mt-3 mb-2">';
-        html += '<div class="flex items-start gap-1">';
         
-        // Day labels
-        html += '<div class="flex flex-col gap-1 text-xs text-amber-700 pr-1">';
+        // Day labels at top
+        html += '<div class="flex gap-1 mb-1 pl-0">';
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
-            html += `<div style="height: 12px; line-height: 12px;">${day}</div>`;
+            html += `<div class="text-xs text-amber-700 text-center" style="width:12px;">${day}</div>`;
         });
         html += '</div>';
         
-        // Weeks
+        // Week rows (oldest at top, newest at bottom)
         weeks.forEach(week => {
-            html += '<div class="flex flex-col gap-1">';
+            html += '<div class="flex gap-1">';
             week.forEach(day => {
-                const level = day.completed ? 3 : 0;
-                const title = `${day.date}${day.completed ? ' ✓ Completed' : ' - Click to mark complete'}`;
-                const clickable = (day.date <= todayStr) && !day.completed;
-                html += `<div class="heatmap-cell level-${level} ${clickable ? 'cursor-pointer hover:opacity-70' : ''}" 
-                    title="${title}"
-                    ${clickable ? `onclick="goalManager.markHabitPastCompletion(${habit.id}, '${day.date}')"` : ''}
-                    ></div>`;
+                if (day.isFuture) {
+                    html += '<div class="heatmap-cell" style="opacity:0.15;"></div>';
+                } else {
+                    const level = day.completed ? 3 : 0;
+                    const title = `${day.date}${day.completed ? ' ✓ Completed' : ' - Click to mark complete'}`;
+                    const clickable = !day.completed;
+                    html += `<div class="heatmap-cell level-${level} ${clickable ? 'cursor-pointer hover:opacity-70' : ''}" 
+                        title="${title}"
+                        ${clickable ? `onclick="goalManager.markHabitPastCompletion(${habit.id}, '${day.date}')"` : ''}
+                        ></div>`;
+                }
             });
             html += '</div>';
         });
         
-        html += '</div>';
-        
         // Legend and stats
-        const completionRate = history.length > 0 ? Math.round((history.length / Math.min(daysToShow, habit.totalCompletions || history.length)) * 100) : 0;
-        const last7Days = days.slice(-7).filter(d => d.completed).length;
+        const allDays = weeks.flat().filter(d => !d.isFuture);
+        const last7Days = allDays.slice(-7).filter(d => d.completed).length;
         
         html += '<div class="flex items-center justify-between mt-2 text-xs text-amber-700">';
         html += '<div class="flex items-center gap-2">';
@@ -11306,6 +11314,8 @@ class GoalManager {
         if (!container) return;
         
         const today = new Date();
+        const todayStr = this.getTodayDateString();
+        const weeksToShow = 12;
         
         // Create completion data map
         const completionData = {};
@@ -11314,35 +11324,40 @@ class GoalManager {
             completionData[date] = (completionData[date] || 0) + 1;
         });
         
-        // Generate heatmap
+        // Find the Sunday that starts the oldest week
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - (weeksToShow * 7 - 1) - today.getDay());
+        
         let html = '<div class="flex flex-col gap-1">';
         
-        // Day labels
-        html += '<div class="flex gap-1 mb-2"><div class="w-8"></div>';
+        // Day labels at top
+        html += '<div class="flex gap-1 mb-1">';
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
             html += `<div class="text-xs text-amber-300 w-4 text-center">${day}</div>`;
         });
         html += '</div>';
         
-        // Generate weeks
-        for (let week = 0; week < 12; week++) {
-            html += '<div class="flex gap-1 items-center">';
-            html += `<div class="text-xs text-amber-400 w-8 text-right pr-2">W${52 - week}</div>`;
-            
-            for (let day = 0; day < 7; day++) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - ((11 - week) * 7 + (6 - day)));
+        // Week rows (oldest at top, newest at bottom)
+        for (let w = 0; w < weeksToShow; w++) {
+            html += '<div class="flex gap-1">';
+            for (let d = 0; d < 7; d++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + w * 7 + d);
                 const dateStr = this.dateToLocalString(date);
-                const count = completionData[dateStr] || 0;
                 
-                let color = 'bg-stone-700';
-                if (count > 0) color = 'bg-green-900';
-                if (count > 2) color = 'bg-green-700';
-                if (count > 5) color = 'bg-green-500';
-                if (count > 10) color = 'bg-green-300';
-                
-                html += `<div class="w-4 h-4 ${color} rounded border border-stone-600 hover:border-amber-500 transition-all cursor-pointer" 
-                             title="${dateStr}: ${count} tasks"></div>`;
+                if (dateStr > todayStr) {
+                    html += '<div class="w-4 h-4 rounded border border-stone-700/30" style="opacity:0.15;"></div>';
+                } else {
+                    const count = completionData[dateStr] || 0;
+                    let color = 'bg-stone-700';
+                    if (count > 0) color = 'bg-green-900';
+                    if (count > 2) color = 'bg-green-700';
+                    if (count > 5) color = 'bg-green-500';
+                    if (count > 10) color = 'bg-green-300';
+                    
+                    html += `<div class="w-4 h-4 ${color} rounded border border-stone-600 hover:border-amber-500 transition-all cursor-pointer" 
+                                 title="${dateStr}: ${count} tasks"></div>`;
+                }
             }
             html += '</div>';
         }
