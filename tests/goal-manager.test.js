@@ -176,13 +176,12 @@ function createTestManager(overrides = {}) {
     gm.featureUnlockTutorials = {
         2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
         3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
-        4: { title: '⚔️ Weekly Battles & Side Quests!', text: "Your Quest Log now has Weekly Battles and Side Quests! Set weekly goals and track flexible tasks without deadlines." },
+        4: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
         5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
-        6: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
-        7: { title: '📖 Monthly Raids & Kingdom Themes!', text: "Plan bigger with Monthly Raids! You've also unlocked the Forest Kingdom theme — customize your journal's look in the Treasury." },
-        8: { title: '🔗 Quest Chains Unlocked!', text: "Chain multiple tasks into epic multi-step Quest Chains for massive bonus rewards! Check them out in Arcane Powers." },
+        6: { title: '⚔️ New Quest Types & Chains!', text: "Your Quest Log now has Weekly Battles and Side Quests! Plus, Quest Chains let you link tasks into epic multi-step adventures for bonus rewards. You've also unlocked the Forest Kingdom theme!" },
+        7: { title: '� Monthly Raids Unlocked!', text: "Plan bigger with Monthly Raids! Set monthly goals and conquer larger challenges over longer timeframes." },
         9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
-        10: { title: '� Legend Status Achieved!', text: "You've reached Level 10 — the rank of Legend! All features are now unlocked. Your dedication is truly epic!" }
+        10: { title: '👑 Legend Status Achieved!', text: "You've reached Level 10 — the rank of Legend! All features are now unlocked. Your dedication is truly epic!" }
     };
     gm.seenFeatureTutorials = [];
     gm.progressiveUnlockInitialized = false;
@@ -193,9 +192,7 @@ function createTestManager(overrides = {}) {
     gm.goalTabUnlockLevels = {
         weekly: 6, sidequests: 6, monthly: 7, yearly: 9, 'life-goals': 9
     };
-    gm.navUnlockLevels = { treasury: 2, 'arcane-powers': 3, 'quest-log': 4, focus: 5, calendar: 1 };
     gm.arcaneTabUnlockLevels = { spellbook: 3, enchantments: 5 };
-    gm.questLogTabUnlockLevels = { weekly: 6, side: 6, monthly: 7, yearly: 9, life: 9, chains: 6 };
     gm.lastVisitDate = null;
     gm.lastWeekNumber = null;
     gm.lastMonth = null;
@@ -1429,12 +1426,12 @@ describe('GoalManager', () => {
         test('feature unlock tutorials cover levels 2-10', () => {
             const gm = createTestManager();
             const unlockLevels = Object.keys(gm.featureUnlockTutorials).map(Number);
-            expect(unlockLevels).toEqual(expect.arrayContaining([2, 3, 4, 5, 6, 7, 8, 9, 10]));
+            expect(unlockLevels).toEqual(expect.arrayContaining([2, 3, 4, 5, 6, 7, 9, 10]));
         });
 
-        test('level 6 feature unlock is Boss Battles', () => {
+        test('level 4 feature unlock is Boss Battles', () => {
             const gm = createTestManager();
-            expect(gm.featureUnlockTutorials[6].title).toContain('Boss Battles');
+            expect(gm.featureUnlockTutorials[4].title).toContain('Boss Battles');
         });
 
         test('level 10 is Legend Status celebration', () => {

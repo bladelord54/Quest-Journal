@@ -1870,7 +1870,7 @@ class GoalManager {
                     <div class="text-7xl mb-6">📜</div>
                     <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Your Quest Log Awaits!</h3>
                     <p class="text-amber-200 fancy-font text-lg mb-2">Complete daily quests to level up and unlock new quest types.</p>
-                    <p class="text-amber-400 fancy-font mt-4">⚔️ Weekly Battles & Side Quests unlock at <span class="font-bold text-yellow-300">Level 4</span></p>
+                    <p class="text-amber-400 fancy-font mt-4">⚔️ Weekly Battles & Side Quests unlock at <span class="font-bold text-yellow-300">Level 6</span></p>
                     <p class="text-amber-400/70 fancy-font mt-1">📖 Monthly Raids at <span class="text-yellow-300">Lv.7</span> · 🚩 Life Goals at <span class="text-yellow-300">Lv.9</span></p>
                 `;
                 // Insert after the tab bar
