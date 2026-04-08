@@ -6564,9 +6564,9 @@ class GoalManager {
         let html = '<div class="habit-heatmap mt-3 mb-2">';
         
         // Day labels at top
-        html += '<div class="flex gap-1 mb-1 pl-0">';
+        html += '<div class="flex gap-1 mb-1">';
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
-            html += `<div class="text-xs text-amber-700 text-center" style="width:12px;">${day}</div>`;
+            html += `<div class="text-xs text-amber-700 text-center" style="flex:1;">${day}</div>`;
         });
         html += '</div>';
         
@@ -11333,7 +11333,7 @@ class GoalManager {
         // Day labels at top
         html += '<div class="flex gap-1 mb-1">';
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
-            html += `<div class="text-xs text-amber-300 w-4 text-center">${day}</div>`;
+            html += `<div class="text-xs text-amber-300 text-center" style="flex:1;">${day}</div>`;
         });
         html += '</div>';
         
@@ -11346,7 +11346,7 @@ class GoalManager {
                 const dateStr = this.dateToLocalString(date);
                 
                 if (dateStr > todayStr) {
-                    html += '<div class="w-4 h-4 rounded border border-stone-700/30" style="opacity:0.15;"></div>';
+                    html += '<div class="rounded border border-stone-700/30" style="flex:1;aspect-ratio:1;max-height:28px;opacity:0.15;"></div>';
                 } else {
                     const count = completionData[dateStr] || 0;
                     let color = 'bg-stone-700';
@@ -11355,8 +11355,8 @@ class GoalManager {
                     if (count > 5) color = 'bg-green-500';
                     if (count > 10) color = 'bg-green-300';
                     
-                    html += `<div class="w-4 h-4 ${color} rounded border border-stone-600 hover:border-amber-500 transition-all cursor-pointer" 
-                                 title="${dateStr}: ${count} tasks"></div>`;
+                    html += `<div class="${color} rounded border border-stone-600 hover:border-amber-500 transition-all cursor-pointer" 
+                                 style="flex:1;aspect-ratio:1;max-height:28px;" title="${dateStr}: ${count} tasks"></div>`;
                 }
             }
             html += '</div>';

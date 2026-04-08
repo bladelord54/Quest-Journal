@@ -198,12 +198,13 @@ button:active {
 }
 
 .heatmap-cell {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
+    flex: 1;
+    aspect-ratio: 1;
+    border-radius: 3px;
     border: 1px solid rgba(217, 119, 6, 0.3);
     transition: all 0.2s ease;
     cursor: pointer;
+    max-height: 28px;
 }
 
 .heatmap-cell:hover {
