@@ -587,7 +587,7 @@ class GoalManager {
             streak_shield: {
                 id: 'streak_shield',
                 name: 'Enchantment of Resilience',
-                description: 'Protects your habit streak for 1 missed day',
+                description: 'Protects your habit & login streak for 1 missed day',
                 icon: '🛡️',
                 cost: 8,
                 duration: 1440, // 24 hours
@@ -1224,7 +1224,7 @@ class GoalManager {
                 id: 'streak_shield',
                 name: 'Streak Shield',
                 icon: '🛡️',
-                description: 'Protect your habit streak for 1 day',
+                description: 'Protect your habit & login streak for 1 day',
                 rarity: 'epic',
                 effect: 'streak_protection',
                 duration: 86400000, // 24 hours
@@ -3402,12 +3402,142 @@ class GoalManager {
             if (dayDiff === 1) {
                 this.loginStreak = (this.loginStreak || 0) + 1;
             } else if (dayDiff > 1) {
+                // Streak would break — check for available streak shields
+                if (prevStreak > 1) {
+                    const shieldSpellEntry = this.spellbook?.find(s => s.spellId === 'streak_shield' && s.charges > 0);
+                    const hasActiveShieldSpell = this.activeSpells?.some(s => 
+                        s.spellId === 'streak_shield' && (s.expiresAt === -1 || s.expiresAt > Date.now())
+                    );
+                    const hasShieldEnchantment = this.hasActiveEnchantment('streak_shield');
+                    
+                    if (shieldSpellEntry || hasActiveShieldSpell || hasShieldEnchantment) {
+                        // Prompt user to use their streak shield
+                        this._showLoginShieldPrompt(prevStreak, dayDiff, shieldSpellEntry, hasActiveShieldSpell, hasShieldEnchantment);
+                        return; // _completeLoginBonus called after user responds
+                    }
+                }
                 this.loginStreak = 1;
             }
         } else {
             this.loginStreak = 1;
         }
         
+        this._completeLoginBonus(prevStreak);
+    }
+
+    _showLoginShieldPrompt(prevStreak, daysMissed, spellEntry, hasActiveSpell, hasEnchantment) {
+        const existing = document.getElementById('login-shield-prompt');
+        if (existing) existing.remove();
+
+        // Determine which shield source to label
+        let shieldSource = '';
+        if (hasActiveSpell) {
+            shieldSource = 'Active Streak Shield spell';
+        } else if (hasEnchantment) {
+            shieldSource = 'Enchantment of Resilience';
+        } else if (spellEntry) {
+            shieldSource = `Streak Shield spell (${spellEntry.charges} charge${spellEntry.charges > 1 ? 's' : ''})`;
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'login-shield-prompt';
+        modal.className = 'fixed inset-0 bg-black/85 z-50';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 0.3s ease-out;';
+        modal.innerHTML = `
+            <style>
+                @keyframes shieldPulse { 0%,100% { transform:scale(1); filter:drop-shadow(0 0 8px rgba(59,130,246,0.5)); } 50% { transform:scale(1.05); filter:drop-shadow(0 0 20px rgba(59,130,246,0.8)); } }
+                @keyframes shieldSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+            </style>
+            <div style="animation:shieldSlideUp 0.4s ease-out;max-width:380px;width:100%;" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-6 rounded-2xl shadow-2xl border-4 border-red-500/60 relative">
+                    <!-- Streak broken warning -->
+                    <div class="text-center mb-4">
+                        <div class="text-5xl mb-2">💔</div>
+                        <h3 class="text-xl font-bold text-red-300 medieval-title mb-1">Streak Broken!</h3>
+                        <p class="text-red-200/70 fancy-font text-sm">You missed ${daysMissed - 1} day${daysMissed > 2 ? 's' : ''}. Your <span class="text-amber-300 font-bold">${prevStreak}-day</span> login streak would be lost.</p>
+                    </div>
+                    
+                    <!-- Shield available -->
+                    <div class="p-4 rounded-xl bg-blue-900/30 border-2 border-blue-500/40 mb-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div style="animation:shieldPulse 2s ease-in-out infinite;" class="text-4xl">🛡️</div>
+                            <div>
+                                <div class="text-blue-300 font-bold fancy-font">Streak Shield Available!</div>
+                                <div class="text-blue-200/60 text-xs fancy-font">${shieldSource}</div>
+                            </div>
+                        </div>
+                        <p class="text-blue-200/80 text-sm fancy-font">Use your shield to protect your streak and continue from <span class="text-amber-300 font-bold">Day ${prevStreak + 1}</span>.</p>
+                    </div>
+                    
+                    <!-- Buttons -->
+                    <button onclick="goalManager._acceptLoginShield()" 
+                        class="w-full py-3.5 rounded-xl font-bold text-lg fancy-font transition-all hover:scale-[1.02] active:scale-95
+                        bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white shadow-lg shadow-blue-500/30 mb-3">
+                        🛡️ Use Streak Shield
+                    </button>
+                    <button onclick="goalManager._declineLoginShield()" 
+                        class="w-full py-2.5 rounded-xl font-semibold text-sm fancy-font transition-all
+                        bg-gray-700/60 hover:bg-gray-600/60 text-gray-300 hover:text-white border border-gray-600/40">
+                        No thanks — reset my streak
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        
+        // Store context for callbacks
+        this._loginShieldContext = { prevStreak, daysMissed, spellEntry, hasActiveSpell, hasEnchantment };
+        
+        if (window.audioManager) {
+            window.audioManager.playDailyAchievement?.();
+        }
+    }
+
+    _acceptLoginShield() {
+        const ctx = this._loginShieldContext;
+        if (!ctx) return;
+        
+        // Consume the shield charge (prefer active spell/enchantment, then spellbook charge)
+        if (ctx.hasActiveSpell) {
+            // Already active — no charge to consume, just use it
+        } else if (ctx.hasEnchantment) {
+            // Enchantment is active — no charge to consume
+        } else if (ctx.spellEntry) {
+            ctx.spellEntry.charges--;
+            this.spellsCast = (this.spellsCast || 0) + 1;
+            this.trackDaily('spellsCast');
+        }
+        
+        // Restore streak (+1 for today)
+        this.loginStreak = ctx.prevStreak + 1;
+        
+        this.showAchievement(`🛡️ STREAK SHIELD! Your ${ctx.prevStreak}-day login streak was protected!`, 'life');
+        
+        // Close prompt and proceed
+        this._closeLoginShieldPrompt();
+        this._completeLoginBonus(ctx.prevStreak, true);
+    }
+
+    _declineLoginShield() {
+        const ctx = this._loginShieldContext;
+        if (!ctx) return;
+        
+        // Reset streak
+        this.loginStreak = 1;
+        
+        // Close prompt and proceed
+        this._closeLoginShieldPrompt();
+        this._completeLoginBonus(ctx.prevStreak, false);
+    }
+
+    _closeLoginShieldPrompt() {
+        const modal = document.getElementById('login-shield-prompt');
+        if (modal) modal.remove();
+        this._loginShieldContext = null;
+    }
+
+    _completeLoginBonus(prevStreak, shieldUsed = false) {
         // Escalating daily gold: base 15, +5 per streak day (caps at day 7 = 45)
         const goldReward = 15 + Math.min(this.loginStreak - 1, 6) * 5;
         // Escalating daily XP: base 10, +3 per streak day (caps at day 7 = 28)
@@ -3443,6 +3573,7 @@ class GoalManager {
             }
         }
         
+        const today = this.getTodayDateString();
         this.lastLoginBonusDate = today;
         this.saveData();
         
@@ -3453,7 +3584,8 @@ class GoalManager {
         this.showLoginStreakModal({
             streak: this.loginStreak,
             prevStreak: prevStreak,
-            streakBroken: prevStreak > 1 && this.loginStreak === 1,
+            streakBroken: !shieldUsed && prevStreak > 1 && this.loginStreak === 1,
+            shieldUsed: shieldUsed,
             xp: totalXP,
             gold: totalGold,
             milestone: milestone,
@@ -3481,7 +3613,7 @@ class GoalManager {
         this.render();
     }
 
-    showLoginStreakModal({ streak, prevStreak, streakBroken, xp, gold, milestone, nextMilestone }) {
+    showLoginStreakModal({ streak, prevStreak, streakBroken, shieldUsed, xp, gold, milestone, nextMilestone }) {
         const existing = document.getElementById('login-streak-modal');
         if (existing) existing.remove();
 
@@ -3530,9 +3662,15 @@ class GoalManager {
             `;
         }
 
-        // Streak broken warning
+        // Streak broken warning or shield-saved banner
         let brokenHTML = '';
-        if (streakBroken) {
+        if (shieldUsed) {
+            brokenHTML = `
+                <div class="mt-3 p-3 rounded-lg bg-blue-900/40 border border-blue-500/40 text-center">
+                    <div class="text-blue-300 text-sm fancy-font">🛡️ Streak Shield protected your ${prevStreak}-day streak!</div>
+                </div>
+            `;
+        } else if (streakBroken) {
             brokenHTML = `
                 <div class="mt-3 p-3 rounded-lg bg-red-900/40 border border-red-500/40 text-center">
                     <div class="text-red-300 text-sm fancy-font">⚠️ Your ${prevStreak}-day streak was lost! Start building again.</div>
@@ -5328,8 +5466,7 @@ class GoalManager {
                 } else if (habit.streak === 100) {
                     this.showAchievement('👑 100-Day Streak! ULTIMATE MASTERY!', 'life');
                 } else {
-                    this.showAchievement('Daily Ritual Completed! 🕯️', 'daily', false);
-                    if (window.audioManager) window.audioManager.playDailyAchievement();
+                    this.showAchievement('Daily Ritual Completed! 🕯️', 'daily');
                 }
             } else if (!habit.completedToday) {
                 // Only reverse streak/history if it was rewarded (not just toggled visually)
@@ -5750,8 +5887,7 @@ class GoalManager {
                 const hour = new Date().getHours();
                 if (hour < 12) this.trackDaily('tasksBeforeNoon');
                 if (hour >= 18) this.trackDaily('tasksAfter6pm');
-                this.showAchievement('Quest Task Completed! +15 XP, +5 Gold ⚔️', 'daily', false);
-                if (window.audioManager) window.audioManager.playDailyAchievement();
+                this.showAchievement('Quest Task Completed! +15 XP, +5 Gold ⚔️', 'daily');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
             }
@@ -8328,6 +8464,12 @@ class GoalManager {
             
             // Escape to close modals
             if (e.key === 'Escape') {
+                const loginShieldPrompt = document.getElementById('login-shield-prompt');
+                if (loginShieldPrompt) {
+                    e.preventDefault();
+                    this._declineLoginShield();
+                    return;
+                }
                 const loginStreakModal = document.getElementById('login-streak-modal');
                 if (loginStreakModal) {
                     e.preventDefault();
