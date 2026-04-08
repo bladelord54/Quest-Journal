@@ -3638,10 +3638,10 @@ class GoalManager {
         }
 
         const calendarHTML = calendarDays.map(d => `
-            <div class="flex flex-col items-center gap-1">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all
-                    ${d.today ? 'bg-amber-500 text-black ring-2 ring-amber-300 ring-offset-2 ring-offset-gray-900 scale-110' : 
-                      d.active ? 'bg-green-600/80 text-green-100' : 'bg-gray-700/50 text-gray-500'}">
+            <div class="flex flex-col items-center gap-1" style="flex:1;min-width:0;">
+                <div class="rounded-full flex items-center justify-center text-sm font-bold transition-all aspect-square w-full
+                    ${d.today ? 'bg-amber-500 text-black ring-2 ring-amber-300 ring-offset-2 ring-offset-gray-900' : 
+                      d.active ? 'bg-green-600/80 text-green-100' : 'bg-gray-700/50 text-gray-500'}" style="max-width:40px;">
                     ${d.active ? (d.today ? '🔥' : '✓') : '·'}
                 </div>
                 <span class="text-xs ${d.today ? 'text-amber-300 font-bold' : d.active ? 'text-green-300/70' : 'text-gray-600'}">${d.label}</span>
@@ -3736,7 +3736,7 @@ class GoalManager {
                     </div>
                     
                     <!-- 7-Day Calendar Strip -->
-                    <div class="flex justify-center gap-2 mb-4 px-2">
+                    <div class="flex gap-1.5 mb-4 overflow-hidden">
                         ${calendarHTML}
                     </div>
                     
