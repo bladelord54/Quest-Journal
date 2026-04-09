@@ -7511,13 +7511,17 @@ class GoalManager {
         const expiredSpells = this.activeSpells.filter(s => s.expiresAt !== -1 && s.expiresAt <= now);
         
         if (expiredSpells.length > 0) {
-            // Show expiration messages
-            expiredSpells.forEach(expired => {
-                const spell = this.spellDefinitions[expired.spellId];
-                if (spell) {
-                    this.showAchievement(`⏱️ ${spell.icon} ${spell.name} has expired`, 'daily');
-                }
-            });
+            // Batch into a single toast to avoid sound spam when many spells expire at once
+            const names = expiredSpells
+                .map(s => this.spellDefinitions[s.spellId])
+                .filter(Boolean)
+                .map(s => `${s.icon} ${s.name}`);
+            
+            if (names.length === 1) {
+                this.showAchievement(`⏱️ ${names[0]} has expired`, 'daily');
+            } else if (names.length > 1) {
+                this.showAchievement(`⏱️ ${names.length} spells expired: ${names.join(', ')}`, 'daily');
+            }
             
             // Remove expired spells (keep -1 and future expiry)
             this.activeSpells = this.activeSpells.filter(s => s.expiresAt === -1 || s.expiresAt > now);
