@@ -12,6 +12,17 @@
     <meta name="color-scheme" content="dark">
     <link rel="manifest" href="manifest.json">
     
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Life Quest Journal — Turn Your Goals Into Epic Quests">
+    <meta property="og:description" content="Transform your life goals into epic quests. Track habits, defeat bosses, earn rewards, and level up your real life!">
+    <meta property="og:image" content="icons/icon-512.png">
+    <meta property="og:site_name" content="Life Quest Journal">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Life Quest Journal — Turn Your Goals Into Epic Quests">
+    <meta name="twitter:description" content="Transform your life goals into epic quests. Track habits, defeat bosses, earn rewards, and level up your real life!">
+    <meta name="twitter:image" content="icons/icon-512.png">
+    
     <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -430,6 +441,9 @@
 
                     <!-- Quick Actions -->
                     <div class="space-y-2">
+                        <button onclick="goalManager.showShareCardPreview(); goalManager.togglePlayerPanel();" class="w-full text-sm bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white px-3 py-2.5 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-400 flex items-center justify-center">
+                            <i class="ri-share-line mr-2"></i> Share Stat Card
+                        </button>
                         <button onclick="goalManager.openSearchModal(); goalManager.togglePlayerPanel();" class="w-full text-sm bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-2.5 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-indigo-500 flex items-center justify-center">
                             <i class="ri-search-line mr-2"></i> Search Quests
                         </button>
@@ -1320,13 +1334,20 @@
                         </div>
                     </div>
 
-                    <!-- Community -->
+                    <!-- Share & Community -->
                     <div class="quest-card bg-gradient-to-br from-indigo-700 to-violet-900 p-6 rounded-xl shadow-2xl border-4 border-indigo-500">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
-                            <i class="ri-discord-line mr-2"></i> Community
+                            <i class="ri-share-line mr-2"></i> Share & Community
                         </h3>
-                        <p class="text-indigo-200 fancy-font mb-4 text-sm text-center">Join fellow adventurers, share tips, and get updates</p>
+                        <p class="text-indigo-200 fancy-font mb-4 text-sm text-center">Share your adventure and connect with fellow adventurers</p>
                         <div class="space-y-3">
+                            <button onclick="goalManager.showShareCardPreview()" 
+                                class="w-full bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
+                                <i class="ri-image-line mr-2"></i> Share Stat Card
+                            </button>
+                            <p class="text-xs text-amber-300/70 fancy-font text-center">
+                                Generate a beautiful stat card to share on social media
+                            </p>
                             <a href="https://discord.gg/Yh5RNYQvFe" target="_blank" rel="noopener noreferrer" 
                                 class="w-full block text-center bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-indigo-400">
                                 <i class="ri-discord-fill mr-2"></i> Join Our Discord

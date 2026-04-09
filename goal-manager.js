@@ -3756,9 +3756,16 @@ class GoalManager {
                     ${brokenHTML}
                     ${nextHTML}
                     
+                    ${isMilestone || streak >= 7 ? `
+                    <!-- Share Button -->
+                    <button onclick="goalManager.shareStatCard();"
+                        class="w-full mt-4 py-2.5 rounded-xl font-bold text-sm fancy-font transition-all hover:scale-[1.02] active:scale-95 bg-gradient-to-r from-orange-600/80 to-amber-700/80 hover:from-orange-500 hover:to-amber-600 text-amber-100 border border-amber-500/40">
+                        <i class="ri-share-line mr-1"></i> Share ${isMilestone ? 'Milestone' : 'Streak'}
+                    </button>
+                    ` : ''}
                     <!-- Claim Button -->
                     <button onclick="goalManager.closeLoginStreakModal()" 
-                        class="w-full mt-5 py-3.5 rounded-xl font-bold text-lg fancy-font transition-all hover:scale-[1.02] active:scale-95
+                        class="w-full mt-2 py-3.5 rounded-xl font-bold text-lg fancy-font transition-all hover:scale-[1.02] active:scale-95
                         ${isMilestone ? 
                             'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black shadow-lg shadow-yellow-500/30' :
                             'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg'}">
@@ -7741,6 +7748,35 @@ class GoalManager {
 
         // 9. Confetti burst (delayed to sync with the opening moment)
         setTimeout(() => this.createConfetti(), 300);
+
+        // 10. Share prompt after celebration
+        setTimeout(() => {
+            this._showMilestoneSharePrompt(`I just reached Level ${level}${title ? ' — ' + title : ''} in Life Quest Journal!`);
+        }, 3000);
+    }
+
+    _showMilestoneSharePrompt(text) {
+        const existing = document.getElementById('milestone-share-prompt');
+        if (existing) existing.remove();
+
+        const prompt = document.createElement('div');
+        prompt.id = 'milestone-share-prompt';
+        prompt.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;animation:fadeIn 0.3s ease-out;';
+        prompt.innerHTML = `
+            <div class="bg-gradient-to-r from-amber-800/95 to-orange-900/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border-2 border-amber-500/60 flex items-center gap-3">
+                <span class="text-amber-200 fancy-font text-sm">${text}</span>
+                <button onclick="goalManager.shareStatCard(); document.getElementById('milestone-share-prompt')?.remove();"
+                    class="bg-amber-500 hover:bg-amber-400 text-black px-3 py-1.5 rounded-lg text-xs font-bold fancy-font transition-all hover:scale-105 whitespace-nowrap flex items-center gap-1">
+                    <i class="ri-share-line"></i> Share
+                </button>
+                <button onclick="document.getElementById('milestone-share-prompt')?.remove();"
+                    class="text-amber-400/60 hover:text-amber-300 text-lg transition-colors" aria-label="Dismiss">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+        `;
+        document.body.appendChild(prompt);
+        setTimeout(() => prompt.remove(), 10000);
     }
 
     playSpellSound() {
@@ -12030,6 +12066,11 @@ class GoalManager {
         // 10. Confetti burst (delayed for dramatic timing)
         setTimeout(() => this.createConfetti(), 500);
         setTimeout(() => this.createConfetti(), 1200);
+
+        // 11. Share prompt after celebration
+        setTimeout(() => {
+            this._showMilestoneSharePrompt(`I defeated ${boss.name} in Life Quest Journal!`);
+        }, 3500);
     }
 
     // Quest Chains System
@@ -15155,6 +15196,290 @@ class GoalManager {
             
             this.saveData();
             this.render();
+        });
+    }
+
+    // ==================== SHAREABLE STAT CARDS ====================
+
+    async generateStatCard() {
+        const canvas = document.createElement('canvas');
+        const W = 600, H = 800;
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        // Background gradient
+        const bg = ctx.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, '#1a1523');
+        bg.addColorStop(0.5, '#1e1205');
+        bg.addColorStop(1, '#0f0a00');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        // Decorative border
+        ctx.strokeStyle = '#d4a44a';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(16, 16, W - 32, H - 32);
+        ctx.strokeStyle = 'rgba(212,164,74,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(24, 24, W - 48, H - 48);
+
+        // Corner accents
+        const cornerSize = 20;
+        ctx.strokeStyle = '#d4a44a';
+        ctx.lineWidth = 2;
+        [[16,16,1,1],[W-16,16,-1,1],[16,H-16,1,-1],[W-16,H-16,-1,-1]].forEach(([x,y,dx,dy]) => {
+            ctx.beginPath();
+            ctx.moveTo(x, y + dy * cornerSize);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x + dx * cornerSize, y);
+            ctx.stroke();
+        });
+
+        // Header
+        ctx.fillStyle = '#d4a44a';
+        ctx.font = 'bold 28px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Life Quest Journal', W / 2, 70);
+
+        // Subtitle
+        ctx.fillStyle = 'rgba(212,164,74,0.5)';
+        ctx.font = '14px Georgia, serif';
+        ctx.fillText('Adventurer Profile', W / 2, 95);
+
+        // Divider line
+        ctx.beginPath();
+        ctx.moveTo(80, 115);
+        ctx.lineTo(W - 80, 115);
+        ctx.strokeStyle = 'rgba(212,164,74,0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Level circle
+        const levelY = 180;
+        const levelR = 50;
+        const levelGrad = ctx.createRadialGradient(W/2, levelY, 0, W/2, levelY, levelR);
+        levelGrad.addColorStop(0, '#b8860b');
+        levelGrad.addColorStop(1, '#6b4c00');
+        ctx.beginPath();
+        ctx.arc(W/2, levelY, levelR, 0, Math.PI * 2);
+        ctx.fillStyle = levelGrad;
+        ctx.fill();
+        ctx.strokeStyle = '#d4a44a';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 36px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.level, W/2, levelY + 13);
+
+        // "LEVEL" label
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = '11px Georgia, serif';
+        ctx.fillText('LEVEL', W/2, levelY + 32);
+
+        // Title
+        let titleName = 'Adventurer';
+        if (this.currentTitle && Array.isArray(this.unlockedTitles)) {
+            const t = this.unlockedTitles.find(t => (t && typeof t === 'object' && t.id === this.currentTitle) || t === this.currentTitle);
+            if (t && t.name) titleName = t.name;
+            else if (typeof t === 'string') titleName = t;
+        }
+        ctx.fillStyle = '#d4a44a';
+        ctx.font = 'italic 20px Georgia, serif';
+        ctx.fillText(`"${titleName}"`, W/2, levelY + 60);
+
+        // Companion
+        const companion = this.getActiveCompanion();
+        if (companion) {
+            const companionDefs = this.getCompanionDefinitions();
+            const icon = companion.icon || companionDefs[companion.type]?.icon || '🐾';
+            const name = companion.name || companionDefs[companion.type]?.name || 'Companion';
+            ctx.font = '28px serif';
+            ctx.fillText(icon, W/2, levelY + 96);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '13px Georgia, serif';
+            ctx.fillText(name, W/2, levelY + 116);
+        }
+
+        // Stats section
+        const statsY = companion ? 330 : 300;
+        ctx.fillStyle = 'rgba(212,164,74,0.15)';
+        ctx.beginPath();
+        ctx.roundRect(50, statsY - 10, W - 100, 260, 12);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(212,164,74,0.25)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const totalCompleted = this.dailyTasks.filter(t => t.completed).length +
+            this.archivedGoals.length;
+        const stats = [
+            ['🔥', 'Login Streak', `${this.loginStreak} days`],
+            ['⚔️', 'Quests Completed', `${totalCompleted}`],
+            ['💀', 'Bosses Defeated', `${this.bossesDefeated}`],
+            ['📦', 'Chests Opened', `${this.chestsOpened}`],
+            ['🔮', 'Spells Cast', `${this.spellsCast}`],
+            ['🎯', 'Focus Sessions', `${this.focusSessionsCompleted}`],
+            ['💰', 'Gold Earned', `${this.gold}`],
+            ['🏅', 'Badges Earned', `${(this.unlockedBadges || []).length}`]
+        ];
+
+        stats.forEach((stat, i) => {
+            const row = Math.floor(i / 2);
+            const col = i % 2;
+            const x = col === 0 ? 90 : W / 2 + 30;
+            const y = statsY + 25 + row * 60;
+
+            ctx.font = '22px serif';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(stat[0], x, y);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '12px Georgia, serif';
+            ctx.fillText(stat[1], x + 32, y - 8);
+
+            ctx.fillStyle = '#d4a44a';
+            ctx.font = 'bold 18px Georgia, serif';
+            ctx.fillText(stat[2], x + 32, y + 12);
+        });
+
+        // XP Progress bar
+        const barY = statsY + 270;
+        const nextLevelXP = 150 + (this.level - 1) * 250;
+        const xpProgress = Math.min(100, (this.xp / nextLevelXP) * 100);
+        
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '12px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${this.xp} / ${nextLevelXP} XP to next level`, W/2, barY);
+
+        ctx.fillStyle = 'rgba(100,100,100,0.4)';
+        ctx.beginPath();
+        ctx.roundRect(80, barY + 8, W - 160, 12, 6);
+        ctx.fill();
+
+        const barGrad = ctx.createLinearGradient(80, 0, 80 + (W - 160) * xpProgress / 100, 0);
+        barGrad.addColorStop(0, '#d4a44a');
+        barGrad.addColorStop(1, '#f5c542');
+        ctx.fillStyle = barGrad;
+        ctx.beginPath();
+        ctx.roundRect(80, barY + 8, (W - 160) * xpProgress / 100, 12, 6);
+        ctx.fill();
+
+        // Branding footer
+        ctx.beginPath();
+        ctx.moveTo(80, H - 80);
+        ctx.lineTo(W - 80, H - 80);
+        ctx.strokeStyle = 'rgba(212,164,74,0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(212,164,74,0.7)';
+        ctx.font = 'bold 14px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Life Quest Journal', W/2, H - 52);
+
+        ctx.fillStyle = 'rgba(212,164,74,0.4)';
+        ctx.font = '11px Georgia, serif';
+        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 36);
+
+        return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    }
+
+    async shareStatCard() {
+        try {
+            this.showAchievement('📊 Generating your stat card...', 'daily');
+            const blob = await this.generateStatCard();
+            if (!blob) {
+                this.showError('Failed to generate stat card');
+                return;
+            }
+            const file = new File([blob], 'life-quest-journal-stats.png', { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: 'My Life Quest Journal Stats',
+                    text: `Level ${this.level} adventurer on a ${this.loginStreak}-day streak! 🔥 #LifeQuestJournal`,
+                    files: [file]
+                });
+                this.showAchievement('📤 Stat card shared!', 'daily');
+            } else {
+                // Fallback: download
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'life-quest-journal-stats.png';
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showAchievement('📥 Stat card downloaded! Share it anywhere.', 'daily');
+            }
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                console.error('Share error:', e);
+                // Fallback: download on any error
+                try {
+                    const blob = await this.generateStatCard();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'life-quest-journal-stats.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showAchievement('📥 Stat card downloaded!', 'daily');
+                } catch (e2) {
+                    this.showError('Could not generate stat card');
+                }
+            }
+        }
+    }
+
+    showShareCardPreview() {
+        const existing = document.getElementById('share-card-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'share-card-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn 0.3s ease-out;';
+        modal.innerHTML = `
+            <div style="max-width:340px;width:100%;" class="relative" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-amber-600 relative">
+                    <button onclick="document.getElementById('share-card-modal')?.remove()" 
+                        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
+                        <i class="ri-close-line"></i>
+                    </button>
+                    <div class="text-center mb-4">
+                        <div class="text-3xl mb-2">📊</div>
+                        <div class="text-lg text-amber-300 medieval-title">Share Your Adventure</div>
+                        <div class="text-amber-200/50 text-xs fancy-font mt-1">Generate a beautiful stat card to share with friends</div>
+                    </div>
+                    <div id="share-card-canvas-container" class="flex justify-center mb-4 rounded-lg overflow-hidden bg-black/30 min-h-[200px] items-center">
+                        <div class="text-amber-400/50 text-sm fancy-font animate-pulse">Generating preview...</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="goalManager.shareStatCard(); document.getElementById('share-card-modal')?.remove();"
+                            class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 text-sm">
+                            <i class="ri-share-line mr-1"></i> Share / Download
+                        </button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <span class="text-amber-400/30 text-xs fancy-font">#LifeQuestJournal</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
+
+        // Generate preview
+        this.generateStatCard().then(blob => {
+            const container = document.getElementById('share-card-canvas-container');
+            if (!container || !blob) return;
+            const url = URL.createObjectURL(blob);
+            container.innerHTML = `<img src="${url}" alt="Stat Card Preview" style="width:100%;border-radius:8px;">`;
         });
     }
 }
