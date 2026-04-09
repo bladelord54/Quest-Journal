@@ -15255,9 +15255,21 @@ class GoalManager {
         ctx.lineWidth = 1;
         ctx.stroke();
 
+        // Title (above level circle)
+        let titleName = 'Adventurer';
+        if (this.currentTitle && Array.isArray(this.unlockedTitles)) {
+            const t = this.unlockedTitles.find(t => (t && typeof t === 'object' && t.id === this.currentTitle) || t === this.currentTitle);
+            if (t && t.name) titleName = t.name;
+            else if (typeof t === 'string') titleName = t;
+        }
+        ctx.fillStyle = '#d4a44a';
+        ctx.font = 'italic 20px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`"${titleName}"`, W/2, 140);
+
         // Level circle
-        const levelY = 180;
-        const levelR = 50;
+        const levelY = 200;
+        const levelR = 46;
         const levelGrad = ctx.createRadialGradient(W/2, levelY, 0, W/2, levelY, levelR);
         levelGrad.addColorStop(0, '#b8860b');
         levelGrad.addColorStop(1, '#6b4c00');
@@ -15270,25 +15282,14 @@ class GoalManager {
         ctx.stroke();
 
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 36px Cinzel, serif';
+        ctx.font = 'bold 34px Cinzel, serif';
         ctx.textAlign = 'center';
-        ctx.fillText(this.level, W/2, levelY + 13);
+        ctx.fillText(this.level, W/2, levelY + 12);
 
         // "LEVEL" label
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
         ctx.font = '11px Georgia, serif';
-        ctx.fillText('LEVEL', W/2, levelY + 32);
-
-        // Title
-        let titleName = 'Adventurer';
-        if (this.currentTitle && Array.isArray(this.unlockedTitles)) {
-            const t = this.unlockedTitles.find(t => (t && typeof t === 'object' && t.id === this.currentTitle) || t === this.currentTitle);
-            if (t && t.name) titleName = t.name;
-            else if (typeof t === 'string') titleName = t;
-        }
-        ctx.fillStyle = '#d4a44a';
-        ctx.font = 'italic 20px Georgia, serif';
-        ctx.fillText(`"${titleName}"`, W/2, levelY + 60);
+        ctx.fillText('LEVEL', W/2, levelY + 30);
 
         // Companion
         const companion = this.getActiveCompanion();
@@ -15297,17 +15298,18 @@ class GoalManager {
             const icon = companion.icon || companionDefs[companion.type]?.icon || '🐾';
             const name = companion.name || companionDefs[companion.type]?.name || 'Companion';
             ctx.font = '28px serif';
-            ctx.fillText(icon, W/2, levelY + 96);
+            ctx.fillText(icon, W/2, levelY + 66);
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.font = '13px Georgia, serif';
-            ctx.fillText(name, W/2, levelY + 116);
+            ctx.fillText(name, W/2, levelY + 86);
         }
 
         // Stats section
-        const statsY = companion ? 330 : 300;
+        const statsY = companion ? 320 : 295;
+        const statsH = 280;
         ctx.fillStyle = 'rgba(212,164,74,0.15)';
         ctx.beginPath();
-        ctx.roundRect(50, statsY - 10, W - 100, 260, 12);
+        ctx.roundRect(50, statsY - 10, W - 100, statsH, 12);
         ctx.fill();
         ctx.strokeStyle = 'rgba(212,164,74,0.25)';
         ctx.lineWidth = 1;
@@ -15322,15 +15324,15 @@ class GoalManager {
             ['📦', 'Chests Opened', `${this.chestsOpened}`],
             ['🔮', 'Spells Cast', `${this.spellsCast}`],
             ['🎯', 'Focus Sessions', `${this.focusSessionsCompleted}`],
-            ['💰', 'Gold Earned', `${this.gold}`],
-            ['🏅', 'Badges Earned', `${(this.unlockedBadges || []).length}`]
+            ['💰', 'Gold Earned', `${this.goldCoins || 0}`],
+            ['🏅', 'Badges Earned', `${(this.badges || []).length}`]
         ];
 
         stats.forEach((stat, i) => {
             const row = Math.floor(i / 2);
             const col = i % 2;
             const x = col === 0 ? 90 : W / 2 + 30;
-            const y = statsY + 25 + row * 60;
+            const y = statsY + 30 + row * 62;
 
             ctx.font = '22px serif';
             ctx.textAlign = 'left';
@@ -15347,7 +15349,7 @@ class GoalManager {
         });
 
         // XP Progress bar
-        const barY = statsY + 270;
+        const barY = statsY + statsH + 20;
         const nextLevelXP = 150 + (this.level - 1) * 250;
         const xpProgress = Math.min(100, (this.xp / nextLevelXP) * 100);
         
@@ -15371,8 +15373,8 @@ class GoalManager {
 
         // Branding footer
         ctx.beginPath();
-        ctx.moveTo(80, H - 80);
-        ctx.lineTo(W - 80, H - 80);
+        ctx.moveTo(80, H - 65);
+        ctx.lineTo(W - 80, H - 65);
         ctx.strokeStyle = 'rgba(212,164,74,0.3)';
         ctx.lineWidth = 1;
         ctx.stroke();
@@ -15380,11 +15382,11 @@ class GoalManager {
         ctx.fillStyle = 'rgba(212,164,74,0.7)';
         ctx.font = 'bold 14px Cinzel, serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Life Quest Journal', W/2, H - 52);
+        ctx.fillText('Life Quest Journal', W/2, H - 42);
 
         ctx.fillStyle = 'rgba(212,164,74,0.4)';
         ctx.font = '11px Georgia, serif';
-        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 36);
+        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 26);
 
         return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     }
