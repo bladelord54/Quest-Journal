@@ -15291,21 +15291,8 @@ class GoalManager {
         ctx.font = '11px Georgia, serif';
         ctx.fillText('LEVEL', W/2, levelY + 30);
 
-        // Companion
-        const companion = this.getActiveCompanion();
-        if (companion) {
-            const companionDefs = this.getCompanionDefinitions();
-            const icon = companion.icon || companionDefs[companion.type]?.icon || '🐾';
-            const name = companion.name || companionDefs[companion.type]?.name || 'Companion';
-            ctx.font = '28px serif';
-            ctx.fillText(icon, W/2, levelY + 66);
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.font = '13px Georgia, serif';
-            ctx.fillText(name, W/2, levelY + 86);
-        }
-
         // Stats section
-        const statsY = companion ? 320 : 295;
+        const statsY = 280;
         const statsH = 280;
         ctx.fillStyle = 'rgba(212,164,74,0.15)';
         ctx.beginPath();
@@ -15456,15 +15443,42 @@ class GoalManager {
                     <div class="text-center mb-4">
                         <div class="text-3xl mb-2">📊</div>
                         <div class="text-lg text-amber-300 medieval-title">Share Your Adventure</div>
-                        <div class="text-amber-200/50 text-xs fancy-font mt-1">Generate a beautiful stat card to share with friends</div>
+                        <div class="text-amber-200/50 text-xs fancy-font mt-1">Show off your stats to the world</div>
                     </div>
                     <div id="share-card-canvas-container" class="flex justify-center mb-4 rounded-lg overflow-hidden bg-black/30 min-h-[200px] items-center">
                         <div class="text-amber-400/50 text-sm fancy-font animate-pulse">Generating preview...</div>
                     </div>
+                    <!-- Platform share buttons -->
+                    <div class="grid grid-cols-4 gap-2 mb-3">
+                        <button onclick="goalManager.shareToPlatform('twitter')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-sky-900/50 border border-gray-700/50 hover:border-sky-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-twitter-x-line text-lg text-white"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">X</span>
+                        </button>
+                        <button onclick="goalManager.shareToPlatform('facebook')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-blue-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-facebook-fill text-lg text-blue-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Facebook</span>
+                        </button>
+                        <button onclick="goalManager.shareToPlatform('reddit')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-orange-900/50 border border-gray-700/50 hover:border-orange-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-reddit-line text-lg text-orange-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Reddit</span>
+                        </button>
+                        <button onclick="goalManager.shareToPlatform('copy')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-green-900/50 border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105 active:scale-95" id="share-copy-btn">
+                            <i class="ri-file-copy-line text-lg text-green-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Copy</span>
+                        </button>
+                    </div>
+                    <div id="share-platform-hint" class="text-center mb-3 hidden">
+                        <span class="text-amber-300/70 text-xs fancy-font"><i class="ri-download-2-line mr-1"></i>Image downloaded — attach it to your post!</span>
+                    </div>
+                    <!-- Native share / download -->
                     <div class="flex gap-2">
                         <button onclick="goalManager.shareStatCard(); document.getElementById('share-card-modal')?.remove();"
                             class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 text-sm">
-                            <i class="ri-share-line mr-1"></i> Share / Download
+                            <i class="ri-share-line mr-1"></i> ${navigator.canShare ? 'Share' : 'Download'} Image
                         </button>
                     </div>
                     <div class="text-center mt-2">
@@ -15476,13 +15490,71 @@ class GoalManager {
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         document.body.appendChild(modal);
 
-        // Generate preview
+        // Generate preview and cache the blob for platform sharing
         this.generateStatCard().then(blob => {
             const container = document.getElementById('share-card-canvas-container');
             if (!container || !blob) return;
+            this._shareCardBlob = blob;
             const url = URL.createObjectURL(blob);
             container.innerHTML = `<img src="${url}" alt="Stat Card Preview" style="width:100%;border-radius:8px;">`;
         });
+    }
+
+    async shareToPlatform(platform) {
+        const shareText = `Level ${this.level} adventurer on a ${this.loginStreak}-day streak! #LifeQuestJournal`;
+        const shareUrl = 'https://questjournal.app';
+
+        if (platform === 'copy') {
+            try {
+                await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                const btn = document.getElementById('share-copy-btn');
+                if (btn) {
+                    btn.querySelector('i').className = 'ri-check-line text-lg text-green-300';
+                    btn.querySelector('span').textContent = 'Copied!';
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.querySelector('i').className = 'ri-file-copy-line text-lg text-green-400';
+                            btn.querySelector('span').textContent = 'Copy';
+                        }
+                    }, 2000);
+                }
+                this.showAchievement('📋 Copied to clipboard!', 'daily');
+            } catch {
+                this.showError('Could not copy to clipboard');
+            }
+            return;
+        }
+
+        // Download the image so user can attach it to their post
+        if (this._shareCardBlob) {
+            const url = URL.createObjectURL(this._shareCardBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'life-quest-journal-stats.png';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Show hint
+        const hint = document.getElementById('share-platform-hint');
+        if (hint) hint.classList.remove('hidden');
+
+        // Open platform share URL
+        const encodedText = encodeURIComponent(shareText);
+        const encodedUrl = encodeURIComponent(shareUrl);
+        let targetUrl = '';
+
+        if (platform === 'twitter') {
+            targetUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        } else if (platform === 'facebook') {
+            targetUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`;
+        } else if (platform === 'reddit') {
+            targetUrl = `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedText}`;
+        }
+
+        if (targetUrl) {
+            window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+        }
     }
 }
 
