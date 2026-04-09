@@ -10892,6 +10892,12 @@ class GoalManager {
                     <p class="text-green-200 fancy-font">All quests completed! Amazing work!</p>
                 </div>
                 `}
+                ${mainPeriod === 'week' ? `
+                <button onclick="goalManager.closeSlideshow(); goalManager.showWeeklyRecapPreview();" 
+                    class="w-full bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font mb-3 border-2 border-green-500">
+                    <i class="ri-share-line mr-2"></i>Share Weekly Recap
+                </button>
+                ` : ''}
                 <div class="text-center">
                     <p class="text-amber-200 fancy-font text-sm">Good luck on your new adventures!</p>
                 </div>
@@ -11086,6 +11092,12 @@ class GoalManager {
                             </div>
                         `}
                         
+                        ${period === 'week' ? `
+                        <button onclick="this.closest('.fixed').remove(); goalManager.showWeeklyRecapPreview();" 
+                            class="w-full bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font mb-2 border-2 border-green-500">
+                            <i class="ri-share-line mr-2"></i>Share Weekly Recap
+                        </button>
+                        ` : ''}
                         <button onclick="this.closest('.fixed').remove()" 
                             class="w-full bg-amber-700 hover:bg-amber-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font">
                             Close Summary
@@ -15453,11 +15465,16 @@ class GoalManager {
                         <div class="text-amber-400/50 text-sm fancy-font animate-pulse">Generating preview...</div>
                     </div>
                     <!-- Platform share buttons -->
-                    <div class="grid grid-cols-4 gap-2 mb-3">
+                    <div class="grid grid-cols-5 gap-2 mb-3">
                         <button onclick="goalManager.shareToPlatform('twitter')" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-sky-900/50 border border-gray-700/50 hover:border-sky-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-twitter-x-line text-lg text-white"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">X</span>
+                        </button>
+                        <button onclick="goalManager.shareToPlatform('instagram')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-pink-900/50 border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-instagram-line text-lg text-pink-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Instagram</span>
                         </button>
                         <button onclick="goalManager.shareToPlatform('facebook')" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-blue-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105 active:scale-95">
@@ -15541,9 +15558,404 @@ class GoalManager {
 
         // Show hint
         const hint = document.getElementById('share-platform-hint');
-        if (hint) hint.classList.remove('hidden');
+        if (hint) {
+            hint.classList.remove('hidden');
+            if (platform === 'instagram') {
+                hint.innerHTML = '<span class="text-pink-300/70 text-xs fancy-font"><i class="ri-download-2-line mr-1"></i>Image downloaded & caption copied — paste into your Story or Post!</span>';
+            } else {
+                hint.innerHTML = '<span class="text-amber-300/70 text-xs fancy-font"><i class="ri-download-2-line mr-1"></i>Image downloaded — attach it to your post!</span>';
+            }
+        }
+
+        // Instagram: copy caption to clipboard (no web share URL available)
+        if (platform === 'instagram') {
+            try {
+                await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+            } catch {}
+            this.showAchievement('📸 Image saved & caption copied — share it on Instagram!', 'daily');
+            return;
+        }
 
         // Open platform share URL
+        const encodedText = encodeURIComponent(shareText);
+        const encodedUrl = encodeURIComponent(shareUrl);
+        let targetUrl = '';
+
+        if (platform === 'twitter') {
+            targetUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        } else if (platform === 'facebook') {
+            targetUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`;
+        } else if (platform === 'reddit') {
+            targetUrl = `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedText}`;
+        }
+
+        if (targetUrl) {
+            window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+        }
+    }
+
+    // ==================== WEEKLY RECAP CARDS ====================
+
+    async generateWeeklyRecapCard() {
+        const summary = this.generatePreviousPeriodSummary('week');
+        const canvas = document.createElement('canvas');
+        const W = 600, H = 800;
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+
+        // Background gradient — green-tinted theme for weekly
+        const bg = ctx.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, '#0a1a12');
+        bg.addColorStop(0.5, '#0f1e0a');
+        bg.addColorStop(1, '#0a0f05');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        // Decorative border
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(16, 16, W - 32, H - 32);
+
+        // Inner border
+        ctx.strokeStyle = 'rgba(74,222,128,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(24, 24, W - 48, H - 48);
+
+        // Corner accents
+        const cornerSize = 20;
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 3;
+        [[24,24,1,1],[W-24,24,-1,1],[24,H-24,1,-1],[W-24,H-24,-1,-1]].forEach(([x,y,dx,dy]) => {
+            ctx.beginPath();
+            ctx.moveTo(x, y + dy*cornerSize);
+            ctx.lineTo(x, y);
+            ctx.lineTo(x + dx*cornerSize, y);
+            ctx.stroke();
+        });
+
+        // Header
+        ctx.fillStyle = '#4ade80';
+        ctx.font = 'bold 16px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚔️  LIFE QUEST JOURNAL  ⚔️', W/2, 60);
+
+        // Subtitle
+        ctx.fillStyle = 'rgba(74,222,128,0.6)';
+        ctx.font = '13px Georgia, serif';
+        ctx.fillText('Weekly Adventure Recap', W/2, 82);
+
+        // Period name & dates
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 28px Cinzel, serif';
+        ctx.fillText(summary.periodName, W/2, 120);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '13px Georgia, serif';
+        ctx.fillText(`${summary.startDate} — ${summary.endDate}`, W/2, 142);
+
+        // Completion ring
+        const ringX = W/2, ringY = 210, ringR = 50;
+        const rate = summary.tasks.total > 0 ? summary.tasks.completed / summary.tasks.total : 0;
+
+        // Ring background
+        ctx.beginPath();
+        ctx.arc(ringX, ringY, ringR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(74,222,128,0.15)';
+        ctx.lineWidth = 10;
+        ctx.stroke();
+
+        // Ring progress
+        if (rate > 0) {
+            ctx.beginPath();
+            ctx.arc(ringX, ringY, ringR, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * rate));
+            ctx.strokeStyle = rate >= 1 ? '#fbbf24' : '#4ade80';
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            ctx.lineCap = 'butt';
+        }
+
+        // Percentage in ring
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 28px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${summary.tasks.completionRate}%`, ringX, ringY + 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '10px Georgia, serif';
+        ctx.fillText('COMPLETION', ringX, ringY + 24);
+
+        // Stats grid — 2 columns
+        const statsY = 290;
+        const statsH = 280;
+        ctx.fillStyle = 'rgba(74,222,128,0.1)';
+        ctx.beginPath();
+        ctx.roundRect(50, statsY - 10, W - 100, statsH, 12);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(74,222,128,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const stats = [
+            { icon: '⚔️', label: 'Tasks Completed', value: `${summary.tasks.completed}/${summary.tasks.total}` },
+            { icon: '🛡️', label: 'Goals Completed', value: `${summary.goals.completed}/${summary.goals.total}` },
+            { icon: '🔥', label: 'Login Streak', value: `${this.loginStreak} days` },
+            { icon: '⭐', label: 'XP Earned', value: `${summary.xpEarned}` },
+            { icon: '🔄', label: 'Habit Completions', value: `${summary.habits.completions}` },
+            { icon: '🏰', label: 'Current Level', value: `${this.level}` },
+        ];
+
+        const colW = (W - 120) / 2;
+        stats.forEach((stat, i) => {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const x = 70 + col * (colW + 20);
+            const y = statsY + 20 + row * 85;
+
+            // Card background
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.roundRect(x - 10, y - 10, colW, 70, 8);
+            ctx.fill();
+
+            // Icon
+            ctx.font = '22px serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(stat.icon, x, y + 18);
+
+            // Value
+            ctx.fillStyle = '#4ade80';
+            ctx.font = 'bold 22px Cinzel, serif';
+            ctx.fillText(stat.value, x + 32, y + 18);
+
+            // Label
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '11px Georgia, serif';
+            ctx.fillText(stat.label, x + 32, y + 38);
+
+            ctx.fillStyle = '#fff';
+        });
+
+        // Motivational message based on completion rate
+        let message = '';
+        if (summary.tasks.completionRate >= 100) message = '🏆 Perfect Week! Legendary Adventurer!';
+        else if (summary.tasks.completionRate >= 80) message = '⭐ Outstanding Week! Keep it up!';
+        else if (summary.tasks.completionRate >= 60) message = '💪 Solid Week! You\'re on track!';
+        else if (summary.tasks.completionRate >= 40) message = '🌱 Growing Week! Room to improve!';
+        else message = '🗡️ Every quest counts. Onward!';
+
+        const msgY = statsY + statsH + 20;
+        ctx.fillStyle = 'rgba(74,222,128,0.12)';
+        ctx.beginPath();
+        ctx.roundRect(50, msgY, W - 100, 40, 8);
+        ctx.fill();
+
+        ctx.fillStyle = '#4ade80';
+        ctx.font = 'bold 14px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(message, W/2, msgY + 25);
+
+        // Title
+        const titleName = this.currentTitle || 'Adventurer';
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '13px Georgia, serif';
+        ctx.fillText(`${titleName} — Level ${this.level}`, W/2, msgY + 65);
+
+        // Branding footer
+        ctx.fillStyle = 'rgba(74,222,128,0.5)';
+        ctx.font = 'bold 14px Cinzel, serif';
+        ctx.fillText('Life Quest Journal', W/2, H - 42);
+
+        ctx.fillStyle = 'rgba(74,222,128,0.3)';
+        ctx.font = '11px Georgia, serif';
+        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 26);
+
+        return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    }
+
+    async shareWeeklyRecap() {
+        try {
+            this.showAchievement('📅 Generating weekly recap...', 'daily');
+            const blob = await this.generateWeeklyRecapCard();
+            if (!blob) {
+                this.showError('Failed to generate weekly recap');
+                return;
+            }
+            const file = new File([blob], 'life-quest-weekly-recap.png', { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                const summary = this.generatePreviousPeriodSummary('week');
+                await navigator.share({
+                    title: 'My Weekly Quest Recap',
+                    text: `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`,
+                    files: [file]
+                });
+                this.showAchievement('📤 Weekly recap shared!', 'daily');
+            } else {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'life-quest-weekly-recap.png';
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showAchievement('📥 Weekly recap downloaded!', 'daily');
+            }
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                console.error('Share error:', e);
+                try {
+                    const blob = await this.generateWeeklyRecapCard();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'life-quest-weekly-recap.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    this.showAchievement('📥 Weekly recap downloaded!', 'daily');
+                } catch (e2) {
+                    this.showError('Could not generate weekly recap');
+                }
+            }
+        }
+    }
+
+    showWeeklyRecapPreview() {
+        const existing = document.getElementById('weekly-recap-modal');
+        if (existing) existing.remove();
+
+        const summary = this.generatePreviousPeriodSummary('week');
+        const shareText = `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`;
+
+        const modal = document.createElement('div');
+        modal.id = 'weekly-recap-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn 0.3s ease-out;';
+        modal.innerHTML = `
+            <div style="max-width:340px;width:100%;" class="relative" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-green-600 relative">
+                    <button onclick="document.getElementById('weekly-recap-modal')?.remove()" 
+                        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
+                        <i class="ri-close-line"></i>
+                    </button>
+                    <div class="text-center mb-4">
+                        <div class="text-3xl mb-2">📅</div>
+                        <div class="text-lg text-green-300 medieval-title">Weekly Recap</div>
+                        <div class="text-green-200/50 text-xs fancy-font mt-1">Share your weekly adventure summary</div>
+                    </div>
+                    <div id="weekly-recap-canvas-container" class="flex justify-center mb-4 rounded-lg overflow-hidden bg-black/30 min-h-[200px] items-center">
+                        <div class="text-green-400/50 text-sm fancy-font animate-pulse">Generating recap...</div>
+                    </div>
+                    <!-- Platform share buttons -->
+                    <div class="grid grid-cols-5 gap-2 mb-3">
+                        <button onclick="goalManager.shareRecapToPlatform('twitter')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-sky-900/50 border border-gray-700/50 hover:border-sky-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-twitter-x-line text-lg text-white"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">X</span>
+                        </button>
+                        <button onclick="goalManager.shareRecapToPlatform('instagram')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-pink-900/50 border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-instagram-line text-lg text-pink-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Instagram</span>
+                        </button>
+                        <button onclick="goalManager.shareRecapToPlatform('facebook')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-blue-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-facebook-fill text-lg text-blue-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Facebook</span>
+                        </button>
+                        <button onclick="goalManager.shareRecapToPlatform('reddit')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-orange-900/50 border border-gray-700/50 hover:border-orange-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-reddit-line text-lg text-orange-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Reddit</span>
+                        </button>
+                        <button onclick="goalManager.shareRecapToPlatform('copy')" 
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-green-900/50 border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105 active:scale-95" id="recap-copy-btn">
+                            <i class="ri-file-copy-line text-lg text-green-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Copy</span>
+                        </button>
+                    </div>
+                    <div id="recap-platform-hint" class="text-center mb-3 hidden">
+                        <span class="text-green-300/70 text-xs fancy-font"><i class="ri-download-2-line mr-1"></i>Image downloaded — attach it to your post!</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="goalManager.shareWeeklyRecap(); document.getElementById('weekly-recap-modal')?.remove();"
+                            class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 text-sm">
+                            <i class="ri-share-line mr-1"></i> ${navigator.canShare ? 'Share' : 'Download'} Recap
+                        </button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <span class="text-green-400/30 text-xs fancy-font">#LifeQuestJournal</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
+
+        // Generate preview and cache blob
+        this.generateWeeklyRecapCard().then(blob => {
+            const container = document.getElementById('weekly-recap-canvas-container');
+            if (!container || !blob) return;
+            this._weeklyRecapBlob = blob;
+            const url = URL.createObjectURL(blob);
+            container.innerHTML = `<img src="${url}" alt="Weekly Recap Preview" style="width:100%;border-radius:8px;">`;
+        });
+    }
+
+    async shareRecapToPlatform(platform) {
+        const summary = this.generatePreviousPeriodSummary('week');
+        const shareText = `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`;
+        const shareUrl = 'https://questjournal.app';
+
+        if (platform === 'copy') {
+            try {
+                await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                const btn = document.getElementById('recap-copy-btn');
+                if (btn) {
+                    btn.querySelector('i').className = 'ri-check-line text-lg text-green-300';
+                    btn.querySelector('span').textContent = 'Copied!';
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.querySelector('i').className = 'ri-file-copy-line text-lg text-green-400';
+                            btn.querySelector('span').textContent = 'Copy';
+                        }
+                    }, 2000);
+                }
+                this.showAchievement('📋 Copied to clipboard!', 'daily');
+            } catch {
+                this.showError('Could not copy to clipboard');
+            }
+            return;
+        }
+
+        // Download the image
+        if (this._weeklyRecapBlob) {
+            const url = URL.createObjectURL(this._weeklyRecapBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'life-quest-weekly-recap.png';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Show hint
+        const hint = document.getElementById('recap-platform-hint');
+        if (hint) {
+            hint.classList.remove('hidden');
+            if (platform === 'instagram') {
+                hint.innerHTML = '<span class="text-pink-300/70 text-xs fancy-font"><i class="ri-download-2-line mr-1"></i>Image downloaded & caption copied — paste into your Story or Post!</span>';
+            } else {
+                hint.innerHTML = '<span class="text-green-300/70 text-xs fancy-font"><i class="ri-download-2-line mr-1"></i>Image downloaded — attach it to your post!</span>';
+            }
+        }
+
+        if (platform === 'instagram') {
+            try {
+                await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+            } catch {}
+            this.showAchievement('📸 Image saved & caption copied — share it on Instagram!', 'daily');
+            return;
+        }
+
         const encodedText = encodeURIComponent(shareText);
         const encodedUrl = encodeURIComponent(shareUrl);
         let targetUrl = '';
