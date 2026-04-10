@@ -15654,9 +15654,12 @@ class GoalManager {
         ctx.font = '13px Georgia, serif';
         ctx.fillText(`${summary.startDate} — ${summary.endDate}`, W/2, 142);
 
-        // Completion ring
+        // Completion ring (combined tasks + goals)
         const ringX = W/2, ringY = 210, ringR = 50;
-        const rate = summary.tasks.total > 0 ? summary.tasks.completed / summary.tasks.total : 0;
+        const totalItems = summary.tasks.total + summary.goals.total;
+        const completedItems = summary.tasks.completed + summary.goals.completed;
+        const rate = totalItems > 0 ? completedItems / totalItems : 0;
+        const combinedPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
         // Ring background
         ctx.beginPath();
@@ -15680,7 +15683,7 @@ class GoalManager {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 28px Cinzel, serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${summary.tasks.completionRate}%`, ringX, ringY + 8);
+        ctx.fillText(`${combinedPct}%`, ringX, ringY + 8);
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
         ctx.font = '10px Georgia, serif';
         ctx.fillText('COMPLETION', ringX, ringY + 24);
@@ -15738,10 +15741,10 @@ class GoalManager {
 
         // Motivational message based on completion rate
         let message = '';
-        if (summary.tasks.completionRate >= 100) message = '🏆 Perfect Week! Legendary Adventurer!';
-        else if (summary.tasks.completionRate >= 80) message = '⭐ Outstanding Week! Keep it up!';
-        else if (summary.tasks.completionRate >= 60) message = '💪 Solid Week! You\'re on track!';
-        else if (summary.tasks.completionRate >= 40) message = '🌱 Growing Week! Room to improve!';
+        if (combinedPct >= 100) message = '🏆 Perfect Week! Legendary Adventurer!';
+        else if (combinedPct >= 80) message = '⭐ Outstanding Week! Keep it up!';
+        else if (combinedPct >= 60) message = '💪 Solid Week! You\'re on track!';
+        else if (combinedPct >= 40) message = '🌱 Growing Week! Room to improve!';
         else message = '🗡️ Every quest counts. Onward!';
 
         const msgY = statsY + statsH + 20;
@@ -15756,7 +15759,8 @@ class GoalManager {
         ctx.fillText(message, W/2, msgY + 25);
 
         // Title
-        const titleName = this.currentTitle || 'Adventurer';
+        const rawTitle = this.currentTitle || 'Adventurer';
+        const titleName = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = '13px Georgia, serif';
         ctx.fillText(`${titleName} — Level ${this.level}`, W/2, msgY + 65);
