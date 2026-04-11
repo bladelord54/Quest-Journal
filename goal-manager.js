@@ -5494,20 +5494,27 @@ class GoalManager {
                     habit.completionHistory.push(today);
                 }
                 
-                // Add XP for habit
-                this.addXP(10, 'habit');
-                this.addGold(3, 'habit');
-                this.grantAttackCharge(1, 'habit');
-                this.checkSerenityBonus();
-                this.trackDaily('habitsCompleted');
+                // Wrap reward chain in try/catch so render always fires
+                try {
+                    this.addXP(10, 'habit');
+                    this.addGold(3, 'habit');
+                    this.grantAttackCharge(1, 'habit');
+                    this.checkSerenityBonus();
+                    this.trackDaily('habitsCompleted');
+                } catch (e) {
+                    console.error('toggleHabit reward error:', e);
+                }
                 
-                // Special achievements for streaks
+                // Special achievements for streaks (with share prompts for milestones)
                 if (habit.streak === 7) {
                     this.showAchievement('🔥 7-Day Streak! Keep the fire burning!', 'weekly');
+                    setTimeout(() => this._showMilestoneSharePrompt(`I hit a 7-day streak on "${habit.title}" in Life Quest Journal!`), 1500);
                 } else if (habit.streak === 30) {
                     this.showAchievement('⚡ 30-Day Streak! Legendary Discipline!', 'monthly');
+                    setTimeout(() => this._showMilestoneSharePrompt(`I hit a 30-day streak on "${habit.title}" in Life Quest Journal!`), 1500);
                 } else if (habit.streak === 100) {
                     this.showAchievement('👑 100-Day Streak! ULTIMATE MASTERY!', 'life');
+                    setTimeout(() => this._showMilestoneSharePrompt(`I hit a 100-day streak on "${habit.title}" in Life Quest Journal!`), 1500);
                 } else {
                     this.showAchievement('Daily Ritual Completed! 🕯️', 'daily');
                 }
@@ -5527,6 +5534,9 @@ class GoalManager {
             
             this.saveData();
             this.render();
+            // Force immediate heatmap refresh so the visual update isn't
+            // delayed or lost if the debounced render is batched/skipped
+            this.renderHabits();
         }
     }
 
@@ -5553,11 +5563,17 @@ class GoalManager {
         this.recalculateHabitStreak(habit);
         
         // Award XP for retroactive completion
-        this.addXP(10, 'habit');
+        try {
+            this.addXP(10, 'habit');
+        } catch (e) {
+            console.error('markHabitPastCompletion reward error:', e);
+        }
         this.showAchievement(`✓ Marked complete for ${dateStr}! +10 XP`, 'daily');
         
         this.saveData();
         this.render();
+        // Force immediate heatmap refresh so the cell updates instantly
+        this.renderHabits();
     }
 
     recalculateHabitStreak(habit) {
@@ -10781,8 +10797,11 @@ class GoalManager {
         const completedTasks = periodTasks.filter(t => t.completed);
         const incompleteTasks = periodTasks.filter(t => !t.completed);
         
-        // Calculate habit completions (approximation based on streak)
-        const habitsCompleted = this.habits.reduce((total, h) => total + (h.streak || 0), 0);
+        // Calculate habit completions in the period from completion history
+        const habitsCompleted = this.habits.reduce((total, h) => {
+            if (!h.completionHistory) return total;
+            return total + h.completionHistory.filter(d => d >= startISO && d <= endISO).length;
+        }, 0);
         
         // Calculate goals
         let periodGoals = [];
@@ -15386,13 +15405,16 @@ class GoalManager {
 
         // XP Progress bar
         const barY = statsY + statsH + 20;
-        const nextLevelXP = 150 + (this.level - 1) * 250;
-        const xpProgress = Math.min(100, (this.xp / nextLevelXP) * 100);
+        const currentLevelXP = this.getTotalXPForLevel(this.level);
+        const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
+        const xpIntoLevel = this.xp - currentLevelXP;
+        const xpNeededForLevel = nextLevelXP - currentLevelXP;
+        const xpProgress = Math.max(0, Math.min(100, (xpIntoLevel / xpNeededForLevel) * 100));
         
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = '12px Georgia, serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${this.xp} / ${nextLevelXP} XP to next level`, W/2, barY);
+        ctx.fillText(`${xpIntoLevel} / ${xpNeededForLevel} XP to next level`, W/2, barY);
 
         ctx.fillStyle = 'rgba(100,100,100,0.4)';
         ctx.beginPath();
@@ -15542,6 +15564,17 @@ class GoalManager {
             </div>
         `;
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        // Revoke blob URL when modal is removed from DOM to prevent memory leak
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById('share-card-modal')) {
+                if (this._shareCardPreviewUrl) {
+                    URL.revokeObjectURL(this._shareCardPreviewUrl);
+                    this._shareCardPreviewUrl = null;
+                }
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
         document.body.appendChild(modal);
 
         // Generate preview and cache the blob for platform sharing
@@ -15550,13 +15583,14 @@ class GoalManager {
             if (!container || !blob) return;
             this._shareCardBlob = blob;
             const url = URL.createObjectURL(blob);
+            this._shareCardPreviewUrl = url;
             container.innerHTML = `<img src="${url}" alt="Stat Card Preview" style="width:100%;border-radius:8px;">`;
         });
     }
 
     async shareToPlatform(platform) {
         const shareText = `Level ${this.level} adventurer on a ${this.loginStreak}-day streak! #LifeQuestJournal`;
-        const shareUrl = 'https://questjournal.app';
+        const shareUrl = window.location.origin + window.location.pathname;
 
         if (platform === 'copy') {
             try {
@@ -15926,6 +15960,17 @@ class GoalManager {
             </div>
         `;
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        // Revoke blob URL when modal is removed from DOM to prevent memory leak
+        const recapObserver = new MutationObserver(() => {
+            if (!document.getElementById('weekly-recap-modal')) {
+                if (this._weeklyRecapPreviewUrl) {
+                    URL.revokeObjectURL(this._weeklyRecapPreviewUrl);
+                    this._weeklyRecapPreviewUrl = null;
+                }
+                recapObserver.disconnect();
+            }
+        });
+        recapObserver.observe(document.body, { childList: true });
         document.body.appendChild(modal);
 
         // Generate preview and cache blob
@@ -15934,6 +15979,7 @@ class GoalManager {
             if (!container || !blob) return;
             this._weeklyRecapBlob = blob;
             const url = URL.createObjectURL(blob);
+            this._weeklyRecapPreviewUrl = url;
             container.innerHTML = `<img src="${url}" alt="Weekly Recap Preview" style="width:100%;border-radius:8px;">`;
         });
     }
@@ -15941,7 +15987,7 @@ class GoalManager {
     async shareRecapToPlatform(platform) {
         const summary = this.generatePreviousPeriodSummary('week');
         const shareText = `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`;
-        const shareUrl = 'https://questjournal.app';
+        const shareUrl = window.location.origin + window.location.pathname;
 
         if (platform === 'copy') {
             try {
@@ -16110,10 +16156,10 @@ class GoalManager {
         if (!container) return;
 
         const difficulties = [
-            { id: 'easy', label: 'Easy', icon: '🌱', color: 'green', rewards: this.getChallengeRewards('easy'), days: 3 },
+            { id: 'easy', label: 'Easy', icon: '🌱', color: 'green', rewards: this.getChallengeRewards('easy'), days: 7 },
             { id: 'medium', label: 'Medium', icon: '⚔️', color: 'orange', rewards: this.getChallengeRewards('medium'), days: 3 },
-            { id: 'hard', label: 'Hard', icon: '🔥', color: 'red', rewards: this.getChallengeRewards('hard'), days: 7 },
-            { id: 'epic', label: 'Epic', icon: '💀', color: 'purple', rewards: this.getChallengeRewards('epic'), days: 7 }
+            { id: 'hard', label: 'Hard', icon: '🔥', color: 'red', rewards: this.getChallengeRewards('hard'), days: 2 },
+            { id: 'epic', label: 'Epic', icon: '💀', color: 'purple', rewards: this.getChallengeRewards('epic'), days: 1 }
         ];
 
         container.innerHTML = `
