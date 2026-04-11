@@ -84,6 +84,20 @@ class GoalManager {
         this.dailyQuestBoard = null; // { date, quests: [{id, completed}], allClaimedBonus }
         this.dailyTracking = null; // { date, xpEarned, goldEarned, tasksCompleted, habitsCompleted, tasksCreated, chestsOpened, spellsCast, bossAttacks, chargesEarned, focusSessions, crystalsEarned, sideQuestsCompleted, weeklyProgress }
         
+        // Challenge a Friend System
+        this.activeChallenges = [];
+        this.completedChallenges = [];
+        this.challengePresets = [
+            { id: 'tasks_today', title: 'Complete {n} tasks today', icon: '⚔️', field: 'tasksCompleted', trackType: 'daily', defaults: { n: 5 }, options: [3, 5, 7, 10] },
+            { id: 'habits_today', title: 'Complete {n} habits today', icon: '🔄', field: 'habitsCompleted', trackType: 'daily', defaults: { n: 3 }, options: [2, 3, 5] },
+            { id: 'login_streak', title: 'Reach a {n}-day login streak', icon: '🔥', field: 'loginStreak', trackType: 'cumulative', defaults: { n: 7 }, options: [3, 7, 14, 30] },
+            { id: 'defeat_boss', title: 'Defeat {n} boss(es)', icon: '💀', field: 'bossesDefeated', trackType: 'delta', defaults: { n: 1 }, options: [1, 3, 5] },
+            { id: 'focus_sessions', title: 'Complete {n} focus session(s)', icon: '🎯', field: 'focusSessions', trackType: 'daily', defaults: { n: 1 }, options: [1, 2, 3] },
+            { id: 'earn_xp', title: 'Earn {n} XP today', icon: '⭐', field: 'xpEarned', trackType: 'daily', defaults: { n: 100 }, options: [50, 100, 200, 500] },
+            { id: 'earn_gold', title: 'Earn {n} gold today', icon: '💰', field: 'goldEarned', trackType: 'daily', defaults: { n: 50 }, options: [25, 50, 100, 200] },
+            { id: 'side_quests', title: 'Complete {n} side quest(s)', icon: '🧭', field: 'sideQuestsCompleted', trackType: 'daily', defaults: { n: 2 }, options: [1, 2, 3, 5] }
+        ];
+        
         // Daily Free Wooden Chest
         this.lastWoodenChestDate = null;
         
@@ -210,6 +224,10 @@ class GoalManager {
         
         // Check for daily login bonus
         setTimeout(() => this.checkDailyLoginBonus(), 1500);
+        
+        // Check for challenge URL param and expired challenges on load
+        setTimeout(() => this.checkForChallengeParam(), 2000);
+        setTimeout(() => { if (this.activeChallenges?.length > 0) this.checkChallengeProgress(); }, 2500);
         
         // Check for expired spells on load and periodically
         setTimeout(() => this.checkExpiredSpells(), 500);
@@ -392,6 +410,10 @@ class GoalManager {
                 this.dailyTracking = data.dailyTracking || null;
                 this.lastWoodenChestDate = data.lastWoodenChestDate || null;
                 
+                // Challenge a Friend
+                this.activeChallenges = data.activeChallenges || [];
+                this.completedChallenges = data.completedChallenges || [];
+                
                 // Stats tracking for titles
                 this.chestsOpened = data.chestsOpened || 0;
                 this.bossesDefeated = data.bossesDefeated || 0;
@@ -544,7 +566,9 @@ class GoalManager {
                 progressiveUnlockInitialized: this.progressiveUnlockInitialized,
                 dailyQuestBoard: this.dailyQuestBoard,
                 dailyTracking: this.dailyTracking,
-                lastWoodenChestDate: this.lastWoodenChestDate
+                lastWoodenChestDate: this.lastWoodenChestDate,
+                activeChallenges: this.activeChallenges,
+                completedChallenges: this.completedChallenges
             });
             localStorage.setItem('lifeOrganizeData', dataToSave);
             // Proactive storage warning when approaching typical 5MB limit
@@ -1081,6 +1105,7 @@ class GoalManager {
             this.monthlyBossStreak++;
         }
         this.bossesDefeated++;
+        if (this.activeChallenges?.length > 0) this.checkChallengeProgress();
         
         // Track boss kills this month (for monthly boss unlock threshold)
         this.bossKillsThisMonth++;
@@ -3545,6 +3570,9 @@ class GoalManager {
     }
 
     _completeLoginBonus(prevStreak, shieldUsed = false) {
+        // Check challenges that track login streak
+        if (this.activeChallenges?.length > 0) this.checkChallengeProgress();
+        
         // Escalating daily gold: base 15, +5 per streak day (caps at day 7 = 45)
         const goldReward = 15 + Math.min(this.loginStreak - 1, 6) * 5;
         // Escalating daily XP: base 10, +3 per streak day (caps at day 7 = 28)
@@ -3869,6 +3897,7 @@ class GoalManager {
         const t = this.ensureDailyTracking();
         t[field] = (t[field] || 0) + amount;
         this.checkDailyQuestCompletion();
+        if (this.activeChallenges?.length > 0) this.checkChallengeProgress();
     }
 
     generateDailyQuestBoard() {
@@ -10033,6 +10062,8 @@ class GoalManager {
                 dailyQuestBoard: this.dailyQuestBoard,
                 dailyTracking: this.dailyTracking,
                 lastWoodenChestDate: this.lastWoodenChestDate,
+                activeChallenges: this.activeChallenges,
+                completedChallenges: this.completedChallenges,
                 exportDate: new Date().toISOString(),
                 version: '3.0'
             };
@@ -10144,6 +10175,8 @@ class GoalManager {
                     this.dailyQuestBoard = data.dailyQuestBoard || this.dailyQuestBoard;
                     this.dailyTracking = data.dailyTracking || this.dailyTracking;
                     this.lastWoodenChestDate = data.lastWoodenChestDate || this.lastWoodenChestDate;
+                    this.activeChallenges = arr(data.activeChallenges, this.activeChallenges);
+                    this.completedChallenges = arr(data.completedChallenges, this.completedChallenges);
                     if (data.reminderSettings) {
                         this.reminderSettings = data.reminderSettings;
                         localStorage.setItem('reminderSettings', JSON.stringify(this.reminderSettings));
@@ -15975,6 +16008,739 @@ class GoalManager {
         if (targetUrl) {
             window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
         }
+    }
+
+    // ==================== CHALLENGE A FRIEND ====================
+
+    getChallengeRewards(difficulty) {
+        const rewards = {
+            easy:   { xp: 25,  gold: 15 },
+            medium: { xp: 50,  gold: 30 },
+            hard:   { xp: 100, gold: 60 },
+            epic:   { xp: 200, gold: 100 }
+        };
+        return rewards[difficulty] || rewards.medium;
+    }
+
+    showCreateChallenge() {
+        const existing = document.getElementById('create-challenge-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'create-challenge-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;';
+
+        const presetHTML = this.challengePresets.map(p => `
+            <button onclick="goalManager.showPresetOptions('${p.id}')"
+                class="flex items-center gap-3 p-3 rounded-xl bg-black/40 hover:bg-orange-900/40 border border-gray-700/50 hover:border-orange-500/50 transition-all text-left w-full">
+                <span class="text-2xl">${p.icon}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-white text-sm font-bold">${p.title.replace('{n}', '<span class="text-orange-300">N</span>')}</div>
+                    <div class="text-gray-400 text-xs fancy-font">${p.trackType === 'daily' ? 'Auto-tracked' : p.trackType === 'cumulative' ? 'Auto-tracked' : 'Auto-tracked'}</div>
+                </div>
+                <i class="ri-arrow-right-s-line text-gray-500"></i>
+            </button>
+        `).join('');
+
+        modal.innerHTML = `
+            <div style="max-width:400px;width:100%;max-height:90vh;" class="relative" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 rounded-2xl shadow-2xl border-2 border-orange-600 relative overflow-hidden flex flex-col" style="max-height:calc(90vh - 32px);">
+                    <button onclick="document.getElementById('create-challenge-modal')?.remove()"
+                        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
+                        <i class="ri-close-line"></i>
+                    </button>
+                    <div class="p-5 pb-3">
+                        <div class="text-center mb-4">
+                            <div class="text-3xl mb-2">⚔️</div>
+                            <div class="text-lg text-orange-300 medieval-title">Challenge a Friend</div>
+                            <div class="text-orange-200/50 text-xs fancy-font mt-1">Choose a preset or create a custom challenge</div>
+                        </div>
+                    </div>
+                    <div id="challenge-create-content" class="px-5 pb-5 overflow-y-auto flex-1" style="min-height:0;">
+                        <div class="text-xs text-orange-300/70 font-bold uppercase tracking-wider mb-2 fancy-font">Auto-Tracked Presets</div>
+                        <div class="space-y-2 mb-4">${presetHTML}</div>
+                        <div class="text-xs text-orange-300/70 font-bold uppercase tracking-wider mb-2 fancy-font">Custom Challenge</div>
+                        <button onclick="goalManager.showCustomChallengeForm()"
+                            class="flex items-center gap-3 p-3 rounded-xl bg-black/40 hover:bg-purple-900/40 border border-gray-700/50 hover:border-purple-500/50 transition-all text-left w-full">
+                            <span class="text-2xl">✏️</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-white text-sm font-bold">Write Your Own</div>
+                                <div class="text-gray-400 text-xs fancy-font">Honor system — friend marks it complete</div>
+                            </div>
+                            <i class="ri-arrow-right-s-line text-gray-500"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
+    }
+
+    showPresetOptions(presetId) {
+        const preset = this.challengePresets.find(p => p.id === presetId);
+        if (!preset) return;
+
+        const container = document.getElementById('challenge-create-content');
+        if (!container) return;
+
+        const optionsHTML = preset.options.map(n => `
+            <button onclick="goalManager.showChallengeDifficulty('${presetId}', ${n})"
+                class="px-4 py-3 rounded-xl bg-black/40 hover:bg-orange-900/40 border border-gray-700/50 hover:border-orange-500/50 transition-all text-white font-bold text-lg">
+                ${n}
+            </button>
+        `).join('');
+
+        container.innerHTML = `
+            <button onclick="goalManager.showCreateChallenge()" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
+                <i class="ri-arrow-left-line"></i> Back to presets
+            </button>
+            <div class="text-center mb-4">
+                <span class="text-4xl">${preset.icon}</span>
+                <div class="text-white font-bold mt-2">${preset.title.replace('{n}', '?')}</div>
+            </div>
+            <div class="text-xs text-orange-300/70 font-bold uppercase tracking-wider mb-2 fancy-font text-center">Pick a Target</div>
+            <div class="grid grid-cols-${Math.min(preset.options.length, 4)} gap-2 mb-4">${optionsHTML}</div>
+        `;
+    }
+
+    showChallengeDifficulty(presetId, targetValue) {
+        const container = document.getElementById('challenge-create-content');
+        if (!container) return;
+
+        const difficulties = [
+            { id: 'easy', label: 'Easy', icon: '🌱', color: 'green', rewards: this.getChallengeRewards('easy'), days: 3 },
+            { id: 'medium', label: 'Medium', icon: '⚔️', color: 'orange', rewards: this.getChallengeRewards('medium'), days: 3 },
+            { id: 'hard', label: 'Hard', icon: '🔥', color: 'red', rewards: this.getChallengeRewards('hard'), days: 7 },
+            { id: 'epic', label: 'Epic', icon: '💀', color: 'purple', rewards: this.getChallengeRewards('epic'), days: 7 }
+        ];
+
+        container.innerHTML = `
+            <button onclick="goalManager.showCreateChallenge()" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
+                <i class="ri-arrow-left-line"></i> Back to presets
+            </button>
+            <div class="text-xs text-orange-300/70 font-bold uppercase tracking-wider mb-3 fancy-font text-center">Select Difficulty & Deadline</div>
+            <div class="space-y-2">
+                ${difficulties.map(d => `
+                    <button onclick="goalManager.finishCreateChallenge('${presetId || ''}', ${targetValue || 0}, '${d.id}', ${d.days}, '')"
+                        class="flex items-center gap-3 p-3 rounded-xl bg-black/40 hover:bg-${d.color}-900/40 border border-gray-700/50 hover:border-${d.color}-500/50 transition-all text-left w-full">
+                        <span class="text-2xl">${d.icon}</span>
+                        <div class="flex-1">
+                            <div class="text-white text-sm font-bold">${d.label}</div>
+                            <div class="text-gray-400 text-xs fancy-font">${d.days} day deadline</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-yellow-300 text-xs font-bold">+${d.rewards.xp} XP</div>
+                            <div class="text-amber-400 text-xs">+${d.rewards.gold} Gold</div>
+                        </div>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    showCustomChallengeForm() {
+        const container = document.getElementById('challenge-create-content');
+        if (!container) return;
+
+        const difficulties = [
+            { id: 'easy', label: 'Easy', rewards: this.getChallengeRewards('easy') },
+            { id: 'medium', label: 'Medium', rewards: this.getChallengeRewards('medium') },
+            { id: 'hard', label: 'Hard', rewards: this.getChallengeRewards('hard') },
+            { id: 'epic', label: 'Epic', rewards: this.getChallengeRewards('epic') }
+        ];
+
+        container.innerHTML = `
+            <button onclick="goalManager.showCreateChallenge()" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
+                <i class="ri-arrow-left-line"></i> Back
+            </button>
+            <div class="text-center mb-3">
+                <span class="text-3xl">✏️</span>
+                <div class="text-white font-bold mt-2">Custom Challenge</div>
+                <div class="text-gray-400 text-xs fancy-font">Honor system — your friend marks it done</div>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-orange-300/70 font-bold fancy-font">Challenge Title</label>
+                    <input id="custom-challenge-title" type="text" maxlength="80" placeholder="e.g. Read for 30 minutes every day"
+                        class="w-full mt-1 p-3 rounded-lg bg-black/50 border border-gray-600 text-white placeholder-gray-500 text-sm focus:border-orange-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-xs text-orange-300/70 font-bold fancy-font">Difficulty</label>
+                    <div class="grid grid-cols-4 gap-2 mt-1">
+                        ${difficulties.map(d => `
+                            <button onclick="document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('border-orange-500','bg-orange-900/40'));this.classList.add('border-orange-500','bg-orange-900/40');document.getElementById('custom-difficulty').value='${d.id}'"
+                                class="diff-btn p-2 rounded-lg bg-black/40 border border-gray-700/50 text-center transition-all text-xs ${d.id === 'medium' ? 'border-orange-500 bg-orange-900/40' : ''}">
+                                <div class="text-white font-bold">${d.label}</div>
+                                <div class="text-yellow-300/70 text-[10px]">+${d.rewards.xp}XP</div>
+                            </button>
+                        `).join('')}
+                    </div>
+                    <input type="hidden" id="custom-difficulty" value="medium">
+                </div>
+                <div>
+                    <label class="text-xs text-orange-300/70 font-bold fancy-font">Deadline</label>
+                    <div class="grid grid-cols-3 gap-2 mt-1">
+                        <button onclick="document.querySelectorAll('.dl-btn').forEach(b=>b.classList.remove('border-orange-500','bg-orange-900/40'));this.classList.add('border-orange-500','bg-orange-900/40');document.getElementById('custom-deadline').value='1'"
+                            class="dl-btn p-2 rounded-lg bg-black/40 border border-gray-700/50 text-center transition-all text-xs text-white font-bold">1 Day</button>
+                        <button onclick="document.querySelectorAll('.dl-btn').forEach(b=>b.classList.remove('border-orange-500','bg-orange-900/40'));this.classList.add('border-orange-500','bg-orange-900/40');document.getElementById('custom-deadline').value='3'"
+                            class="dl-btn p-2 rounded-lg bg-black/40 border border-orange-500 bg-orange-900/40 text-center transition-all text-xs text-white font-bold">3 Days</button>
+                        <button onclick="document.querySelectorAll('.dl-btn').forEach(b=>b.classList.remove('border-orange-500','bg-orange-900/40'));this.classList.add('border-orange-500','bg-orange-900/40');document.getElementById('custom-deadline').value='7'"
+                            class="dl-btn p-2 rounded-lg bg-black/40 border border-gray-700/50 text-center transition-all text-xs text-white font-bold">7 Days</button>
+                    </div>
+                    <input type="hidden" id="custom-deadline" value="3">
+                </div>
+                <button onclick="goalManager.submitCustomChallenge()"
+                    class="w-full py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm mt-2">
+                    <i class="ri-send-plane-line mr-1"></i> Create Challenge
+                </button>
+            </div>
+        `;
+        setTimeout(() => document.getElementById('custom-challenge-title')?.focus(), 100);
+    }
+
+    submitCustomChallenge() {
+        const title = document.getElementById('custom-challenge-title')?.value?.trim();
+        const difficulty = document.getElementById('custom-difficulty')?.value || 'medium';
+        const deadlineDays = parseInt(document.getElementById('custom-deadline')?.value) || 3;
+
+        if (!title) {
+            this.showErrorNotification('Please enter a challenge title');
+            return;
+        }
+
+        this.finishCreateChallenge(null, 0, difficulty, deadlineDays, title);
+    }
+
+    finishCreateChallenge(presetId, targetValue, difficulty, deadlineDays, customTitle) {
+        const preset = presetId ? this.challengePresets.find(p => p.id === presetId) : null;
+        const rewards = this.getChallengeRewards(difficulty);
+        const rawTitle = this.currentTitle || 'Adventurer';
+        const challengerTitle = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
+
+        const challenge = {
+            p: presetId || null,
+            t: preset ? preset.title.replace('{n}', targetValue) : customTitle,
+            i: preset ? preset.icon : '✏️',
+            ty: preset ? 'preset' : 'custom',
+            tt: preset ? preset.trackType : null,
+            f: preset ? preset.field : null,
+            n: targetValue,
+            d: difficulty,
+            dl: deadlineDays,
+            r: rewards,
+            c: { t: challengerTitle, l: this.level }
+        };
+
+        // Close creation modal
+        document.getElementById('create-challenge-modal')?.remove();
+
+        // Show share preview
+        this.showChallengeSharePreview(challenge);
+    }
+
+    encodeChallengeCode(challenge) {
+        try {
+            const json = JSON.stringify(challenge);
+            return btoa(unescape(encodeURIComponent(json)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        } catch {
+            return null;
+        }
+    }
+
+    decodeChallengeCode(code) {
+        try {
+            const padded = code.replace(/-/g, '+').replace(/_/g, '/');
+            const json = decodeURIComponent(escape(atob(padded)));
+            const data = JSON.parse(json);
+            if (!data.t || !data.d) return null;
+            return data;
+        } catch {
+            return null;
+        }
+    }
+
+    showChallengeSharePreview(challenge) {
+        const existing = document.getElementById('challenge-share-modal');
+        if (existing) existing.remove();
+
+        const code = this.encodeChallengeCode(challenge);
+        if (!code) {
+            this.showErrorNotification('Failed to generate challenge code');
+            return;
+        }
+
+        this._pendingChallengeCode = code;
+        this._pendingChallenge = challenge;
+        const rewards = challenge.r;
+        const diffColors = { easy: 'green', medium: 'orange', hard: 'red', epic: 'purple' };
+        const diffColor = diffColors[challenge.d] || 'orange';
+        const shareUrl = `https://questjournal.app?challenge=${code}`;
+
+        const modal = document.createElement('div');
+        modal.id = 'challenge-share-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;';
+        modal.innerHTML = `
+            <div style="max-width:360px;width:100%;" class="relative" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-orange-600 relative">
+                    <button onclick="document.getElementById('challenge-share-modal')?.remove()"
+                        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
+                        <i class="ri-close-line"></i>
+                    </button>
+                    <div class="text-center mb-4">
+                        <div class="text-4xl mb-2">${challenge.i}</div>
+                        <div class="text-lg text-orange-300 medieval-title">Challenge Created!</div>
+                    </div>
+                    <!-- Challenge preview card -->
+                    <div class="bg-gradient-to-br from-${diffColor}-900/50 to-black/50 p-4 rounded-xl border-2 border-${diffColor}-600/50 mb-4">
+                        <div class="text-white font-bold text-sm mb-1">${this.escapeHTML(challenge.t)}</div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400 fancy-font mb-2">
+                            <span class="text-${diffColor}-400 font-bold uppercase">${challenge.d}</span>
+                            <span>|</span>
+                            <span>${challenge.dl} day${challenge.dl > 1 ? 's' : ''}</span>
+                            <span>|</span>
+                            <span>${challenge.ty === 'preset' ? 'Auto-tracked' : 'Honor system'}</span>
+                        </div>
+                        <div class="flex gap-3 text-xs">
+                            <span class="text-yellow-300">+${rewards.xp} XP</span>
+                            <span class="text-amber-400">+${rewards.gold} Gold</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2 fancy-font">From: ${this.escapeHTML(challenge.c.t)} (Lv.${challenge.c.l})</div>
+                    </div>
+                    <!-- Share buttons -->
+                    <div class="grid grid-cols-5 gap-2 mb-3">
+                        <button onclick="goalManager.shareChallengeToPlatform('twitter')"
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-sky-900/50 border border-gray-700/50 hover:border-sky-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-twitter-x-line text-lg text-white"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">X</span>
+                        </button>
+                        <button onclick="goalManager.shareChallengeToPlatform('instagram')"
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-pink-900/50 border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-instagram-line text-lg text-pink-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Instagram</span>
+                        </button>
+                        <button onclick="goalManager.shareChallengeToPlatform('facebook')"
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-blue-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-facebook-fill text-lg text-blue-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Facebook</span>
+                        </button>
+                        <button onclick="goalManager.shareChallengeToPlatform('reddit')"
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-orange-900/50 border border-gray-700/50 hover:border-orange-500/50 transition-all hover:scale-105 active:scale-95">
+                            <i class="ri-reddit-line text-lg text-orange-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Reddit</span>
+                        </button>
+                        <button onclick="goalManager.shareChallengeToPlatform('copy')"
+                            class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-green-900/50 border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105 active:scale-95" id="challenge-copy-btn">
+                            <i class="ri-file-copy-line text-lg text-green-400"></i>
+                            <span class="text-[10px] text-gray-400 fancy-font">Copy</span>
+                        </button>
+                    </div>
+                    <div id="challenge-share-hint" class="text-center mb-3 hidden">
+                        <span class="text-orange-300/70 text-xs fancy-font"><i class="ri-check-line mr-1"></i>Link copied!</span>
+                    </div>
+                    <!-- Code display -->
+                    <div class="bg-black/40 p-3 rounded-lg border border-gray-700/50 mb-3">
+                        <div class="text-xs text-gray-400 fancy-font mb-1">Challenge Link:</div>
+                        <div class="text-orange-300 text-xs break-all font-mono">${this.escapeHTML(shareUrl)}</div>
+                    </div>
+                    <button onclick="goalManager.copyChallengeLinkDirect()"
+                        class="w-full py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm">
+                        <i class="ri-links-line mr-1"></i> Copy Challenge Link
+                    </button>
+                </div>
+            </div>
+        `;
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
+    }
+
+    async copyChallengeLinkDirect() {
+        if (!this._pendingChallengeCode) return;
+        const url = `https://questjournal.app?challenge=${this._pendingChallengeCode}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            this.showAchievement('📋 Challenge link copied!', 'daily');
+        } catch {
+            this.showErrorNotification('Could not copy to clipboard');
+        }
+    }
+
+    async shareChallengeToPlatform(platform) {
+        if (!this._pendingChallenge || !this._pendingChallengeCode) return;
+
+        const challenge = this._pendingChallenge;
+        const shareUrl = `https://questjournal.app?challenge=${this._pendingChallengeCode}`;
+        const shareText = `I challenge you: "${challenge.t}" — Can you beat it? #LifeQuestJournal`;
+
+        if (platform === 'copy') {
+            try {
+                await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                const btn = document.getElementById('challenge-copy-btn');
+                if (btn) {
+                    btn.querySelector('i').className = 'ri-check-line text-lg text-green-300';
+                    btn.querySelector('span').textContent = 'Copied!';
+                    setTimeout(() => {
+                        if (btn) {
+                            btn.querySelector('i').className = 'ri-file-copy-line text-lg text-green-400';
+                            btn.querySelector('span').textContent = 'Copy';
+                        }
+                    }, 2000);
+                }
+                this.showAchievement('📋 Copied to clipboard!', 'daily');
+            } catch {
+                this.showErrorNotification('Could not copy to clipboard');
+            }
+            return;
+        }
+
+        if (platform === 'instagram') {
+            try {
+                await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+            } catch {}
+            this.showAchievement('📋 Caption copied — paste it with your post!', 'daily');
+            return;
+        }
+
+        const encodedText = encodeURIComponent(shareText);
+        const encodedUrl = encodeURIComponent(shareUrl);
+        let targetUrl = '';
+
+        if (platform === 'twitter') {
+            targetUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        } else if (platform === 'facebook') {
+            targetUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`;
+        } else if (platform === 'reddit') {
+            targetUrl = `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedText}`;
+        }
+
+        if (targetUrl) {
+            window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+        }
+    }
+
+    checkForChallengeParam() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('challenge');
+            if (!code) return;
+
+            // Clean URL without reloading
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            const challengeData = this.decodeChallengeCode(code);
+            if (!challengeData) {
+                this.showErrorNotification('Invalid challenge code');
+                return;
+            }
+
+            // Show acceptance modal after a short delay so UI is ready
+            setTimeout(() => this.showAcceptChallengeModal(challengeData), 800);
+        } catch (e) {
+            console.error('Error parsing challenge param:', e);
+        }
+    }
+
+    showAcceptChallengeModal(data) {
+        const existing = document.getElementById('accept-challenge-modal');
+        if (existing) existing.remove();
+
+        const rewards = data.r || this.getChallengeRewards(data.d);
+        const diffColors = { easy: 'green', medium: 'orange', hard: 'red', epic: 'purple' };
+        const diffColor = diffColors[data.d] || 'orange';
+        const diffEmoji = { easy: '🌱', medium: '⚔️', hard: '🔥', epic: '💀' };
+
+        const modal = document.createElement('div');
+        modal.id = 'accept-challenge-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;';
+        modal.innerHTML = `
+            <div style="max-width:380px;width:100%;" class="relative" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-6 rounded-2xl shadow-2xl border-2 border-orange-600 relative">
+                    <div class="text-center mb-4">
+                        <div class="text-5xl mb-3 animate-bounce">${data.i || '⚔️'}</div>
+                        <div class="text-xl text-orange-300 medieval-title">Incoming Challenge!</div>
+                        <div class="text-orange-200/50 text-xs fancy-font mt-1">From ${this.escapeHTML(data.c?.t || 'Unknown')} (Lv.${data.c?.l || '?'})</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-${diffColor}-900/50 to-black/50 p-4 rounded-xl border-2 border-${diffColor}-600/50 mb-4">
+                        <div class="text-white font-bold text-base mb-2">${this.escapeHTML(data.t)}</div>
+                        <div class="flex items-center gap-2 text-xs fancy-font mb-3">
+                            <span class="text-${diffColor}-400 font-bold uppercase">${diffEmoji[data.d] || ''} ${data.d}</span>
+                            <span class="text-gray-500">|</span>
+                            <span class="text-gray-400">${data.dl} day${data.dl > 1 ? 's' : ''} to complete</span>
+                        </div>
+                        <div class="flex gap-3 text-sm font-bold">
+                            <span class="text-yellow-300">+${rewards.xp} XP</span>
+                            <span class="text-amber-400">+${rewards.gold} Gold</span>
+                            ${data.d === 'epic' ? '<span class="text-purple-300">+Chest</span>' : ''}
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2 fancy-font">${data.ty === 'preset' ? 'Auto-tracked — progress updates automatically' : 'Honor system — mark complete when done'}</div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="document.getElementById('accept-challenge-modal')?.remove()"
+                            class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gray-700 hover:bg-gray-600 text-gray-300 transition-all text-sm">
+                            Decline
+                        </button>
+                        <button onclick="goalManager.acceptChallenge(); document.getElementById('accept-challenge-modal')?.remove();"
+                            class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm">
+                            <i class="ri-sword-line mr-1"></i> Accept!
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        this._pendingAcceptChallenge = data;
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
+    }
+
+    acceptChallenge(data) {
+        const challengeData = data || this._pendingAcceptChallenge;
+        if (!challengeData) return;
+
+        // Calculate deadline date
+        const deadlineDate = new Date();
+        deadlineDate.setDate(deadlineDate.getDate() + (challengeData.dl || 3));
+        const deadlineISO = deadlineDate.toISOString().split('T')[0];
+
+        const rewards = challengeData.r || this.getChallengeRewards(challengeData.d);
+
+        // Record starting values for delta tracking
+        let startValue = 0;
+        if (challengeData.tt === 'delta') {
+            if (challengeData.f === 'bossesDefeated') startValue = this.bossesDefeated || 0;
+        }
+
+        const challenge = {
+            id: this.uniqueId(),
+            presetId: challengeData.p,
+            title: challengeData.t,
+            icon: challengeData.i || '⚔️',
+            type: challengeData.ty || 'custom',
+            trackType: challengeData.tt || null,
+            field: challengeData.f || null,
+            target: challengeData.n || 0,
+            difficulty: challengeData.d,
+            deadline: deadlineISO,
+            deadlineDays: challengeData.dl,
+            rewards: rewards,
+            challenger: challengeData.c || { t: 'Unknown', l: 1 },
+            acceptedAt: new Date().toISOString(),
+            startValue: startValue,
+            completed: false,
+            completedAt: null
+        };
+
+        this.activeChallenges.push(challenge);
+        this._pendingAcceptChallenge = null;
+        this.saveData();
+        this.showAchievement(`⚔️ Challenge accepted: "${challenge.title}"`, 'achievement');
+        this.render();
+    }
+
+    getChallengeProgress(challenge) {
+        if (challenge.type === 'custom') {
+            return { current: challenge.completed ? 1 : 0, target: 1, pct: challenge.completed ? 100 : 0 };
+        }
+
+        let current = 0;
+        const target = challenge.target;
+
+        if (challenge.trackType === 'daily') {
+            const tracking = this.ensureDailyTracking();
+            current = tracking[challenge.field] || 0;
+        } else if (challenge.trackType === 'cumulative') {
+            if (challenge.field === 'loginStreak') current = this.loginStreak || 0;
+        } else if (challenge.trackType === 'delta') {
+            let currentTotal = 0;
+            if (challenge.field === 'bossesDefeated') currentTotal = this.bossesDefeated || 0;
+            current = currentTotal - (challenge.startValue || 0);
+        }
+
+        const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+        return { current, target, pct };
+    }
+
+    checkChallengeProgress() {
+        const today = this.getTodayDateString();
+        let changed = false;
+
+        for (let i = this.activeChallenges.length - 1; i >= 0; i--) {
+            const ch = this.activeChallenges[i];
+
+            // Check expiry
+            if (ch.deadline < today && !ch.completed) {
+                this.activeChallenges.splice(i, 1);
+                this.showAchievement(`⏰ Challenge expired: "${ch.title}"`, 'warning');
+                changed = true;
+                continue;
+            }
+
+            // Check auto-completion for preset challenges
+            if (ch.type === 'preset' && !ch.completed) {
+                const progress = this.getChallengeProgress(ch);
+                if (progress.current >= progress.target) {
+                    this.completeChallenge(ch.id);
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) this.saveData();
+    }
+
+    completeChallenge(challengeId) {
+        const idx = this.activeChallenges.findIndex(c => c.id === challengeId);
+        if (idx === -1) return;
+
+        const challenge = this.activeChallenges[idx];
+        challenge.completed = true;
+        challenge.completedAt = new Date().toISOString();
+
+        // Grant rewards
+        const rewards = challenge.rewards;
+        this.addXP(rewards.xp, 'challenge');
+        this.addGold(rewards.gold, 'challenge');
+
+        // Epic challenges give a bonus chest
+        if (challenge.difficulty === 'epic') {
+            this.treasureChests.push({ type: 'wooden', source: 'challenge' });
+            this.showAchievement(`🎁 Bonus chest earned from epic challenge!`, 'loot');
+        }
+
+        // Move to completed
+        this.activeChallenges.splice(idx, 1);
+        this.completedChallenges.push(challenge);
+        // Cap completed challenges history
+        if (this.completedChallenges.length > 50) {
+            this.completedChallenges = this.completedChallenges.slice(-50);
+        }
+
+        this.saveData();
+        this.showAchievement(`⚔️ Challenge Complete: "${challenge.title}" +${rewards.xp} XP, +${rewards.gold} Gold`, 'achievement');
+        this.render();
+    }
+
+    manualCompleteChallenge(challengeId) {
+        const challenge = this.activeChallenges.find(c => c.id === challengeId);
+        if (!challenge || challenge.type !== 'custom') return;
+
+        this.showConfirm(`Mark challenge "${challenge.title}" as complete?`, () => {
+            this.completeChallenge(challengeId);
+        });
+    }
+
+    abandonChallenge(challengeId) {
+        this.showConfirm('Abandon this challenge? No rewards will be given.', () => {
+            this.activeChallenges = this.activeChallenges.filter(c => c.id !== challengeId);
+            this.saveData();
+            this.showAchievement('Challenge abandoned', 'daily');
+            this.render();
+            // Refresh modal if open
+            const modal = document.getElementById('active-challenges-modal');
+            if (modal) {
+                modal.remove();
+                this.showActiveChallenges();
+            }
+        });
+    }
+
+    showActiveChallenges() {
+        const existing = document.getElementById('active-challenges-modal');
+        if (existing) existing.remove();
+
+        const today = this.getTodayDateString();
+
+        const modal = document.createElement('div');
+        modal.id = 'active-challenges-modal';
+        modal.className = 'fixed inset-0 bg-black/80 z-50';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;';
+
+        let content = '';
+        if (this.activeChallenges.length === 0) {
+            content = `
+                <div class="text-center py-8">
+                    <div class="text-5xl mb-3">⚔️</div>
+                    <div class="text-gray-400 fancy-font text-sm mb-4">No active challenges</div>
+                    <button onclick="document.getElementById('active-challenges-modal')?.remove(); goalManager.showCreateChallenge();"
+                        class="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white px-5 py-2.5 rounded-lg font-bold fancy-font text-sm shadow-lg transition-all">
+                        <i class="ri-send-plane-line mr-1"></i> Send a Challenge
+                    </button>
+                </div>
+            `;
+        } else {
+            content = this.activeChallenges.map(ch => {
+                const progress = this.getChallengeProgress(ch);
+                const daysLeft = Math.max(0, Math.ceil((new Date(ch.deadline + 'T23:59:59') - new Date()) / 86400000));
+                const diffColors = { easy: 'green', medium: 'orange', hard: 'red', epic: 'purple' };
+                const diffColor = diffColors[ch.difficulty] || 'orange';
+
+                return `
+                    <div class="bg-gradient-to-br from-${diffColor}-900/30 to-black/30 p-4 rounded-xl border border-${diffColor}-600/40 mb-3">
+                        <div class="flex items-start gap-3 mb-2">
+                            <span class="text-2xl">${ch.icon}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-white font-bold text-sm">${this.escapeHTML(ch.title)}</div>
+                                <div class="text-gray-400 text-xs fancy-font">
+                                    From ${this.escapeHTML(ch.challenger.t)} (Lv.${ch.challenger.l})
+                                    <span class="mx-1">|</span>
+                                    <span class="${daysLeft <= 1 ? 'text-red-400' : 'text-gray-400'}">${daysLeft} day${daysLeft !== 1 ? 's' : ''} left</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Progress bar -->
+                        <div class="h-2 bg-black/40 rounded-full overflow-hidden mb-2">
+                            <div class="h-full bg-gradient-to-r from-${diffColor}-500 to-${diffColor}-400 rounded-full transition-all" style="width:${progress.pct}%"></div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400 fancy-font">${progress.current}/${progress.target} (${progress.pct}%)</span>
+                            <div class="flex gap-2">
+                                ${ch.type === 'custom' ? `
+                                    <button onclick="goalManager.manualCompleteChallenge(${ch.id})"
+                                        class="text-xs px-3 py-1 rounded-lg bg-green-700/60 hover:bg-green-600 text-green-200 font-bold fancy-font transition-all">
+                                        <i class="ri-check-line mr-1"></i>Complete
+                                    </button>
+                                ` : ''}
+                                <button onclick="goalManager.abandonChallenge(${ch.id})"
+                                    class="text-xs px-3 py-1 rounded-lg bg-red-900/40 hover:bg-red-800 text-red-300 font-bold fancy-font transition-all">
+                                    Abandon
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        modal.innerHTML = `
+            <div style="max-width:400px;width:100%;max-height:90vh;" class="relative" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 rounded-2xl shadow-2xl border-2 border-orange-600 relative overflow-hidden flex flex-col" style="max-height:calc(90vh - 32px);">
+                    <button onclick="document.getElementById('active-challenges-modal')?.remove()"
+                        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
+                        <i class="ri-close-line"></i>
+                    </button>
+                    <div class="p-5 pb-3 text-center">
+                        <div class="text-3xl mb-2">⚔️</div>
+                        <div class="text-lg text-orange-300 medieval-title">Active Challenges</div>
+                        <div class="text-orange-200/50 text-xs fancy-font mt-1">${this.activeChallenges.length} active challenge${this.activeChallenges.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div class="px-5 pb-3 overflow-y-auto flex-1" style="min-height:0;">
+                        ${content}
+                    </div>
+                    <div class="p-5 pt-2 border-t border-gray-700/50">
+                        <button onclick="document.getElementById('active-challenges-modal')?.remove(); goalManager.showCreateChallenge();"
+                            class="w-full py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm">
+                            <i class="ri-send-plane-line mr-1"></i> Send a New Challenge
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
     }
 }
 
