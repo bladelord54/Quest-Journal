@@ -16277,7 +16277,8 @@ class GoalManager {
         const rewards = challenge.r;
         const diffColors = { easy: 'green', medium: 'orange', hard: 'red', epic: 'purple' };
         const diffColor = diffColors[challenge.d] || 'orange';
-        const shareUrl = `https://questjournal.app?challenge=${code}`;
+        const baseUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${baseUrl}?challenge=${code}`;
 
         const modal = document.createElement('div');
         modal.id = 'challenge-share-modal';
@@ -16359,7 +16360,8 @@ class GoalManager {
 
     async copyChallengeLinkDirect() {
         if (!this._pendingChallengeCode) return;
-        const url = `https://questjournal.app?challenge=${this._pendingChallengeCode}`;
+        const baseUrl = window.location.origin + window.location.pathname;
+        const url = `${baseUrl}?challenge=${this._pendingChallengeCode}`;
         try {
             await navigator.clipboard.writeText(url);
             this.showAchievement('📋 Challenge link copied!', 'daily');
@@ -16372,7 +16374,8 @@ class GoalManager {
         if (!this._pendingChallenge || !this._pendingChallengeCode) return;
 
         const challenge = this._pendingChallenge;
-        const shareUrl = `https://questjournal.app?challenge=${this._pendingChallengeCode}`;
+        const baseUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${baseUrl}?challenge=${this._pendingChallengeCode}`;
         const shareText = `I challenge you: "${challenge.t}" — Can you beat it? #LifeQuestJournal`;
 
         if (platform === 'copy') {
