@@ -7810,16 +7810,16 @@ class GoalManager {
 
         const prompt = document.createElement('div');
         prompt.id = 'milestone-share-prompt';
-        prompt.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;animation:fadeIn 0.3s ease-out;';
+        prompt.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;animation:fadeIn 0.3s ease-out;width:calc(100% - 32px);max-width:420px;';
         prompt.innerHTML = `
-            <div class="bg-gradient-to-r from-amber-800/95 to-orange-900/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-2xl border-2 border-amber-500/60 flex items-center gap-3">
-                <span class="text-amber-200 fancy-font text-sm">${text}</span>
-                <button onclick="goalManager.shareStatCard(); document.getElementById('milestone-share-prompt')?.remove();"
-                    class="bg-amber-500 hover:bg-amber-400 text-black px-3 py-1.5 rounded-lg text-xs font-bold fancy-font transition-all hover:scale-105 whitespace-nowrap flex items-center gap-1">
+            <div class="bg-gradient-to-r from-amber-800/95 to-orange-900/95 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-2xl border-2 border-amber-500/60 flex items-center gap-3">
+                <span class="text-amber-200 fancy-font text-sm flex-1 min-w-0">${text}</span>
+                <button onclick="goalManager.showShareCardPreview(); document.getElementById('milestone-share-prompt')?.remove();"
+                    class="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-lg text-xs font-bold fancy-font transition-all hover:scale-105 whitespace-nowrap flex items-center gap-1.5 shrink-0">
                     <i class="ri-share-line"></i> Share
                 </button>
                 <button onclick="document.getElementById('milestone-share-prompt')?.remove();"
-                    class="text-amber-400/60 hover:text-amber-300 text-lg transition-colors" aria-label="Dismiss">
+                    class="text-amber-400/60 hover:text-amber-300 text-lg transition-colors shrink-0" aria-label="Dismiss">
                     <i class="ri-close-line"></i>
                 </button>
             </div>
@@ -15431,8 +15431,8 @@ class GoalManager {
 
         // Branding footer
         ctx.beginPath();
-        ctx.moveTo(80, H - 65);
-        ctx.lineTo(W - 80, H - 65);
+        ctx.moveTo(80, H - 78);
+        ctx.lineTo(W - 80, H - 78);
         ctx.strokeStyle = 'rgba(212,164,74,0.3)';
         ctx.lineWidth = 1;
         ctx.stroke();
@@ -15440,11 +15440,16 @@ class GoalManager {
         ctx.fillStyle = 'rgba(212,164,74,0.7)';
         ctx.font = 'bold 14px Cinzel, serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Life Quest Journal', W/2, H - 42);
+        ctx.fillText('Life Quest Journal', W/2, H - 55);
 
         ctx.fillStyle = 'rgba(212,164,74,0.4)';
         ctx.font = '11px Georgia, serif';
-        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 26);
+        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 39);
+
+        // Deep link URL
+        ctx.fillStyle = 'rgba(212,164,74,0.5)';
+        ctx.font = '12px Georgia, serif';
+        ctx.fillText('questjournal.app', W/2, H - 20);
 
         return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     }
@@ -15835,11 +15840,16 @@ class GoalManager {
         // Branding footer
         ctx.fillStyle = 'rgba(74,222,128,0.5)';
         ctx.font = 'bold 14px Cinzel, serif';
-        ctx.fillText('Life Quest Journal', W/2, H - 42);
+        ctx.fillText('Life Quest Journal', W/2, H - 55);
 
         ctx.fillStyle = 'rgba(74,222,128,0.3)';
         ctx.font = '11px Georgia, serif';
-        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 26);
+        ctx.fillText('Turn Your Goals Into Epic Quests', W/2, H - 39);
+
+        // Deep link URL
+        ctx.fillStyle = 'rgba(74,222,128,0.4)';
+        ctx.font = '12px Georgia, serif';
+        ctx.fillText('questjournal.app', W/2, H - 20);
 
         return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     }
