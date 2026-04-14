@@ -189,6 +189,11 @@ class GoalManager {
         // Onboarding Share Hook
         this.onboardingShareShown = false;
         
+        // In-App Review Prompt
+        this.reviewPromptCount = 0;
+        this.reviewPromptLastDate = null;
+        this.reviewLeft = false;
+        
         this.loadData();
         
         this.checkNotificationPermission();
@@ -419,6 +424,11 @@ class GoalManager {
                 // Onboarding Share Hook
                 this.onboardingShareShown = data.onboardingShareShown || false;
                 
+                // In-App Review Prompt
+                this.reviewPromptCount = data.reviewPromptCount || 0;
+                this.reviewPromptLastDate = data.reviewPromptLastDate || null;
+                this.reviewLeft = data.reviewLeft || false;
+                
                 // Beginner's Blessing
                 if (data.accountCreatedDate) {
                     this.accountCreatedDate = data.accountCreatedDate;
@@ -573,6 +583,9 @@ class GoalManager {
                 referralRewardClaimed: this.referralRewardClaimed,
                 referralsSent: this.referralsSent,
                 onboardingShareShown: this.onboardingShareShown,
+                reviewPromptCount: this.reviewPromptCount,
+                reviewPromptLastDate: this.reviewPromptLastDate,
+                reviewLeft: this.reviewLeft,
                 chestsOpened: this.chestsOpened,
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
@@ -1221,6 +1234,7 @@ class GoalManager {
         
         // Note: checkBadges/checkTitleUnlocks already ran inside addXP
         
+        this.maybeShowReviewPrompt('boss_defeat');
         
         this.saveData();
         this.renderBossBattles();
@@ -3642,6 +3656,7 @@ class GoalManager {
         this.lastLoginBonusDate = today;
         this.saveData();
         
+        if (this.loginStreak >= 7 && this.loginStreak % 7 === 0) this.maybeShowReviewPrompt('login_streak');
         
         // Find next milestone for preview
         const nextMilestone = this.LOGIN_STREAK_MILESTONES.find(m => m.day > this.loginStreak);
@@ -5026,6 +5041,8 @@ class GoalManager {
         setTimeout(() => {
             this.showLootPanel(type, rewards);
         }, 2200);
+        
+        if (type === 'gold' || type === 'royal') this.maybeShowReviewPrompt('chest_open');
     }
 
     celebrateChestOpen(type, rewards) {
@@ -5432,6 +5449,7 @@ class GoalManager {
         this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐', true);
         if (typeof trackEvent === 'function') trackEvent('level_up', { level: this.level });
         
+        if (this.level % 5 === 0) this.maybeShowReviewPrompt('level_up');
         
         // Check for progressive feature unlocks
         this.checkFeatureUnlocks();
@@ -7972,6 +7990,101 @@ class GoalManager {
         }, 3000);
     }
 
+    // ── In-App Review Prompt ──────────────────────────────────────────
+    maybeShowReviewPrompt(context = '') {
+        if (this.reviewLeft) return;
+        if (this.reviewPromptCount >= 2) return;
+        if (this.level < 3) return;
+        
+        const today = this.getTodayDateString();
+        if (this.reviewPromptLastDate) {
+            const last = new Date(this.reviewPromptLastDate);
+            const now = new Date(today);
+            const daysSince = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+            if (daysSince < 14) return;
+        }
+        
+        if (typeof trackEvent === 'function') trackEvent('review_prompt_eligible', { context });
+        
+        const delay = 8000;
+        setTimeout(() => {
+            if (document.getElementById('review-prompt-modal')) return;
+            this.showReviewPrompt(context);
+        }, delay);
+    }
+    
+    showReviewPrompt(context = '') {
+        this.reviewPromptCount++;
+        this.reviewPromptLastDate = this.getTodayDateString();
+        this.saveData();
+        if (typeof trackEvent === 'function') trackEvent('review_prompt_shown', { context, count: this.reviewPromptCount });
+        
+        const existing = document.getElementById('review-prompt-modal');
+        if (existing) existing.remove();
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'review-prompt-modal';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);animation:fadeIn 0.3s ease-out;padding:16px;';
+        
+        const contextMessages = {
+            boss_defeat: "You just vanquished a mighty foe!",
+            level_up: "Your legend grows stronger!",
+            chest_open: "The treasure was glorious!",
+            login_streak: "Your dedication is unwavering!"
+        };
+        const subtitle = contextMessages[context] || "Your adventure is going well!";
+        
+        overlay.innerHTML = `
+            <div style="background:linear-gradient(135deg,rgba(28,25,23,0.98),rgba(41,37,36,0.98));border-radius:20px;padding:24px;max-width:380px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,0.6);border:2px solid rgba(251,191,36,0.5);text-align:center;">
+                <div style="font-size:3rem;margin-bottom:8px;">⭐</div>
+                <div style="font-family:'Cinzel',serif;font-weight:700;color:#fbbf24;font-size:18px;margin-bottom:6px;">Enjoying Life Quest Journal?</div>
+                <div style="color:#d6d3d1;font-size:13px;line-height:1.5;margin-bottom:20px;">${subtitle}<br>A quick rating on Google Play helps fellow adventurers discover the app!</div>
+                <div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px;">
+                    ${'★'.split('').concat('★','★','★','★').map(() => '<span style="font-size:28px;color:#fbbf24;text-shadow:0 0 8px rgba(251,191,36,0.4);">★</span>').join('')}
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <button id="review-prompt-yes" style="background:linear-gradient(to right,#d97706,#b45309);color:#fff;font-family:'Cinzel',serif;font-weight:700;font-size:14px;padding:12px;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform 0.15s;">
+                        ⭐ Rate on Google Play
+                    </button>
+                    <button id="review-prompt-later" style="background:rgba(255,255,255,0.08);color:#a8a29e;font-size:13px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;transition:opacity 0.15s;">
+                        Maybe Later
+                    </button>
+                    <button id="review-prompt-never" style="background:none;color:#78716c;font-size:11px;padding:6px;border:none;cursor:pointer;">
+                        Don't Ask Again
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        });
+        
+        document.getElementById('review-prompt-yes').addEventListener('click', () => {
+            this.reviewLeft = true;
+            this.saveData();
+            if (typeof trackEvent === 'function') trackEvent('review_prompt_accepted', { context });
+            window.open('https://play.google.com/store/apps/details?id=com.lifequestjournal.app', '_blank');
+            overlay.remove();
+        });
+        
+        document.getElementById('review-prompt-later').addEventListener('click', () => {
+            if (typeof trackEvent === 'function') trackEvent('review_prompt_later', { context });
+            overlay.remove();
+        });
+        
+        document.getElementById('review-prompt-never').addEventListener('click', () => {
+            this.reviewPromptCount = 999;
+            this.saveData();
+            if (typeof trackEvent === 'function') trackEvent('review_prompt_never', { context });
+            overlay.remove();
+        });
+    }
+
     playSpellSound() {
         if (window.audioManager) {
             window.audioManager.playSpell();
@@ -10202,6 +10315,9 @@ class GoalManager {
                 referralRewardClaimed: this.referralRewardClaimed,
                 referralsSent: this.referralsSent,
                 onboardingShareShown: this.onboardingShareShown,
+                reviewPromptCount: this.reviewPromptCount,
+                reviewPromptLastDate: this.reviewPromptLastDate,
+                reviewLeft: this.reviewLeft,
                 chestsOpened: this.chestsOpened,
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
@@ -10321,6 +10437,9 @@ class GoalManager {
                     this.referralRewardClaimed = data.referralRewardClaimed || this.referralRewardClaimed;
                     this.referralsSent = data.referralsSent ?? this.referralsSent;
                     this.onboardingShareShown = data.onboardingShareShown ?? this.onboardingShareShown;
+                    this.reviewPromptCount = data.reviewPromptCount ?? this.reviewPromptCount;
+                    this.reviewPromptLastDate = data.reviewPromptLastDate || this.reviewPromptLastDate;
+                    this.reviewLeft = data.reviewLeft ?? this.reviewLeft;
                     this.chestsOpened = data.chestsOpened ?? this.chestsOpened;
                     this.bossesDefeated = data.bossesDefeated ?? this.bossesDefeated;
                     this.focusSessionsCompleted = data.focusSessionsCompleted ?? this.focusSessionsCompleted;
