@@ -1,0 +1,8 @@
+# Life Quest Journal — robots.txt
+User-agent: *
+Allow: /
+Disallow: /tests/
+Disallow: /node_modules/
+Disallow: /push-worker/
+
+Sitemap: https://questjournal.app/sitemap.xml

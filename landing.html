@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Quest Journal — Turn Your Goals Into Epic Quests</title>
+
+    <!-- SEO -->
+    <meta name="description" content="Transform your daily tasks, habits, and life goals into an epic RPG experience. Complete quests for XP, fight bosses, collect companions, and level up your real life. Free. Works offline.">
+    <meta name="keywords" content="productivity app, habit tracker, gamification, RPG to-do list, goal setting, boss battles, quest journal, level up, life goals">
+    <link rel="canonical" href="https://questjournal.app/">
+
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://questjournal.app/">
+    <meta property="og:title" content="Life Quest Journal — Turn Your Goals Into Epic Quests">
+    <meta property="og:description" content="Transform your life goals into epic quests. Track habits, defeat bosses, earn rewards, and level up your real life!">
+    <meta property="og:image" content="https://questjournal.app/icons/icon-512.png">
+    <meta property="og:site_name" content="Life Quest Journal">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Life Quest Journal — Turn Your Goals Into Epic Quests">
+    <meta name="twitter:description" content="Transform your life goals into epic quests. Track habits, defeat bosses, earn rewards, and level up your real life!">
+    <meta name="twitter:image" content="https://questjournal.app/icons/icon-512.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Life Quest Journal",
+        "description": "Transform your daily tasks, habits, and life goals into an epic RPG experience. Complete quests for XP, fight bosses, collect companions, and level up your real life.",
+        "url": "https://questjournal.app",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Android, Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "1"
+        }
+    }
+    </script>
+
+    <!-- Favicon & PWA -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="theme-color" content="#1c1917">
+
+    <!-- Fonts & Styles -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cinzel: ['Cinzel', 'serif'],
+                        inter: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+
+        /* Hero gradient */
+        .hero-bg {
+            background: linear-gradient(135deg, #0c0a09 0%, #1c1917 30%, #292524 60%, #1c1917 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(251,191,36,0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        /* Floating particles */
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: rgba(251,191,36,0.4);
+            border-radius: 50%;
+            animation: float 8s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+            50% { transform: translateY(-80px) scale(1.5); opacity: 0.8; }
+        }
+
+        /* Glow effect */
+        .glow-amber {
+            box-shadow: 0 0 30px rgba(251,191,36,0.2), 0 0 60px rgba(251,191,36,0.1);
+        }
+        .glow-amber-strong {
+            box-shadow: 0 0 20px rgba(251,191,36,0.3), 0 0 40px rgba(251,191,36,0.15), 0 0 80px rgba(251,191,36,0.05);
+        }
+
+        /* Screenshot carousel */
+        .screenshot-track {
+            display: flex;
+            gap: 24px;
+            animation: scroll 30s linear infinite;
+            width: max-content;
+        }
+        .screenshot-track:hover {
+            animation-play-state: paused;
+        }
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .screenshot-card {
+            width: 180px;
+            flex-shrink: 0;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid rgba(251,191,36,0.2);
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .screenshot-card:hover {
+            transform: scale(1.05);
+            border-color: rgba(251,191,36,0.5);
+        }
+        .screenshot-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Feature cards */
+        .feature-card {
+            background: linear-gradient(135deg, rgba(41,37,36,0.8) 0%, rgba(28,25,23,0.9) 100%);
+            border: 1px solid rgba(251,191,36,0.15);
+            border-radius: 12px;
+            padding: 16px 12px;
+            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(251,191,36,0.4);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+
+        /* Divider */
+        .ornament-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            opacity: 0.3;
+        }
+        .ornament-divider::before,
+        .ornament-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #fbbf24, transparent);
+        }
+
+        /* CTA pulse */
+        .cta-pulse {
+            animation: ctaPulse 2s ease-in-out infinite;
+        }
+        @keyframes ctaPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(251,191,36,0); }
+        }
+
+        /* Fade in on scroll */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Stat counter */
+        .stat-box {
+            text-align: center;
+            padding: 16px;
+        }
+        .stat-number {
+            font-family: 'Cinzel', serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fbbf24;
+            line-height: 1;
+        }
+
+        /* Responsive feature card padding */
+        @media (min-width: 640px) {
+            .feature-card { padding: 32px 24px; border-radius: 16px; }
+            .screenshot-card { width: 220px; }
+        }
+
+        /* Nav blur */
+        .nav-blur {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-stone-900 text-stone-200">
+
+    <!-- Skip to app for returning users -->
+    <script>
+        if (localStorage.getItem('goalManagerData') || localStorage.getItem('life-quest-data')) {
+            const params = window.location.search;
+            window.location.replace('./index.html' + params);
+        }
+    </script>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 nav-blur bg-stone-900/80 border-b border-amber-500/10">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="#" class="flex items-center gap-2">
+                <span class="text-2xl">⚔️</span>
+                <span class="font-cinzel font-bold text-amber-400 text-lg hidden sm:inline">Life Quest Journal</span>
+            </a>
+            <div class="flex items-center gap-3 sm:gap-6">
+                <a href="#features" class="text-stone-400 hover:text-amber-400 text-sm font-medium transition-colors hidden sm:inline">Features</a>
+                <a href="#screenshots" class="text-stone-400 hover:text-amber-400 text-sm font-medium transition-colors hidden sm:inline">Screenshots</a>
+                <a href="./index.html" class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-black font-bold px-5 py-2 rounded-lg text-sm transition-all hover:scale-105 font-cinzel">
+                    Start Your Quest
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg min-h-screen flex items-center justify-center pt-16 pb-20 px-4 relative">
+        <!-- Floating particles -->
+        <div class="particle" style="left:10%;top:20%;animation-delay:0s;"></div>
+        <div class="particle" style="left:25%;top:60%;animation-delay:1.5s;"></div>
+        <div class="particle" style="left:70%;top:30%;animation-delay:3s;"></div>
+        <div class="particle" style="left:85%;top:70%;animation-delay:4.5s;"></div>
+        <div class="particle" style="left:50%;top:80%;animation-delay:2s;"></div>
+        <div class="particle" style="left:40%;top:15%;animation-delay:5s;"></div>
+
+        <div class="max-w-4xl mx-auto text-center relative z-10">
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-1.5 mb-8">
+                <span class="text-amber-400 text-xs font-semibold tracking-wide uppercase">100% Free &bull; Works Offline &bull; No Account Needed</span>
+            </div>
+
+            <!-- Title -->
+            <h1 class="font-cinzel font-black text-3xl sm:text-5xl md:text-7xl text-white leading-tight mb-6">
+                Turn Your Goals Into
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300"> Epic Quests</span>
+            </h1>
+
+            <!-- Subtitle -->
+            <p class="text-stone-400 text-base sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed px-2">
+                Your to-do list just became an RPG. Complete quests for XP, fight bosses, collect companions, cast spells, and level up — all while actually getting things done.
+            </p>
+
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+                <a href="./index.html" class="cta-pulse bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold px-8 py-4 rounded-xl text-lg transition-all hover:scale-105 font-cinzel flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <i class="ri-sword-line text-xl"></i> Begin Your Adventure
+                </a>
+                <a href="https://play.google.com/store/apps/details?id=com.lifequestjournal.app" target="_blank" rel="noopener"
+                   class="bg-stone-800 hover:bg-stone-700 border border-stone-600 hover:border-amber-500/40 text-stone-200 font-semibold px-8 py-4 rounded-xl text-lg transition-all hover:scale-105 flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <i class="ri-google-play-fill text-xl"></i> Google Play
+                </a>
+            </div>
+
+            <!-- Quick stats -->
+            <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-12 text-stone-500 text-xs sm:text-sm">
+                <div class="flex items-center gap-1.5">
+                    <i class="ri-shield-check-line text-green-400"></i>
+                    <span>No data collected</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="ri-wifi-off-line text-blue-400"></i>
+                    <span>Works offline</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="ri-smartphone-line text-purple-400"></i>
+                    <span>Mobile first</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshot Carousel -->
+    <section id="screenshots" class="py-12 sm:py-20 bg-stone-950 overflow-hidden">
+        <div class="max-w-6xl mx-auto px-4 mb-12 text-center reveal">
+            <h2 class="font-cinzel font-bold text-3xl sm:text-4xl text-amber-400 mb-3">See It In Action</h2>
+            <p class="text-stone-500 text-lg">Your productivity, reimagined as an adventure</p>
+        </div>
+        <div class="overflow-hidden">
+            <div class="screenshot-track">
+                <div class="screenshot-card"><img src="screenshots/dashboard.jpg" alt="Dashboard" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/side-quests.jpg" alt="Side Quests" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/calendar.jpg" alt="Quest Calendar" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/epic-quests.jpg" alt="Epic Quests" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/stats.jpg" alt="Stats &amp; Rewards" loading="lazy"></div>
+                <!-- Duplicate for infinite scroll -->
+                <div class="screenshot-card"><img src="screenshots/dashboard.jpg" alt="Dashboard" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/side-quests.jpg" alt="Side Quests" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/calendar.jpg" alt="Quest Calendar" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/epic-quests.jpg" alt="Epic Quests" loading="lazy"></div>
+                <div class="screenshot-card"><img src="screenshots/stats.jpg" alt="Stats &amp; Rewards" loading="lazy"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="py-12 sm:py-20 bg-stone-900 relative">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-10 sm:mb-16 reveal">
+                <h2 class="font-cinzel font-bold text-3xl sm:text-4xl text-amber-400 mb-3">Why Adventurers Love It</h2>
+                <p class="text-stone-500 text-lg">Deep gamification that actually makes you more productive</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 reveal">
+                <!-- Feature 1: Quest System -->
+                <div class="feature-card">
+                    <div class="text-2xl sm:text-3xl mb-2 sm:mb-4">⚔️</div>
+                    <h3 class="font-cinzel font-bold text-sm sm:text-lg text-amber-300 mb-1 sm:mb-2">6-Tier Quest System</h3>
+                    <p class="text-stone-400 text-xs sm:text-sm leading-relaxed hidden sm:block">Organize your life from daily tasks to life-changing goals. Watch small wins cascade into massive achievements.</p>
+                </div>
+
+                <!-- Feature 2: Boss Battles -->
+                <div class="feature-card">
+                    <div class="text-2xl sm:text-3xl mb-2 sm:mb-4">🐉</div>
+                    <h3 class="font-cinzel font-bold text-sm sm:text-lg text-amber-300 mb-1 sm:mb-2">Boss Battles</h3>
+                    <p class="text-stone-400 text-xs sm:text-sm leading-relaxed hidden sm:block">Your weekly and monthly goals become bosses to fight. Complete tasks to earn attack charges, then strike them down for epic loot.</p>
+                </div>
+
+                <!-- Feature 3: Habits -->
+                <div class="feature-card">
+                    <div class="text-2xl sm:text-3xl mb-2 sm:mb-4">🔥</div>
+                    <h3 class="font-cinzel font-bold text-sm sm:text-lg text-amber-300 mb-1 sm:mb-2">Habit Streaks</h3>
+                    <p class="text-stone-400 text-xs sm:text-sm leading-relaxed hidden sm:block">Build daily habits with visible streaks. Miss a day? Your streak breaks — unless your companion protects it.</p>
+                </div>
+
+                <!-- Feature 4: Loot & Rewards -->
+                <div class="feature-card">
+                    <div class="text-2xl sm:text-3xl mb-2 sm:mb-4">🎁</div>
+                    <h3 class="font-cinzel font-bold text-sm sm:text-lg text-amber-300 mb-1 sm:mb-2">Loot & Treasure</h3>
+                    <p class="text-stone-400 text-xs sm:text-sm leading-relaxed hidden sm:block">Level up to unlock treasure chests with random loot — spells, companions, themes, and gold. Common to Legendary rarity.</p>
+                </div>
+
+                <!-- Feature 5: Companions -->
+                <div class="feature-card">
+                    <div class="text-2xl sm:text-3xl mb-2 sm:mb-4">🦊</div>
+                    <h3 class="font-cinzel font-bold text-sm sm:text-lg text-amber-300 mb-1 sm:mb-2">Companions</h3>
+                    <p class="text-stone-400 text-xs sm:text-sm leading-relaxed hidden sm:block">Collect and level up companions that give passive bonuses — extra XP, bonus gold, streak protection, and more.</p>
+                </div>
+
+                <!-- Feature 6: Spellbook -->
+                <div class="feature-card">
+                    <div class="text-2xl sm:text-3xl mb-2 sm:mb-4">📖</div>
+                    <h3 class="font-cinzel font-bold text-sm sm:text-lg text-amber-300 mb-1 sm:mb-2">Spellbook & Enchantments</h3>
+                    <p class="text-stone-400 text-xs sm:text-sm leading-relaxed hidden sm:block">Cast spells for XP boosts and gold multipliers. Earn Focus Crystals from timed sessions to buy enchantments.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="py-12 sm:py-20 bg-stone-950">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center mb-10 sm:mb-16 reveal">
+                <h2 class="font-cinzel font-bold text-2xl sm:text-4xl text-amber-400 mb-3">How It Works</h2>
+                <p class="text-stone-500 text-base sm:text-lg">From zero to hero in 60 seconds</p>
+            </div>
+
+            <div class="space-y-8 sm:space-y-12 reveal">
+                <!-- Step 1 -->
+                <div class="flex items-start gap-4 sm:gap-6">
+                    <div class="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-cinzel font-bold text-amber-400 text-base sm:text-lg">1</div>
+                    <div>
+                        <h3 class="font-cinzel font-bold text-base sm:text-lg text-white mb-1">Add Your Quests</h3>
+                        <p class="text-stone-400 text-sm sm:text-base">Turn your tasks, habits, and goals into quests across 6 tiers — daily, weekly, monthly, seasonal, yearly, and life goals.</p>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flex items-start gap-4 sm:gap-6">
+                    <div class="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-cinzel font-bold text-amber-400 text-base sm:text-lg">2</div>
+                    <div>
+                        <h3 class="font-cinzel font-bold text-base sm:text-lg text-white mb-1">Complete & Earn</h3>
+                        <p class="text-stone-400 text-sm sm:text-base">Every quest you complete earns XP, gold, and attack charges. Build streaks, trigger combos, and watch your level climb.</p>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flex items-start gap-4 sm:gap-6">
+                    <div class="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-cinzel font-bold text-amber-400 text-base sm:text-lg">3</div>
+                    <div>
+                        <h3 class="font-cinzel font-bold text-base sm:text-lg text-white mb-1">Fight Bosses & Get Loot</h3>
+                        <p class="text-stone-400 text-sm sm:text-base">Your goals become bosses. Use attack charges to strike them down and earn treasure chests with spells, companions, and rare items.</p>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="flex items-start gap-4 sm:gap-6">
+                    <div class="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-cinzel font-bold text-amber-400 text-base sm:text-lg">4</div>
+                    <div>
+                        <h3 class="font-cinzel font-bold text-base sm:text-lg text-white mb-1">Level Up Your Life</h3>
+                        <p class="text-stone-400 text-sm sm:text-base">Unlock titles, badges, themes, and new features as you progress. Share your stats, challenge friends, and keep the adventure going.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof / Stats -->
+    <section class="py-16 bg-stone-900 border-y border-amber-500/10">
+        <div class="max-w-4xl mx-auto px-4 reveal">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="stat-box">
+                    <div class="stat-number">6</div>
+                    <div class="text-stone-500 text-sm mt-1">Quest Tiers</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">50+</div>
+                    <div class="text-stone-500 text-sm mt-1">Spells & Items</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">20+</div>
+                    <div class="text-stone-500 text-sm mt-1">Companions</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">∞</div>
+                    <div class="text-stone-500 text-sm mt-1">Boss Battles</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonial / Quote -->
+    <section class="py-20 bg-stone-950">
+        <div class="max-w-3xl mx-auto px-4 text-center reveal">
+            <div class="ornament-divider mb-10">
+                <span class="text-amber-500 text-xl">⚜️</span>
+            </div>
+            <blockquote class="font-cinzel text-2xl sm:text-3xl text-amber-100/80 leading-relaxed mb-6">
+                "What if productivity was actually fun?"
+            </blockquote>
+            <p class="text-stone-500 text-lg">
+                Life Quest Journal isn't just another task app. It's a complete RPG built around your real life. Every system — XP, loot, bosses, companions, spells — exists to make you <em class="text-amber-400">want</em> to be productive.
+            </p>
+            <div class="ornament-divider mt-10">
+                <span class="text-amber-500 text-xl">⚜️</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="py-24 hero-bg relative">
+        <div class="max-w-3xl mx-auto px-4 text-center relative z-10 reveal">
+            <h2 class="font-cinzel font-black text-3xl sm:text-5xl text-white mb-6">
+                Your Adventure
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300">Awaits</span>
+            </h2>
+            <p class="text-stone-400 text-lg mb-10 max-w-xl mx-auto">
+                Join thousands of adventurers who turned their goals into quests. Free forever. No account required. Your data stays on your device.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="./index.html" class="cta-pulse bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold px-10 py-4 rounded-xl text-lg transition-all hover:scale-105 font-cinzel flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <i class="ri-sword-line text-xl"></i> Start Your Quest — It's Free
+                </a>
+                <a href="https://play.google.com/store/apps/details?id=com.lifequestjournal.app" target="_blank" rel="noopener"
+                   class="bg-stone-800 hover:bg-stone-700 border border-stone-600 hover:border-amber-500/40 text-stone-200 font-semibold px-10 py-4 rounded-xl text-lg transition-all hover:scale-105 flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <i class="ri-google-play-fill text-xl"></i> Google Play
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-stone-950 border-t border-stone-800">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">⚔️</span>
+                    <span class="font-cinzel font-bold text-amber-400">Life Quest Journal</span>
+                </div>
+                <div class="flex items-center gap-6 text-stone-500 text-sm">
+                    <a href="privacy-policy.html" class="hover:text-amber-400 transition-colors">Privacy Policy</a>
+                    <a href="mailto:support@questjournal.app" class="hover:text-amber-400 transition-colors">Contact</a>
+                </div>
+                <div class="text-stone-600 text-xs font-cinzel">
+                    &copy; 2026 Life Quest Journal
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scroll reveal script -->
+    <script>
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>

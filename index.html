@@ -6,6 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Life Quest Journal - Life Adventures</title>
     
+    <!-- SEO -->
+    <link rel="canonical" href="https://questjournal.app/index.html">
+    <meta name="keywords" content="productivity app, habit tracker, gamification, RPG to-do list, goal setting, boss battles, quest journal">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Life Quest Journal",
+        "description": "Transform your daily tasks, habits, and life goals into an epic RPG experience. Complete quests for XP, fight bosses, collect companions, and level up your real life.",
+        "url": "https://questjournal.app",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Android, Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
+
     <!-- PWA Meta Tags -->
     <meta name="description" content="Transform your life goals into epic quests. Track habits, earn rewards, and level up your life!">
     <meta name="theme-color" content="#1c1917">
@@ -39,6 +61,17 @@
     <link rel="stylesheet" href="themes.css">
 </head>
 <body class="bg-stone-900" style="color-scheme: dark;">
+    <!-- Redirect new visitors to landing page (skip if returning user, PWA, or has query params like challenge codes) -->
+    <script>
+        (function() {
+            var isReturning = localStorage.getItem('goalManagerData') || localStorage.getItem('life-quest-data');
+            var isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            var hasParams = window.location.search.length > 1;
+            if (!isReturning && !isPWA && !hasParams) {
+                window.location.replace('./landing.html');
+            }
+        })();
+    </script>
     <!-- App Splash Screen -->
     <div id="splash-screen" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1c1917 0%,#292524 50%,#1c1917 100%);transition:opacity 0.5s ease-out;">
         <div style="text-align:center;animation:splashFadeIn 0.4s ease-out;">
@@ -1361,7 +1394,7 @@
                                 <i class="ri-image-line mr-2"></i> Share Stat Card
                             </button>
                             <p class="text-xs text-amber-300/70 fancy-font text-center">
-                                Generate a beautiful stat card to share on social media
+                                Share your adventure — your invite link is included automatically!
                             </p>
                             <a href="https://discord.gg/Yh5RNYQvFe" target="_blank" rel="noopener noreferrer" 
                                 class="w-full block text-center bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-indigo-400">
@@ -1599,6 +1632,7 @@
         📱 Install App
     </button>
 
+    <script src="analytics-methods.js"></script>
     <script src="pwa-handler.js"></script>
     <script src="audio-manager.js"></script>
     <script src="goal-manager.js"></script>

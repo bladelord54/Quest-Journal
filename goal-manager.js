@@ -180,6 +180,15 @@ class GoalManager {
         this.accountCreatedDate = null;
         this.BEGINNER_BLESSING_DAYS = 3;
         
+        // Referral System
+        this.referralCode = null;
+        this.referredBy = null;
+        this.referralRewardClaimed = false;
+        this.referralsSent = 0;
+        
+        // Onboarding Share Hook
+        this.onboardingShareShown = false;
+        
         this.loadData();
         
         this.checkNotificationPermission();
@@ -228,6 +237,10 @@ class GoalManager {
         // Check for challenge URL param and expired challenges on load
         setTimeout(() => this.checkForChallengeParam(), 2000);
         setTimeout(() => { if (this.activeChallenges?.length > 0) this.checkChallengeProgress(); }, 2500);
+        
+        // Check for referral URL param and referral rewards
+        setTimeout(() => this.checkForReferralParam(), 2200);
+        setTimeout(() => this.checkReferralReward(), 3000);
         
         // Check for expired spells on load and periodically
         setTimeout(() => this.checkExpiredSpells(), 500);
@@ -397,6 +410,15 @@ class GoalManager {
                 this.lastLoginBonusDate = data.lastLoginBonusDate || null;
                 this.loginStreak = data.loginStreak || 0;
                 
+                // Referral System
+                this.referralCode = data.referralCode || null;
+                this.referredBy = data.referredBy || null;
+                this.referralRewardClaimed = data.referralRewardClaimed || false;
+                this.referralsSent = data.referralsSent || 0;
+                
+                // Onboarding Share Hook
+                this.onboardingShareShown = data.onboardingShareShown || false;
+                
                 // Beginner's Blessing
                 if (data.accountCreatedDate) {
                     this.accountCreatedDate = data.accountCreatedDate;
@@ -546,6 +568,11 @@ class GoalManager {
                 premiumPurchaseToken: this.premiumPurchaseToken || null,
                 lastLoginBonusDate: this.lastLoginBonusDate,
                 loginStreak: this.loginStreak,
+                referralCode: this.referralCode,
+                referredBy: this.referredBy,
+                referralRewardClaimed: this.referralRewardClaimed,
+                referralsSent: this.referralsSent,
+                onboardingShareShown: this.onboardingShareShown,
                 chestsOpened: this.chestsOpened,
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
@@ -1105,6 +1132,7 @@ class GoalManager {
             this.monthlyBossStreak++;
         }
         this.bossesDefeated++;
+        if (typeof trackEvent === 'function') trackEvent('boss_defeated', { type: bossType, total: this.bossesDefeated });
         if (this.activeChallenges?.length > 0) this.checkChallengeProgress();
         
         // Track boss kills this month (for monthly boss unlock threshold)
@@ -1192,6 +1220,7 @@ class GoalManager {
         }
         
         // Note: checkBadges/checkTitleUnlocks already ran inside addXP
+        
         
         this.saveData();
         this.renderBossBattles();
@@ -3024,6 +3053,7 @@ class GoalManager {
                 this.checkSerenityBonus();
                 this.trackDaily('sideQuestsCompleted');
                 this.showAchievement(`Side Quest Completed! +${xpReward} XP 🧭`, 'daily');
+                this.checkOnboardingShareHook();
             }
             this.saveData();
             this.render();
@@ -3611,6 +3641,7 @@ class GoalManager {
         const today = this.getTodayDateString();
         this.lastLoginBonusDate = today;
         this.saveData();
+        
         
         // Find next milestone for preview
         const nextMilestone = this.LOGIN_STREAK_MILESTONES.find(m => m.day > this.loginStreak);
@@ -5399,6 +5430,8 @@ class GoalManager {
         }
         
         this.unlockBadge('level_' + this.level, `Level ${this.level}`, `Reached Level ${this.level} - ${title}`, '⭐', true);
+        if (typeof trackEvent === 'function') trackEvent('level_up', { level: this.level });
+        
         
         // Check for progressive feature unlocks
         this.checkFeatureUnlocks();
@@ -5501,6 +5534,8 @@ class GoalManager {
                     this.grantAttackCharge(1, 'habit');
                     this.checkSerenityBonus();
                     this.trackDaily('habitsCompleted');
+                    if (typeof trackEvent === 'function') trackEvent('habit_completed');
+                    this.checkOnboardingShareHook();
                 } catch (e) {
                     console.error('toggleHabit reward error:', e);
                 }
@@ -5947,8 +5982,10 @@ class GoalManager {
                 if (hour < 12) this.trackDaily('tasksBeforeNoon');
                 if (hour >= 18) this.trackDaily('tasksAfter6pm');
                 this.showAchievement('Quest Task Completed! +15 XP, +5 Gold ⚔️', 'daily');
+                if (typeof trackEvent === 'function') trackEvent('task_completed');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
+                this.checkOnboardingShareHook();
             }
             this.updateParentProgress();
             this.saveData();
@@ -5977,8 +6014,10 @@ class GoalManager {
                 this.checkSerenityBonus();
                 this.trackDaily('weeklyProgress');
                 this.showAchievement('Weekly Quest Conquered! +50 XP, +15 Gold 🛡️', 'weekly');
+                if (typeof trackEvent === 'function') trackEvent('quest_completed', { type: 'weekly' });
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
+                this.checkOnboardingShareHook();
             }
             this.updateParentProgress();
             this.saveData();
@@ -5997,6 +6036,7 @@ class GoalManager {
                 this.grantAttackCharge(3, 'monthly');
                 this.checkSerenityBonus();
                 this.showAchievement('Monthly Victory Achieved! +200 XP, +50 Gold 👑', 'monthly');
+                if (typeof trackEvent === 'function') trackEvent('quest_completed', { type: 'monthly' });
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
             }
@@ -7826,6 +7866,110 @@ class GoalManager {
         `;
         document.body.appendChild(prompt);
         setTimeout(() => prompt.remove(), 10000);
+    }
+
+    // ── Referral System ──────────────────────────────────────────────
+    getOrCreateReferralCode() {
+        if (this.referralCode) return this.referralCode;
+        const name = (this.adventurerName || 'hero').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const seed = (this.accountCreatedDate || this.getTodayDateString()).replace(/-/g, '');
+        let hash = 0;
+        const str = name + seed;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        this.referralCode = Math.abs(hash).toString(36).toUpperCase().slice(0, 6);
+        this.saveData();
+        return this.referralCode;
+    }
+
+    getShareUrl() {
+        const code = this.getOrCreateReferralCode();
+        const baseUrl = 'https://questjournal.app/index.html';
+        return `${baseUrl}?ref=${code}`;
+    }
+
+    checkForReferralParam() {
+        const params = new URLSearchParams(window.location.search);
+        const refCode = params.get('ref');
+        if (!refCode || this.referredBy) return;
+
+        this.referredBy = refCode.toUpperCase();
+        this.saveData();
+
+        // Clean the URL
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+
+        // Welcome message for referred user
+        setTimeout(() => {
+            this.showAchievement('🤝 Invited by a fellow adventurer! Reach Level 2 for a bonus chest!', 'weekly');
+        }, 3000);
+    }
+
+    checkReferralReward() {
+        if (!this.referredBy || this.referralRewardClaimed || this.level < 2) return;
+        this.referralRewardClaimed = true;
+        this.saveData();
+
+        // Award the referred user a Silver Chest
+        setTimeout(() => {
+            this.showAchievement('🎁 Referral Bonus! You earned a Silver Chest for joining through an invite!', 'weekly');
+            this.openChest('silver');
+        }, 2000);
+    }
+
+    // ── Onboarding Share Hook ────────────────────────────────────────
+    checkOnboardingShareHook() {
+        if (this.onboardingShareShown) return;
+        
+        // Count total completed tasks across all categories
+        const completedDaily = (this.dailyTasks || []).filter(g => g.completed).length;
+        const completedSide = (this.sideQuests || []).filter(g => g.completed).length;
+        const completedWeekly = (this.weeklyGoals || []).filter(g => g.completed).length;
+        const completedHabits = (this.habits || []).reduce((sum, h) => sum + (h.totalCompletions || 0), 0);
+        const total = completedDaily + completedSide + completedWeekly + completedHabits;
+        
+        // Trigger after 5 total completions — user is engaged but still new
+        if (total < 5) return;
+        
+        this.onboardingShareShown = true;
+        this.saveData();
+        if (typeof trackEvent === 'function') trackEvent('onboarding_share_shown');
+        
+        // Delay to avoid stacking with other notifications
+        setTimeout(() => {
+            const existing = document.getElementById('onboarding-share-hook');
+            if (existing) existing.remove();
+            
+            const prompt = document.createElement('div');
+            prompt.id = 'onboarding-share-hook';
+            prompt.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9998;animation:fadeIn 0.3s ease-out;width:calc(100% - 32px);max-width:440px;';
+            prompt.innerHTML = `
+                <div style="background:linear-gradient(135deg,rgba(28,25,23,0.97),rgba(41,37,36,0.97));backdrop-filter:blur(8px);border-radius:16px;padding:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:2px solid rgba(251,191,36,0.4);">
+                    <div style="display:flex;align-items:flex-start;gap:12px;">
+                        <div style="font-size:2rem;line-height:1;">⚔️</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-family:'Cinzel',serif;font-weight:700;color:#fbbf24;font-size:14px;margin-bottom:4px;">You're on a Roll!</div>
+                            <div style="color:#d6d3d1;font-size:12px;line-height:1.4;">Know someone who'd love turning their goals into quests? Invite a friend — you both earn a Silver Chest!</div>
+                        </div>
+                        <button onclick="document.getElementById('onboarding-share-hook')?.remove();" style="color:#78716c;font-size:18px;background:none;border:none;cursor:pointer;padding:0;line-height:1;" aria-label="Dismiss">&times;</button>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:12px;">
+                        <button onclick="goalManager.showShareCardPreview(); document.getElementById('onboarding-share-hook')?.remove();"
+                            style="flex:1;background:linear-gradient(to right,#d97706,#b45309);color:#fff;font-family:'Cinzel',serif;font-weight:700;font-size:12px;padding:10px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            📊 Share Your Adventure
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(prompt);
+            setTimeout(() => {
+                const el = document.getElementById('onboarding-share-hook');
+                if (el) el.remove();
+            }, 15000);
+        }, 3000);
     }
 
     playSpellSound() {
@@ -10053,6 +10197,11 @@ class GoalManager {
                 premiumPurchaseToken: this.premiumPurchaseToken || null,
                 lastLoginBonusDate: this.lastLoginBonusDate,
                 loginStreak: this.loginStreak,
+                referralCode: this.referralCode,
+                referredBy: this.referredBy,
+                referralRewardClaimed: this.referralRewardClaimed,
+                referralsSent: this.referralsSent,
+                onboardingShareShown: this.onboardingShareShown,
                 chestsOpened: this.chestsOpened,
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
@@ -10167,6 +10316,11 @@ class GoalManager {
                     this.premiumPurchaseToken = data.premiumPurchaseToken || this.premiumPurchaseToken;
                     this.lastLoginBonusDate = data.lastLoginBonusDate || this.lastLoginBonusDate;
                     this.loginStreak = data.loginStreak ?? this.loginStreak;
+                    this.referralCode = data.referralCode || this.referralCode;
+                    this.referredBy = data.referredBy || this.referredBy;
+                    this.referralRewardClaimed = data.referralRewardClaimed || this.referralRewardClaimed;
+                    this.referralsSent = data.referralsSent ?? this.referralsSent;
+                    this.onboardingShareShown = data.onboardingShareShown ?? this.onboardingShareShown;
                     this.chestsOpened = data.chestsOpened ?? this.chestsOpened;
                     this.bossesDefeated = data.bossesDefeated ?? this.bossesDefeated;
                     this.focusSessionsCompleted = data.focusSessionsCompleted ?? this.focusSessionsCompleted;
@@ -15455,6 +15609,7 @@ class GoalManager {
     }
 
     async shareStatCard() {
+        if (typeof trackEvent === 'function') trackEvent('stat_card_shared');
         try {
             this.showAchievement('📊 Generating your stat card...', 'daily');
             const blob = await this.generateStatCard();
@@ -15468,6 +15623,7 @@ class GoalManager {
                 await navigator.share({
                     title: 'My Life Quest Journal Stats',
                     text: `Level ${this.level} adventurer on a ${this.loginStreak}-day streak! 🔥 #LifeQuestJournal`,
+                    url: this.getShareUrl(),
                     files: [file]
                 });
                 this.showAchievement('📤 Stat card shared!', 'daily');
@@ -15595,7 +15751,7 @@ class GoalManager {
 
     async shareToPlatform(platform) {
         const shareText = `Level ${this.level} adventurer on a ${this.loginStreak}-day streak! #LifeQuestJournal`;
-        const shareUrl = window.location.origin + window.location.pathname;
+        const shareUrl = this.getShareUrl();
 
         if (platform === 'copy') {
             try {
@@ -15869,6 +16025,7 @@ class GoalManager {
                 await navigator.share({
                     title: 'My Weekly Quest Recap',
                     text: `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`,
+                    url: this.getShareUrl(),
                     files: [file]
                 });
                 this.showAchievement('📤 Weekly recap shared!', 'daily');
@@ -15997,7 +16154,7 @@ class GoalManager {
     async shareRecapToPlatform(platform) {
         const summary = this.generatePreviousPeriodSummary('week');
         const shareText = `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`;
-        const shareUrl = window.location.origin + window.location.pathname;
+        const shareUrl = this.getShareUrl();
 
         if (platform === 'copy') {
             try {
@@ -16430,8 +16587,8 @@ class GoalManager {
         if (!this._pendingChallenge || !this._pendingChallengeCode) return;
 
         const challenge = this._pendingChallenge;
-        const baseUrl = window.location.origin + window.location.pathname;
-        const shareUrl = `${baseUrl}?challenge=${this._pendingChallengeCode}`;
+        const refUrl = this.getShareUrl();
+        const shareUrl = `${refUrl}&challenge=${this._pendingChallengeCode}`;
         const shareText = `I challenge you: "${challenge.t}" — Can you beat it? #LifeQuestJournal`;
 
         if (platform === 'copy') {

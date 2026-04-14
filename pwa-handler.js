@@ -47,7 +47,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   // Store the event for later use
   deferredPrompt = e;
   
-  // Show custom install button
+  // Show static FAB as fallback
   showInstallButton();
 });
 
@@ -91,7 +91,10 @@ window.addEventListener('appinstalled', () => {
   if (typeof goalManager !== 'undefined' && goalManager.showAchievement) {
     goalManager.showAchievement('📱 Life Quest Journal installed! Welcome, hero!', 'yearly');
   }
+
+  // Track the install
+  if (typeof trackEvent === 'function') trackEvent('app_installed');
 });
 
-// Export install function for use in HTML
+// Export functions for use in HTML and goal-manager.js
 window.installPWA = installPWA;
