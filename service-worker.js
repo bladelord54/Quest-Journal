@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v362';
+const CACHE_NAME = 'life-quest-journal-v364';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -10,6 +10,7 @@ const localUrlsToCache = [
   './mobile-touch.js',
   './pwa-handler.js',
   './analytics-methods.js',
+  './capacitor-bridge.js',
   './styles.css',
   './animations.css',
   './mobile.css',

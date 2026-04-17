@@ -8,7 +8,11 @@
     "build": "electron-builder --win",
     "build:dir": "electron-builder --win --dir",
     "test": "jest --verbose",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "copy:web": "node scripts/copy-web.js",
+    "cap:sync": "npm run copy:web && npx cap sync android",
+    "cap:open": "npx cap open android",
+    "cap:build": "npm run copy:web && npx cap sync android && npx cap open android"
   },
   "keywords": [
     "productivity",
@@ -36,5 +40,15 @@
       ],
       "icon": "icon.ico"
     }
+  },
+  "dependencies": {
+    "@capacitor-community/in-app-review": "^8.0.0",
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/local-notifications": "^8.0.2",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2"
   }
 }

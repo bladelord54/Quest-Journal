@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Life Quest Journal</string>
+    <string name="title_activity_main">Life Quest Journal</string>
+    <string name="package_name">com.lifequestjournal.app</string>
+    <string name="custom_url_scheme">com.lifequestjournal.app</string>
+</resources>

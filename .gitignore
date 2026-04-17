@@ -10,3 +10,6 @@ package-lock.json
 *.jks
 *.key
 *.pem
+
+# Capacitor build artifacts
+www/

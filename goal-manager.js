@@ -262,6 +262,19 @@ class GoalManager {
         
         // Cleanup intervals on page unload to prevent memory leaks
         window.addEventListener('beforeunload', () => this.cleanup());
+        
+        // Capacitor native bridge initialization
+        this.initCapacitorBridge();
+    }
+    
+    initCapacitorBridge() {
+        if (!window.CapBridge || !window.CapBridge.isNative) return;
+        
+        // Style the status bar to match the dark theme
+        window.CapBridge.styleStatusBar();
+        
+        // Hide splash screen after app is ready
+        window.CapBridge.hideSplash();
     }
     
     cleanup() {
@@ -4148,6 +4161,18 @@ class GoalManager {
         
         // Schedule for ~20 hours from now
         const delay = 20 * 60 * 60 * 1000;
+        
+        // Use native local notification if running inside Capacitor
+        if (window.CapBridge && window.CapBridge.isNative) {
+            window.CapBridge.scheduleNotification({
+                id: 2001,
+                title: '✨ Your Blessing Awaits!',
+                body: 'Your Beginner\'s Blessing is active — 2x XP & Gold! Complete quests today to level up fast.',
+                scheduleAt: new Date(Date.now() + delay)
+            });
+            return;
+        }
+        
         setTimeout(() => {
             this.showNotification(
                 '✨ Your Blessing Awaits!',
@@ -8064,11 +8089,15 @@ class GoalManager {
             }
         });
         
-        document.getElementById('review-prompt-yes').addEventListener('click', () => {
+        document.getElementById('review-prompt-yes').addEventListener('click', async () => {
             this.reviewLeft = true;
             this.saveData();
             if (typeof trackEvent === 'function') trackEvent('review_prompt_accepted', { context });
-            window.open('https://play.google.com/store/apps/details?id=com.lifequestjournal.app', '_blank');
+            if (window.CapBridge) {
+                await window.CapBridge.requestReview();
+            } else {
+                window.open('https://play.google.com/store/apps/details?id=com.lifequestjournal.app', '_blank');
+            }
             overlay.remove();
         });
         
@@ -13200,6 +13229,21 @@ class GoalManager {
 
     // Notification System
     async checkNotificationPermission() {
+        // In Capacitor native mode, request permission via the plugin
+        if (window.CapBridge && window.CapBridge.isNative) {
+            try {
+                const ln = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
+                if (ln) {
+                    const perm = await ln.requestPermissions();
+                    this.notificationsEnabled = perm.display === 'granted';
+                    console.log('[Notifications] Native permission:', perm.display);
+                }
+            } catch (e) {
+                console.warn('[Notifications] Native permission check failed:', e);
+            }
+            return;
+        }
+
         // Passively check current permission state without prompting
         // (Android blocks permission requests that aren't from a user gesture)
         if ('Notification' in window) {
@@ -13619,6 +13663,16 @@ class GoalManager {
     }
 
     showNotification(title, body, icon = '⚔️', tag = null) {
+        // Use native local notifications when running inside Capacitor
+        if (window.CapBridge && window.CapBridge.isNative) {
+            window.CapBridge.scheduleNotification({
+                id: Math.floor(Math.random() * 100000),
+                title: title,
+                body: body
+            });
+            return;
+        }
+
         // Re-check permission state
         if ('Notification' in window) {
             this.notificationsEnabled = Notification.permission === 'granted';
