@@ -66,8 +66,9 @@
         (function() {
             var isReturning = localStorage.getItem('goalManagerData') || localStorage.getItem('life-quest-data');
             var isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            var isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
             var hasParams = window.location.search.length > 1;
-            if (!isReturning && !isPWA && !hasParams) {
+            if (!isReturning && !isPWA && !isNative && !hasParams) {
                 window.location.replace('./landing.html');
             }
         })();
