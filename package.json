@@ -23,6 +23,7 @@
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4",
     "jest": "^29.7.0",
