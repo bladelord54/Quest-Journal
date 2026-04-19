@@ -3,8 +3,11 @@
 let deferredPrompt;
 let installButton;
 
-// Register Service Worker
-if ('serviceWorker' in navigator) {
+// Skip PWA handling entirely inside Capacitor native shell
+const _isCapacitorNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+
+// Register Service Worker (not needed in native — assets load from APK)
+if ('serviceWorker' in navigator && !_isCapacitorNative) {
   let refreshing = false;
 
   // Auto-reload when a new SW takes control (ensures users see latest version)
@@ -39,7 +42,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Handle install prompt
+// Handle install prompt (not applicable in native app)
+if (_isCapacitorNative) {
+  // No install prompt or appinstalled events in native — skip all PWA install logic
+  window.installPWA = function() {};
+} else {
+
 window.addEventListener('beforeinstallprompt', (e) => {
   // Prevent the default mini-infobar
   e.preventDefault();
@@ -98,3 +106,5 @@ window.addEventListener('appinstalled', () => {
 
 // Export functions for use in HTML and goal-manager.js
 window.installPWA = installPWA;
+
+} // end else (!_isCapacitorNative)

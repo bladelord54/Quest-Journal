@@ -8196,11 +8196,12 @@ class GoalManager {
         const video = document.getElementById('theme-video-bg');
         if (!video) return;
         
-        // Check if mobile device or Android WebView/TWA (Google Play app)
+        // Check if mobile device, Android WebView/TWA, or Capacitor native
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isWebView = /(wv|WebView)/i.test(navigator.userAgent);
+        const isNative = window.CapBridge && window.CapBridge.isNative;
         const isTWA = document.referrer.includes('android-app://') || window.matchMedia('(display-mode: standalone)').matches;
-        const isMobile = isAndroid || isWebView || isTWA 
+        const isMobile = isAndroid || isWebView || isNative || isTWA 
                          || /webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
                          || window.innerWidth <= 768;
         
@@ -13229,17 +13230,25 @@ class GoalManager {
 
     // Notification System
     async checkNotificationPermission() {
-        // In Capacitor native mode, request permission via the plugin
+        // In Capacitor native mode, check permission via the plugin
         if (window.CapBridge && window.CapBridge.isNative) {
             try {
                 const ln = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
                 if (ln) {
-                    const perm = await ln.requestPermissions();
+                    const perm = await ln.checkPermissions();
                     this.notificationsEnabled = perm.display === 'granted';
                     console.log('[Notifications] Native permission:', perm.display);
                 }
             } catch (e) {
                 console.warn('[Notifications] Native permission check failed:', e);
+            }
+            // Show prompt if not yet granted (same logic as web, minus web API checks)
+            if (!this.notificationsEnabled) {
+                const dismissedAt = localStorage.getItem('notificationPromptDismissed');
+                const dismissExpired = dismissedAt && (Date.now() - parseInt(dismissedAt)) > 7 * 24 * 60 * 60 * 1000;
+                if (!dismissedAt || dismissExpired) {
+                    setTimeout(() => this.showNotificationPrompt(), 3000);
+                }
             }
             return;
         }
@@ -13280,6 +13289,24 @@ class GoalManager {
     }
 
     async requestNotificationPermission() {
+        // Native Capacitor path: use LocalNotifications plugin
+        if (window.CapBridge && window.CapBridge.isNative) {
+            try {
+                const ln = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
+                if (ln) {
+                    const perm = await ln.requestPermissions();
+                    this.notificationsEnabled = perm.display === 'granted';
+                    console.log('[Notifications] Native requestPermissions result:', perm.display);
+                    if (this.notificationsEnabled) {
+                        this.sendConfirmationNotification();
+                    }
+                }
+            } catch (e) {
+                console.error('[Notifications] Native permission request failed:', e);
+            }
+            return;
+        }
+
         // Must be called from a user gesture (button tap) on Android
         if (!('Notification' in window)) {
             console.warn('[Notifications] Notification API not available in this browser');
@@ -13359,6 +13386,17 @@ class GoalManager {
     }
     
     sendConfirmationNotification() {
+        // Use native notification when in Capacitor
+        if (window.CapBridge && window.CapBridge.isNative) {
+            window.CapBridge.scheduleNotification({
+                id: 9999,
+                title: '⚔️ Quest Reminders Active!',
+                body: 'You will now receive notifications for your daily quests and reminders.'
+            });
+            this.showAchievement('🔔 Test notification sent! Check your notification shade.', 'daily');
+            return;
+        }
+
         const notifOptions = {
             body: 'You will now receive notifications for your daily quests and reminders.',
             icon: './icons/icon-192.png',
@@ -13417,6 +13455,7 @@ class GoalManager {
         const ua = navigator.userAgent || '';
         const isAndroid = /android/i.test(ua);
         const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isNative = window.CapBridge && window.CapBridge.isNative;
         const isTWA = document.referrer.includes('android-app://') || window.matchMedia('(display-mode: standalone)').matches;
 
         let steps = '';
@@ -13424,7 +13463,7 @@ class GoalManager {
 
         if (isAndroid) {
             platformLabel = 'Android';
-            if (isTWA) {
+            if (isNative || isTWA) {
                 steps = `
                     <div class="space-y-3">
                         <div class="flex items-start gap-3">
@@ -13735,14 +13774,16 @@ class GoalManager {
             };
         }
         
+        const isNative = window.CapBridge && window.CapBridge.isNative;
+
         // Schedule daily reminders (in-page timers as primary)
         this.scheduleDailyReminders();
         
-        // Send reminder settings to service worker for persistent background notifications
-        this.syncReminderSettingsToSW();
-        
-        // Subscribe to Web Push for reliable background notifications
-        this.subscribeToPush();
+        // Service worker and push are only relevant for web PWA
+        if (!isNative) {
+            this.syncReminderSettingsToSW();
+            this.subscribeToPush();
+        }
         
         // Check for missed reminders on app open (catch-up)
         this.checkMissedReminders();
@@ -13751,22 +13792,24 @@ class GoalManager {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 this.scheduleDailyReminders();
-                this.syncReminderSettingsToSW(); // Re-sync on every foreground
-                this.subscribeToPush(); // Re-sync timezone offset (handles DST changes)
+                if (!isNative) {
+                    this.syncReminderSettingsToSW();
+                    this.subscribeToPush();
+                }
                 this.checkOverdueTasks();
                 this.checkMissedReminders();
             }
         });
         
-        // Register periodic background sync for Android (fires even when app is closed)
-        this.registerPeriodicSync();
+        // Periodic background sync and SW task-count re-sync are web-only
+        if (!isNative) {
+            this.registerPeriodicSync();
+            this._swSyncInterval = setInterval(() => this.syncReminderSettingsToSW(), 15 * 60 * 1000);
+        }
         
         // Check for overdue tasks periodically
         this.checkOverdueTasks();
         this._overdueCheckInterval = setInterval(() => this.checkOverdueTasks(), 30 * 60 * 1000); // Every 30 minutes
-        
-        // Re-sync task counts to SW periodically (tasks may change during the day)
-        this._swSyncInterval = setInterval(() => this.syncReminderSettingsToSW(), 15 * 60 * 1000); // Every 15 minutes
     }
     
     checkMissedReminders() {
@@ -14075,15 +14118,14 @@ class GoalManager {
             this.scheduleDailyReminders();
         }
         
-        // Keep service worker in sync for background notifications
-        this.syncReminderSettingsToSW();
-        
-        // Re-sync push subscription so server knows updated schedule
-        this.subscribeToPush();
-        
-        // If reminders fully disabled, unsubscribe from push
-        if (setting === 'enabled' && !value) {
-            this._unsubscribeFromPush();
+        // Service worker sync and push are web-only
+        const isNative = window.CapBridge && window.CapBridge.isNative;
+        if (!isNative) {
+            this.syncReminderSettingsToSW();
+            this.subscribeToPush();
+            if (setting === 'enabled' && !value) {
+                this._unsubscribeFromPush();
+            }
         }
     }
 
@@ -14091,16 +14133,85 @@ class GoalManager {
         const container = document.getElementById('reminder-settings-container');
         if (!container) return;
         
-        // Always re-check permission state from the browser directly
-        if ('Notification' in window) {
+        const isNative = window.CapBridge && window.CapBridge.isNative;
+        
+        // Re-check permission state
+        if (isNative) {
+            // Native permission was already checked in checkNotificationPermission()
+            // notificationsEnabled is set there via the plugin
+        } else if ('Notification' in window) {
             this.notificationsEnabled = Notification.permission === 'granted';
-        }
-        // TWA fallback: also honor previously confirmed working notifications
-        if (!this.notificationsEnabled && localStorage.getItem('notificationsConfirmedWorking') === 'true') {
-            this.notificationsEnabled = true;
+            // TWA fallback: also honor previously confirmed working notifications
+            if (!this.notificationsEnabled && localStorage.getItem('notificationsConfirmedWorking') === 'true') {
+                this.notificationsEnabled = true;
+            }
         }
         
         const settings = this.reminderSettings;
+        
+        // Build notification status section based on native vs web
+        let notifStatusLabel = '';
+        if (this.notificationsEnabled) {
+            notifStatusLabel = '<span class="text-green-400">✓ Enabled</span>';
+        } else if (isNative) {
+            notifStatusLabel = '<span class="text-red-400">○ Not Enabled</span>';
+        } else if ('Notification' in window) {
+            notifStatusLabel = Notification.permission === 'denied' 
+                ? '<span class="text-red-400">✗ Blocked</span>' 
+                : '<span class="text-red-400">○ Not Enabled</span>';
+        } else {
+            notifStatusLabel = '<span class="text-red-400">✗ Not Supported</span>';
+        }
+        
+        // Delivery method row: Native vs Service Worker
+        const deliveryRow = isNative 
+            ? `<div class="flex items-center justify-between text-sm mt-1">
+                    <span class="text-amber-300/70">Delivery:</span>
+                    <span class="text-green-400">✓ Native</span>
+               </div>`
+            : `<div class="flex items-center justify-between text-sm mt-1">
+                    <span class="text-amber-300/70">Service Worker:</span>
+                    <span class="${navigator.serviceWorker?.controller ? 'text-green-400' : 'text-yellow-400'}">
+                        ${navigator.serviceWorker?.controller ? '✓ Active' : '○ Not controlling (reload page)'}
+                    </span>
+               </div>`;
+        
+        // Enable button section when not enabled
+        let enableSection = '';
+        if (!this.notificationsEnabled) {
+            if (isNative) {
+                enableSection = `
+                    <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
+                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
+                        Enable Notifications
+                    </button>
+                    <p class="text-amber-400/60 text-xs mt-2 text-center">If the prompt doesn't appear, open your device's Settings > Apps > Life Quest Journal > Notifications and enable them.</p>
+                `;
+            } else if ('Notification' in window && Notification.permission === 'denied') {
+                enableSection = `
+                    <button onclick="goalManager.showNotificationSettingsGuide()"
+                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2.5 rounded-lg text-sm fancy-font flex items-center justify-center gap-2">
+                        <i class="ri-settings-3-line"></i> How to Enable Notifications
+                    </button>
+                    <p class="text-red-400/80 text-xs mt-2 text-center">Notifications are blocked. Tap above for step-by-step instructions.</p>
+                `;
+            } else {
+                enableSection = `
+                    <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
+                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
+                        Enable Notifications
+                    </button>
+                `;
+            }
+        } else {
+            enableSection = `
+                <button onclick="goalManager.sendConfirmationNotification()"
+                    class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
+                    🔔 Send Test Notification
+                </button>
+                <p class="text-amber-400/60 text-xs mt-1 text-center">If no notification appears, check that notifications are enabled in your device's app settings.</p>
+            `;
+        }
         
         container.innerHTML = `
             <div class="space-y-4">
@@ -14156,36 +14267,10 @@ class GoalManager {
                 <div class="mt-4 pt-4 border-t border-amber-700/50">
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-amber-300/70">Notifications:</span>
-                        <span class="${this.notificationsEnabled ? 'text-green-400' : 'text-red-400'}">
-                            ${this.notificationsEnabled ? '✓ Enabled' : ('Notification' in window ? (Notification.permission === 'denied' ? '✗ Blocked' : '○ Not Enabled') : '✗ Not Supported')}
-                        </span>
+                        ${notifStatusLabel}
                     </div>
-                    <div class="flex items-center justify-between text-sm mt-1">
-                        <span class="text-amber-300/70">Service Worker:</span>
-                        <span class="${navigator.serviceWorker?.controller ? 'text-green-400' : 'text-yellow-400'}">
-                            ${navigator.serviceWorker?.controller ? '✓ Active' : '○ Not controlling (reload page)'}
-                        </span>
-                    </div>
-                    ${!this.notificationsEnabled ? `
-                    ${'Notification' in window && Notification.permission === 'denied' ? `
-                    <button onclick="goalManager.showNotificationSettingsGuide()"
-                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2.5 rounded-lg text-sm fancy-font flex items-center justify-center gap-2">
-                        <i class="ri-settings-3-line"></i> How to Enable Notifications
-                    </button>
-                    <p class="text-red-400/80 text-xs mt-2 text-center">Notifications are blocked. Tap above for step-by-step instructions.</p>
-                    ` : `
-                    <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
-                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
-                        Enable Notifications
-                    </button>
-                    `}
-                    ` : `
-                    <button onclick="goalManager.sendConfirmationNotification()"
-                        class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
-                        🔔 Send Test Notification
-                    </button>
-                    <p class="text-amber-400/60 text-xs mt-1 text-center">If no notification appears, check that notifications are enabled in your device's app settings.</p>
-                    `}
+                    ${deliveryRow}
+                    ${enableSection}
                 </div>
             </div>
         `;
