@@ -82,8 +82,13 @@ input[type="checkbox"]:checked {
     }
     to { 
         opacity: 1; 
-        transform: translateX(0); 
+        transform: translateY(0); 
     }
+}
+
+@keyframes viewFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes pulse {
@@ -100,7 +105,7 @@ input[type="checkbox"]:checked {
 }
 
 .view-container {
-    animation: slideIn 0.3s ease-out;
+    animation: viewFadeIn 0.15s ease-out;
 }
 
 /* Achievement toast animation */
@@ -165,6 +170,12 @@ button:active {
 .draggable-item.drag-over {
     border: 3px dashed #fbbf24 !important;
     background: rgba(251, 191, 36, 0.1);
+    transform: scale(1.05);
+}
+
+.calendar-day.selected {
+    box-shadow: 0 0 0 3px #fbbf24, 0 0 12px rgba(251, 191, 36, 0.4);
+    border-color: #fbbf24 !important;
     transform: scale(1.05);
 }
 

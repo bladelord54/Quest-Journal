@@ -3823,7 +3823,7 @@ class GoalManager {
                     </div>
                     
                     <!-- 7-Day Calendar Strip -->
-                    <div class="flex gap-1.5 mb-4 overflow-hidden">
+                    <div class="flex gap-1.5 mb-4 px-1 pt-1 pb-1">
                         ${calendarHTML}
                     </div>
                     
@@ -10121,9 +10121,34 @@ class GoalManager {
         });
     }
 
-    // Google Play Digital Goods API for in-app purchases
+    // In-app purchase entry point
     async initiatePremiumPurchase() {
-        // Check if Digital Goods API is available (TWA on Android)
+        // Native Capacitor path: use custom BillingPlugin
+        if (window.CapBridge && window.CapBridge.isNative) {
+            try {
+                const Billing = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Billing;
+                if (!Billing) {
+                    this.showAchievement('⚠️ Billing plugin not loaded. Try restarting the app.', 'daily');
+                    return;
+                }
+                this.showAchievement('🔍 Initiating purchase...', 'daily');
+                const result = await Billing.purchase({ productId: 'quest_journal_premium' });
+                if (result && result.success) {
+                    this.onPremiumPurchaseSuccess(result.purchaseToken);
+                }
+            } catch (error) {
+                console.error('[Billing] Native purchase error:', error);
+                const msg = (error.message || '').toLowerCase();
+                if (msg.includes('cancel')) {
+                    this.showAchievement('Purchase was canceled', 'daily');
+                } else {
+                    this.showAchievement(`⚠️ ${error.message || 'Purchase failed'}`, 'daily');
+                }
+            }
+            return;
+        }
+
+        // Web/TWA path: Digital Goods API
         if ('getDigitalGoodsService' in window) {
             this.showAchievement('🔍 Digital Goods API found, initiating...', 'daily');
             try {
@@ -10133,20 +10158,16 @@ class GoalManager {
                 console.error('Digital Goods API error:', error);
                 const msg = (error.message || '').toLowerCase();
                 
-                // User explicitly canceled - show brief message
                 if (msg.includes('canceled') || msg.includes('cancelled') || error.name === 'AbortError') {
                     this.showAchievement('Purchase was canceled', 'daily');
                     return;
                 }
                 
-                // Product not found in Play Store - show specific error
                 if (msg.includes('not found') && msg.includes('sku')) {
                     this.showAchievement('❌ Product not available yet. Please try again later.', 'daily');
                     return;
                 }
                 
-                // All other failures (unsupported context, service unavailable, 
-                // billing not supported, etc.) - fall through to web fallback
                 console.warn('Digital Goods not available, showing fallback. Reason:', error.message);
                 this.showAchievement(`⚠️ Billing error: ${error.message}`, 'daily');
                 this.showWebPurchaseFallback();
@@ -10155,8 +10176,7 @@ class GoalManager {
             this.showAchievement('🔍 Using Android bridge...', 'daily');
             window.Android.purchasePremium();
         } else {
-            // No billing API available
-            this.showAchievement(`⚠️ No billing API detected. Cache: v318`, 'daily');
+            this.showAchievement(`⚠️ No billing API detected`, 'daily');
             this.showWebPurchaseFallback();
         }
     }
@@ -10262,6 +10282,29 @@ class GoalManager {
     async restorePurchases() {
         this.showAchievement('🔄 Checking for previous purchases...', 'daily');
         
+        // Native Capacitor path
+        if (window.CapBridge && window.CapBridge.isNative) {
+            try {
+                const Billing = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Billing;
+                if (!Billing) {
+                    this.showAchievement('⚠️ Billing plugin not loaded', 'daily');
+                    return;
+                }
+                const result = await Billing.restorePurchases();
+                if (result && result.found) {
+                    this.onPremiumPurchaseSuccess(result.purchaseToken);
+                    this.showAchievement('✅ Premium restored successfully!', 'weekly');
+                } else {
+                    this.showAchievement('❌ No previous purchase found', 'daily');
+                }
+            } catch (error) {
+                console.error('[Billing] Restore error:', error);
+                this.showAchievement('❌ Could not restore purchases', 'daily');
+            }
+            return;
+        }
+
+        // Web/TWA path: Digital Goods API
         if ('getDigitalGoodsService' in window) {
             try {
                 const service = await window.getDigitalGoodsService('https://play.google.com/billing');
@@ -10675,6 +10718,7 @@ class GoalManager {
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-lg">${priorityIcons[quest.priority]}</span>
                             <h4 class="font-bold text-lg text-amber-300 medieval-title ${quest.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(quest.title)}</h4>
+                        </div>
                         ${quest.description ? `<p class="text-sm text-${color}-100 mb-2 fancy-font italic">${this.escapeHTML(quest.description)}</p>` : ''}
                         <div class="flex items-center gap-2 text-xs text-${color}-200">
                             <span class="bg-${color}-800/50 px-2 py-1 rounded fancy-font capitalize">${quest.priority} Priority</span>
@@ -10831,6 +10875,12 @@ class GoalManager {
             `;
             
             calendarDays.appendChild(dayElement);
+        }
+        
+        // Re-apply selected highlight if a date was previously selected
+        if (this.selectedDate) {
+            const selectedDay = document.querySelector(`[data-date="${this.selectedDate}"]`);
+            if (selectedDay) selectedDay.classList.add('selected');
         }
     }
 
@@ -11554,46 +11604,49 @@ class GoalManager {
             delete goal[oldField];
         }
         
-        // Build HTML for selection modal
-        const html = `
-            <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="this.remove()">
-                <div class="bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 rounded-xl shadow-2xl border-4 border-amber-600 max-w-lg w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-                    <div class="p-6">
-                        <h2 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center">🔗 Manage ${parentType} Connections</h2>
-                        <p class="text-amber-200 text-center mb-4 fancy-font text-sm">Select which ${parentType.toLowerCase()} goals this connects to</p>
-                        
-                        <div class="space-y-2 mb-6">
-                            ${parentArray.length === 0 ? `
-                                <p class="text-amber-300 text-center py-4 fancy-font">No ${parentType.toLowerCase()} goals available</p>
-                            ` : parentArray.map(parent => {
-                                const isConnected = goal[parentIdField].includes(parent.id);
-                                return `
-                                    <div class="flex items-center gap-3 bg-amber-900/30 p-3 rounded-lg border-2 ${isConnected ? 'border-green-500' : 'border-amber-700'} hover:border-amber-500 transition-all">
-                                        <input 
-                                            type="checkbox" 
-                                            id="parent-${parent.id}" 
-                                            ${isConnected ? 'checked' : ''}
-                                            onchange="goalManager.toggleParentConnection('${goalType}', ${goalId}, ${parent.id}, '${parentIdField}')"
-                                            class="w-5 h-5">
-                                        <label for="parent-${parent.id}" class="flex-1 text-amber-200 fancy-font cursor-pointer">
-                                            ${this.escapeHTML(parent.title)}
-                                        </label>
-                                        ${isConnected ? '<span class="text-green-400 text-xl">✓</span>' : ''}
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                        
-                        <button onclick="this.closest('.fixed').remove(); goalManager.render();" 
-                            class="w-full bg-amber-700 hover:bg-amber-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font">
-                            Done
-                        </button>
+        // Build selection modal (use createElement + inline styles for reliable centering)
+        const modal = document.createElement('div');
+        modal.id = 'connection-modal';
+        modal.className = 'fixed inset-0 bg-black/70 z-50 overflow-hidden';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:24px;';
+        modal.onclick = (e) => { if (e.target === modal) { modal.remove(); goalManager.render(); } };
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down" style="width:100%;max-width:min(512px, calc(100vw - 48px));max-height:calc(90vh - 48px);overflow-y:auto;" onclick="event.stopPropagation()">
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center">🔗 Manage ${parentType} Connections</h2>
+                    <p class="text-amber-200 text-center mb-4 fancy-font text-sm">Select which ${parentType.toLowerCase()} goals this connects to</p>
+                    
+                    <div class="space-y-2 mb-6">
+                        ${parentArray.length === 0 ? `
+                            <p class="text-amber-300 text-center py-4 fancy-font">No ${parentType.toLowerCase()} goals available</p>
+                        ` : parentArray.map(parent => {
+                            const isConnected = goal[parentIdField].includes(parent.id);
+                            return `
+                                <div class="flex items-center gap-3 bg-amber-900/30 p-3 rounded-lg border-2 ${isConnected ? 'border-green-500' : 'border-amber-700'} hover:border-amber-500 transition-all">
+                                    <input 
+                                        type="checkbox" 
+                                        id="parent-${parent.id}" 
+                                        ${isConnected ? 'checked' : ''}
+                                        onchange="goalManager.toggleParentConnection('${goalType}', ${goalId}, ${parent.id}, '${parentIdField}')"
+                                        class="w-5 h-5">
+                                    <label for="parent-${parent.id}" class="flex-1 text-amber-200 fancy-font cursor-pointer">
+                                        ${this.escapeHTML(parent.title)}
+                                    </label>
+                                    ${isConnected ? '<span class="text-green-400 text-xl">✓</span>' : ''}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
+                    
+                    <button onclick="document.getElementById('connection-modal').remove(); goalManager.render();" 
+                        class="w-full bg-amber-700 hover:bg-amber-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font">
+                        Done
+                    </button>
                 </div>
             </div>
         `;
         
-        document.body.insertAdjacentHTML('beforeend', html);
+        document.body.appendChild(modal);
     }
 
     toggleParentConnection(goalType, goalId, parentId, parentIdField) {

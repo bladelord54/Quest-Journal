@@ -1,0 +1,706 @@
+================================================================================
+         LIFE QUEST JOURNAL - SOCIAL MEDIA PROMOTION PLAN
+================================================================================
+
+Website:    https://questjournal.app
+Play Store: [Life Quest Journal on Google Play]
+Tagline:    Turn Your Goals Into Epic Quests
+Price:      Free (Premium $4.99 one-time)
+
+
+================================================================================
+1. STRATEGY & LAUNCH PLAN
+================================================================================
+
+TARGET AUDIENCES
+----------------
+1. Productivity enthusiasts - to-do apps, habit trackers, bullet journals
+2. Gamers - RPG fans who'd love gamification in real life
+3. Self-improvement community - goal setters, "level up your life" mindset
+4. ADHD / neurodivergent - gamification helps with task motivation
+5. Students - study habits, assignment tracking, exam prep goals
+
+PLATFORM PRIORITY
+-----------------
+Reddit      - Niche subreddits with exact target audience (text posts, screenshots)
+TikTok      - Short demo videos go viral in productivity niche (15-60s recordings)
+Twitter/X   - Indie dev community, productivity crowd (threads, GIFs, screenshots)
+Instagram   - Visual app showcase, Reels for discovery (Reels, carousels, Stories)
+YouTube     - Evergreen search traffic (short demos, "how I use it")
+
+WEEK 1-2: SOFT LAUNCH
+- Post on Reddit (see subreddit list below)
+- Daily Twitter/X posts introducing features
+- 2-3 TikTok/Reels demos
+- Respond to every comment personally
+
+WEEK 3-4: GROWTH PUSH
+- Feature spotlight posts (one feature per post)
+- User testimonial/review screenshots
+- "Day in my life using Life Quest Journal" content
+- Cross-post best performers to all platforms
+
+ONGOING
+- Weekly tip/trick posts
+- Share milestone updates (user count, new features)
+- Engage in productivity communities daily
+- Reshare user-generated content
+
+
+================================================================================
+2. REDDIT POSTS
+================================================================================
+
+SUBREDDIT RULES RESEARCH (as of May 2025)
+------------------------------------------
+
+Legend:
+  [OK]      = Self-promotion welcomed/encouraged
+  [LIMITED] = Specific threads or conditions only
+  [NO]      = Self-promotion banned (participate organically only)
+
+
+--- [OK] PROMOTION-FRIENDLY (post about your app directly) ---
+
+r/SideProject (453K members)
+  - Built for this. "I built..." posts encouraged.
+  - Include demo/screenshots.
+
+r/alphaandbetausers (22K members)
+  - Tag with [Android, Beta].
+  - Explain what feedback you want.
+
+r/TestMyApp (6K members)
+  - App testing requests encouraged.
+  - State platform & feedback needs.
+
+r/betatests (7K members)
+  - Use category tags.
+  - Define testing period.
+
+r/IMadeThis (18K members)
+  - Personal creation showcase.
+  - Emphasize your journey.
+
+r/somethingimade (3M members)
+  - Huge reach.
+  - Focus on creation process & personal pride.
+
+r/selfpromotion (31K members)
+  - General promo hub.
+  - Min 20 karma + 7-day account age required.
+
+r/gamification (small)
+  - Niche community.
+  - Share insights about gamification design, mention app naturally.
+
+
+--- [LIMITED] SPECIFIC CONDITIONS ---
+
+r/androidapps (800K+)
+  - Dev posts sometimes allowed if framed as "looking for feedback."
+  - Read current rules carefully before posting. Some succeed, others removed.
+
+r/Entrepreneur (4.8M)
+  - Promotion ONLY in "Thank You Thursday" threads.
+  - Requires 10 comment karma in the sub first.
+  - No AI-generated content.
+
+r/IndieGaming
+  - One submission per 2 weeks.
+  - Focus on the product, not the pitch.
+
+r/IndieDev
+  - Dev progress posts OK. Don't spam.
+  - Show technical substance.
+
+
+--- [NO] NO SELF-PROMOTION (organic engagement only) ---
+
+r/productivity (1.5M+)
+  - RULE: "Self-promotion is not allowed here in any form, even if asked
+    for recommendations." No soliciting, no app links, no referral codes.
+
+r/getdisciplined (900K+)
+  - RULE: "No sales pitches, coaching, or hustle posts."
+  - Promotion will be removed.
+
+r/ADHD (1.8M+)
+  - Strictly no promotion.
+  - App posts are removed by mods. Even helpful app lists get flagged.
+
+r/selfimprovement (1.3M+)
+  - RULE: "This subreddit is not the appropriate place for self-promotion
+    or to sell your services, apps, or wares."
+
+r/DecidingToBeBetter
+  - Self-improvement discussion only. No product promotion.
+
+r/theXeffect
+  - Habit tracking community. No app promotion.
+
+
+STRATEGY FOR [NO] SUBREDDITS
+-----------------------------
+These large communities are still valuable, but you must play the long game:
+
+1. Build karma first - Spend 2-4 weeks commenting helpfully on others' posts
+2. Share value, not links - Post tips about gamifying habits, building streaks,
+   etc. WITHOUT mentioning your app
+3. Let others discover you - Your post history will show your r/SideProject
+   launch. Curious users will find it.
+4. Only mention if asked - If someone asks "any apps that do X?" you can reply
+   naturally. Even then, some subs remove it.
+5. Never link directly - Say "I've been working on something like this" rather
+   than dropping a URL
+
+
+--------------------------------------------------------------------------------
+REDDIT POST TEMPLATES
+--------------------------------------------------------------------------------
+
+TEMPLATE 1: r/SideProject [OK] (primary launch post)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Title: I built a free app that turns your to-do list into an RPG -- complete
+quests, fight bosses, and level up your real life
+
+Body:
+
+Hey! I've been working on Life Quest Journal, a free productivity app that
+gamifies your goals and daily tasks with RPG mechanics.
+
+The idea: your tasks become quests, completing them earns XP and gold, and you
+literally level up as you get things done.
+
+What makes it different:
+- Earn XP and gold for completing tasks -- level up from 1 to Legend
+- Boss Battles tied to your biggest goals (defeat the boss by finishing sub-tasks)
+- Daily ritual streaks with login streak tracking
+- Companion system -- collect creatures that give productivity bonuses
+- Spellbook & Enchantments -- cast spells to boost focus or rewards
+- Quest Chains for multi-step projects
+- Built-in Focus Timer
+- Calendar view, analytics, and weekly recaps
+- 8+ visual themes (medieval, forest, ocean, etc.)
+- Works fully offline, no account needed
+- Progressive unlock system -- new features unlock as you level up
+
+Tech stack: Vanilla JS, Capacitor for Android, TailwindCSS. No backend --
+everything runs locally in the browser/app.
+
+Free on Android & Web:
+- Android: [Google Play link]
+- Web: https://questjournal.app
+
+Would love any feedback -- especially on the onboarding flow and feature pacing!
+
+
+TEMPLATE 2: r/alphaandbetausers [OK] (beta feedback)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Title: [Android, Live] Life Quest Journal -- gamified to-do list with RPG
+mechanics (XP, boss battles, companions). Looking for feedback on UX and
+feature balance.
+
+Body:
+
+Hi! Looking for testers and feedback on Life Quest Journal -- a free
+productivity app that turns your tasks into RPG quests.
+
+What it does:
+- Daily tasks earn XP and gold
+- Level up to unlock new features (boss battles, spells, companions)
+- Boss Battles break big goals into manageable sub-tasks
+- Streaks, focus timer, calendar view, analytics
+
+What I need feedback on:
+1. Is the progressive unlock pacing too fast/slow?
+2. Does the gamification feel motivating or gimmicky?
+3. Any UX friction points on mobile?
+
+Platform: Android (Google Play) + Web (PWA)
+Price: Free (optional $4.99 premium for extra themes/features)
+
+[Google Play link]
+https://questjournal.app
+
+Happy to answer any questions!
+
+
+TEMPLATE 3: Organic comment for [NO] subs (r/productivity, r/ADHD, etc.)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use as natural replies when someone asks about habit tracking or motivation:
+
+"I've found that gamification really helps me with task initiation. Turning
+tasks into 'quests' with XP and levels gives my brain the variable reward loop
+it needs to actually start things. Even a simple streak counter creates enough
+loss aversion to keep me going past the motivation phase.
+
+The boss battle concept is what works best for me -- breaking a scary goal into
+sub-tasks that each 'deal damage' makes it feel like progress instead of staring
+at one overwhelming checkbox."
+
+(No link. No app name. If someone asks "what app?" -- THEN you can reply.)
+
+
+================================================================================
+3. TWITTER/X POSTS
+================================================================================
+
+LAUNCH TWEET
+------------
+I turned my to-do list into an RPG.
+
+Life Quest Journal:
+  Tasks = Quests
+  Complete them = Earn XP
+  Level up your character
+  Boss Battles for big goals
+  Collect companion creatures
+  Cast spells to boost focus
+
+Free. Offline. No sign-up.
+
+https://questjournal.app
+
+
+FEATURE SPOTLIGHT TWEETS
+-------------------------
+
+#1 -- Boss Battles:
+
+Most productivity apps treat big goals as a checkbox.
+
+Life Quest Journal treats them as Boss Battles.
+
+Break your goal into sub-tasks. Each one does damage. Defeat the boss to
+complete the goal.
+
+Suddenly "write my thesis" isn't so scary.
+
+Free: https://questjournal.app
+
+
+#2 -- Streaks:
+
+Day 1: "I'll try this habit tracker"
+Day 7: "Okay the streak feels nice"
+Day 30: "I CANNOT break this streak"
+
+Life Quest Journal tracks your daily ritual streaks with a visual calendar,
+XP bonuses, and login rewards.
+
+The streak is the game. https://questjournal.app
+
+
+#3 -- Leveling System:
+
+Level 1: Dashboard + Daily Quests
+Level 2: Treasury & Rewards
+Level 3: Spellbook
+Level 4: Boss Battles
+Level 5: Focus Timer
+...
+Level 10: Legend Status
+
+New features unlock as you actually use the app. No tutorial overload.
+
+https://questjournal.app
+
+
+#4 -- ADHD Angle:
+
+Productivity apps for neurotypical brains: "Just write it down and do it"
+
+Life Quest Journal: Here's XP. Here's a level bar. Here's a boss to fight.
+Here's a companion cheering you on. Here's a streak you don't want to break.
+
+Dopamine-driven productivity. Free: https://questjournal.app
+
+
+#5 -- Indie Dev Story:
+
+I built a productivity app that treats your life like a video game.
+
+No VC funding.
+No monthly subscription.
+No account required.
+No data collection.
+
+Just a free RPG for your real life.
+
+https://questjournal.app
+
+
+THREAD: "Why gamification actually works"
+-----------------------------------------
+
+1/ Our brains are wired for variable rewards. Completing a task in a normal app
+gives you... a checkmark. Completing a quest gives you XP, gold, sometimes a
+new companion, sometimes a level up.
+
+2/ Big goals are paralyzing. Boss Battles break them into sub-tasks that each
+"deal damage." Psychologically, you're making visible progress instead of
+staring at one huge checkbox.
+
+3/ Streaks exploit loss aversion. Once you have a 14-day streak, breaking it
+HURTS. That's not a bug -- it's the feature that keeps habits alive past the
+motivation phase.
+
+4/ Progressive unlocks prevent overwhelm. You start with just daily quests. By
+level 5, you've earned your way to spell casting and boss fights. The complexity
+grows with your commitment.
+
+5/ The RPG framing recontextualizes chores. "Clean the kitchen" is boring.
+"Complete the Kitchen Restoration Quest for 50 XP" is... slightly less boring.
+And that slight difference matters.
+
+I built this into an app called Life Quest Journal. Free, offline, no account.
+
+https://questjournal.app
+
+
+================================================================================
+4. TIKTOK / INSTAGRAM REELS SCRIPTS
+================================================================================
+
+VIDEO #1 -- "POV: Your to-do list is an RPG" (15s)
+---------------------------------------------------
+HOOK (text overlay): "POV: your to-do list is an RPG"
+
+[Screen record scrolling through the app]
+- Show adding a task
+- Show completing it -> XP animation
+- Show level up notification
+- Show boss battle screen
+- End on the character stats
+
+TEXT: "Life Quest Journal -- free on Android & web"
+AUDIO: Trending epic/medieval music
+
+
+VIDEO #2 -- "Things that helped my productivity that aren't discipline" (30s)
+-----------------------------------------------------------------------------
+HOOK: "Things that actually helped my productivity"
+
+[Face to camera or text-on-screen format]
+- "Gamifying my tasks with an RPG system"
+- [Show the app] "Every task gives XP"
+- "Seeing my level go up is addictive"
+- "Boss battles make big goals less scary"
+- "I've had a 30-day streak because I don't want to lose it"
+
+TEXT: "App is called Life Quest Journal, link in bio"
+
+
+VIDEO #3 -- "ADHD productivity hack" (20s)
+-------------------------------------------
+HOOK: "ADHD productivity hack that actually works"
+
+"My brain needs a reward to start a task"
+"So I turned my entire life into a video game"
+[Show app: quest completion -> XP -> level up]
+"Every task = XP. I'm literally grinding my real life."
+
+TEXT: "Life Quest Journal -- free, link in bio"
+
+
+VIDEO #4 -- "Rating this productivity app" (30s)
+-------------------------------------------------
+HOOK: "This app turns your tasks into RPG quests"
+
+[Screen record walkthrough]
+- "Your tasks are quests"          [check]
+- "You earn XP and gold"           [check]
+- "You can fight bosses"           [check]
+- "There are companions and spells" [check]
+- "It works offline with no account" [check]
+- "It's free"                       [check]
+
+"10/10, I'm addicted to being productive"
+
+
+================================================================================
+5. INSTAGRAM CAROUSEL POST IDEAS
+================================================================================
+
+CAROUSEL #1: "5 reasons this app replaced my to-do list"
+---------------------------------------------------------
+Slide 1: Cover -- "The app that replaced my to-do list" (app icon + screenshot)
+Slide 2: "Reason 1: Tasks give you XP" (screenshot of quest completion)
+Slide 3: "Reason 2: Big goals = Boss Battles" (boss battle screenshot)
+Slide 4: "Reason 3: Streaks keep you accountable" (streak calendar screenshot)
+Slide 5: "Reason 4: It never feels overwhelming" (explain progressive unlocks)
+Slide 6: "Reason 5: It's free, offline, and private" (no account, no data)
+Slide 7: CTA -- "Download free: questjournal.app"
+
+CAROUSEL #2: "How I gamified my entire life"
+--------------------------------------------
+Slide 1: Cover -- "I turned my life into a video game"
+Slide 2: Morning routine -> "Daily Ritual Quest"
+Slide 3: Gym goals -> "Boss Battle: Fitness Dragon"
+Slide 4: Reading habit -> "15-day streak, can't stop now"
+Slide 5: Work projects -> "Quest Chain: Q2 Launch"
+Slide 6: CTA
+
+
+================================================================================
+6. HASHTAG SETS
+================================================================================
+
+PRIMARY (use on every post):
+#LifeQuestJournal #ProductivityApp #GamifyYourLife
+
+PRODUCTIVITY:
+#productivity #habittracker #todolist #goalcrusher #getitdone #dailyhabits
+#productivityhacks #selfimprovement #levelup #goalsetting
+
+GAMING / GAMIFICATION:
+#gamification #rpg #levelup #questlog #bossbattle #xp #gamifyeverything #rpglife
+
+ADHD / NEURODIVERGENT:
+#adhd #adhdproductivity #adhdtips #adhdlife #executivefunction #neurodivergent
+#dopaminehack
+
+ANDROID / TECH:
+#androidapp #freeapp #indiedev #appoftheday #newapp #madewithlove
+
+
+================================================================================
+7. VISUAL ASSET TIPS
+================================================================================
+
+SCREENSHOTS TO CAPTURE
+----------------------
+1. Dashboard -- shows XP bar, level, gold, daily stats
+2. Daily quests -- a few tasks with checkmarks, showing XP earned
+3. Boss battle -- the most visually exciting screen
+4. Streak calendar -- a solid streak with fire icons
+5. Level up notification -- the achievement toast
+6. Companion -- showing a collected companion with bonuses
+7. Theme variety -- same screen in 2-3 different themes
+
+IMAGE SPECS
+-----------
+Twitter/X:             1200x675 or 1080x1080 (PNG, <5MB)
+Instagram feed:        1080x1080 (square) or 1080x1350 (portrait gets more space)
+Instagram Reels/TikTok: 1080x1920 (9:16 vertical video)
+Reddit:                1200x900 or direct screenshots (PNG preferred)
+Open Graph:            1200x630 (already set up in landing.html)
+
+RECOMMENDED: SOCIAL SHARE IMAGE
+Create a dedicated 1200x630 image for link sharing that shows:
+- App name + icon
+- 1-2 phone mockups showing the app
+- Tagline: "Turn Your Goals Into Epic Quests"
+- "Free on Android & Web"
+
+Tools: Canva (free), Figma, or screenshots in a phone mockup frame.
+
+
+================================================================================
+8. ENGAGEMENT STRATEGY
+================================================================================
+
+RESPOND TO EVERYTHING
+- Reply to every comment within a few hours
+- Ask follow-up questions ("What kind of goals would you track?")
+- Thank people for feedback publicly
+
+CROSS-PROMOTE
+- Share Reddit posts to Twitter ("Just shared this on r/SideProject...")
+- Share TikTok views milestone ("This hit 10K views, wild")
+- Repost user screenshots/reviews
+
+TRACK WHAT WORKS
+- Note which platforms and angles get the most engagement
+- Double down on winners (ADHD angle tends to perform well for gamified apps)
+- A/B test post titles on Reddit (different subreddits, different hooks)
+
+COMMUNITY BUILDING
+- Consider creating r/LifeQuestJournal or a Discord server once you have traction
+- Feature user feedback in posts ("A user suggested X, so I built it")
+- Share development updates ("Just added feature X based on your feedback")
+
+
+================================================================================
+9. POSTING SCHEDULE (First 2 Weeks)
+================================================================================
+
+Day 1:
+  - Reddit (r/SideProject) [OK] -- Primary launch post, "I built..."
+  - Twitter/X -- Launch tweet
+
+Day 2:
+  - Reddit (r/alphaandbetausers) [OK] -- Beta feedback request
+  - TikTok -- Video #1 "POV: your to-do list is an RPG"
+
+Day 3:
+  - Twitter/X -- Boss Battles feature tweet
+  - Instagram -- Carousel #1
+
+Day 4:
+  - Reddit (r/somethingimade) [OK] -- Creation showcase, focus on the journey
+  - TikTok -- Video #3 "ADHD productivity hack"
+
+Day 5:
+  - Twitter/X -- Streaks tweet
+  - Instagram Reel -- Repost TikTok #1
+
+Day 6:
+  - Reddit (r/TestMyApp) [OK] -- Testing request post
+  - Twitter/X -- Thread "Why gamification works"
+
+Day 7:
+  - Rest / engage with comments
+
+Day 8:
+  - TikTok -- Video #2 "Things that helped my productivity"
+  - Twitter/X -- Leveling system tweet
+
+Day 9:
+  - Reddit (r/gamification) [OK] -- Gamification design insights
+  - Instagram -- Carousel #2
+
+Day 10:
+  - Twitter/X -- Indie dev story tweet
+  - TikTok -- Video #4 "Rating this productivity app"
+
+Days 11-14:
+  - All platforms -- Reshare best performers, respond to comments, iterate
+
+ONGOING:
+  - r/productivity, r/ADHD, r/getdisciplined [NO PROMO]
+  - Comment helpfully (NO links). Build karma.
+  - Let people discover you organically.
+
+
+================================================================================
+10. BEST TIMES TO POST (Data-Backed Research)
+================================================================================
+
+All times are in YOUR LOCAL TIMEZONE.
+Sources: Buffer (7-9M+ posts per platform, 2026), SingleGrain (500K+ Reddit
+posts, 2025).
+
+
+REDDIT
+------
+  Monday:     6-9 AM, 12-2 PM, 7-9 PM  (strong engagement day)
+  Tuesday:    6-9 AM, 12-2 PM, 7-9 PM  (weekdays beat weekends for tech subs)
+  Wednesday:  6-9 AM, 12-2 PM, 7-9 PM  (midweek peak)
+  Thursday:   6-9 AM, 12-2 PM, 7-9 PM  (last strong weekday)
+  Friday:     6-9 AM only              (afternoon engagement drops)
+  Sat/Sun:    7-9 AM                   (lower overall)
+
+  Best days:  Monday-Thursday
+  Worst days: Weekends (for productivity/tech content)
+  Key insight: Reddit's algorithm heavily weights EARLY engagement. A post that
+  gets 10 upvotes in 30 minutes ranks much higher than 50 upvotes over 6 hours.
+  Post when users are ABOUT TO be active, not during peak.
+
+
+TWITTER/X (Buffer, 8.7M tweets analyzed)
+-----------------------------------------
+  Monday:     9 AM, 10 AM, 8 AM        (strong)
+  Tuesday:    9 AM, 10 AM, 11 AM       (#1 best day/time combo = Tue 9 AM)
+  Wednesday:  10 AM, 9 AM, 11 AM       (#1 best day overall)
+  Thursday:   9 AM, 10 AM, 8 AM        (strong)
+  Friday:     9 AM, 10 AM, 11 AM       (weaker than Tue-Thu)
+  Saturday:   9 AM if you must          (worst day -- avoid)
+  Sunday:     9 AM if you must          (low engagement)
+
+  Best days:  Wednesday > Tuesday > Thursday
+  Worst days: Saturday, Friday
+  Best slot:  Tuesday 9 AM
+  Worst times: Evenings 6-11 PM (engagement drops hard)
+  Key insight: Users are 25-34 checking feeds before/during work. Post mornings.
+  Afternoons OK, evenings are dead.
+
+
+TIKTOK (Buffer, 7.1M posts analyzed)
+-------------------------------------
+  Monday:     1 PM, 11 AM, 8 AM        (2nd best day)
+  Tuesday:    6 AM, 10 PM, 7 AM        (early bird + late night)
+  Wednesday:  10 PM, 6 AM, 9 PM        (evening wins)
+  Thursday:   1 PM, 10 PM, 6 AM        (mixed)
+  Friday:     6 PM, 10 PM, 8 PM        (evening dominant)
+  Saturday:   5 PM, 4 PM, 3 PM         (#1 best day -- afternoon/evening)
+  Sunday:     9 AM, 1 PM, 12 PM        (#1 single best time = Sun 9 AM)
+
+  Best days:  Saturday > Monday > Sunday
+  Worst days: Wednesday, Thursday (lower overall)
+  Best slot:  Sunday 9 AM
+  Key insight: TikTok demands sound-on attention. People watch during commutes
+  home and evening couch time. Evenings 6-11 PM dominate most days. Weekends
+  outperform weekdays (opposite of Twitter).
+
+
+INSTAGRAM (Buffer, 9.6M posts analyzed)
+----------------------------------------
+  Monday:     7 PM, 6 PM, 8 PM         (evening dominant)
+  Tuesday:    7 PM, 3 PM, 5 PM         (3rd best day)
+  Wednesday:  12 PM, 6 PM, 8 AM        (#1 best day -- midday spike)
+  Thursday:   9 AM, 8 AM, 7 AM         (only day where mornings win)
+  Friday:     10 PM, 9 PM, 6 AM        (weak day overall)
+  Saturday:   9 PM, 10 PM, 8 PM        (weak day overall)
+  Sunday:     9 PM, 10 PM, 8 PM        (best weekend day)
+
+  Best days:  Wednesday > Thursday > Tuesday
+  Worst days: Friday, Saturday
+  Best slots: Thu 9 AM, Wed 12 PM, Wed 6 PM
+  Worst times: 1-5 AM any day, Friday/Saturday in general
+  Key insight: Audience is 25-34 unwinding after work. Evenings 6-11 PM best
+  most days. Wednesday noon = lunch break scrolling. Thursday morning is an
+  anomaly (end-of-week planning energy).
+
+
+YOUTUBE (general best practices)
+---------------------------------
+  Thursday:   2-4 PM   (publish before weekend viewing spikes)
+  Friday:     2-4 PM   (same reasoning)
+  Saturday:   9-11 AM  (viewers have free time)
+  Sunday:     9-11 AM  (pre-schedule for weekend)
+
+  Best days:  Thu-Sat (views accumulate over 48-72h)
+  Key insight: YouTube is evergreen -- timing matters less than other platforms.
+  For Shorts, treat like TikTok timing.
+
+
+QUICK REFERENCE TABLE
+---------------------
+  Time Slot    | Reddit    | Twitter/X | TikTok      | Instagram
+  -------------|-----------|-----------|-------------|-------------
+  6-9 AM       | BEST      | BEST      | Good Tu/We  | Weak
+  9-11 AM      | Good      | PEAK      | Moderate    | Thu only
+  12-2 PM      | Lunch pk  | OK        | Mon/Thu     | Wed only
+  3-5 PM       | Declining | Weak      | Sat PEAK    | Tue only
+  6-9 PM       | Evening pk| AVOID     | Fri/Sat     | BEST most days
+  9-11 PM      | Low       | AVOID     | Tu/We/Fri   | Weekends
+
+
+================================================================================
+11. QUICK TIPS
+================================================================================
+
+- REDDIT RULE #1: Post ONLY in [OK] subs. For [NO] subs, contribute value for
+  weeks before ever mentioning your app -- and only if asked.
+
+- REDDIT RULE #2: Read each subreddit's sidebar rules the day you post. Rules
+  change. What worked last month may get you banned today.
+
+- TIKTOK: First 1-2 seconds determine if people watch. Hook HARD.
+
+- TWITTER/X: Threads outperform single tweets. Include images.
+
+- INSTAGRAM: Reels reach non-followers. Carousels get saves. Use both.
+
+- EVERYWHERE: "Free" and "no account needed" are your strongest selling points.
+  Lead with them.
+
+- KEY TIMING PRINCIPLE: Twitter/Reddit = mornings. TikTok = evenings/weekends.
+  Instagram = evenings except Thursday morning.
+
+================================================================================

@@ -444,6 +444,7 @@
         max-height: calc(100vh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        overscroll-behavior: none;
     }
 }
 
