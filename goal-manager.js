@@ -107,7 +107,13 @@ class GoalManager {
         this.focusTimer = null;
         this.focusTimeRemaining = 0;
         this.focusTimerRunning = false;
+        this.focusEndTime = null;
+        this.focusSessionLength = 25;
         this.totalFocusTime = 0; // in minutes
+        
+        // Pomodoro Chain System
+        this.pomodoroChain = null; // { currentSession, totalSessions, isBreak, breakDuration, longBreakDuration }
+        this.pomodoroChainSettings = { sessionsPerChain: 4, breakDuration: 5, longBreakDuration: 15 };
         this.activeEnchantments = [];
         this.enchantmentDefinitions = this.initializeEnchantments();
         this.momentumStack = 0; // Tracks consecutive tasks for Momentum enchantment
@@ -212,6 +218,7 @@ class GoalManager {
             }
             this.saveData();
         }
+        this.restoreFocusTimer(); // Restore running focus timer from saved endTime
         this.generateBosses(); // Generate daily/weekly bosses
         this.generateDailyQuestBoard(); // Generate daily quest board
         this.scheduleMidnightReset(); // Schedule automatic habit reset at midnight
@@ -256,6 +263,7 @@ class GoalManager {
             if (document.visibilityState === 'visible') {
                 this.checkHabitReset();
                 this.scheduleMidnightReset(); // Recalculate next midnight in case we slept through it
+                this._onFocusTimerVisibilityChange();
                 this.render();
             }
         });
@@ -294,6 +302,7 @@ class GoalManager {
         // Reminder timers and intervals
         if (this._morningTimer) clearTimeout(this._morningTimer);
         if (this._eveningTimer) clearTimeout(this._eveningTimer);
+        if (this._bossWarningTimeout) clearTimeout(this._bossWarningTimeout);
         if (this._overdueCheckInterval) clearInterval(this._overdueCheckInterval);
         if (this._swSyncInterval) clearInterval(this._swSyncInterval);
         
@@ -396,6 +405,10 @@ class GoalManager {
                 this.focusCrystalShards = data.focusCrystalShards || 0;
                 this.totalFocusTime = data.totalFocusTime || 0;
                 this.activeEnchantments = data.activeEnchantments || [];
+                this.focusEndTime = data.focusEndTime || null;
+                this.focusSessionLength = data.focusSessionLength || 25;
+                this.pomodoroChain = data.pomodoroChain || null;
+                if (data.pomodoroChainSettings) this.pomodoroChainSettings = data.pomodoroChainSettings;
                 
                 // Settings
                 this.timezone = data.timezone || 'auto';
@@ -577,6 +590,10 @@ class GoalManager {
                 focusCrystalShards: this.focusCrystalShards,
                 totalFocusTime: this.totalFocusTime,
                 activeEnchantments: this.activeEnchantments,
+                focusEndTime: this.focusEndTime,
+                focusSessionLength: this.focusSessionLength,
+                pomodoroChain: this.pomodoroChain,
+                pomodoroChainSettings: this.pomodoroChainSettings,
                 timezone: this.timezone,
                 timezoneOffset: this.timezoneOffset,
                 tutorialCompleted: this.tutorialCompleted,
@@ -644,20 +661,20 @@ class GoalManager {
             double_xp: {
                 id: 'double_xp',
                 name: 'Enchantment of Swiftness',
-                description: '2x XP from all sources for 1 hour',
+                description: '2x XP from all sources for 3 hours',
                 icon: '⚡',
                 cost: 5,
-                duration: 60, // minutes
+                duration: 180, // minutes
                 effect: 'double_xp',
                 premium: true
             },
             double_gold: {
                 id: 'double_gold',
                 name: 'Enchantment of Fortune',
-                description: '2x Gold from all sources for 1 hour',
+                description: '2x Gold from all sources for 3 hours',
                 icon: '💰',
                 cost: 5,
-                duration: 60,
+                duration: 180,
                 effect: 'double_gold',
                 premium: true
             },
@@ -674,10 +691,10 @@ class GoalManager {
             boss_slayer: {
                 id: 'boss_slayer',
                 name: 'Enchantment of the Titan',
-                description: '+30% damage to boss battles for 1 hour',
+                description: '+30% damage to boss battles for 2 hours',
                 icon: '⚔️',
                 cost: 5,
-                duration: 60,
+                duration: 120,
                 effect: 'boss_damage',
                 premium: true
             },
@@ -694,9 +711,9 @@ class GoalManager {
             time_warden: {
                 id: 'time_warden',
                 name: 'Enchantment of the Time Warden',
-                description: 'Focus sessions are 35 min instead of 25 for 2 hours',
+                description: 'Focus sessions are 35 min and grant +1 bonus crystal for 2 hours',
                 icon: '⏳',
-                cost: 3,
+                cost: 2,
                 duration: 120,
                 effect: 'extended_focus',
                 premium: false
@@ -714,7 +731,7 @@ class GoalManager {
             serenity: {
                 id: 'serenity',
                 name: 'Enchantment of Serenity',
-                description: '20% chance to earn a bonus Focus Crystal on task completion for 3 hours',
+                description: '30% chance to earn a bonus Focus Crystal on task completion for 3 hours',
                 icon: '🧘',
                 cost: 3,
                 duration: 180,
@@ -724,20 +741,20 @@ class GoalManager {
             bonding: {
                 id: 'bonding',
                 name: 'Enchantment of Bonding',
-                description: '2x companion XP gain for 2 hours',
+                description: '2x companion XP gain for 3 hours',
                 icon: '🐾',
                 cost: 5,
-                duration: 120,
+                duration: 180,
                 effect: 'companion_bond',
                 premium: true
             },
             momentum: {
                 id: 'momentum',
                 name: 'Enchantment of Momentum',
-                description: '+5 bonus XP per consecutive task (stacks up to +25) for 1 hour',
+                description: '+5 bonus XP per consecutive task (stacks up to +25) for 3 hours',
                 icon: '⚡',
-                cost: 6,
-                duration: 60,
+                cost: 5,
+                duration: 180,
                 effect: 'momentum',
                 premium: true
             },
@@ -1180,6 +1197,10 @@ class GoalManager {
         this.addXP(xpReward, xpSource);
         this.addGold(goldReward, 'boss');
         
+        // Award Focus Crystals for boss kills (daily=1, weekly=2, monthly=3)
+        const crystalReward = bossType === 'monthly' ? 3 : bossType === 'weekly' ? 2 : 1;
+        this.focusCrystals += crystalReward;
+        
         // Generate and apply bonus loot drops
         const loot = this.generateBossLoot(bossType);
         loot.forEach(reward => {
@@ -1214,7 +1235,7 @@ class GoalManager {
         if (this.defeatedBossList.length > 50) this.defeatedBossList.length = 50;
         
         const streakText = streak > 1 ? ` (x${streak} streak!)` : '';
-        this.addBossLog(`🏆 ${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold${streakText}`);
+        this.addBossLog(`🏆 ${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold, +${crystalReward} 💎${streakText}`);
         
         // Clear any queued sounds so boss defeated sound plays immediately
         if (window.audioManager) {
@@ -1359,10 +1380,10 @@ class GoalManager {
                 name: 'Quest Doubler',
                 icon: '📋',
                 description: '2x XP & Gold on next quest completed',
-                rarity: 'epic',
+                rarity: 'uncommon',
                 effect: 'double_reward',
                 duration: -1, // Active until next quest completed
-                premium: true
+                premium: false
             },
             instant_archive: {
                 id: 'instant_archive',
@@ -1378,10 +1399,10 @@ class GoalManager {
                 id: 'focus_mode',
                 name: 'Focus Mode',
                 icon: '🎯',
-                description: '2x Focus Crystals & +50 XP per session for 1 hour',
+                description: '2x Focus Crystals & +50 XP per session for 2 hours',
                 rarity: 'uncommon',
                 effect: 'focus_boost',
-                duration: 3600000, // 1 hour
+                duration: 7200000, // 2 hours
                 premium: false
             },
             minor_wisdom: {
@@ -2678,6 +2699,26 @@ class GoalManager {
         });
     }
 
+    // ==================== QUICK-ADD (FAB) ====================
+
+    quickAddDailyTask(title) {
+        const task = {
+            id: this.uniqueId(),
+            title: title,
+            description: '',
+            weeklyGoalIds: [],
+            created: new Date().toISOString(),
+            dueDate: this.getTodayDateString(),
+            completed: false,
+            checklist: []
+        };
+        this.dailyTasks.push(task);
+        this.trackDaily('tasksCreated');
+        this.saveData();
+        this.render();
+        this.showAchievement('⚔️ Quest added! Go forth and conquer.', 'daily');
+    }
+
     // ==================== RECURRING TASKS ====================
     
     addRecurringTask() {
@@ -3077,6 +3118,7 @@ class GoalManager {
                 const xpReward = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
                 this.addXP(xpReward, 'side');
                 this.grantAttackCharge(1, 'sidequest');
+                this.addFocusCrystalShards(1);
                 this.checkSerenityBonus();
                 this.trackDaily('sideQuestsCompleted');
                 this.showAchievement(`Side Quest Completed! +${xpReward} XP 🧭`, 'daily');
@@ -3455,6 +3497,36 @@ class GoalManager {
             // Re-schedule for the next midnight
             this.scheduleMidnightReset();
         }, delay);
+
+        // Schedule boss expiration warning 1 hour before midnight
+        this.scheduleBossExpirationWarning(msUntilMidnight);
+    }
+
+    scheduleBossExpirationWarning(msUntilMidnight) {
+        if (this._bossWarningTimeout) {
+            clearTimeout(this._bossWarningTimeout);
+        }
+
+        if (!this.reminderSettings || !this.reminderSettings.enabled) return;
+
+        // Fire 1 hour before midnight (boss reset)
+        const warningDelay = msUntilMidnight - (60 * 60 * 1000);
+        if (warningDelay <= 0) return; // Already past the warning window
+
+        this._bossWarningTimeout = setTimeout(() => {
+            // Only warn if daily boss exists and is undefeated
+            if (this.dailyBoss && !this.dailyBoss.defeated) {
+                const bossName = this.dailyBoss.name || 'Daily Boss';
+                const bossIcon = this.dailyBoss.icon || '⚔️';
+                const hpPercent = Math.round((this.dailyBoss.currentHP / this.dailyBoss.maxHP) * 100);
+                this.showNotification(
+                    `${bossIcon} Boss Expiring Soon!`,
+                    `${bossName} flees in 1 hour! (${hpPercent}% HP remaining) — Defeat it before midnight!`,
+                    '⚔️',
+                    'boss-expiration-warning'
+                );
+            }
+        }, warningDelay);
     }
 
     // Daily Login Bonus System
@@ -4031,7 +4103,11 @@ class GoalManager {
             setTimeout(() => {
                 this.addXP(25, 'daily');
                 this.addGold(15, 'daily');
-                this.showAchievement('🏅 Daily Board Sweep! Bonus +25 XP, +15 Gold!', 'weekly');
+                const freeSpells = ['lucky_draw', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'instant_archive', 'quest_doubler'];
+                const randomSpell = freeSpells[Math.floor(Math.random() * freeSpells.length)];
+                this.addSpellToBook(randomSpell, 1);
+                const spellDef = this.spellDefinitions[randomSpell];
+                this.showAchievement(`🏅 Daily Board Sweep! Bonus +25 XP, +15 Gold & ${spellDef?.icon || '🔮'} ${spellDef?.name || 'Spell'}!`, 'weekly');
             }, 1000);
         }
         
@@ -4098,12 +4174,14 @@ class GoalManager {
         
         // Generate small random loot (weaker than bronze chest)
         const lootTable = [
-            { type: 'gold', amount: 15, weight: 35, label: '15 Gold' },
-            { type: 'gold', amount: 25, weight: 20, label: '25 Gold' },
-            { type: 'xp', amount: 20, weight: 25, label: '20 XP' },
-            { type: 'xp', amount: 35, weight: 10, label: '35 XP' },
+            { type: 'gold', amount: 15, weight: 30, label: '15 Gold' },
+            { type: 'gold', amount: 25, weight: 18, label: '25 Gold' },
+            { type: 'xp', amount: 20, weight: 22, label: '20 XP' },
+            { type: 'xp', amount: 35, weight: 8, label: '35 XP' },
             { type: 'charges', amount: 1, weight: 8, label: '1 Attack Charge' },
-            { type: 'shards', amount: 3, weight: 2, label: '3 Crystal Shards' },
+            { type: 'shards', amount: 5, weight: 5, label: '5 Crystal Shards' },
+            { type: 'spell', spellId: 'minor_wisdom', amount: 1, weight: 5, label: '📚 Minor Wisdom Spell' },
+            { type: 'spell', spellId: 'copper_blessing', amount: 1, weight: 4, label: '🪙 Copper Blessing Spell' },
         ];
         
         const totalWeight = lootTable.reduce((sum, item) => sum + item.weight, 0);
@@ -4119,6 +4197,7 @@ class GoalManager {
         if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
         if (reward.type === 'charges') this.attackCharges += reward.amount;
         if (reward.type === 'shards') this.addFocusCrystalShards(reward.amount);
+        if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.amount);
         
         this.showAchievement(`🪵 Wooden Chest opened! Found: ${reward.label}`, 'daily');
         this.saveData();
@@ -4499,7 +4578,7 @@ class GoalManager {
             if (reward.special === 'theme_unlock') this.tryUnlockRandomTheme();
             if (reward.special === 'ability_unlock') {
                 // Give a random spell as the "ability" reward
-                const freeSpells = ['lucky_draw', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'instant_archive'];
+                const freeSpells = ['lucky_draw', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'instant_archive', 'quest_doubler'];
                 const randomSpell = freeSpells[Math.floor(Math.random() * freeSpells.length)];
                 this.addSpellToBook(randomSpell, 1);
             }
@@ -4835,9 +4914,9 @@ class GoalManager {
                 { type: 'xp', amount: [15, 30], weight: 18, name: 'Minor XP Scroll', icon: '📜' },
                 { type: 'xp', amount: [5, 15], weight: 12, name: 'Tiny XP Scroll', icon: '📜' },
                 { type: 'charges', amount: 1, weight: 10, name: 'Attack Charge', icon: '⚔️' },
-                { type: 'shards', amount: [1, 3], weight: 8, name: 'Focus Crystal Shards', icon: '🔮' },
-                { type: 'spell', spellId: 'minor_wisdom', charges: 1, weight: 10 },
-                { type: 'spell', spellId: 'copper_blessing', charges: 1, weight: 5 },
+                { type: 'shards', amount: [5, 8], weight: 15, name: 'Focus Crystal Shards', icon: '🔮' },
+                { type: 'spell', spellId: 'minor_wisdom', charges: 1, weight: 15 },
+                { type: 'spell', spellId: 'copper_blessing', charges: 1, weight: 10 },
             ],
             uncommon: [
                 { type: 'gold', amount: [150, 300], weight: 18, name: 'Large Gold Pouch', icon: '💰' },
@@ -4846,6 +4925,7 @@ class GoalManager {
                 { type: 'spell', spellId: 'lucky_draw', charges: 1, weight: 14 },
                 { type: 'spell', spellId: 'focus_mode', charges: 1, weight: 12 },
                 { type: 'spell', spellId: 'instant_archive', charges: 1, weight: 10 },
+                { type: 'spell', spellId: 'quest_doubler', charges: 1, weight: 10 },
                 { type: 'spell', spellId: 'silver_blessing', charges: 1, weight: 8 },
                 { type: 'companion', companions: ['cat', 'rabbit'], weight: 8 },
             ],
@@ -4884,7 +4964,7 @@ class GoalManager {
 
     generateChestRewards(type, luckyDrawActive = false) {
         const rewards = [];
-        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing'];
+        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'quest_doubler'];
         
         const lootPool = this.getMasterLootPool();
         
@@ -4960,7 +5040,7 @@ class GoalManager {
     
     generateBossLoot(bossType) {
         const rewards = [];
-        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing'];
+        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'quest_doubler'];
         
         const lootPool = this.getMasterLootPool();
         
@@ -5420,7 +5500,7 @@ class GoalManager {
     }
 
     checkSerenityBonus() {
-        if (this.hasActiveEnchantment('crystal_chance') && Math.random() < 0.2) {
+        if (this.hasActiveEnchantment('crystal_chance') && Math.random() < 0.3) {
             this.focusCrystals++;
             this.showAchievement('🧘 Serenity! Bonus Focus Crystal earned! 💎', 'daily');
             this.saveData();
@@ -5575,6 +5655,7 @@ class GoalManager {
                     this.addXP(10, 'habit');
                     this.addGold(3, 'habit');
                     this.grantAttackCharge(1, 'habit');
+                    this.addFocusCrystalShards(1);
                     this.checkSerenityBonus();
                     this.trackDaily('habitsCompleted');
                     if (typeof trackEvent === 'function') trackEvent('habit_completed');
@@ -5710,23 +5791,86 @@ class GoalManager {
 
         // Check if extended focus enchantment is active
         const extendedFocus = this.hasActiveEnchantment('extended_focus');
-        const sessionLength = extendedFocus ? 35 : 25;
+        this.focusSessionLength = extendedFocus ? 35 : 25;
         
-        this.focusTimeRemaining = sessionLength * 60; // Convert to seconds
+        this.focusEndTime = Date.now() + this.focusSessionLength * 60 * 1000;
         this.focusTimerRunning = true;
+        this._startFocusInterval();
+        this._scheduleFocusTimerNotification();
+        this.saveData();
         
+        this.showAchievement(`🎯 Focus session started! (${this.focusSessionLength} minutes)`, 'daily');
+        this.render();
+    }
+
+    _startFocusInterval() {
+        clearInterval(this.focusTimer);
         this.focusTimer = setInterval(() => {
-            this.focusTimeRemaining--;
-            
-            if (this.focusTimeRemaining <= 0) {
+            this._tickFocusTimer();
+        }, 1000);
+    }
+
+    _tickFocusTimer() {
+        if (!this.focusEndTime) return;
+        const remaining = Math.max(0, Math.ceil((this.focusEndTime - Date.now()) / 1000));
+        this.focusTimeRemaining = remaining;
+        
+        if (remaining <= 0) {
+            // If in a Pomodoro chain break, complete the break instead of a focus session
+            if (this.pomodoroChain && this.pomodoroChain.isBreak) {
+                this._completePomodoroBreak();
+            } else {
                 this.completeFocusSession();
             }
-            
+        } else {
             this.updateFocusTimerDisplay();
-        }, 1000);
-        
-        this.showAchievement(`🎯 Focus session started! (${sessionLength} minutes)`, 'daily');
-        this.render();
+        }
+    }
+
+    _onFocusTimerVisibilityChange() {
+        if (document.visibilityState === 'visible' && this.focusTimerRunning && this.focusEndTime) {
+            this._tickFocusTimer();
+        }
+    }
+
+    restoreFocusTimer() {
+        if (this.focusEndTime) {
+            const remaining = Math.max(0, Math.ceil((this.focusEndTime - Date.now()) / 1000));
+            if (remaining > 0) {
+                this.focusTimerRunning = true;
+                this.focusTimeRemaining = remaining;
+                this._startFocusInterval();
+                this._scheduleFocusTimerNotification();
+            } else {
+                // If restoring a chain break that already ended, complete the break
+                if (this.pomodoroChain && this.pomodoroChain.isBreak) {
+                    this._completePomodoroBreak();
+                } else {
+                    this.completeFocusSession();
+                }
+            }
+        }
+    }
+
+    _scheduleFocusTimerNotification() {
+        // Tell the service worker to fire a notification when the focus session ends
+        // This ensures the user gets notified even if the app is backgrounded/suspended
+        if (!this.focusEndTime) return;
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'SCHEDULE_FOCUS_COMPLETE',
+                endTime: this.focusEndTime
+            });
+        }
+    }
+
+    _cancelFocusTimerNotification() {
+        // Tell the service worker to cancel the scheduled focus completion notification
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'CANCEL_FOCUS_COMPLETE'
+            });
+        }
     }
 
     pauseFocusTimer() {
@@ -5734,6 +5878,10 @@ class GoalManager {
         
         clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
+        this.focusTimeRemaining = Math.max(0, Math.ceil((this.focusEndTime - Date.now()) / 1000));
+        this.focusEndTime = null;
+        this._cancelFocusTimerNotification();
+        this.saveData();
         this.showAchievement('⏸️ Focus timer paused', 'daily');
         this.render();
     }
@@ -5741,16 +5889,11 @@ class GoalManager {
     resumeFocusTimer() {
         if (this.focusTimerRunning || this.focusTimeRemaining <= 0) return;
         
+        this.focusEndTime = Date.now() + this.focusTimeRemaining * 1000;
         this.focusTimerRunning = true;
-        this.focusTimer = setInterval(() => {
-            this.focusTimeRemaining--;
-            
-            if (this.focusTimeRemaining <= 0) {
-                this.completeFocusSession();
-            }
-            
-            this.updateFocusTimerDisplay();
-        }, 1000);
+        this._startFocusInterval();
+        this._scheduleFocusTimerNotification();
+        this.saveData();
         
         this.showAchievement('▶️ Focus timer resumed', 'daily');
         this.render();
@@ -5759,9 +5902,18 @@ class GoalManager {
     stopFocusTimer() {
         if (!this.focusTimerRunning && this.focusTimeRemaining <= 0) return;
         
+        // If in a Pomodoro chain, stop the whole chain
+        if (this.pomodoroChain) {
+            this.stopPomodoroChain();
+            return;
+        }
+        
         clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
         this.focusTimeRemaining = 0;
+        this.focusEndTime = null;
+        this._cancelFocusTimerNotification();
+        this.saveData();
         this.showAchievement('⏹️ Focus timer stopped', 'daily');
         this.render();
     }
@@ -5770,14 +5922,15 @@ class GoalManager {
         clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
         this.focusTimeRemaining = 0;
+        this.focusEndTime = null;
+        this._cancelFocusTimerNotification();
         
-        // Check for extended focus enchantment
-        const extendedFocus = this.hasActiveEnchantment('extended_focus');
-        const sessionLength = extendedFocus ? 35 : 25;
+        const sessionLength = this.focusSessionLength || 25;
         
         // Award crystals
         const bonusCrystal = this.hasActiveEnchantment('bonus_crystal');
-        let crystalsEarned = bonusCrystal ? 2 : 1;
+        const timeWarden = this.hasActiveEnchantment('extended_focus');
+        let crystalsEarned = 1 + (bonusCrystal ? 1 : 0) + (timeWarden ? 1 : 0);
         
         // Check for Focus Mode spell (2x crystals)
         const focusModeActive = this.activeSpells.some(s => 
@@ -5817,6 +5970,124 @@ class GoalManager {
         const focusModeText = focusModeActive ? ' (🎯 Focus Mode!)' : '';
         this.showAchievement(`✨ Focus session complete! +${crystalsEarned} 💎${xpText}${focusModeText}`, 'weekly', false);
         
+        // Pomodoro Chain: advance to break or complete chain
+        if (this.pomodoroChain) {
+            this.pomodoroChain.currentSession++;
+            if (this.pomodoroChain.currentSession > this.pomodoroChain.totalSessions) {
+                this.completePomodoroChain();
+                return;
+            }
+            this._startPomodoroBreak();
+            return;
+        }
+        
+        this.saveData();
+        this.render();
+    }
+
+    // ==================== POMODORO CHAIN SYSTEM ====================
+
+    startPomodoroChain() {
+        if (this.focusTimerRunning || (this.pomodoroChain && this.pomodoroChain.isBreak)) {
+            this.showAchievement('⚠️ A focus session or chain is already active', 'daily');
+            return;
+        }
+        
+        const settings = this.pomodoroChainSettings;
+        this.pomodoroChain = {
+            currentSession: 1,
+            totalSessions: settings.sessionsPerChain,
+            isBreak: false,
+            breakDuration: settings.breakDuration,
+            longBreakDuration: settings.longBreakDuration
+        };
+        
+        this.showAchievement(`⛓️ Pomodoro Chain started! (${settings.sessionsPerChain} sessions)`, 'weekly');
+        this.startFocusTimer();
+    }
+
+    _startPomodoroBreak() {
+        const chain = this.pomodoroChain;
+        if (!chain) return;
+        
+        // Determine break length — long break after last work session before final
+        const isLongBreak = chain.currentSession > chain.totalSessions;
+        const breakMinutes = isLongBreak ? chain.longBreakDuration : chain.breakDuration;
+        
+        chain.isBreak = true;
+        this.focusEndTime = Date.now() + breakMinutes * 60 * 1000;
+        this.focusTimerRunning = true;
+        this.focusTimeRemaining = breakMinutes * 60;
+        this.focusSessionLength = breakMinutes;
+        
+        this._startFocusInterval();
+        this.saveData();
+        
+        if (window.audioManager) {
+            window.audioManager.playNotification();
+        }
+        
+        this.showAchievement(`☕ Break time! ${breakMinutes} min — Session ${chain.currentSession - 1}/${chain.totalSessions} done`, 'daily');
+        this.render();
+    }
+
+    _completePomodoroBreak() {
+        clearInterval(this.focusTimer);
+        this.focusTimerRunning = false;
+        this.focusTimeRemaining = 0;
+        this.focusEndTime = null;
+        
+        if (!this.pomodoroChain) return;
+        this.pomodoroChain.isBreak = false;
+        
+        if (window.audioManager) {
+            window.audioManager.playNotification();
+        }
+        
+        this.showAchievement(`⚔️ Break over! Starting session ${this.pomodoroChain.currentSession}/${this.pomodoroChain.totalSessions}`, 'daily');
+        this.startFocusTimer();
+    }
+
+    completePomodoroChain() {
+        const totalSessions = this.pomodoroChain ? this.pomodoroChain.totalSessions : 4;
+        this.pomodoroChain = null;
+        
+        // Chain completion bonus: +2 crystals and +50 XP per session in chain
+        const bonusCrystals = 2;
+        const bonusXP = totalSessions * 50;
+        
+        this.focusCrystals += bonusCrystals;
+        this.addXP(bonusXP, 'daily');
+        
+        if (window.audioManager) {
+            window.audioManager.playLevelUp();
+        }
+        
+        this.showNotification(
+            '⛓️ Pomodoro Chain Complete!',
+            `All ${totalSessions} sessions finished! Bonus: +${bonusCrystals} 💎 +${bonusXP} XP ⭐`,
+            '⛓️'
+        );
+        this.showAchievement(`🏆 Chain complete! +${bonusCrystals} 💎 +${bonusXP} XP`, 'monthly', false);
+        
+        this.saveData();
+        this.render();
+    }
+
+    stopPomodoroChain() {
+        const wasChain = !!this.pomodoroChain;
+        this.pomodoroChain = null;
+        
+        clearInterval(this.focusTimer);
+        this.focusTimerRunning = false;
+        this.focusTimeRemaining = 0;
+        this.focusEndTime = null;
+        this._cancelFocusTimerNotification();
+        
+        if (wasChain) {
+            this.showAchievement('⛓️ Pomodoro Chain cancelled', 'daily');
+        }
+        
         this.saveData();
         this.render();
     }
@@ -5825,19 +6096,71 @@ class GoalManager {
         const timerElement = this.getElement('focus-timer-display');
         if (!timerElement) return;
         
-        const minutes = Math.floor(this.focusTimeRemaining / 60);
-        const seconds = this.focusTimeRemaining % 60;
+        const remaining = this.focusTimeRemaining;
+        const minutes = Math.floor(remaining / 60);
+        const seconds = remaining % 60;
         timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
         // Update progress bar
         const progressBar = this.getElement('focus-timer-progress');
         if (progressBar) {
-            const extendedFocus = this.hasActiveEnchantment('extended_focus');
-            const sessionLength = extendedFocus ? 35 : 25;
-            const totalSeconds = sessionLength * 60;
-            const progress = ((totalSeconds - this.focusTimeRemaining) / totalSeconds) * 100;
+            const totalSeconds = (this.focusSessionLength || 25) * 60;
+            const progress = ((totalSeconds - remaining) / totalSeconds) * 100;
             progressBar.style.width = `${progress}%`;
+            
+            // Change color during break
+            if (this.pomodoroChain && this.pomodoroChain.isBreak) {
+                progressBar.className = 'bg-gradient-to-r from-green-500 to-emerald-400 h-4 rounded-full shadow-lg transition-all duration-1000';
+            } else {
+                progressBar.className = 'bg-gradient-to-r from-blue-500 to-cyan-400 h-4 rounded-full shadow-lg transition-all duration-1000';
+            }
         }
+        
+        // Update chain progress indicator
+        this._updateChainProgressIndicator();
+    }
+
+    _updateChainProgressIndicator() {
+        const container = document.getElementById('pomodoro-chain-progress');
+        if (!container) return;
+        
+        if (!this.pomodoroChain) {
+            container.innerHTML = '';
+            container.classList.add('hidden');
+            return;
+        }
+        
+        container.classList.remove('hidden');
+        const chain = this.pomodoroChain;
+        const dots = [];
+        
+        for (let i = 1; i <= chain.totalSessions; i++) {
+            let dotClass = '';
+            let icon = '';
+            if (i < chain.currentSession) {
+                dotClass = 'bg-green-500 border-green-400';
+                icon = '✓';
+            } else if (i === chain.currentSession && !chain.isBreak) {
+                dotClass = 'bg-blue-500 border-blue-400 animate-pulse';
+                icon = '⚔️';
+            } else if (i === chain.currentSession && chain.isBreak) {
+                dotClass = 'bg-green-500/50 border-green-400 animate-pulse';
+                icon = '☕';
+            } else {
+                dotClass = 'bg-stone-700 border-stone-500';
+                icon = i;
+            }
+            dots.push(`<div class="w-10 h-10 rounded-full ${dotClass} border-2 flex items-center justify-center text-xs font-bold text-white fancy-font">${icon}</div>`);
+        }
+        
+        const statusText = chain.isBreak 
+            ? `☕ Break — Next: Session ${chain.currentSession}` 
+            : `⚔️ Session ${chain.currentSession} of ${chain.totalSessions}`;
+        
+        container.innerHTML = `
+            <div class="flex items-center justify-center gap-2 mb-2">${dots.join('')}</div>
+            <div class="text-center text-sm text-amber-200 fancy-font">${statusText}</div>
+        `;
     }
 
     playNotificationSound() {
@@ -6019,6 +6342,7 @@ class GoalManager {
                 this.addXP(15, 'daily');
                 this.addGold(5, 'daily');
                 this.grantAttackCharge(1, 'task');
+                this.addFocusCrystalShards(1);
                 this.checkSerenityBonus();
                 this.trackDaily('tasksCompleted');
                 const hour = new Date().getHours();
@@ -10375,6 +10699,10 @@ class GoalManager {
                 focusCrystalShards: this.focusCrystalShards,
                 totalFocusTime: this.totalFocusTime,
                 activeEnchantments: this.activeEnchantments,
+                focusEndTime: this.focusEndTime,
+                focusSessionLength: this.focusSessionLength,
+                pomodoroChain: this.pomodoroChain,
+                pomodoroChainSettings: this.pomodoroChainSettings,
                 timezone: this.timezone,
                 timezoneOffset: this.timezoneOffset,
                 tutorialCompleted: this.tutorialCompleted,
@@ -10419,7 +10747,7 @@ class GoalManager {
                 activeChallenges: this.activeChallenges,
                 completedChallenges: this.completedChallenges,
                 exportDate: new Date().toISOString(),
-                version: '3.0'
+                version: '2.3.0'
             };
             
             const dataStr = JSON.stringify(data, null, 2);
@@ -12721,6 +13049,67 @@ class GoalManager {
         if (totalFocusTime) {
             totalFocusTime.textContent = this.totalFocusTime;
         }
+        
+        this.updateFocusTimerControls();
+    }
+
+    updateFocusTimerControls() {
+        const container = document.getElementById('focus-timer-controls');
+        if (!container) return;
+        
+        const btnBase = 'py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg flex items-center justify-center gap-2';
+        const chainBtnBase = 'py-3 rounded-lg font-bold fancy-font shadow-lg transition-all text-sm flex items-center justify-center gap-2 border border-amber-500/50';
+        const isBreak = this.pomodoroChain && this.pomodoroChain.isBreak;
+        
+        if (this.focusTimerRunning) {
+            if (isBreak) {
+                // Break running: only Stop (no pause during breaks)
+                container.className = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
+                container.innerHTML = `
+                    <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
+                        <i class="ri-stop-fill text-xl" aria-hidden="true"></i> Stop Chain
+                    </button>
+                `;
+            } else {
+                // Running: Pause + Stop
+                const stopLabel = this.pomodoroChain ? 'Stop Chain' : 'Stop';
+                container.className = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
+                container.innerHTML = `
+                    <button onclick="goalManager.pauseFocusTimer()" class="bg-yellow-600 hover:bg-yellow-500 text-white ${btnBase}">
+                        <i class="ri-pause-fill text-xl" aria-hidden="true"></i> Pause
+                    </button>
+                    <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
+                        <i class="ri-stop-fill text-xl" aria-hidden="true"></i> ${stopLabel}
+                    </button>
+                `;
+            }
+        } else if (this.focusTimeRemaining > 0) {
+            // Paused: Resume + Stop
+            const stopLabel = this.pomodoroChain ? 'Stop Chain' : 'Stop';
+            container.className = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
+            container.innerHTML = `
+                <button onclick="goalManager.resumeFocusTimer()" class="bg-blue-600 hover:bg-blue-500 text-white ${btnBase}">
+                    <i class="ri-play-fill text-xl" aria-hidden="true"></i> Resume
+                </button>
+                <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
+                    <i class="ri-stop-fill text-xl" aria-hidden="true"></i> ${stopLabel}
+                </button>
+            `;
+        } else {
+            // Idle: Start + Chain
+            container.className = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
+            container.innerHTML = `
+                <button onclick="goalManager.startFocusTimer()" class="bg-green-600 hover:bg-green-500 text-white ${btnBase}">
+                    <i class="ri-play-fill text-xl" aria-hidden="true"></i> Start Focus
+                </button>
+                <button onclick="goalManager.startPomodoroChain()" class="bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white ${chainBtnBase}">
+                    <i class="ri-links-fill text-lg" aria-hidden="true"></i> Start Pomodoro Chain (${this.pomodoroChainSettings.sessionsPerChain}x)
+                </button>
+            `;
+        }
+        
+        // Always update chain progress indicator
+        this._updateChainProgressIndicator();
     }
 
     // Enchantments Rendering

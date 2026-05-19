@@ -1066,20 +1066,17 @@
                             <div class="w-full bg-blue-950 rounded-full h-4 border-2 border-blue-700 mb-6">
                                 <div id="focus-timer-progress" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-4 rounded-full shadow-lg transition-all duration-1000" style="width: 0%"></div>
                             </div>
+
+                            <!-- Pomodoro Chain Progress -->
+                            <div id="pomodoro-chain-progress" class="hidden mb-4"></div>
                             
                             <!-- Timer Controls -->
-                            <div class="flex justify-center gap-4">
-                                <button onclick="goalManager.startFocusTimer()" class="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
-                                    ▶️ Start
+                            <div id="focus-timer-controls" class="grid grid-cols-1 gap-3 max-w-xs mx-auto">
+                                <button onclick="goalManager.startFocusTimer()" class="bg-green-600 hover:bg-green-500 text-white py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg flex items-center justify-center gap-2">
+                                    <i class="ri-play-fill text-xl" aria-hidden="true"></i> Start Focus
                                 </button>
-                                <button onclick="goalManager.pauseFocusTimer()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
-                                    ⏸️ Pause
-                                </button>
-                                <button onclick="goalManager.resumeFocusTimer()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
-                                    ▶️ Resume
-                                </button>
-                                <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg">
-                                    ⏹️ Stop
+                                <button onclick="goalManager.startPomodoroChain()" class="bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-3 rounded-lg font-bold fancy-font shadow-lg transition-all text-sm flex items-center justify-center gap-2 border border-amber-500/50">
+                                    <i class="ri-links-fill text-lg" aria-hidden="true"></i> Start Pomodoro Chain
                                 </button>
                             </div>
                         </div>
@@ -1753,6 +1750,77 @@
             }
         }
         
+    </script>
+
+    <!-- Quick-Add FAB (mobile only) -->
+    <div id="quick-add-fab" class="fixed bottom-6 right-6 z-[50] md:hidden">
+        <!-- Backdrop -->
+        <div id="quick-add-backdrop" class="hidden fixed inset-0 bg-black/40" onclick="closeQuickAdd()"></div>
+        
+        <!-- Quick-Add Popup -->
+        <div id="quick-add-popup" class="hidden absolute bottom-16 right-0 w-72 bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-2 border-amber-600/70 p-4 animate-fade-in">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="ri-sword-line text-amber-400"></i>
+                <span class="text-amber-300 font-bold fancy-font text-sm">Quick Quest</span>
+            </div>
+            <form id="quick-add-form" onsubmit="submitQuickAdd(event)">
+                <input id="quick-add-input" type="text" placeholder="Enter quest title..." 
+                    class="w-full bg-stone-700/80 border border-amber-700/50 rounded-lg px-3 py-2.5 text-amber-100 placeholder-amber-200/40 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 fancy-font"
+                    autocomplete="off" maxlength="100">
+                <button type="submit" 
+                    class="w-full mt-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white py-2.5 rounded-lg font-bold fancy-font text-sm shadow-lg transition-all active:scale-95 border border-amber-500">
+                    <i class="ri-add-line mr-1"></i>Add Quest
+                </button>
+            </form>
+        </div>
+
+        <!-- FAB Button -->
+        <button id="quick-add-btn" onclick="toggleQuickAdd()" 
+            class="w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-xl shadow-amber-900/50 flex items-center justify-center border-2 border-amber-400 hover:scale-110 active:scale-95 transition-all relative"
+            aria-label="Quick add quest">
+            <i class="ri-add-line text-white text-2xl font-bold" id="quick-add-icon"></i>
+        </button>
+    </div>
+
+    <script>
+        function toggleQuickAdd() {
+            const popup = document.getElementById('quick-add-popup');
+            const backdrop = document.getElementById('quick-add-backdrop');
+            const icon = document.getElementById('quick-add-icon');
+            const isOpen = !popup.classList.contains('hidden');
+            
+            if (isOpen) {
+                closeQuickAdd();
+            } else {
+                popup.classList.remove('hidden');
+                backdrop.classList.remove('hidden');
+                icon.className = 'ri-close-line text-white text-2xl font-bold';
+                document.getElementById('quick-add-input').focus();
+            }
+        }
+
+        function closeQuickAdd() {
+            const popup = document.getElementById('quick-add-popup');
+            const backdrop = document.getElementById('quick-add-backdrop');
+            const icon = document.getElementById('quick-add-icon');
+            popup.classList.add('hidden');
+            backdrop.classList.add('hidden');
+            icon.className = 'ri-add-line text-white text-2xl font-bold';
+            document.getElementById('quick-add-input').value = '';
+        }
+
+        function submitQuickAdd(e) {
+            e.preventDefault();
+            const input = document.getElementById('quick-add-input');
+            const title = input.value.trim();
+            if (!title) return;
+            
+            if (window.goalManager) {
+                goalManager.quickAddDailyTask(title);
+            }
+            input.value = '';
+            closeQuickAdd();
+        }
     </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v374';
+const CACHE_NAME = 'life-quest-journal-v380';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -230,6 +230,36 @@ self.addEventListener('message', event => {
       // Also run a reminder check immediately after sync
       await checkAndSendReminders();
     })());
+  }
+
+  // Schedule focus timer completion notification (fires even when app is backgrounded)
+  if (event.data && event.data.type === 'SCHEDULE_FOCUS_COMPLETE') {
+    if (self._focusCompleteTimer) clearTimeout(self._focusCompleteTimer);
+    const delay = Math.max(0, event.data.endTime - Date.now());
+    self._focusCompleteTimer = setTimeout(async () => {
+      // Only show notification if no visible client (app is backgrounded)
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      if (clientList.some(c => c.visibilityState === 'visible')) return;
+      try {
+        await self.registration.showNotification('🎯 Focus Session Complete!', {
+          body: 'Great work! Your focus session has finished. Come collect your crystals! 💎',
+          icon: './icons/icon-192.png',
+          badge: './icons/badge-96.png',
+          tag: 'focus-timer-complete',
+          renotify: true,
+          vibrate: [200, 100, 200, 100, 200],
+          data: { url: './' }
+        });
+      } catch (e) { /* notification permission may not be granted */ }
+    }, delay);
+  }
+
+  // Cancel scheduled focus timer notification (timer paused/stopped/completed in-app)
+  if (event.data && event.data.type === 'CANCEL_FOCUS_COMPLETE') {
+    if (self._focusCompleteTimer) {
+      clearTimeout(self._focusCompleteTimer);
+      self._focusCompleteTimer = null;
+    }
   }
 });
 
