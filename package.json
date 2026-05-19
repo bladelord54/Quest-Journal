@@ -1,6 +1,6 @@
 {
   "name": "life-quest-journal",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Transform your life goals into epic quests. Track habits, earn rewards, and level up your life!",
   "main": "main.js",
   "scripts": {
@@ -49,6 +49,7 @@
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
     "@capacitor/local-notifications": "^8.0.2",
+    "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2"
   }

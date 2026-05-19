@@ -103,6 +103,48 @@ const CapBridge = {
         return { scheduled: false, native: false };
     },
 
+    // ── File Export (Share) ──────────────────────────────────────────
+    async shareFile(fileName, content, mimeType) {
+        // Web Share API with File objects (works on Android WebView 93+)
+        if (navigator.share && navigator.canShare) {
+            try {
+                const file = new File([content], fileName, { type: mimeType });
+                if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: 'Quest Journal Backup',
+                        files: [file]
+                    });
+                    return { shared: true, native: false };
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    return { shared: true, native: false }; // User cancelled, still "handled"
+                }
+                console.warn('[CapBridge] Web Share with file failed:', e);
+            }
+        }
+
+        // Native Share plugin fallback (shares as text if file sharing unavailable)
+        if (this.isNative) {
+            try {
+                const share = this._p('Share');
+                if (share) {
+                    await share.share({
+                        title: fileName,
+                        text: content,
+                        dialogTitle: 'Export Quest Data'
+                    });
+                    return { shared: true, native: true };
+                }
+            } catch (e) {
+                console.warn('[CapBridge] Native share failed:', e);
+            }
+        }
+
+        // Final fallback: blob download (works in desktop browsers)
+        return { shared: false, native: false };
+    },
+
     // ── Splash Screen ────────────────────────────────────────────────
     async hideSplash() {
         if (!this.isNative) return;

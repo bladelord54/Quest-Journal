@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-quest-journal-v380';
+const CACHE_NAME = 'life-quest-journal-v384';
 const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
@@ -332,7 +332,7 @@ async function handlePushEvent() {
     // Show the reminder — tag-based replacement handles dedup with in-page timers
     await sendReminderNotification(type, counts, data.lastSync);
     // Also update sentToday tracking
-    const today = now.toISOString().split('T')[0];
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     const sentToday = data.sentToday || { _date: today };
     if (sentToday._date !== today) {
       sentToday._date = today;
@@ -378,7 +378,7 @@ async function checkAndSendReminders() {
   const settings = data.settings;
   const counts = data.taskCounts || { todayTasks: 0, incompleteHabits: 0, overdueTasks: 0 };
   const now = new Date();
-  const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const currentMins = now.getHours() * 60 + now.getMinutes();
   
   // Track which reminders were already sent today (avoid duplicates)

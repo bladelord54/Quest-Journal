@@ -159,7 +159,7 @@ class GoalManager {
             2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
             3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
             4: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
-            5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
+            5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Chain multiple sessions together for bonus rewards! Spend crystals on Enchantments for powerful buffs." },
             6: { title: '⚔️ New Quest Types & Chains!', text: "Your Quest Log now has Weekly Battles and Side Quests! Plus, Quest Chains let you link tasks into epic multi-step adventures for bonus rewards. You've also unlocked the Forest Kingdom theme!" },
             7: { title: '📖 Monthly Raids Unlocked!', text: "Plan bigger with Monthly Raids! Set monthly goals and conquer larger challenges over longer timeframes." },
             9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
@@ -503,7 +503,7 @@ class GoalManager {
                 // Add dueDate to existing tasks that don't have one
                 this.dailyTasks.forEach(task => {
                     if (!task.dueDate) {
-                        task.dueDate = new Date().toISOString().split('T')[0];
+                        task.dueDate = this.getTodayDateString();
                     }
                 });
 
@@ -5687,7 +5687,9 @@ class GoalManager {
                     habit.completionHistory = habit.completionHistory.filter(d => d !== today);
                     // Revoke rewards to prevent check/uncheck exploit
                     this.xp = Math.max(0, this.xp - 10);
+                    this.goldCoins = Math.max(0, this.goldCoins - 3);
                     this.attackCharges = Math.max(0, this.attackCharges - 1);
+                    this.focusCrystalShards = Math.max(0, (this.focusCrystalShards || 0) - 1);
                 }
             }
             
@@ -5875,6 +5877,8 @@ class GoalManager {
 
     pauseFocusTimer() {
         if (!this.focusTimerRunning) return;
+        // Cannot pause during chain breaks
+        if (this.pomodoroChain && this.pomodoroChain.isBreak) return;
         
         clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
@@ -5973,10 +5977,6 @@ class GoalManager {
         // Pomodoro Chain: advance to break or complete chain
         if (this.pomodoroChain) {
             this.pomodoroChain.currentSession++;
-            if (this.pomodoroChain.currentSession > this.pomodoroChain.totalSessions) {
-                this.completePomodoroChain();
-                return;
-            }
             this._startPomodoroBreak();
             return;
         }
@@ -5999,7 +5999,8 @@ class GoalManager {
             totalSessions: settings.sessionsPerChain,
             isBreak: false,
             breakDuration: settings.breakDuration,
-            longBreakDuration: settings.longBreakDuration
+            longBreakDuration: settings.longBreakDuration,
+            originalSessionLength: this.focusSessionLength
         };
         
         this.showAchievement(`⛓️ Pomodoro Chain started! (${settings.sessionsPerChain} sessions)`, 'weekly');
@@ -6010,7 +6011,7 @@ class GoalManager {
         const chain = this.pomodoroChain;
         if (!chain) return;
         
-        // Determine break length — long break after last work session before final
+        // Long break after the final session, short break between sessions
         const isLongBreak = chain.currentSession > chain.totalSessions;
         const breakMinutes = isLongBreak ? chain.longBreakDuration : chain.breakDuration;
         
@@ -6027,7 +6028,8 @@ class GoalManager {
             window.audioManager.playNotification();
         }
         
-        this.showAchievement(`☕ Break time! ${breakMinutes} min — Session ${chain.currentSession - 1}/${chain.totalSessions} done`, 'daily');
+        const breakLabel = isLongBreak ? '🏆 Final long break!' : `☕ Break time! Session ${chain.currentSession - 1}/${chain.totalSessions} done`;
+        this.showAchievement(`${breakLabel} ${breakMinutes} min`, 'daily');
         this.render();
     }
 
@@ -6040,8 +6042,19 @@ class GoalManager {
         if (!this.pomodoroChain) return;
         this.pomodoroChain.isBreak = false;
         
+        // Restore original session length before starting next focus session
+        if (this.pomodoroChain.originalSessionLength) {
+            this.focusSessionLength = this.pomodoroChain.originalSessionLength;
+        }
+        
         if (window.audioManager) {
             window.audioManager.playNotification();
+        }
+        
+        // If all sessions are done (long break just ended), complete the chain
+        if (this.pomodoroChain.currentSession > this.pomodoroChain.totalSessions) {
+            this.completePomodoroChain();
+            return;
         }
         
         this.showAchievement(`⚔️ Break over! Starting session ${this.pomodoroChain.currentSession}/${this.pomodoroChain.totalSessions}`, 'daily');
@@ -6075,6 +6088,11 @@ class GoalManager {
     }
 
     stopPomodoroChain() {
+        // Restore original session length before clearing chain
+        if (this.pomodoroChain && this.pomodoroChain.originalSessionLength) {
+            this.focusSessionLength = this.pomodoroChain.originalSessionLength;
+        }
+        
         const wasChain = !!this.pomodoroChain;
         this.pomodoroChain = null;
         
@@ -6090,6 +6108,24 @@ class GoalManager {
         
         this.saveData();
         this.render();
+    }
+
+    updatePomodoroChainSettings(key, value) {
+        if (!this.pomodoroChainSettings) {
+            this.pomodoroChainSettings = { sessionsPerChain: 4, breakDuration: 5, longBreakDuration: 15 };
+        }
+        this.pomodoroChainSettings[key] = value;
+        this.saveData();
+    }
+
+    renderChainSettingsSelects() {
+        const s = this.pomodoroChainSettings;
+        const sessionsEl = document.getElementById('chain-sessions-select');
+        const breakEl = document.getElementById('chain-break-select');
+        const longBreakEl = document.getElementById('chain-long-break-select');
+        if (sessionsEl) sessionsEl.value = s.sessionsPerChain;
+        if (breakEl) breakEl.value = s.breakDuration;
+        if (longBreakEl) longBreakEl.value = s.longBreakDuration;
     }
 
     updateFocusTimerDisplay() {
@@ -10668,7 +10704,7 @@ class GoalManager {
     }
 
     // Data Export/Import
-    exportData() {
+    async exportData() {
         try {
             const data = {
                 lifeGoals: this.lifeGoals,
@@ -10746,18 +10782,37 @@ class GoalManager {
                 lastWoodenChestDate: this.lastWoodenChestDate,
                 activeChallenges: this.activeChallenges,
                 completedChallenges: this.completedChallenges,
+                accountCreatedDate: this.accountCreatedDate,
                 exportDate: new Date().toISOString(),
-                version: '2.3.0'
+                version: '2.4.0'
             };
             
             const dataStr = JSON.stringify(data, null, 2);
+            const fileName = `quest-journal-backup-${this.getTodayDateString()}.json`;
+
+            // Try native/share export first (Android WebView can't do blob downloads)
+            if (window.CapBridge) {
+                const result = await window.CapBridge.shareFile(fileName, dataStr, 'application/json');
+                if (result.shared) {
+                    this.showSuccessNotification('Your quest data has been exported successfully!');
+                    this.showAchievement('📦 Data Exported Successfully!', 'daily');
+                    return;
+                }
+            }
+
+            // Fallback: blob download (works in browsers/PWA)
             const dataBlob = new Blob([dataStr], {type: 'application/json'});
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `quest-journal-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = fileName;
+            link.style.display = 'none';
+            document.body.appendChild(link);
             link.click();
-            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 1000);
             
             this.showSuccessNotification('Your quest data has been exported successfully!');
             this.showAchievement('📦 Data Exported Successfully!', 'daily');
@@ -10825,6 +10880,10 @@ class GoalManager {
                     this.focusCrystalShards = data.focusCrystalShards ?? this.focusCrystalShards;
                     this.totalFocusTime = data.totalFocusTime ?? this.totalFocusTime;
                     this.activeEnchantments = data.activeEnchantments || this.activeEnchantments;
+                    this.focusEndTime = data.focusEndTime || null;
+                    this.focusSessionLength = data.focusSessionLength ?? this.focusSessionLength;
+                    this.pomodoroChain = data.pomodoroChain || null;
+                    if (data.pomodoroChainSettings) this.pomodoroChainSettings = data.pomodoroChainSettings;
                     this.timezone = data.timezone || this.timezone;
                     this.timezoneOffset = data.timezoneOffset ?? this.timezoneOffset;
                     this.tutorialCompleted = data.tutorialCompleted || this.tutorialCompleted;
@@ -10867,6 +10926,7 @@ class GoalManager {
                     this.lastWoodenChestDate = data.lastWoodenChestDate || this.lastWoodenChestDate;
                     this.activeChallenges = arr(data.activeChallenges, this.activeChallenges);
                     this.completedChallenges = arr(data.completedChallenges, this.completedChallenges);
+                    if (data.accountCreatedDate) this.accountCreatedDate = data.accountCreatedDate;
                     if (data.reminderSettings) {
                         this.reminderSettings = data.reminderSettings;
                         localStorage.setItem('reminderSettings', JSON.stringify(this.reminderSettings));
@@ -10944,80 +11004,6 @@ class GoalManager {
         }, () => {
             this.showAchievement('❌ Data deletion cancelled.', 'daily');
         });
-    }
-
-    // Search functionality
-    performSearch(query) {
-        const resultsContainer = document.getElementById('search-results');
-        if (!query || query.trim().length < 2) {
-            resultsContainer.innerHTML = '<p class="text-purple-200 text-sm fancy-font">Type at least 2 characters to search...</p>';
-            return;
-        }
-        
-        const searchTerm = query.toLowerCase();
-        const results = [];
-        
-        // Search life goals
-        this.lifeGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchTerm) || (goal.description && goal.description.toLowerCase().includes(searchTerm))) {
-                results.push({type: 'Life Goal', item: goal, icon: '🏰', color: 'red'});
-            }
-        });
-        
-        // Search yearly goals
-        this.yearlyGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchTerm) || (goal.description && goal.description.toLowerCase().includes(searchTerm))) {
-                results.push({type: 'Yearly Campaign', item: goal, icon: '📅', color: 'purple'});
-            }
-        });
-        
-        // Search monthly goals
-        this.monthlyGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchTerm) || (goal.description && goal.description.toLowerCase().includes(searchTerm))) {
-                results.push({type: 'Monthly Raid', item: goal, icon: '🗓️', color: 'blue'});
-            }
-        });
-        
-        // Search weekly goals
-        this.weeklyGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchTerm) || (goal.description && goal.description.toLowerCase().includes(searchTerm))) {
-                results.push({type: 'Weekly Battle', item: goal, icon: '⚔️', color: 'green'});
-            }
-        });
-        
-        // Search daily tasks
-        this.dailyTasks.forEach(task => {
-            if (task.title.toLowerCase().includes(searchTerm) || (task.description && task.description.toLowerCase().includes(searchTerm))) {
-                results.push({type: 'Daily Task', item: task, icon: '⚔️', color: 'orange', dueDate: task.dueDate});
-            }
-        });
-        
-        // Search side quests
-        this.sideQuests.forEach(quest => {
-            if (quest.title.toLowerCase().includes(searchTerm) || (quest.description && quest.description.toLowerCase().includes(searchTerm))) {
-                results.push({type: 'Side Quest', item: quest, icon: '🧭', color: 'cyan'});
-            }
-        });
-        
-        if (results.length === 0) {
-            resultsContainer.innerHTML = '<p class="text-purple-200 text-sm fancy-font">No quests found matching your search.</p>';
-        } else {
-            resultsContainer.innerHTML = `
-                <p class="text-purple-200 text-sm fancy-font mb-3">Found ${results.length} result(s):</p>
-                ${results.map(result => `
-                    <div class="bg-purple-950/60 p-3 rounded-lg border-2 border-purple-700 hover:border-purple-500 transition-all">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-lg">${result.icon}</span>
-                            <span class="text-xs text-purple-300 fancy-font font-semibold">${result.type}</span>
-                            ${result.item.completed ? '<span class="text-xs text-green-400">✓ Completed</span>' : ''}
-                        </div>
-                        <p class="text-white font-semibold fancy-font ${result.item.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(result.item.title)}</p>
-                        ${result.item.description ? `<p class="text-sm text-purple-200 italic mt-1">${this.escapeHTML(result.item.description)}</p>` : ''}
-                        ${result.dueDate ? `<p class="text-xs text-purple-300 mt-1">Due: ${result.dueDate}</p>` : ''}
-                    </div>
-                `).join('')}
-            `;
-        }
     }
 
     renderSideQuestCard(quest, color) {
@@ -11301,8 +11287,8 @@ class GoalManager {
         }
         
         // ISO format for internal comparisons
-        const startISO = startDate.toISOString().split('T')[0];
-        const endISO = endDate.toISOString().split('T')[0];
+        const startISO = this.dateToLocalString(startDate);
+        const endISO = this.dateToLocalString(endDate);
         
         // Format dates as MM/DD/YYYY for display
         const formatDate = (d) => {
@@ -11462,8 +11448,8 @@ class GoalManager {
             periodName = (today.getFullYear() - 1).toString();
         }
         
-        const startISO = startDate.toISOString().split('T')[0];
-        const endISO = endDate.toISOString().split('T')[0];
+        const startISO = this.dateToLocalString(startDate);
+        const endISO = this.dateToLocalString(endDate);
         
         // Format dates for display
         const formatDate = (d) => {
@@ -11858,7 +11844,7 @@ class GoalManager {
                 const dayOffset = taskDate.getDay();
                 const newDate = new Date(nextStartDate);
                 newDate.setDate(nextStartDate.getDate() + dayOffset);
-                task.dueDate = newDate.toISOString().split('T')[0];
+                task.dueDate = this.dateToLocalString(newDate);
             });
             
             // Archive completed weekly goals
@@ -11870,7 +11856,7 @@ class GoalManager {
         } else if (period === 'month') {
             // Move incomplete daily tasks to next month
             summary.tasks.incomplete.forEach(task => {
-                task.dueDate = nextStartDate.toISOString().split('T')[0];
+                task.dueDate = this.dateToLocalString(nextStartDate);
             });
             
             // Archive completed monthly goals
@@ -11882,7 +11868,7 @@ class GoalManager {
         } else if (period === 'year') {
             // Move incomplete daily tasks to next year
             summary.tasks.incomplete.forEach(task => {
-                task.dueDate = nextStartDate.toISOString().split('T')[0];
+                task.dueDate = this.dateToLocalString(nextStartDate);
             });
             
             // Archive completed yearly goals
@@ -13051,6 +13037,7 @@ class GoalManager {
         }
         
         this.updateFocusTimerControls();
+        this.renderChainSettingsSelects();
     }
 
     updateFocusTimerControls() {
@@ -13165,7 +13152,7 @@ class GoalManager {
                     </div>
                     <div class="mt-2 w-full bg-pink-950 rounded-full h-2">
                         <div class="bg-gradient-to-r from-pink-500 to-purple-400 h-2 rounded-full transition-all" 
-                            style="width: ${(timeRemaining / (ench.expiresAt - (Date.now() - timeRemaining))) * 100}%"></div>
+                            style="width: ${Math.max(0, Math.min(100, (timeRemaining / ((this.enchantmentDefinitions[ench.id]?.duration || 180) * 60000)) * 100))}%"></div>
                     </div>
                 </div>
             `;
@@ -17420,7 +17407,7 @@ class GoalManager {
         // Calculate deadline date
         const deadlineDate = new Date();
         deadlineDate.setDate(deadlineDate.getDate() + (challengeData.dl || 3));
-        const deadlineISO = deadlineDate.toISOString().split('T')[0];
+        const deadlineISO = this.dateToLocalString(deadlineDate);
 
         const rewards = challengeData.r || this.getChallengeRewards(challengeData.d);
 

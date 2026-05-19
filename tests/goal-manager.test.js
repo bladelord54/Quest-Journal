@@ -177,7 +177,7 @@ function createTestManager(overrides = {}) {
         2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
         3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
         4: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
-        5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Spend them on Enchantments for powerful buffs!" },
+        5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Chain multiple sessions together for bonus rewards! Spend crystals on Enchantments for powerful buffs." },
         6: { title: '⚔️ New Quest Types & Chains!', text: "Your Quest Log now has Weekly Battles and Side Quests! Plus, Quest Chains let you link tasks into epic multi-step adventures for bonus rewards. You've also unlocked the Forest Kingdom theme!" },
         7: { title: '� Monthly Raids Unlocked!', text: "Plan bigger with Monthly Raids! Set monthly goals and conquer larger challenges over longer timeframes." },
         9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
