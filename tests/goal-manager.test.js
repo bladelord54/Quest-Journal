@@ -1844,6 +1844,247 @@ describe('GoalManager', () => {
         });
     });
 
+    // ==================== BOSS HP CHUNK BAR (v2.9 TRACK 3) ====================
+
+    // The chunk-bar refactor (replacing the v2.8 single-fill gradient with N
+    // segmented chunks) introduces three new surfaces worth pinning down:
+    //   - getBossPhase()       — phase color + label thresholds
+    //   - renderBossHPChunks() — chunk count math + filled/empty distribution
+    //   - updateBossHPBar()    — per-hit DOM mutations (drain vs flash, crit
+    //                            class variant, phase data-attribute updates)
+    // The tests below exercise all three with deterministic inputs.
+
+    describe('Boss HP Chunk Bar (v2.9 Track 3)', () => {
+
+        // ---- getBossPhase ----------------------------------------------------
+
+        test('getBossPhase returns red Full Power above 75%', () => {
+            const gm = createTestManager();
+            expect(gm.getBossPhase(100, 100)).toEqual({ color: 'red', text: 'Full Power' });
+            expect(gm.getBossPhase(76,  100)).toEqual({ color: 'red', text: 'Full Power' });
+        });
+
+        test('getBossPhase returns yellow Injured at 50-75%', () => {
+            const gm = createTestManager();
+            expect(gm.getBossPhase(75, 100)).toEqual({ color: 'yellow', text: 'Injured' });
+            expect(gm.getBossPhase(51, 100)).toEqual({ color: 'yellow', text: 'Injured' });
+        });
+
+        test('getBossPhase returns orange Wounded at 25-50%', () => {
+            const gm = createTestManager();
+            expect(gm.getBossPhase(50, 100)).toEqual({ color: 'orange', text: 'Wounded' });
+            expect(gm.getBossPhase(26, 100)).toEqual({ color: 'orange', text: 'Wounded' });
+        });
+
+        test('getBossPhase returns purple CRITICAL! at 0-25% (exclusive of 0)', () => {
+            const gm = createTestManager();
+            expect(gm.getBossPhase(25, 100)).toEqual({ color: 'purple', text: 'CRITICAL!' });
+            expect(gm.getBossPhase(1,  100)).toEqual({ color: 'purple', text: 'CRITICAL!' });
+        });
+
+        test('getBossPhase returns green DEFEATED at 0 HP', () => {
+            const gm = createTestManager();
+            expect(gm.getBossPhase(0, 100)).toEqual({ color: 'green', text: 'DEFEATED' });
+        });
+
+        test('getBossPhase handles maxHP of 0 defensively (treats as defeated)', () => {
+            const gm = createTestManager();
+            expect(gm.getBossPhase(0, 0)).toEqual({ color: 'green', text: 'DEFEATED' });
+        });
+
+        // ---- renderBossHPChunks chunk count math -----------------------------
+
+        test('renderBossHPChunks produces maxHP chunks when maxHP <= 20', () => {
+            const gm = createTestManager();
+            // maxHP=14 -> 14 chunks (1 HP each)
+            const html = gm.renderBossHPChunks({ maxHP: 14, currentHP: 14 }, 'red');
+            const matches = html.match(/class="hp-chunk /g) || [];
+            expect(matches).toHaveLength(14);
+            expect(html).toContain('data-chunk-count="14"');
+            expect(html).toContain('data-hp-per-chunk="1"');
+        });
+
+        test('renderBossHPChunks caps at 20 chunks when maxHP > 20', () => {
+            const gm = createTestManager();
+            // maxHP=100 -> 20 chunks (5 HP each)
+            const html = gm.renderBossHPChunks({ maxHP: 100, currentHP: 100 }, 'red');
+            const matches = html.match(/class="hp-chunk /g) || [];
+            expect(matches).toHaveLength(20);
+            expect(html).toContain('data-chunk-count="20"');
+            expect(html).toContain('data-hp-per-chunk="5"');
+        });
+
+        test('renderBossHPChunks renders single chunk for maxHP=1 boss', () => {
+            const gm = createTestManager();
+            const html = gm.renderBossHPChunks({ maxHP: 1, currentHP: 1 }, 'red');
+            const matches = html.match(/class="hp-chunk /g) || [];
+            expect(matches).toHaveLength(1);
+        });
+
+        test('renderBossHPChunks returns empty string when maxHP <= 0', () => {
+            const gm = createTestManager();
+            expect(gm.renderBossHPChunks({ maxHP: 0, currentHP: 0 }, 'green')).toBe('');
+        });
+
+        test('renderBossHPChunks emits expected filled/empty distribution', () => {
+            const gm = createTestManager();
+            // maxHP=10, currentHP=7 -> 7 filled, 3 empty
+            const html = gm.renderBossHPChunks({ maxHP: 10, currentHP: 7 }, 'yellow');
+            const filled = (html.match(/hp-chunk--filled/g) || []).length;
+            const empty  = (html.match(/hp-chunk--empty/g)  || []).length;
+            expect(filled).toBe(7);
+            expect(empty).toBe(3);
+        });
+
+        test('renderBossHPChunks ceils boundary: currentHP between bucket edges still shows the boundary chunk filled', () => {
+            const gm = createTestManager();
+            // maxHP=100 -> hpPerChunk=5; currentHP=93 -> ceil(93/5)=19 filled
+            const html = gm.renderBossHPChunks({ maxHP: 100, currentHP: 93 }, 'red');
+            const filled = (html.match(/hp-chunk--filled/g) || []).length;
+            const empty  = (html.match(/hp-chunk--empty/g)  || []).length;
+            expect(filled).toBe(19);
+            expect(empty).toBe(1);
+        });
+
+        test('renderBossHPChunks emits the phase data attribute for CSS hookup', () => {
+            const gm = createTestManager();
+            const html = gm.renderBossHPChunks({ maxHP: 10, currentHP: 5 }, 'orange');
+            expect(html).toContain('data-phase="orange"');
+            expect(html).toContain('hp-chunk-track');
+        });
+
+        test('renderBossHPChunks clamps currentHP > maxHP defensively', () => {
+            const gm = createTestManager();
+            // Should not produce more filled chunks than chunkCount
+            const html = gm.renderBossHPChunks({ maxHP: 10, currentHP: 999 }, 'red');
+            const filled = (html.match(/hp-chunk--filled/g) || []).length;
+            expect(filled).toBe(10);
+        });
+
+        // ---- updateBossHPBar DOM mutations -----------------------------------
+
+        // Helper: mount a fake boss card matching what renderBossCard emits
+        // for the parts updateBossHPBar reads/writes. We don't need the full
+        // card markup, only the elements queried by selectors.
+        function mountBossCardDom(bossType, boss, phaseColor = 'red') {
+            const gm = createTestManager();
+            const card = document.createElement('div');
+            card.id = `boss-card-${bossType}`;
+            const trackHtml = gm.renderBossHPChunks(boss, phaseColor);
+            card.innerHTML = `
+                <div class="font-bold">HP <span class="font-bold">${boss.currentHP} / ${boss.maxHP}</span></div>
+                ${trackHtml}
+                <div class="text-amber-300 mb-3">${boss.totalDamage || 0} total damage dealt</div>
+                <button onclick="goalManager.attackBoss('${bossType}')">ATTACK!</button>
+            `;
+            document.body.appendChild(card);
+            return { gm, card };
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            jest.useRealTimers();
+        });
+
+        test('updateBossHPBar drains the correct number of chunks for a hit', () => {
+            jest.useFakeTimers();
+            const boss = { maxHP: 10, currentHP: 7, totalDamage: 3 };
+            const { gm, card } = mountBossCardDom('daily', boss);
+            gm.attackCharges = 2;
+
+            // Hit dealt 3 damage: previous=10 chunks filled, after=7 -> drain 3 chunks
+            gm.updateBossHPBar('daily', boss, 3, false);
+
+            // Drain is staggered (80ms each); fast-forward all timers to settle.
+            jest.runAllTimers();
+
+            const chunks = card.querySelectorAll('.hp-chunk');
+            const empty = Array.from(chunks).filter(c => c.classList.contains('hp-chunk--empty'));
+            const filled = Array.from(chunks).filter(c => c.classList.contains('hp-chunk--filled'));
+            expect(empty).toHaveLength(3);
+            expect(filled).toHaveLength(7);
+        });
+
+        test('updateBossHPBar uses crit drain class when isCrit=true', () => {
+            jest.useFakeTimers();
+            const boss = { maxHP: 10, currentHP: 7, totalDamage: 3 };
+            const { gm, card } = mountBossCardDom('daily', boss);
+
+            gm.updateBossHPBar('daily', boss, 3, true);
+
+            // Right after the first stagger tick, the rightmost-drained chunk should
+            // carry the crit drain class (before the post-animation cleanup at +500ms).
+            jest.advanceTimersByTime(1);
+            const draining = card.querySelectorAll('.hp-chunk--draining-crit');
+            expect(draining.length).toBeGreaterThan(0);
+            // And the non-crit drain class should NOT be applied.
+            expect(card.querySelectorAll('.hp-chunk--draining').length).toBe(0);
+
+            jest.runAllTimers();
+        });
+
+        test('updateBossHPBar flashes the boundary chunk when hit does not cross a chunk boundary', () => {
+            jest.useFakeTimers();
+            // maxHP=100, hpPerChunk=5; currentHP went 95 -> 93 (damage=2)
+            // Both round up to 19 chunks filled, so chunksToDrain=0 -> flash path.
+            const boss = { maxHP: 100, currentHP: 93, totalDamage: 2 };
+            const { gm, card } = mountBossCardDom('weekly', boss);
+
+            gm.updateBossHPBar('weekly', boss, 2, false);
+
+            // Boundary chunk (index 18, the rightmost still-filled) should have the
+            // flash class applied immediately.
+            const flashing = card.querySelectorAll('.hp-chunk--flashing');
+            expect(flashing.length).toBe(1);
+            expect(card.querySelectorAll('.hp-chunk--flashing-crit').length).toBe(0);
+
+            // After 250ms the flash class is removed.
+            jest.advanceTimersByTime(260);
+            expect(card.querySelectorAll('.hp-chunk--flashing').length).toBe(0);
+        });
+
+        test('updateBossHPBar updates the data-phase attribute when HP crosses a phase threshold', () => {
+            jest.useFakeTimers();
+            // Start at 60% HP (yellow), drop to 40% HP (orange) via 20 damage
+            const boss = { maxHP: 100, currentHP: 40, totalDamage: 20 };
+            const { gm, card } = mountBossCardDom('daily', boss, 'yellow');
+            const track = card.querySelector('.hp-chunk-track');
+            expect(track.dataset.phase).toBe('yellow');
+
+            gm.updateBossHPBar('daily', boss, 20, false);
+
+            expect(track.dataset.phase).toBe('orange');
+            jest.runAllTimers();
+        });
+
+        test('updateBossHPBar updates HP text after a hit', () => {
+            jest.useFakeTimers();
+            const boss = { maxHP: 14, currentHP: 11, totalDamage: 3 };
+            const { gm, card } = mountBossCardDom('daily', boss);
+
+            gm.updateBossHPBar('daily', boss, 3, false);
+
+            const hpText = Array.from(card.querySelectorAll('.font-bold'))
+                .map(el => el.textContent.trim())
+                .find(t => t.includes('/'));
+            expect(hpText).toBe('11 / 14');
+            jest.runAllTimers();
+        });
+
+        test('updateBossHPBar is a no-op for chunk drain when track DOM is missing', () => {
+            // Defensive path: card exists but no chunk track (e.g., legacy markup).
+            const card = document.createElement('div');
+            card.id = 'boss-card-daily';
+            card.innerHTML = `<div class="font-bold">HP <span class="font-bold">5 / 10</span></div>`;
+            document.body.appendChild(card);
+            const gm = createTestManager();
+
+            // Should not throw, should still update the HP text.
+            const boss = { maxHP: 10, currentHP: 5, totalDamage: 5 };
+            expect(() => gm.updateBossHPBar('daily', boss, 5, false)).not.toThrow();
+        });
+    });
+
     // ==================== SAVE/LOAD ROUND TRIP ====================
 
     describe('Save/Load Round Trip', () => {
