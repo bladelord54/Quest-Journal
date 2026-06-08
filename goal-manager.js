@@ -14763,7 +14763,7 @@ class GoalManager {
                 <div class="relative z-10">
                     <!-- Boss Header -->
                     <div class="flex items-center gap-4 mb-4">
-                        <div class="text-5xl ${isDefeated ? 'grayscale opacity-50' : 'animate-bounce'}">${boss.icon}</div>
+                        <div class="boss-portrait text-5xl ${isDefeated ? 'grayscale opacity-50' : 'animate-bounce'}">${boss.icon}</div>
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1 flex-wrap">
                                 <span class="text-xs bg-${typeColor}-700 text-white px-2 py-0.5 rounded fancy-font">${typeLabel}</span>

@@ -629,6 +629,72 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             // fire burst + existing boss-hit-shake + crit damage float + crit
             // audio variant already provide ample feedback.
             this.burstAt(bossEl, { type: 'fire', count: 14 });
+
+            // ── v2.9 Track 4 — Crit / weakpoint visual indicators ──
+            //
+            // Three additive layers on top of the legacy fire burst:
+            //   1) Weakpoint reticle — lock-on crosshair that snaps onto the
+            //      boss portrait (suggests a targeted strike, not just a
+            //      harder hit).
+            //   2) Shockwave ring — radial ring expanding from impact (reads
+            //      as visceral force).
+            //   3) Time-dilation freeze — brief 80ms "hitch" on the portrait
+            //      to add weight without committing to full slow-motion (that
+            //      effect is reserved for the Track 6 monthly killing blow).
+            //
+            // Anchored to the bouncing portrait (`.boss-portrait`) when
+            // present, so the visuals land on the boss face rather than the
+            // center of the entire card (which sits over the HP bar).
+            // Falls back to the card itself for defensive parity.
+            //
+            // Intensity gates:
+            //   • minimal — skip all three (the fire burst above is already
+            //     gated via burstAt → _canSpawn).
+            //   • reduced — keep the reticle (cheap, single SVG element);
+            //     drop the shockwave + freeze.
+            //   • full    — all three.
+            if (!bossEl || this.intensity === 'minimal') return;
+
+            const portrait = bossEl.querySelector('.boss-portrait') || bossEl;
+            // Portrait anchors absolute children — `position: relative` is
+            // already on the card via animateBossHit; force it on the portrait
+            // too so the reticle/shockwave overlay the icon, not the card.
+            if (portrait !== bossEl && !portrait.style.position) {
+                portrait.style.position = 'relative';
+            }
+
+            // ─── Weakpoint reticle (full + reduced) ───
+            const reticle = document.createElement('div');
+            reticle.className = 'crit-reticle';
+            reticle.setAttribute('aria-hidden', 'true');
+            reticle.innerHTML =
+                '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" focusable="false">' +
+                  '<circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="3"/>' +
+                  '<circle cx="50" cy="50" r="26" fill="none" stroke="currentColor" stroke-width="2"/>' +
+                  '<line x1="50" y1="2"  x2="50" y2="22" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' +
+                  '<line x1="50" y1="78" x2="50" y2="98" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' +
+                  '<line x1="2"  y1="50" x2="22" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' +
+                  '<line x1="78" y1="50" x2="98" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' +
+                  '<circle cx="50" cy="50" r="3" fill="currentColor"/>' +
+                '</svg>';
+            portrait.appendChild(reticle);
+            setTimeout(() => reticle.remove(), 650);
+
+            // ─── Shockwave + freeze (full intensity only) ───
+            if (this.intensity !== 'full') return;
+
+            const shockwave = document.createElement('div');
+            shockwave.className = 'crit-shockwave';
+            shockwave.setAttribute('aria-hidden', 'true');
+            portrait.appendChild(shockwave);
+            setTimeout(() => shockwave.remove(), 420);
+
+            // Brief freeze-frame: pauses any descendant animations (the
+            // animate-bounce on the portrait, the animate-pulse glow on the
+            // card backdrop) for 80ms via a class that sets
+            // animation-play-state: paused. Restored immediately after.
+            bossEl.classList.add('crit-freeze');
+            setTimeout(() => bossEl.classList.remove('crit-freeze'), 80);
         },
 
         spellUnlocked(spell, sourceEl) {

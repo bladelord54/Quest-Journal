@@ -882,6 +882,107 @@
     .boss-hp-fill { transition: none; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.9 Track 4 — Crit / weakpoint visual indicators
+   ═══════════════════════════════════════════════════════════════════════════
+   Three additive visual layers triggered when a Critical Strike spell procs
+   (50% chance for +50% damage) — see effectsManager.bossCrit() in
+   effects-manager.js for the trigger path. All anchored on the bouncing
+   `.boss-portrait` element inside the boss card so they land on the boss
+   face rather than the card center.
+
+   • .crit-reticle    — lock-on crosshair (full + reduced intensity)
+   • .crit-shockwave  — radial impact ring (full intensity only)
+   • .crit-freeze     — 80ms freeze-frame on the boss card to add weight
+                        (full intensity only)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Weakpoint reticle: scales in slightly oversized then snaps to true scale
+   (the "lock-on" feel), holds, then drifts out with a small rotation tick
+   and fades. SVG inherits color via currentColor so we tint the wrapper. */
+.crit-reticle {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 12;
+    color: #fde047;
+    filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.85));
+    animation: crit-reticle-snap 600ms ease-out forwards;
+    will-change: transform, opacity;
+}
+
+.crit-reticle svg {
+    position: absolute;
+    width: 130%;
+    height: 130%;
+    top: -15%;
+    left: -15%;
+}
+
+@keyframes crit-reticle-snap {
+    0%   { transform: scale(1.6) rotate(-12deg); opacity: 0; }
+    18%  { transform: scale(0.95) rotate(0deg);  opacity: 1; }
+    32%  { transform: scale(1.0)  rotate(0deg);  opacity: 1; }
+    65%  { transform: scale(1.05) rotate(0deg);  opacity: 1; }
+    100% { transform: scale(1.18) rotate(8deg);  opacity: 0; }
+}
+
+/* Crit shockwave: a single ring expanding from the impact point. Reads as
+   the visceral force of the strike. Anchored absolutely-centered to the
+   portrait via 50%/50% + negative margins. */
+.crit-shockwave {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    margin-top: -25px;
+    margin-left: -25px;
+    border-radius: 50%;
+    border: 3px solid #fde047;
+    box-shadow: 0 0 18px rgba(253, 224, 71, 0.85),
+                inset 0 0 10px rgba(255, 215, 0, 0.55);
+    pointer-events: none;
+    z-index: 11;
+    opacity: 0;
+    animation: crit-shockwave-expand 380ms ease-out forwards;
+    will-change: transform, opacity;
+}
+
+@keyframes crit-shockwave-expand {
+    0%   { transform: scale(0.2); opacity: 0.95; border-width: 4px; }
+    50%  { opacity: 0.65; }
+    100% { transform: scale(4.2); opacity: 0; border-width: 1px; }
+}
+
+/* Crit freeze-frame: applied to the boss card for 80ms at impact. Pauses
+   descendant CSS animations (the bouncing portrait, the pulsing card
+   backdrop) so the moment of impact has visible weight without committing
+   to a full slow-motion sequence. */
+.crit-freeze,
+.crit-freeze * {
+    animation-play-state: paused !important;
+}
+
+/* Reduced motion (system-level): skip all three layers entirely; the fire
+   burst + slash crit class + crit damage float still register the moment. */
+@media (prefers-reduced-motion: reduce) {
+    .crit-reticle,
+    .crit-shockwave {
+        animation: none;
+        display: none;
+    }
+    .crit-freeze,
+    .crit-freeze * { animation-play-state: running !important; }
+}
+
+/* App-level intensity gates (set by EffectsManager.setIntensity on body):
+   • fx-reduced — keep reticle, hide shockwave (JS already skips freeze)
+   • fx-minimal — hide everything (JS also early-returns) */
+body.fx-reduced .crit-shockwave { display: none; }
+body.fx-minimal .crit-reticle,
+body.fx-minimal .crit-shockwave { display: none; }
+
 /* ===== ENHANCED LEVEL UP ANIMATIONS ===== */
 
 /* Full-screen golden flash */
