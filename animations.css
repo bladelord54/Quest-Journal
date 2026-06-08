@@ -767,125 +767,119 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   v2.9 Track 3 — Boss HP chunk track
+   v2.9 Track 3 — Boss HP damage-trail bar
    ═══════════════════════════════════════════════════════════════════════════
-   Replaces the pre-v2.9 single-fill gradient bar with a segmented chunk track
-   (1-20 chunks per boss, count derived from maxHP — see renderBossHPChunks
-   in goal-manager.js). Each chunk is independently animatable so the drain
-   on hit can flash + dissolve only the chunks killed by THAT specific hit,
-   and a crit can tint the flash differently from a regular hit.
+   Two-layer "lag bar" pattern (Street Fighter, Dark Souls, MOBA-style):
+     .boss-hp-fill   — live gradient fill at currentHP%; smooth 250ms width
+                       transition makes the front of the bar drop responsively
+                       on hit.
+     .boss-hp-damage — drain trail layer behind the fill. Normally invisible
+                       (opacity 0). When updateBossHPBar() applies the
+                       .is-draining class with --hp-previous and --hp-current
+                       custom properties set, a single keyframe rule
+                       1) snaps to the previous-HP width with full white
+                          opacity (the damaged-portion flash),
+                       2) holds white briefly so the eye registers the wound,
+                       3) shrinks the layer back to currentHP% while fading,
+                       leaving the standard fill exposed.
 
    Phase-color cascade
    ───────────────────
-   The track exposes a `data-phase` attribute (red/yellow/orange/purple/green)
-   matching getBossPhase(). Each phase sets two CSS custom properties
-   (`--hp-from`, `--hp-to`) that the filled-chunk gradient picks up via
-   `var(--hp-from, ...)`. Mid-fight phase changes update the data attribute
-   and the `transition: background` on filled chunks cross-fades the new
-   palette in over ~600ms — no DOM swap, animation continues uninterrupted.
+   The container exposes data-phase=red|yellow|orange|purple|green which
+   sets --hp-from / --hp-to custom properties consumed by the .boss-hp-fill
+   gradient. Phase changes mid-fight rebind the variables; the gradient
+   re-renders without a DOM swap. The crit variant (.boss-hp-damage--crit)
+   swaps the trail color to gold/yellow.
    ═══════════════════════════════════════════════════════════════════════════ */
-.hp-chunk-track {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    box-sizing: border-box;
-}
-
-.hp-chunk {
-    flex: 1 1 0;
-    height: 100%;
-    border-radius: 2px;
-    transition: background 600ms ease, opacity 300ms ease;
-    will-change: opacity, transform, background;
-    /* Default phase if data-phase missing (defensive — shouldn't happen). */
+.boss-hp-bar {
+    /* Container palette defaults (overridden by data-phase below). */
     --hp-from: #dc2626;
     --hp-to: #f87171;
 }
 
-.hp-chunk--filled {
-    background: linear-gradient(180deg, var(--hp-from), var(--hp-to));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
-                inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+.boss-hp-bar[data-phase="red"]    { --hp-from: #dc2626; --hp-to: #f87171; }
+.boss-hp-bar[data-phase="yellow"] { --hp-from: #ca8a04; --hp-to: #facc15; }
+.boss-hp-bar[data-phase="orange"] { --hp-from: #ea580c; --hp-to: #fb923c; }
+.boss-hp-bar[data-phase="purple"] { --hp-from: #9333ea; --hp-to: #c084fc; }
+.boss-hp-bar[data-phase="green"]  { --hp-from: #16a34a; --hp-to: #4ade80; }
+
+.boss-hp-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(90deg, var(--hp-from), var(--hp-to));
+    transition: width 250ms ease-out;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.30);
+    will-change: width;
 }
 
-.hp-chunk--empty {
-    background: rgba(0, 0, 0, 0.55);
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
-    opacity: 0.7;
+.boss-hp-percent {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 
-/* Phase palettes — keyed off the parent track's data-phase. The CSS
-   custom properties cascade into every child .hp-chunk. */
-.hp-chunk-track[data-phase="red"]    { --hp-from: #dc2626; --hp-to: #f87171; }
-.hp-chunk-track[data-phase="yellow"] { --hp-from: #ca8a04; --hp-to: #facc15; }
-.hp-chunk-track[data-phase="orange"] { --hp-from: #ea580c; --hp-to: #fb923c; }
-.hp-chunk-track[data-phase="purple"] { --hp-from: #9333ea; --hp-to: #c084fc; }
-.hp-chunk-track[data-phase="green"]  { --hp-from: #16a34a; --hp-to: #4ade80; }
-
-/* Drain animation — chunk flashes red/orange, then collapses to empty.
-   Used when the hit crosses a chunk boundary (chunks actually killed).
-   `forwards` keeps the end state visually empty even before JS swaps in
-   the .hp-chunk--empty class at +500ms. */
-@keyframes hp-chunk-drain {
-    0%   { background: linear-gradient(180deg, var(--hp-from), var(--hp-to));
-           transform: scaleY(1); opacity: 1; }
-    18%  { background: #ef4444; transform: scaleY(1.12);
-           box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.85); opacity: 1; }
-    35%  { background: #b91c1c; transform: scaleY(1); opacity: 0.95; }
-    100% { background: rgba(0, 0, 0, 0.55); transform: scaleY(0.55);
-           box-shadow: none; opacity: 0.4; }
+.boss-hp-damage {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--hp-current, 0%);
+    background: rgba(255, 255, 255, 0.95);
+    opacity: 0;
+    z-index: 1;
+    pointer-events: none;
+    box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.55);
+    will-change: width, opacity;
 }
 
-@keyframes hp-chunk-drain-crit {
-    0%   { background: linear-gradient(180deg, var(--hp-from), var(--hp-to));
-           transform: scaleY(1); opacity: 1; }
-    15%  { background: #fde047; transform: scaleY(1.2);
-           box-shadow: 0 0 14px 4px rgba(253, 224, 71, 0.95); opacity: 1; }
-    32%  { background: #fb923c; transform: scaleY(1.05);
-           box-shadow: 0 0 8px 2px rgba(251, 146, 60, 0.7); opacity: 0.95; }
-    100% { background: rgba(0, 0, 0, 0.55); transform: scaleY(0.55);
-           box-shadow: none; opacity: 0.4; }
+.boss-hp-damage.is-draining {
+    animation: boss-hp-damage-drain 700ms ease-out forwards;
 }
 
-.hp-chunk--draining      { animation: hp-chunk-drain      500ms ease-out forwards; }
-.hp-chunk--draining-crit { animation: hp-chunk-drain-crit 500ms ease-out forwards; }
-
-/* Flash-in-place — used when the hit DIDN'T cross a chunk boundary (small
-   damage on a high-HP boss). Boundary chunk pulses in the hit color and
-   returns to its filled state, so the player still gets per-hit feedback
-   on the bar. */
-@keyframes hp-chunk-flash {
-    0%   { background: linear-gradient(180deg, var(--hp-from), var(--hp-to)); }
-    50%  { background: #ef4444;
-           box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.7),
-                       inset 0 1px 0 rgba(255, 255, 255, 0.25); }
-    100% { background: linear-gradient(180deg, var(--hp-from), var(--hp-to)); }
+.boss-hp-damage--crit {
+    background: rgba(253, 224, 71, 0.95);
+    box-shadow: 0 0 14px 3px rgba(253, 224, 71, 0.7);
 }
 
-@keyframes hp-chunk-flash-crit {
-    0%   { background: linear-gradient(180deg, var(--hp-from), var(--hp-to)); }
-    50%  { background: #fde047;
-           box-shadow: 0 0 12px 3px rgba(253, 224, 71, 0.85),
-                       inset 0 1px 0 rgba(255, 255, 255, 0.25); }
-    100% { background: linear-gradient(180deg, var(--hp-from), var(--hp-to)); }
+.boss-hp-damage.is-draining.boss-hp-damage--crit {
+    animation: boss-hp-damage-drain-crit 800ms ease-out forwards;
 }
 
-.hp-chunk--flashing      { animation: hp-chunk-flash      250ms ease-out; }
-.hp-chunk--flashing-crit { animation: hp-chunk-flash-crit 250ms ease-out; }
+/* Damage-trail keyframe: from previousHP% (held for the first 25% of the
+   timeline so the white flash registers) to currentHP% with opacity fading
+   out. Both endpoints come from inline custom properties set by JS so a
+   single keyframe rule serves every hit regardless of HP delta. */
+@keyframes boss-hp-damage-drain {
+    0%   { width: var(--hp-previous, 100%); opacity: 1; }
+    25%  { width: var(--hp-previous, 100%); opacity: 1; }
+    100% { width: var(--hp-current, 0%); opacity: 0; }
+}
 
-/* Reduced motion — collapse the dramatic flashes/drops to instant transitions
-   so the bar still updates correctly but doesn't pulse/flash for users who
-   disable animations. */
+@keyframes boss-hp-damage-drain-crit {
+    0%   { width: var(--hp-previous, 100%); opacity: 1; }
+    30%  { width: var(--hp-previous, 100%); opacity: 1; }
+    100% { width: var(--hp-current, 0%); opacity: 0; }
+}
+
+/* Reduced motion — skip the dramatic flash and just let the fill transition
+   handle the HP drop. Damage trail stays hidden. */
 @media (prefers-reduced-motion: reduce) {
-    .hp-chunk--draining,
-    .hp-chunk--draining-crit {
+    .boss-hp-damage,
+    .boss-hp-damage.is-draining,
+    .boss-hp-damage.is-draining.boss-hp-damage--crit {
         animation: none;
-        background: rgba(0, 0, 0, 0.55);
-        opacity: 0.4;
-        transform: none;
+        opacity: 0;
     }
-    .hp-chunk--flashing,
-    .hp-chunk--flashing-crit { animation: none; }
+    .boss-hp-fill { transition: none; }
 }
 
 /* ===== ENHANCED LEVEL UP ANIMATIONS ===== */

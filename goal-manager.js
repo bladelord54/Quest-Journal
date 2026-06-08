@@ -1357,75 +1357,86 @@ class GoalManager {
         }, 120);
     }
     
-    // v2.9 Track 3 — segmented HP bar.
+    // v2.9 Track 3 — damage-trail HP bar.
     //
-    // Operates on the chunk DOM rendered by `renderBossHPChunks()`. Called from
-    // `attackBoss()` after `boss.currentHP` has already been decremented by `damage`,
-    // so we reconstruct the pre-hit HP as `currentHP + damage` to know which chunks
-    // were killed by THIS hit specifically. The chunks corresponding to drained HP
-    // get the drain animation (red flash → fade), the rest stay filled. If the hit
-    // didn't cross a chunk boundary (small damage on a high-HP boss), we flash the
-    // boundary chunk in place to acknowledge the hit visually without draining.
+    // Operates on the two-layer DOM rendered by `renderBossHPBar()`:
+    //   .boss-hp-fill   — the live gradient fill (z-index 2). Width = currentHP%.
+    //                     Smoothly transitions to the new width over 250ms when
+    //                     JS updates its inline width style.
+    //   .boss-hp-damage — the drain trail layer (z-index 1, sits BEHIND the fill).
+    //                     Normally invisible (opacity 0). On hit it snaps to the
+    //                     PREVIOUS HP width with full white opacity, holds briefly
+    //                     so the damaged delta zone (the slice between currentHP%
+    //                     and previousHP%) flashes white, then a CSS animation
+    //                     drains the layer's width down to currentHP% while fading
+    //                     it out — classic JRPG / fighting-game "lag bar" pattern.
     //
-    // `damage = 0` is a no-op for chunk drain — used by callers that just want to
-    // refresh HP text + button state (e.g., after Execute already drained via the
-    // boss.currentHP = 0 path; that caller passes the full pre-execute HP as damage).
+    // Called from `attackBoss()` AFTER `boss.currentHP` has been decremented by
+    // `damage`, so we reconstruct the pre-hit HP as `currentHP + damage` to know
+    // where the trail layer should start. Crit hits use a gold/yellow trail
+    // variant instead of white.
+    //
+    // `damage = 0` is a no-op for the trail animation — used by callers that just
+    // want to refresh HP text + button state.
     updateBossHPBar(bossType, boss, damage = 0, isCrit = false) {
         const bossCard = document.getElementById(`boss-card-${bossType}`);
         if (!bossCard) return;
 
-        const track = bossCard.querySelector('.hp-chunk-track');
-        if (track) {
-            const chunkCount = parseInt(track.dataset.chunkCount, 10) || 0;
-            const hpPerChunk = parseFloat(track.dataset.hpPerChunk) || 1;
-            const chunks = track.querySelectorAll('.hp-chunk');
+        const bar = bossCard.querySelector('.boss-hp-bar');
+        if (bar) {
+            const fill = bar.querySelector('.boss-hp-fill');
+            const damageLayer = bar.querySelector('.boss-hp-damage');
 
-            const currentHP = Math.max(0, boss.currentHP);
-            const previousHP = Math.max(currentHP, currentHP + damage);
-            const chunksFilledAfter = Math.ceil(currentHP / hpPerChunk);
-            const chunksFilledBefore = Math.min(chunkCount, Math.ceil(previousHP / hpPerChunk));
-            const chunksToDrain = Math.max(0, chunksFilledBefore - chunksFilledAfter);
+            const maxHP = Math.max(0, boss.maxHP || 0);
+            const currentHP = Math.max(0, Math.min(maxHP, boss.currentHP || 0));
+            const previousHP = Math.max(currentHP, Math.min(maxHP, currentHP + damage));
+            const currentPct = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
+            const previousPct = maxHP > 0 ? (previousHP / maxHP) * 100 : 0;
 
-            const drainClass = isCrit ? 'hp-chunk--draining-crit' : 'hp-chunk--draining';
-            const flashClass = isCrit ? 'hp-chunk--flashing-crit' : 'hp-chunk--flashing';
-
-            if (chunksToDrain > 0) {
-                // Stagger drain rightmost-filled-first; tighter stagger when many
-                // chunks need to drain at once (Execute, big crits, overkill) so the
-                // sequence stays under the 1300ms full-rerender that fires from
-                // attackBoss's setTimeout.
-                const stagger = chunksToDrain >= 10 ? 30 : chunksToDrain >= 5 ? 50 : 80;
-                for (let n = 0; n < chunksToDrain; n++) {
-                    const chunkIdx = chunksFilledBefore - 1 - n;
-                    const chunk = chunks[chunkIdx];
-                    if (!chunk) continue;
-                    setTimeout(() => {
-                        chunk.classList.remove('hp-chunk--filled', 'hp-chunk--flashing', 'hp-chunk--flashing-crit');
-                        chunk.classList.add(drainClass);
-                        // Settle into empty state after drain animation completes so
-                        // a subsequent full re-render finds the DOM in a consistent
-                        // class state even if the keyframe was interrupted.
-                        setTimeout(() => {
-                            chunk.classList.remove(drainClass);
-                            chunk.classList.add('hp-chunk--empty');
-                        }, 500);
-                    }, n * stagger);
-                }
-            } else if (damage > 0 && chunksFilledAfter > 0) {
-                // Hit landed but didn't cross a chunk boundary — flash the rightmost
-                // still-filled chunk so the player still feels the hit on the bar.
-                const boundary = chunks[chunksFilledAfter - 1];
-                if (boundary && boundary.classList.contains('hp-chunk--filled')) {
-                    boundary.classList.add(flashClass);
-                    setTimeout(() => boundary.classList.remove(flashClass), 250);
+            // 1) Drive the fill layer to its new width — CSS transition handles the
+            //    smooth 250ms drain. Update the % label inside the fill while we
+            //    have a reference; hide it below 15% to match the v2.8 behaviour.
+            if (fill) {
+                fill.style.width = `${currentPct}%`;
+                const label = fill.querySelector('.boss-hp-percent');
+                if (label) {
+                    if (currentPct > 15) {
+                        label.textContent = `${Math.round(currentPct)}%`;
+                        label.style.display = '';
+                    } else {
+                        label.style.display = 'none';
+                    }
                 }
             }
 
-            // Phase color cross-fade: update the data-phase attribute, CSS handles
-            // the transition on still-filled chunks via cascading custom properties.
+            // 2) Trigger the damage-trail animation if a hit landed. We feed the
+            //    keyframe its from/to widths via CSS custom properties so a single
+            //    keyframe rule can serve every hit regardless of HP delta. Toggling
+            //    the class off → reflow → on restarts the animation cleanly even if
+            //    the previous hit's animation is still in flight.
+            if (damageLayer && damage > 0 && previousPct > currentPct - 0.001) {
+                damageLayer.style.setProperty('--hp-previous', `${previousPct}%`);
+                damageLayer.style.setProperty('--hp-current', `${currentPct}%`);
+                damageLayer.classList.toggle('boss-hp-damage--crit', isCrit);
+                damageLayer.classList.remove('is-draining');
+                // Force a reflow so the browser registers the class removal before
+                // we re-add it — without this the animation can fail to restart on
+                // rapid sequential hits.
+                void damageLayer.offsetWidth;
+                damageLayer.classList.add('is-draining');
+                // Cleanup at +900ms: animation has finished (700ms hit / 800ms crit
+                // + opacity tail), strip transient classes so the layer falls back
+                // to its hidden default state.
+                setTimeout(() => {
+                    damageLayer.classList.remove('is-draining', 'boss-hp-damage--crit');
+                }, 900);
+            }
+
+            // 3) Phase color cross-fade — update data-phase, the CSS variable
+            //    cascade swaps the gradient palette on the fill layer.
             const newPhase = this.getBossPhase(currentHP, boss.maxHP).color;
-            if (newPhase && track.dataset.phase !== newPhase) {
-                track.dataset.phase = newPhase;
+            if (newPhase && bar.dataset.phase !== newPhase) {
+                bar.dataset.phase = newPhase;
             }
         }
 
@@ -1465,37 +1476,35 @@ class GoalManager {
         return { color: 'red', text: 'Full Power' };
     }
 
-    // v2.9 Track 3 — segmented HP bar markup.
+    // v2.9 Track 3 — damage-trail HP bar markup.
     //
-    // Renders N chunk divs inside a flex track container. N = min(maxHP, 20):
-    // small bosses get 1 HP per chunk (every hit is visually meaningful), big
-    // bosses cap at 20 chunks (each chunk = maxHP/20 HP) so DOM cost stays
-    // bounded and chunk widths stay readable. The track exposes `data-chunk-count`
-    // and `data-hp-per-chunk` so `updateBossHPBar` can recompute drain math
-    // without re-deriving from the DOM. `data-phase` is the CSS hook for
-    // phase-color cross-fades — see `.hp-chunk-track[data-phase="..."]` in
-    // animations.css.
-    renderBossHPChunks(boss, phaseColor) {
+    // Two-layer structure (back to front):
+    //   .boss-hp-damage — the white-flash drain trail. Normally invisible. On
+    //                     hit, JS snaps it to the previous-HP width with full
+    //                     opacity then animates it back down to currentHP%
+    //                     while fading, leaving a brief white "wound" in the
+    //                     damaged portion of the bar.
+    //   .boss-hp-fill   — the live gradient fill at currentHP%. Smoothly
+    //                     transitions to its new width via CSS transition
+    //                     when JS updates its inline width style.
+    // Both layers are absolute-positioned inside the rounded bar container.
+    // `data-phase` on the container drives gradient palette via CSS variables
+    // (--hp-from / --hp-to in animations.css).
+    renderBossHPBar(boss, phaseColor) {
         const maxHP = Math.max(0, boss.maxHP || 0);
         const currentHP = Math.max(0, Math.min(maxHP, boss.currentHP || 0));
         if (maxHP <= 0) return '';
+        const hpPercent = (currentHP / maxHP) * 100;
 
-        const chunkCount = Math.min(maxHP, 20);
-        const hpPerChunk = maxHP / chunkCount;
-        const chunksFilled = Math.ceil(currentHP / hpPerChunk);
-
-        let chunksHtml = '';
-        for (let i = 0; i < chunkCount; i++) {
-            const filled = i < chunksFilled;
-            chunksHtml += `<div class="hp-chunk ${filled ? 'hp-chunk--filled' : 'hp-chunk--empty'}" data-index="${i}"></div>`;
-        }
+        const labelHtml = hpPercent > 15
+            ? `<span class="boss-hp-percent">${Math.round(hpPercent)}%</span>`
+            : '';
 
         return `
-            <div class="hp-chunk-track relative w-full bg-stone-900 rounded-full h-6 border-2 border-${phaseColor}-700/70 overflow-hidden"
-                 data-phase="${phaseColor}"
-                 data-chunk-count="${chunkCount}"
-                 data-hp-per-chunk="${hpPerChunk}">
-                ${chunksHtml}
+            <div class="boss-hp-bar relative w-full bg-stone-900 rounded-full h-6 border-2 border-${phaseColor}-700/70 overflow-hidden"
+                 data-phase="${phaseColor}">
+                <div class="boss-hp-damage" style="--hp-current: ${hpPercent}%; --hp-previous: ${hpPercent}%;"></div>
+                <div class="boss-hp-fill" style="width: ${hpPercent}%">${labelHtml}</div>
             </div>
         `;
     }
@@ -14766,15 +14775,15 @@ class GoalManager {
                         </div>
                     </div>
                     
-                    <!-- HP Bar (v2.9 Track 3 — segmented chunk track; see
-                         renderBossHPChunks() for chunk-count math and
-                         updateBossHPBar() for the per-hit drain logic). -->
+                    <!-- HP Bar (v2.9 Track 3 — two-layer damage-trail bar; see
+                         renderBossHPBar() for markup and updateBossHPBar() for
+                         the per-hit white-flash drain logic). -->
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-1">
                             <span class="text-sm text-amber-200 font-bold fancy-font">HP</span>
                             <span class="text-sm text-${phaseColor}-300 font-bold">${boss.currentHP} / ${boss.maxHP}</span>
                         </div>
-                        ${this.renderBossHPChunks(boss, phaseColor)}
+                        ${this.renderBossHPBar(boss, phaseColor)}
                     </div>
                     
                     ${boss.totalDamage > 0 ? `<div class="text-center text-sm text-amber-300 mb-3 fancy-font">${boss.totalDamage} total damage dealt</div>` : ''}

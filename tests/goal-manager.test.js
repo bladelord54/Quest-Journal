@@ -1844,17 +1844,19 @@ describe('GoalManager', () => {
         });
     });
 
-    // ==================== BOSS HP CHUNK BAR (v2.9 TRACK 3) ====================
+    // ==================== BOSS HP DAMAGE-TRAIL BAR (v2.9 TRACK 3) ====================
 
-    // The chunk-bar refactor (replacing the v2.8 single-fill gradient with N
-    // segmented chunks) introduces three new surfaces worth pinning down:
-    //   - getBossPhase()       — phase color + label thresholds
-    //   - renderBossHPChunks() — chunk count math + filled/empty distribution
-    //   - updateBossHPBar()    — per-hit DOM mutations (drain vs flash, crit
-    //                            class variant, phase data-attribute updates)
+    // The damage-trail bar refactor (two-layer "lag bar" replacing the v2.8
+    // single-fill gradient) introduces three new surfaces worth pinning down:
+    //   - getBossPhase()    — phase color + label thresholds
+    //   - renderBossHPBar() — two-layer markup (fill at currentHP%, damage
+    //                          trail with --hp-current/--hp-previous CSS vars)
+    //   - updateBossHPBar() — per-hit DOM mutations (fill width drain,
+    //                          damage-trail .is-draining toggle + crit variant,
+    //                          phase data-attribute cross-fade)
     // The tests below exercise all three with deterministic inputs.
 
-    describe('Boss HP Chunk Bar (v2.9 Track 3)', () => {
+    describe('Boss HP Damage-Trail Bar (v2.9 Track 3)', () => {
 
         // ---- getBossPhase ----------------------------------------------------
 
@@ -1892,73 +1894,63 @@ describe('GoalManager', () => {
             expect(gm.getBossPhase(0, 0)).toEqual({ color: 'green', text: 'DEFEATED' });
         });
 
-        // ---- renderBossHPChunks chunk count math -----------------------------
+        // ---- renderBossHPBar markup ----------------------------------------
 
-        test('renderBossHPChunks produces maxHP chunks when maxHP <= 20', () => {
+        test('renderBossHPBar emits the two-layer structure (fill + damage)', () => {
             const gm = createTestManager();
-            // maxHP=14 -> 14 chunks (1 HP each)
-            const html = gm.renderBossHPChunks({ maxHP: 14, currentHP: 14 }, 'red');
-            const matches = html.match(/class="hp-chunk /g) || [];
-            expect(matches).toHaveLength(14);
-            expect(html).toContain('data-chunk-count="14"');
-            expect(html).toContain('data-hp-per-chunk="1"');
+            const html = gm.renderBossHPBar({ maxHP: 100, currentHP: 70 }, 'red');
+            expect(html).toContain('boss-hp-bar');
+            expect(html).toContain('boss-hp-fill');
+            expect(html).toContain('boss-hp-damage');
+            expect(html).toContain('data-phase="red"');
         });
 
-        test('renderBossHPChunks caps at 20 chunks when maxHP > 20', () => {
+        test('renderBossHPBar sets fill width to currentHP percentage', () => {
             const gm = createTestManager();
-            // maxHP=100 -> 20 chunks (5 HP each)
-            const html = gm.renderBossHPChunks({ maxHP: 100, currentHP: 100 }, 'red');
-            const matches = html.match(/class="hp-chunk /g) || [];
-            expect(matches).toHaveLength(20);
-            expect(html).toContain('data-chunk-count="20"');
-            expect(html).toContain('data-hp-per-chunk="5"');
+            const html = gm.renderBossHPBar({ maxHP: 100, currentHP: 70 }, 'red');
+            // Fill carries `style="width: 70%"` on the boss-hp-fill div.
+            expect(html).toMatch(/boss-hp-fill"\s+style="width:\s*70%"/);
         });
 
-        test('renderBossHPChunks renders single chunk for maxHP=1 boss', () => {
+        test('renderBossHPBar shows the percent label above 15% HP', () => {
             const gm = createTestManager();
-            const html = gm.renderBossHPChunks({ maxHP: 1, currentHP: 1 }, 'red');
-            const matches = html.match(/class="hp-chunk /g) || [];
-            expect(matches).toHaveLength(1);
+            const html = gm.renderBossHPBar({ maxHP: 100, currentHP: 50 }, 'orange');
+            expect(html).toContain('boss-hp-percent');
+            expect(html).toContain('>50%<');
         });
 
-        test('renderBossHPChunks returns empty string when maxHP <= 0', () => {
+        test('renderBossHPBar omits the percent label at or below 15% HP', () => {
             const gm = createTestManager();
-            expect(gm.renderBossHPChunks({ maxHP: 0, currentHP: 0 }, 'green')).toBe('');
+            const html = gm.renderBossHPBar({ maxHP: 100, currentHP: 12 }, 'purple');
+            expect(html).not.toContain('boss-hp-percent');
         });
 
-        test('renderBossHPChunks emits expected filled/empty distribution', () => {
+        test('renderBossHPBar seeds damage layer with --hp-current matching --hp-previous (idle = invisible)', () => {
             const gm = createTestManager();
-            // maxHP=10, currentHP=7 -> 7 filled, 3 empty
-            const html = gm.renderBossHPChunks({ maxHP: 10, currentHP: 7 }, 'yellow');
-            const filled = (html.match(/hp-chunk--filled/g) || []).length;
-            const empty  = (html.match(/hp-chunk--empty/g)  || []).length;
-            expect(filled).toBe(7);
-            expect(empty).toBe(3);
+            const html = gm.renderBossHPBar({ maxHP: 100, currentHP: 70 }, 'red');
+            // Both vars equal so any stray animation would no-op visually,
+            // and the layer's default opacity 0 keeps it hidden until JS
+            // drives the .is-draining state.
+            expect(html).toContain('--hp-current: 70%');
+            expect(html).toContain('--hp-previous: 70%');
         });
 
-        test('renderBossHPChunks ceils boundary: currentHP between bucket edges still shows the boundary chunk filled', () => {
+        test('renderBossHPBar returns empty string when maxHP <= 0', () => {
             const gm = createTestManager();
-            // maxHP=100 -> hpPerChunk=5; currentHP=93 -> ceil(93/5)=19 filled
-            const html = gm.renderBossHPChunks({ maxHP: 100, currentHP: 93 }, 'red');
-            const filled = (html.match(/hp-chunk--filled/g) || []).length;
-            const empty  = (html.match(/hp-chunk--empty/g)  || []).length;
-            expect(filled).toBe(19);
-            expect(empty).toBe(1);
+            expect(gm.renderBossHPBar({ maxHP: 0, currentHP: 0 }, 'green')).toBe('');
         });
 
-        test('renderBossHPChunks emits the phase data attribute for CSS hookup', () => {
+        test('renderBossHPBar clamps currentHP > maxHP defensively to 100%', () => {
             const gm = createTestManager();
-            const html = gm.renderBossHPChunks({ maxHP: 10, currentHP: 5 }, 'orange');
-            expect(html).toContain('data-phase="orange"');
-            expect(html).toContain('hp-chunk-track');
+            const html = gm.renderBossHPBar({ maxHP: 10, currentHP: 999 }, 'red');
+            expect(html).toMatch(/boss-hp-fill"\s+style="width:\s*100%"/);
         });
 
-        test('renderBossHPChunks clamps currentHP > maxHP defensively', () => {
+        test('renderBossHPBar handles fractional HP percentage cleanly', () => {
             const gm = createTestManager();
-            // Should not produce more filled chunks than chunkCount
-            const html = gm.renderBossHPChunks({ maxHP: 10, currentHP: 999 }, 'red');
-            const filled = (html.match(/hp-chunk--filled/g) || []).length;
-            expect(filled).toBe(10);
+            // 14 maxHP / 11 current = 78.5714...%
+            const html = gm.renderBossHPBar({ maxHP: 14, currentHP: 11 }, 'red');
+            expect(html).toMatch(/boss-hp-fill"\s+style="width:\s*78\.\d+%/);
         });
 
         // ---- updateBossHPBar DOM mutations -----------------------------------
@@ -1970,10 +1962,10 @@ describe('GoalManager', () => {
             const gm = createTestManager();
             const card = document.createElement('div');
             card.id = `boss-card-${bossType}`;
-            const trackHtml = gm.renderBossHPChunks(boss, phaseColor);
+            const barHtml = gm.renderBossHPBar(boss, phaseColor);
             card.innerHTML = `
                 <div class="font-bold">HP <span class="font-bold">${boss.currentHP} / ${boss.maxHP}</span></div>
-                ${trackHtml}
+                ${barHtml}
                 <div class="text-amber-300 mb-3">${boss.totalDamage || 0} total damage dealt</div>
                 <button onclick="goalManager.attackBoss('${bossType}')">ATTACK!</button>
             `;
@@ -1986,61 +1978,74 @@ describe('GoalManager', () => {
             jest.useRealTimers();
         });
 
-        test('updateBossHPBar drains the correct number of chunks for a hit', () => {
+        test('updateBossHPBar drives the fill layer to the new currentHP width', () => {
             jest.useFakeTimers();
             const boss = { maxHP: 10, currentHP: 7, totalDamage: 3 };
             const { gm, card } = mountBossCardDom('daily', boss);
-            gm.attackCharges = 2;
 
-            // Hit dealt 3 damage: previous=10 chunks filled, after=7 -> drain 3 chunks
             gm.updateBossHPBar('daily', boss, 3, false);
 
-            // Drain is staggered (80ms each); fast-forward all timers to settle.
+            const fill = card.querySelector('.boss-hp-fill');
+            expect(fill.style.width).toBe('70%');
             jest.runAllTimers();
-
-            const chunks = card.querySelectorAll('.hp-chunk');
-            const empty = Array.from(chunks).filter(c => c.classList.contains('hp-chunk--empty'));
-            const filled = Array.from(chunks).filter(c => c.classList.contains('hp-chunk--filled'));
-            expect(empty).toHaveLength(3);
-            expect(filled).toHaveLength(7);
         });
 
-        test('updateBossHPBar uses crit drain class when isCrit=true', () => {
+        test('updateBossHPBar triggers the damage trail with previous and current HP CSS vars', () => {
+            jest.useFakeTimers();
+            // Pre-hit HP was 10/10 (100%); after 3 damage current=7/10 (70%).
+            const boss = { maxHP: 10, currentHP: 7, totalDamage: 3 };
+            const { gm, card } = mountBossCardDom('daily', boss);
+
+            gm.updateBossHPBar('daily', boss, 3, false);
+
+            const damage = card.querySelector('.boss-hp-damage');
+            expect(damage.classList.contains('is-draining')).toBe(true);
+            expect(damage.classList.contains('boss-hp-damage--crit')).toBe(false);
+            expect(damage.style.getPropertyValue('--hp-previous').trim()).toBe('100%');
+            expect(damage.style.getPropertyValue('--hp-current').trim()).toBe('70%');
+            jest.runAllTimers();
+        });
+
+        test('updateBossHPBar tags the damage trail with the crit variant on isCrit=true', () => {
             jest.useFakeTimers();
             const boss = { maxHP: 10, currentHP: 7, totalDamage: 3 };
             const { gm, card } = mountBossCardDom('daily', boss);
 
             gm.updateBossHPBar('daily', boss, 3, true);
 
-            // Right after the first stagger tick, the rightmost-drained chunk should
-            // carry the crit drain class (before the post-animation cleanup at +500ms).
-            jest.advanceTimersByTime(1);
-            const draining = card.querySelectorAll('.hp-chunk--draining-crit');
-            expect(draining.length).toBeGreaterThan(0);
-            // And the non-crit drain class should NOT be applied.
-            expect(card.querySelectorAll('.hp-chunk--draining').length).toBe(0);
-
+            const damage = card.querySelector('.boss-hp-damage');
+            expect(damage.classList.contains('is-draining')).toBe(true);
+            expect(damage.classList.contains('boss-hp-damage--crit')).toBe(true);
             jest.runAllTimers();
         });
 
-        test('updateBossHPBar flashes the boundary chunk when hit does not cross a chunk boundary', () => {
+        test('updateBossHPBar strips transient classes after the animation cleanup window', () => {
             jest.useFakeTimers();
-            // maxHP=100, hpPerChunk=5; currentHP went 95 -> 93 (damage=2)
-            // Both round up to 19 chunks filled, so chunksToDrain=0 -> flash path.
-            const boss = { maxHP: 100, currentHP: 93, totalDamage: 2 };
-            const { gm, card } = mountBossCardDom('weekly', boss);
+            const boss = { maxHP: 10, currentHP: 7, totalDamage: 3 };
+            const { gm, card } = mountBossCardDom('daily', boss);
 
-            gm.updateBossHPBar('weekly', boss, 2, false);
+            gm.updateBossHPBar('daily', boss, 3, true);
 
-            // Boundary chunk (index 18, the rightmost still-filled) should have the
-            // flash class applied immediately.
-            const flashing = card.querySelectorAll('.hp-chunk--flashing');
-            expect(flashing.length).toBe(1);
-            expect(card.querySelectorAll('.hp-chunk--flashing-crit').length).toBe(0);
+            const damage = card.querySelector('.boss-hp-damage');
+            expect(damage.classList.contains('is-draining')).toBe(true);
 
-            // After 250ms the flash class is removed.
-            jest.advanceTimersByTime(260);
-            expect(card.querySelectorAll('.hp-chunk--flashing').length).toBe(0);
+            jest.advanceTimersByTime(950);
+            expect(damage.classList.contains('is-draining')).toBe(false);
+            expect(damage.classList.contains('boss-hp-damage--crit')).toBe(false);
+        });
+
+        test('updateBossHPBar with damage=0 leaves the damage trail untouched', () => {
+            jest.useFakeTimers();
+            const boss = { maxHP: 10, currentHP: 7, totalDamage: 0 };
+            const { gm, card } = mountBossCardDom('daily', boss);
+
+            gm.updateBossHPBar('daily', boss, 0, false);
+
+            const damage = card.querySelector('.boss-hp-damage');
+            expect(damage.classList.contains('is-draining')).toBe(false);
+            // Fill width should still be updated to currentHP%
+            expect(card.querySelector('.boss-hp-fill').style.width).toBe('70%');
+            jest.runAllTimers();
         });
 
         test('updateBossHPBar updates the data-phase attribute when HP crosses a phase threshold', () => {
@@ -2048,12 +2053,12 @@ describe('GoalManager', () => {
             // Start at 60% HP (yellow), drop to 40% HP (orange) via 20 damage
             const boss = { maxHP: 100, currentHP: 40, totalDamage: 20 };
             const { gm, card } = mountBossCardDom('daily', boss, 'yellow');
-            const track = card.querySelector('.hp-chunk-track');
-            expect(track.dataset.phase).toBe('yellow');
+            const bar = card.querySelector('.boss-hp-bar');
+            expect(bar.dataset.phase).toBe('yellow');
 
             gm.updateBossHPBar('daily', boss, 20, false);
 
-            expect(track.dataset.phase).toBe('orange');
+            expect(bar.dataset.phase).toBe('orange');
             jest.runAllTimers();
         });
 
@@ -2071,8 +2076,36 @@ describe('GoalManager', () => {
             jest.runAllTimers();
         });
 
-        test('updateBossHPBar is a no-op for chunk drain when track DOM is missing', () => {
-            // Defensive path: card exists but no chunk track (e.g., legacy markup).
+        test('updateBossHPBar hides the % label when HP drops below the 15% threshold', () => {
+            jest.useFakeTimers();
+            // Start at 50% HP, take 40 damage -> 10% HP (below 15% cutoff)
+            const boss = { maxHP: 100, currentHP: 10, totalDamage: 40 };
+            const { gm, card } = mountBossCardDom('daily', boss, 'orange');
+            const label = card.querySelector('.boss-hp-percent');
+            // Initial render: at 50% currentHP, label is present (mountBossCardDom
+            // uses the post-damage boss object, so label was rendered at currentHP%).
+            // Wait — in this fixture the initial HP IS 10%, so the label was
+            // omitted at render time. Verify the helper-mounted DOM matches that.
+            expect(label).toBeNull();
+
+            // Now manually re-mount with a starting HP > 15% to test the dynamic hide.
+            document.body.innerHTML = '';
+            const startBoss = { maxHP: 100, currentHP: 50, totalDamage: 0 };
+            const { gm: gm2, card: card2 } = mountBossCardDom('daily', startBoss, 'yellow');
+            expect(card2.querySelector('.boss-hp-percent')).not.toBeNull();
+
+            // Drop HP to 10% via a 40-damage hit.
+            startBoss.currentHP = 10;
+            startBoss.totalDamage = 40;
+            gm2.updateBossHPBar('daily', startBoss, 40, false);
+
+            const labelAfter = card2.querySelector('.boss-hp-percent');
+            expect(labelAfter.style.display).toBe('none');
+            jest.runAllTimers();
+        });
+
+        test('updateBossHPBar is a no-op for the bar when the bar DOM is missing', () => {
+            // Defensive path: card exists but no bar element.
             const card = document.createElement('div');
             card.id = 'boss-card-daily';
             card.innerHTML = `<div class="font-bold">HP <span class="font-bold">5 / 10</span></div>`;
