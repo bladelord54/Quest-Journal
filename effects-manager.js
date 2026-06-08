@@ -165,6 +165,20 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
 
     const STORAGE_KEY = 'animationIntensity';
 
+    // v2.9 Track 5 — Boss defeat dissolve particle palettes.
+    // Each entry's glyphs are simple text chars (dots + runic shapes) so
+    // they render uniformly across platforms; the per-type color is
+    // applied via `.boss-dissolve-particle--<type>` classes in
+    // animations.css. Kept module-scope (not on EffectsManager) so the
+    // table is private and can't be mutated at runtime.
+    const BOSS_DISSOLVE_GLYPHS = {
+        shadow: { glyphs: ['•', '◦', '·', '◾', '◇', '⋄'] },
+        ember:  { glyphs: ['✦', '✧', '·', '•', '◦', '✺'] },
+        slime:  { glyphs: ['•', '○', '◦', '·', '●'] },
+        leaf:   { glyphs: ['✿', '•', '◦', '·', '✦', '❀'] },
+        arcane: { glyphs: ['✦', '✧', '✺', '◇', '·', '⋄'] }
+    };
+
     const EffectsManager = {
         intensity: 'full',  // 'full' | 'reduced' | 'minimal'
         _activeEffects: 0,
@@ -695,6 +709,211 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             // animation-play-state: paused. Restored immediately after.
             bossEl.classList.add('crit-freeze');
             setTimeout(() => bossEl.classList.remove('crit-freeze'), 80);
+        },
+
+        // ── v2.9 Track 5 — Boss defeat dissolve ──────────────────────
+        //
+        // Disintegrates the boss portrait into themed particles at the
+        // moment of defeat. Called from goal-manager.onBossDefeated() at
+        // the very top of the flow, BEFORE celebrateBossDefeat() takes
+        // over the screen, so the dissolve plays on the still-mounted
+        // live boss card.
+        //
+        // The portrait element gets a CSS class that fades + scales + blurs
+        // it out over 750ms (`@keyframes boss-dissolve-portrait` in
+        // animations.css). Simultaneously we spawn N abstract particles
+        // (small dots / runic glyphs) at the portrait's screen position,
+        // each with random spread coords stored in CSS custom properties;
+        // the CSS keyframe interpolates them along translate(--dx, --dy)
+        // with an upward bias so the particles read as "rising and
+        // dispersing" rather than "falling under gravity".
+        //
+        // Particle palette is selected by `particleType` arg:
+        //   • shadow — purple wisps           (default)
+        //   • ember  — orange fire sparks
+        //   • slime  — green goo droplets
+        //   • leaf   — yellow-green nature
+        //   • arcane — bright purple runes
+        // Each palette is just a color set + glyph list — see
+        // BOSS_DISSOLVE_GLYPHS below and `.boss-dissolve-particle--*` in
+        // animations.css for the color rules.
+        //
+        // Intensity gates:
+        //   • minimal — skip entirely (caller still proceeds; defeat
+        //               celebration handles its own visuals).
+        //   • reduced — 8 particles instead of 16.
+        //   • full    — 16 particles + portrait dissolve.
+        bossDefeatDissolve(portraitEl, particleType) {
+            if (!portraitEl) return;
+            if (this.intensity === 'minimal') return;
+            const palette = BOSS_DISSOLVE_GLYPHS[particleType] || BOSS_DISSOLVE_GLYPHS.shadow;
+            const typeClass = `boss-dissolve-particle--${BOSS_DISSOLVE_GLYPHS[particleType] ? particleType : 'shadow'}`;
+
+            // 1) Capture portrait center BEFORE applying the dissolve
+            //    class — the class triggers a transform that would skew
+            //    getBoundingClientRect() if we read it after.
+            const center = this._resolveCenter(portraitEl);
+
+            // 2) Drive the portrait dissolve animation. `pointer-events:
+            //    none` is part of the CSS class so the dissolving portrait
+            //    can't accidentally swallow clicks meant for the celebration
+            //    overlays that follow.
+            portraitEl.classList.add('boss-dissolve-portrait');
+
+            // 3) Spawn the particle burst. Stagger entry by ~18ms each so
+            //    the burst feels organic ("the boss is falling apart")
+            //    rather than a single-frame explosion. Particles are
+            //    position:fixed so they survive the boss-card re-render
+            //    that happens at the end of onBossDefeated.
+            const count = this.intensity === 'reduced' ? 8 : 16;
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                p.className = `boss-dissolve-particle ${typeClass}`;
+                p.setAttribute('aria-hidden', 'true');
+                p.textContent = palette.glyphs[i % palette.glyphs.length];
+                // Random spread: full 2π arc, biased upward via -30px on dy
+                // so the cloud rises like smoke instead of a uniform burst.
+                const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+                const distance = 70 + Math.random() * 90;
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance - 30;
+                const rot = (Math.random() - 0.5) * 540;
+                p.style.left = center.x + 'px';
+                p.style.top = center.y + 'px';
+                p.style.setProperty('--dx', dx + 'px');
+                p.style.setProperty('--dy', dy + 'px');
+                p.style.setProperty('--rot', rot + 'deg');
+                p.style.animationDelay = (i * 18) + 'ms';
+                document.body.appendChild(p);
+                // Total lifespan = animationDelay + animation duration (1100ms)
+                // + 200ms safety. Pinning cleanup with setTimeout instead of
+                // animationend so we don't lose particles if the keyframe
+                // is interrupted (e.g., user navigates away mid-defeat).
+                setTimeout(() => p.remove(), 1300 + i * 18);
+            }
+        },
+
+        // ── v2.9 Track 5 — Loot fountain ─────────────────────────────
+        //
+        // Animates loot icons rising from the defeated boss's location
+        // and arcing into the player's avatar ring in the top header.
+        // Called from onBossDefeated AT the existing showLootPanel delay
+        // (3500ms or 6000ms with a pending level-up); the panel itself
+        // opens via the onArrive callback when the LAST item lands, so
+        // the user sees fountain → panel as a natural cause/effect chain.
+        //
+        // Arc math: quadratic Bezier with three control points
+        //   P0 = from (boss location)
+        //   P1 = midpoint, lifted 120-160px above the higher of from/to
+        //   P2 = to   (player avatar ring)
+        // Animated over 900ms via requestAnimationFrame. Each sprite is
+        // staggered by 110ms so the fountain reads as a stream rather
+        // than a single pop.
+        //
+        // Fallback paths:
+        //   • toEl missing/hidden → onArrive fires immediately (defeat
+        //     celebration still completes, panel still opens).
+        //   • intensity === 'minimal' → onArrive fires immediately.
+        //   • items array empty → onArrive fires immediately.
+        //   • intensity === 'reduced' → cap at 4 sprites.
+        lootFountain(fromEl, toEl, items, onArrive) {
+            const safeArrive = () => { if (typeof onArrive === 'function') onArrive(); };
+            if (!fromEl || !toEl || !Array.isArray(items) || items.length === 0) {
+                safeArrive();
+                return;
+            }
+            if (this.intensity === 'minimal') {
+                safeArrive();
+                return;
+            }
+
+            // Resolve geometry. _resolveCenter returns viewport-center
+            // fallback if the element has zero bounding-rect (e.g., hidden
+            // behind a modal) — in that case the sprites still animate
+            // out of frame and we still call onArrive at the end.
+            const from = this._resolveCenter(fromEl);
+            const to   = this._resolveCenter(toEl);
+
+            const limit = this.intensity === 'reduced'
+                ? Math.min(items.length, 4)
+                : Math.min(items.length, 8); // hard cap at 8 — bigger fountains start to thrash on mobile
+            const stagger = 110;
+            const arcDuration = 900;
+            let completed = 0;
+            const total = limit;
+            const self = this;
+
+            for (let i = 0; i < limit; i++) {
+                const item = items[i];
+                const icon = (item && item.icon) || '✨';
+
+                setTimeout(() => {
+                    const sprite = document.createElement('div');
+                    sprite.className = 'loot-fountain-sprite';
+                    sprite.setAttribute('aria-hidden', 'true');
+                    sprite.textContent = icon;
+                    sprite.style.left = from.x + 'px';
+                    sprite.style.top  = from.y + 'px';
+                    document.body.appendChild(sprite);
+
+                    // Horizontal scatter at origin (so concurrent sprites
+                    // don't stack on top of each other) and a peakY above
+                    // both endpoints so the arc reads as a real "rise then
+                    // fall" rather than a flat slide.
+                    const scatterX = (Math.random() - 0.5) * 50;
+                    const startX = from.x + scatterX;
+                    const peakY = Math.min(from.y, to.y) - 120 - Math.random() * 50;
+                    const startTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+                    function step(now) {
+                        const t = Math.min(1, (now - startTime) / arcDuration);
+                        const midX = (startX + to.x) / 2;
+                        // Quadratic Bezier
+                        const x = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * midX + t * t * to.x;
+                        const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * peakY + t * t * to.y;
+                        // Scale ramps up quickly, holds, shrinks slightly on
+                        // approach so the sprite reads as "dropping into" the
+                        // avatar ring.
+                        const scale = t < 0.2 ? 0.4 + t * 3 : (t < 0.85 ? 1 : 1 - (t - 0.85) * 2);
+                        const opacity = t > 0.88 ? Math.max(0, 1 - (t - 0.88) / 0.12) : 1;
+                        sprite.style.left = x + 'px';
+                        sprite.style.top  = y + 'px';
+                        sprite.style.opacity = String(opacity);
+                        sprite.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${t * 360}deg)`;
+                        if (t < 1) {
+                            requestAnimationFrame(step);
+                        } else {
+                            sprite.remove();
+                            // Pulse the target on arrival — reflow trick so
+                            // the keyframe restarts cleanly on each landing.
+                            if (toEl && toEl.classList) {
+                                toEl.classList.remove('loot-fountain-target-pulse');
+                                void toEl.offsetWidth;
+                                toEl.classList.add('loot-fountain-target-pulse');
+                                setTimeout(() => toEl.classList.remove('loot-fountain-target-pulse'), 600);
+                            }
+                            completed++;
+                            if (completed >= total) safeArrive();
+                        }
+                    }
+
+                    // jsdom (test env) doesn't have requestAnimationFrame
+                    // semantics that drive the loop, so we short-circuit:
+                    // mount + cleanup + arrive synchronously. Production
+                    // browsers always take the rAF path.
+                    if (typeof requestAnimationFrame === 'function') {
+                        requestAnimationFrame(step);
+                    } else {
+                        sprite.remove();
+                        if (toEl && toEl.classList) {
+                            toEl.classList.add('loot-fountain-target-pulse');
+                            setTimeout(() => toEl.classList.remove('loot-fountain-target-pulse'), 600);
+                        }
+                        completed++;
+                        if (completed >= total) safeArrive();
+                    }
+                }, i * stagger);
+            }
         },
 
         spellUnlocked(spell, sourceEl) {

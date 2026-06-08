@@ -876,51 +876,79 @@ class GoalManager {
         };
     }
 
+    // v2.9 Track 5 — Boss theme definitions now carry a `particleType` field
+    // that drives the defeat-dissolve particle palette (effectsManager
+    // .bossDefeatDissolve). Five palettes:
+    //   • shadow — dark purple wisps (default for spectral/evil bosses)
+    //   • ember  — orange/red sparks (fire/demonic/draconic)
+    //   • slime  — green goo (slimes, serpents, sea creatures)
+    //   • leaf   — yellow-green nature (fungal, plant, scarecrow)
+    //   • arcane — bright purple runes (undead, void, ghost, magic)
+    // Existing saved boss objects (pre-v2.9) lack the field; the runtime
+    // helper getBossParticleType() falls back to a name lookup against
+    // these definitions, so no migration is needed.
     initializeBossThemes() {
         return {
             daily: [
-                { name: 'Slime of Procrastination', icon: '🟢', flavor: 'A gelatinous blob that feeds on delayed tasks.' },
-                { name: 'Goblin of Distraction', icon: '👺', flavor: 'Sneaky creature that steals your focus.' },
-                { name: 'Imp of Laziness', icon: '😈', flavor: 'Whispers sweet nothings about staying in bed.' },
-                { name: 'Shadow of Doubt', icon: '👤', flavor: 'A dark figure that questions your every move.' },
-                { name: 'Skeleton of Bad Habits', icon: '💀', flavor: 'Rattles with the chains of old patterns.' },
-                { name: 'Bat of Anxiety', icon: '🦇', flavor: 'Swoops in when you least expect it.' },
-                { name: 'Spider of Overwhelm', icon: '🕷️', flavor: 'Spins webs of endless to-do lists.' },
-                { name: 'Rat of Excuses', icon: '🐀', flavor: 'Gnaws away at your good intentions.' },
-                { name: 'Ghost of Yesterday', icon: '👻', flavor: 'Haunts you with missed opportunities.' },
-                { name: 'Mushroom of Confusion', icon: '🍄', flavor: 'Clouds your mind with indecision.' },
-                { name: 'Snake of Temptation', icon: '🐍', flavor: 'Lures you toward quick dopamine hits.' },
-                { name: 'Scarecrow of Fear', icon: '🎃', flavor: 'Guards the field of your ambitions.' },
-                { name: 'Troll of Negativity', icon: '🧌', flavor: 'Blocks the bridge to your goals.' },
-                { name: 'Wisp of Forgetfulness', icon: '🔮', flavor: 'Makes important tasks vanish from memory.' }
+                { name: 'Slime of Procrastination', icon: '🟢', flavor: 'A gelatinous blob that feeds on delayed tasks.', particleType: 'slime' },
+                { name: 'Goblin of Distraction', icon: '👺', flavor: 'Sneaky creature that steals your focus.', particleType: 'shadow' },
+                { name: 'Imp of Laziness', icon: '😈', flavor: 'Whispers sweet nothings about staying in bed.', particleType: 'ember' },
+                { name: 'Shadow of Doubt', icon: '👤', flavor: 'A dark figure that questions your every move.', particleType: 'shadow' },
+                { name: 'Skeleton of Bad Habits', icon: '💀', flavor: 'Rattles with the chains of old patterns.', particleType: 'arcane' },
+                { name: 'Bat of Anxiety', icon: '🦇', flavor: 'Swoops in when you least expect it.', particleType: 'shadow' },
+                { name: 'Spider of Overwhelm', icon: '🕷️', flavor: 'Spins webs of endless to-do lists.', particleType: 'shadow' },
+                { name: 'Rat of Excuses', icon: '🐀', flavor: 'Gnaws away at your good intentions.', particleType: 'shadow' },
+                { name: 'Ghost of Yesterday', icon: '👻', flavor: 'Haunts you with missed opportunities.', particleType: 'arcane' },
+                { name: 'Mushroom of Confusion', icon: '🍄', flavor: 'Clouds your mind with indecision.', particleType: 'leaf' },
+                { name: 'Snake of Temptation', icon: '🐍', flavor: 'Lures you toward quick dopamine hits.', particleType: 'slime' },
+                { name: 'Scarecrow of Fear', icon: '🎃', flavor: 'Guards the field of your ambitions.', particleType: 'leaf' },
+                { name: 'Troll of Negativity', icon: '🧌', flavor: 'Blocks the bridge to your goals.', particleType: 'shadow' },
+                { name: 'Wisp of Forgetfulness', icon: '🔮', flavor: 'Makes important tasks vanish from memory.', particleType: 'arcane' }
             ],
             weekly: [
-                { name: 'Dragon of Distraction', icon: '🐉', flavor: 'Ancient beast that hoards your wasted hours.' },
-                { name: 'Lich of Procrastination', icon: '☠️', flavor: 'Undying lord of "I\'ll do it tomorrow."' },
-                { name: 'Hydra of Overthinking', icon: '🐲', flavor: 'Cut one worry, two more take its place.' },
-                { name: 'Demon of Self-Doubt', icon: '👿', flavor: 'Feeds on your insecurities to grow stronger.' },
-                { name: 'Titan of Burnout', icon: '👹', flavor: 'Massive creature born from overwork.' },
-                { name: 'Kraken of Chaos', icon: '🦑', flavor: 'Tentacles of disorder wrap around your plans.' },
-                { name: 'Cerberus of Temptation', icon: '🐕', flavor: 'Three heads: social media, games, and snacks.' },
-                { name: 'Golem of Stagnation', icon: '🗿', flavor: 'An immovable wall blocking your progress.' },
-                { name: 'Wyvern of Wasted Time', icon: '🦅', flavor: 'Soars away with your precious hours.' },
-                { name: 'Necromancer of Old Habits', icon: '🧙', flavor: 'Keeps resurrecting the patterns you buried.' }
+                { name: 'Dragon of Distraction', icon: '🐉', flavor: 'Ancient beast that hoards your wasted hours.', particleType: 'ember' },
+                { name: 'Lich of Procrastination', icon: '☠️', flavor: 'Undying lord of "I\'ll do it tomorrow."', particleType: 'arcane' },
+                { name: 'Hydra of Overthinking', icon: '🐲', flavor: 'Cut one worry, two more take its place.', particleType: 'slime' },
+                { name: 'Demon of Self-Doubt', icon: '👿', flavor: 'Feeds on your insecurities to grow stronger.', particleType: 'ember' },
+                { name: 'Titan of Burnout', icon: '👹', flavor: 'Massive creature born from overwork.', particleType: 'ember' },
+                { name: 'Kraken of Chaos', icon: '🦑', flavor: 'Tentacles of disorder wrap around your plans.', particleType: 'slime' },
+                { name: 'Cerberus of Temptation', icon: '🐕', flavor: 'Three heads: social media, games, and snacks.', particleType: 'shadow' },
+                { name: 'Golem of Stagnation', icon: '🗿', flavor: 'An immovable wall blocking your progress.', particleType: 'shadow' },
+                { name: 'Wyvern of Wasted Time', icon: '🦅', flavor: 'Soars away with your precious hours.', particleType: 'ember' },
+                { name: 'Necromancer of Old Habits', icon: '🧙', flavor: 'Keeps resurrecting the patterns you buried.', particleType: 'arcane' }
             ],
             monthly: [
-                { name: 'The Obsidian Warden', icon: '🏴', flavor: 'An ancient guardian forged from pure resistance to change.' },
-                { name: 'Archmage of the Void', icon: '🌑', flavor: 'Master of nothingness who erases your motivation.' },
-                { name: 'Behemoth of Despair', icon: '🦣', flavor: 'A colossal beast whose footsteps shake your resolve.' },
-                { name: 'The Crimson Overlord', icon: '👑', flavor: 'Tyrannical ruler who demands your surrender to mediocrity.' },
-                { name: 'Leviathan of Lost Days', icon: '🐋', flavor: 'Swallows entire weeks into its endless abyss.' },
-                { name: 'The Phantom Emperor', icon: '👁️', flavor: 'Rules an invisible empire built on your abandoned dreams.' },
-                { name: 'Colossus of Complacency', icon: '🗽', flavor: 'A towering monument to "good enough" thinking.' },
-                { name: 'The Abyssal Serpent', icon: '🐍', flavor: 'Coils around your potential and drags it to the depths.' },
-                { name: 'Infernal Juggernaut', icon: '🔥', flavor: 'An unstoppable force of destructive routines.' },
-                { name: 'The Shadow Sovereign', icon: '🌘', flavor: 'Commands an army of every excuse you\'ve ever made.' },
-                { name: 'Dreadnought of Doom', icon: '⚓', flavor: 'An armored fortress of fear that blocks your horizon.' },
-                { name: 'The Eternal Watcher', icon: '🗿', flavor: 'Has observed a thousand failed resolutions. Will yours be different?' }
+                { name: 'The Obsidian Warden', icon: '🏴', flavor: 'An ancient guardian forged from pure resistance to change.', particleType: 'shadow' },
+                { name: 'Archmage of the Void', icon: '🌑', flavor: 'Master of nothingness who erases your motivation.', particleType: 'arcane' },
+                { name: 'Behemoth of Despair', icon: '🦣', flavor: 'A colossal beast whose footsteps shake your resolve.', particleType: 'shadow' },
+                { name: 'The Crimson Overlord', icon: '👑', flavor: 'Tyrannical ruler who demands your surrender to mediocrity.', particleType: 'ember' },
+                { name: 'Leviathan of Lost Days', icon: '🐋', flavor: 'Swallows entire weeks into its endless abyss.', particleType: 'slime' },
+                { name: 'The Phantom Emperor', icon: '👁️', flavor: 'Rules an invisible empire built on your abandoned dreams.', particleType: 'arcane' },
+                { name: 'Colossus of Complacency', icon: '🗽', flavor: 'A towering monument to "good enough" thinking.', particleType: 'shadow' },
+                { name: 'The Abyssal Serpent', icon: '🐍', flavor: 'Coils around your potential and drags it to the depths.', particleType: 'slime' },
+                { name: 'Infernal Juggernaut', icon: '🔥', flavor: 'An unstoppable force of destructive routines.', particleType: 'ember' },
+                { name: 'The Shadow Sovereign', icon: '🌘', flavor: 'Commands an army of every excuse you\'ve ever made.', particleType: 'shadow' },
+                { name: 'Dreadnought of Doom', icon: '⚓', flavor: 'An armored fortress of fear that blocks your horizon.', particleType: 'shadow' },
+                { name: 'The Eternal Watcher', icon: '🗿', flavor: 'Has observed a thousand failed resolutions. Will yours be different?', particleType: 'shadow' }
             ]
         };
+    }
+
+    // v2.9 Track 5 — Resolve a boss's defeat-dissolve particle palette.
+    // Newly generated bosses carry `particleType` directly (spread from the
+    // theme definition in generateDailyBoss/Weekly/Monthly). Older save
+    // data lacks it — fall back to a name lookup across all theme arrays.
+    // Final fallback: 'shadow' (the most generic spectral/evil palette).
+    getBossParticleType(boss) {
+        if (!boss) return 'shadow';
+        if (boss.particleType) return boss.particleType;
+        const all = [
+            ...(this.bossThemes?.daily   || []),
+            ...(this.bossThemes?.weekly  || []),
+            ...(this.bossThemes?.monthly || [])
+        ];
+        const match = all.find(t => t.name === boss.name);
+        return match?.particleType || 'shadow';
     }
     
     generateBosses() {
@@ -976,6 +1004,7 @@ class GoalManager {
             name: theme.name,
             icon: theme.icon,
             flavor: theme.flavor,
+            particleType: theme.particleType, // v2.9 Track 5
             maxHP: maxHP,
             currentHP: maxHP,
             level: bossLevel,
@@ -1002,6 +1031,7 @@ class GoalManager {
             name: theme.name,
             icon: theme.icon,
             flavor: theme.flavor,
+            particleType: theme.particleType, // v2.9 Track 5
             maxHP: maxHP,
             currentHP: maxHP,
             level: bossLevel,
@@ -1038,6 +1068,7 @@ class GoalManager {
             name: theme.name,
             icon: theme.icon,
             flavor: theme.flavor,
+            particleType: theme.particleType, // v2.9 Track 5
             maxHP: maxHP,
             currentHP: maxHP,
             level: bossLevel,
@@ -1513,6 +1544,21 @@ class GoalManager {
         const boss = bossType === 'daily' ? this.dailyBoss : bossType === 'weekly' ? this.weeklyBoss : this.monthlyBoss;
         if (!boss) return;
         
+        // v2.9 Track 5 — Start defeat dissolve IMMEDIATELY on the still-
+        // mounted boss card, before any state mutations or celebration
+        // overlays. The dissolve completes in ~750ms while the rest of
+        // this function runs synchronously; celebrateBossDefeat() then
+        // takes over the screen with the full-screen flash overlay.
+        // We also cache the boss-card reference for the later loot
+        // fountain, since the card gets re-rendered to its defeated
+        // variant by renderBossBattles() at the end of this function.
+        const bossCardEl = document.getElementById(`boss-card-${bossType}`);
+        const portraitEl = bossCardEl?.querySelector('.boss-portrait');
+        const particleType = this.getBossParticleType(boss);
+        if (window.effectsManager && portraitEl) {
+            window.effectsManager.bossDefeatDissolve(portraitEl, particleType);
+        }
+        
         // Update streaks
         if (bossType === 'daily') {
             this.dailyBossStreak++;
@@ -1607,12 +1653,28 @@ class GoalManager {
             }, 3500);
         }
         
-        // Show loot panel after celebrations finish (delay further if level-up plays too)
+        // Show loot panel after celebrations finish (delay further if level-up plays too).
+        // v2.9 Track 5 — Before the panel opens, run the loot fountain:
+        // an arcing stream of loot icons from the boss's location into
+        // the player avatar ring. The fountain's onArrive callback fires
+        // once the LAST sprite lands, opening the panel naturally as the
+        // visual cause/effect chain ("the loot flows from the boss into
+        // your inventory, then you open it"). When the fountain falls
+        // back (no avatar found, minimal intensity, empty items), the
+        // callback fires synchronously and the panel opens with the
+        // legacy timing.
         if (loot.length > 0) {
             const bossLootType = `boss_${bossType}`;
             const lootDelay = hadPendingLevelUp ? 6000 : 3500;
             setTimeout(() => {
-                this.showLootPanel(bossLootType, loot);
+                const targetEl = document.getElementById('player-avatar-ring');
+                const originEl = document.getElementById(`boss-card-${bossType}`) || bossCardEl || document.body;
+                const openPanel = () => this.showLootPanel(bossLootType, loot);
+                if (window.effectsManager && targetEl) {
+                    window.effectsManager.lootFountain(originEl, targetEl, loot, openPanel);
+                } else {
+                    openPanel();
+                }
             }, lootDelay);
         }
         

@@ -983,6 +983,146 @@ body.fx-reduced .crit-shockwave { display: none; }
 body.fx-minimal .crit-reticle,
 body.fx-minimal .crit-shockwave { display: none; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.9 Track 5 — Boss defeat dissolve + loot fountain
+   ═══════════════════════════════════════════════════════════════════════════
+   Triggered when a boss is reduced to 0 HP and goal-manager.onBossDefeated()
+   runs. Two distinct visual phases:
+
+   1) Dissolve (0–1300ms)
+      • `.boss-dissolve-portrait` applied to the bouncing portrait div in
+        the boss card → fades + scales + blurs out via
+        `@keyframes boss-dissolve-portrait`.
+      • 16 (or 8 on reduced) themed particles spawned at portrait center
+        via `.boss-dissolve-particle` + `.boss-dissolve-particle--<type>`
+        for color tinting. Each carries `--dx`/`--dy`/`--rot` CSS custom
+        properties driving the burst trajectory, with an upward bias so
+        the cloud rises like smoke.
+
+   2) Loot fountain (3500ms or 6000ms after defeat → ~+900ms)
+      • `.loot-fountain-sprite` icons mount at the boss location and are
+        animated along a quadratic Bezier arc into `#player-avatar-ring`
+        via requestAnimationFrame (JS-driven coords; CSS only styles).
+      • On each landing, `.loot-fountain-target-pulse` flashes the avatar
+        ring briefly.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Boss portrait dissolve ── */
+.boss-dissolve-portrait {
+    animation: boss-dissolve-portrait 750ms ease-out forwards;
+    pointer-events: none;
+    will-change: transform, opacity, filter;
+}
+
+@keyframes boss-dissolve-portrait {
+    0%   { transform: scale(1) rotate(0deg);     opacity: 1;   filter: brightness(1) blur(0); }
+    25%  { transform: scale(1.18) rotate(-3deg); opacity: 1;   filter: brightness(1.7) blur(0); }
+    55%  { transform: scale(0.95) rotate(6deg);  opacity: 0.7; filter: brightness(1.3) blur(2px); }
+    100% { transform: scale(0.45) rotate(18deg); opacity: 0;   filter: brightness(0.7) blur(8px); }
+}
+
+/* ── Dissolve particles (base) ── */
+.boss-dissolve-particle {
+    position: fixed;
+    pointer-events: none;
+    font-size: 1.4rem;
+    font-weight: bold;
+    z-index: 9000;
+    transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+    opacity: 0;
+    animation: boss-dissolve-particle 1100ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    will-change: transform, opacity;
+    line-height: 1;
+}
+
+@keyframes boss-dissolve-particle {
+    0%   { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 0; }
+    12%  { transform: translate(-50%, -50%) scale(1.4) rotate(20deg); opacity: 1; }
+    100% {
+        transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)))
+                   scale(0.4) rotate(var(--rot, 0deg));
+        opacity: 0;
+    }
+}
+
+/* ── Dissolve particle palettes ──
+   Each palette sets a color + glow shadow. Glyphs themselves come from
+   BOSS_DISSOLVE_GLYPHS in effects-manager.js. */
+.boss-dissolve-particle--shadow {
+    color: #c4b5fd;
+    text-shadow: 0 0 8px #6b21a8, 0 0 16px #4c1d95;
+}
+.boss-dissolve-particle--ember {
+    color: #fb923c;
+    text-shadow: 0 0 10px #ea580c, 0 0 18px #b45309;
+}
+.boss-dissolve-particle--slime {
+    color: #4ade80;
+    text-shadow: 0 0 10px #16a34a, 0 0 16px #14532d;
+}
+.boss-dissolve-particle--leaf {
+    color: #bef264;
+    text-shadow: 0 0 8px #65a30d, 0 0 14px #3f6212;
+}
+.boss-dissolve-particle--arcane {
+    color: #e9d5ff;
+    text-shadow: 0 0 10px #a855f7, 0 0 18px #c084fc;
+}
+
+/* ── Loot fountain sprite ──
+   JS drives left/top/transform on every rAF tick; CSS just provides the
+   base presentation (size, glow, layering). */
+.loot-fountain-sprite {
+    position: fixed;
+    font-size: 1.9rem;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 9100;
+    transform: translate(-50%, -50%) scale(0.4);
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.85))
+            drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    will-change: left, top, transform, opacity;
+}
+
+/* ── Loot fountain target pulse ──
+   Triggered on the player avatar ring each time a loot sprite lands.
+   Restart-on-reflow pattern in JS ensures the keyframe fires fresh on
+   every landing (so a 3-item fountain pulses the ring 3 times in quick
+   succession). */
+.loot-fountain-target-pulse {
+    animation: loot-fountain-target-pulse 600ms ease-out;
+}
+
+@keyframes loot-fountain-target-pulse {
+    0%   { transform: scale(1);     filter: brightness(1); }
+    30%  { transform: scale(1.18);  filter: brightness(1.6) drop-shadow(0 0 14px rgba(255, 215, 0, 0.85)); }
+    60%  { transform: scale(1.05);  filter: brightness(1.2); }
+    100% { transform: scale(1);     filter: brightness(1); }
+}
+
+/* ── Reduced motion (system-level): skip dramatic visuals; the existing
+       celebrateBossDefeat still runs and provides defeat feedback. ── */
+@media (prefers-reduced-motion: reduce) {
+    .boss-dissolve-portrait {
+        animation: none;
+        opacity: 0;
+    }
+    .boss-dissolve-particle,
+    .loot-fountain-sprite {
+        display: none;
+    }
+    .loot-fountain-target-pulse { animation: none; }
+}
+
+/* App-level intensity gates (mirror the JS branches):
+   • fx-reduced — particle count already trimmed to 8 in JS; sprite count
+     capped at 4. No additional CSS gating needed.
+   • fx-minimal — JS skips spawning entirely; CSS hides anything that
+     somehow leaks through. */
+body.fx-minimal .boss-dissolve-portrait { animation: none; opacity: 0; }
+body.fx-minimal .boss-dissolve-particle,
+body.fx-minimal .loot-fountain-sprite { display: none; }
+
 /* ===== ENHANCED LEVEL UP ANIMATIONS ===== */
 
 /* Full-screen golden flash */

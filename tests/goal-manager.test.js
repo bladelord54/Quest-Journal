@@ -2685,4 +2685,65 @@ describe('GoalManager', () => {
             before.forEach(t => expect(gm.unlockedThemes).toContain(t));
         });
     });
+
+    // ==================== v2.9 TRACK 5 — Boss particle types ====================
+    //
+    // Guards the contract between the boss theme catalog and the defeat
+    // dissolve effect (effects-manager.bossDefeatDissolve):
+    //   • Every boss theme carries a `particleType` in the 5-value enum.
+    //   • Newly-generated bosses inherit that field.
+    //   • getBossParticleType() falls back to name-lookup for legacy
+    //     saves that pre-date the field, and to 'shadow' as final default.
+    //
+    describe('Boss particle types (v2.9 Track 5)', () => {
+
+        const VALID_PARTICLE_TYPES = ['shadow', 'ember', 'slime', 'leaf', 'arcane'];
+
+        test('every daily/weekly/monthly boss theme declares a valid particleType', () => {
+            const gm = createTestManager();
+            const all = [
+                ...gm.bossThemes.daily,
+                ...gm.bossThemes.weekly,
+                ...gm.bossThemes.monthly
+            ];
+            // Sanity: we should have at least 30 themes across the three tiers.
+            expect(all.length).toBeGreaterThanOrEqual(30);
+            all.forEach(theme => {
+                expect(theme.particleType).toBeDefined();
+                expect(VALID_PARTICLE_TYPES).toContain(theme.particleType);
+            });
+        });
+
+        test('getBossParticleType returns the boss.particleType when present', () => {
+            const gm = createTestManager();
+            const boss = { name: 'Custom Boss', particleType: 'ember' };
+            expect(gm.getBossParticleType(boss)).toBe('ember');
+        });
+
+        test('getBossParticleType falls back to a name lookup for legacy saves', () => {
+            // Simulates a pre-v2.9 saved boss object that lacks particleType.
+            // The helper must reach into bossThemes and find the matching
+            // entry by name. "Slime of Procrastination" is daily/slime.
+            const gm = createTestManager();
+            const legacyBoss = { name: 'Slime of Procrastination', icon: '🟢' };
+            expect(gm.getBossParticleType(legacyBoss)).toBe('slime');
+        });
+
+        test('getBossParticleType defaults to "shadow" when the boss is unknown', () => {
+            const gm = createTestManager();
+            const mystery = { name: 'Some Boss That Does Not Exist' };
+            expect(gm.getBossParticleType(mystery)).toBe('shadow');
+            expect(gm.getBossParticleType(null)).toBe('shadow');
+            expect(gm.getBossParticleType(undefined)).toBe('shadow');
+        });
+
+        test('generateDailyBoss seeds particleType on the new boss object', () => {
+            const gm = createTestManager();
+            gm.dailyBoss = null;
+            gm.generateDailyBoss('2026-06-08');
+            expect(gm.dailyBoss).not.toBeNull();
+            expect(gm.dailyBoss.particleType).toBeDefined();
+            expect(VALID_PARTICLE_TYPES).toContain(gm.dailyBoss.particleType);
+        });
+    });
 });
