@@ -184,6 +184,367 @@ body.theme-shadow {
         linear-gradient(to bottom, #1f2937, #111827, #030712) !important;
 }
 
+/* ===== STORMWATCH (v2.8 prototype, hybrid marquee) ===== */
+/* v2.8 PROTOTYPE (Jun 2-3, 2026): see animations.css's Stormwatch
+   timeline block for the full Jun 2 → Jun 3 evolution. Short version:
+   landed CSS-only Jun 2 → promoted to hybrid marquee Jun 3 with
+   `icons/stormwatch-bg.webm` v1 (861KB) → CSS lightning effect dropped
+   Jun 3 after device testing showed both the flash and the toned-down
+   horizon glow read wrong → WebM swapped to v2 (992KB) Jun 3 with
+   small cloud-to-cloud lightning baked into the footage, restoring
+   the lightning cue without WCAG-2.3.1 concerns since video-encoded
+   flashes are constrained to the cloud region and naturally low-
+   contrast. Current storm cue: WebM v2 (clouds + baked lightning) +
+   `.particle-rain` streaks. This makes Stormwatch the v2.8 marquee theme; the
+   four remaining v2.8 themes (Sunken Library, Verdant Grove, Obsidian
+   Forge, Aurora Spires) stay pure-CSS per strategy D's "at most ONE
+   marquee theme per release" clause. The body gradient defined below
+   is the fallback for when the video fails to decode
+   (`hideVideoKeepThemedGradients`); when the video plays,
+   `body.has-theme-bg.theme-stormwatch` makes the body transparent so
+   the WebM shows through. */
+/* ===== VERDANT GROVE (v2.8, promoted to hybrid Jun 4, 2026) =====
+   Originally shipped as a pure-CSS theme #2 (palette + .particle-leaf +
+   moss SVG accents). Promoted to hybrid when the user supplied an
+   ambient grove WebM (`icons/verdant-bg.webm`). The body gradient +
+   radial highlights below stay wired as the no-decode fallback — if
+   the video fails to load, `hideVideoKeepThemedGradients` strips
+   `has-theme-bg` from the body and these gradients become the visible
+   background. When the video plays, `body.has-theme-bg.theme-verdant`
+   (transparency block at bottom of this file) makes the body
+   transparent so the WebM shows through. The moss SVG accents on
+   `.quest-card` and the `.particle-leaf` particles remain visible
+   either way — they paint on top of either the video or the fallback
+   gradient. Ancient-druid feel sold by:
+     - WebM grove ambient motion (primary)
+     - Three-radial fallback gradient (secondary, no-decode case)
+     - Moss SVG variety system on cards (84-combo cycle)
+     - Slow leaf drift particles (12-18s)
+   This makes v2.8 the first release with TWO hybrid themes
+   (Stormwatch + Verdant Grove) — strategy D's "at most ONE marquee
+   per release" clause is being revisited. ROADMAP § 2.4. */
+body.theme-verdant {
+    /* Jun 4, 2026 — WebM-driven palette tune. Original pure-CSS palette
+       used cool jade/mint tones (`#15803d` / `#86efac`) which clashed
+       with the actual grove WebM the user dropped in: warm sun-dappled
+       conifers, olive-yellow canopy light, brown-shadowed forest floor.
+       Shifted everything warmer + more olive to harmonize:
+         - greens leaning yellow-olive instead of blue-jade
+         - shadows leaning warm brown-black instead of pure dark green
+         - highlight accent shifted from mint-300 to a sun-dappled
+           yellow-green that matches the brightest leaves in the video
+       Original cool-jade values preserved in trailing comments next to
+       each var so reverting is one-line-each (mirrors Stormwatch's
+       Jun 3 Option A palette tune pattern). The fallback gradient at
+       the bottom is the no-decode case; when the video plays it's
+       hidden by `body.has-theme-bg.theme-verdant` transparency. */
+    --theme-primary: #5a7c3f;        /* warm olive forest, was #15803d jade */
+    --theme-primary-light: #7a9550;  /* sun-dappled mid, was #16a34a */
+    --theme-primary-dark: #2d3f22;   /* deep canopy, was #14532d */
+    --theme-secondary: #1a2310;      /* warm forest shadow, was #052e16 */
+    --theme-accent: #b5c98a;         /* sunlit yellow-green, was #86efac mint */
+    --theme-bg-start: #2d3f22;       /* was #14532d */
+    --theme-bg-mid: #161c10;         /* warm shadow, was #052e16 */
+    --theme-bg-end: #0a0d07;         /* warm near-black, was #0a1410 */
+    --theme-card-from: #1f2916;      /* was #0c3a1f */
+    --theme-card-to: #0c0f08;        /* was #04150c */
+    --theme-border: #5a7842;         /* warm olive border, was #16a34a */
+    --theme-text: #e5ecd5;           /* warm cream-green, was #dcfce7 */
+    --theme-text-muted: #a3b88a;     /* warm dusty green, was #86efac */
+    background:
+        radial-gradient(ellipse at 50% 10%, rgba(181, 201, 138, 0.10) 0%, transparent 45%),
+        radial-gradient(ellipse at 30% 50%, rgba(122, 149, 80, 0.10) 0%, transparent 50%),
+        radial-gradient(circle at 50% 95%, rgba(15, 12, 8, 0.4) 0%, transparent 60%),
+        linear-gradient(to bottom, #2d3f22, #161c10, #0a0d07) !important;
+}
+
+/* ===== SUNKEN LIBRARY (v2.8 round 2, Jun 5, 2026, pure-CSS) =====
+   Drowned-archive aesthetic: teal/deep-blue palette suggesting
+   submerged bookshelves with bioluminescent algae and parchment-
+   gold accents catching the filtered light. Differentiated from
+   Ice Citadel (cooler, sharper, blue-only) by adding the warm
+   amber accent that nods to aged paper and brass binding. Three
+   radial gradients sell the underwater feel:
+     - top-left: pale aqua highlight (light filtering down from
+       the surface above)
+     - mid-right: deep teal volume (the submerged archive depth)
+     - bottom: near-black silt (forgotten foundation)
+   Particles: `.particle-bubble` (rising spheres with
+   bioluminescent shimmer). Pure-CSS for now; if a WebM is added
+   later the body block here becomes the no-decode fallback,
+   matching the Stormwatch + Verdant hybrid pattern. */
+body.theme-sunken {
+    --theme-primary: #0e7490;        /* cyan-700 — submerged teal */
+    --theme-primary-light: #06b6d4;  /* cyan-500 — algae glow */
+    --theme-primary-dark: #164e63;   /* cyan-900 — deep water */
+    --theme-secondary: #082f49;      /* sky-950 — abyssal blue */
+    --theme-accent: #fbbf24;         /* amber-400 — parchment/brass */
+    --theme-bg-start: #0e3a52;       /* mid-water teal */
+    --theme-bg-mid: #082338;         /* deeper indigo-teal */
+    --theme-bg-end: #050d18;         /* near-black silt */
+    --theme-card-from: #0e3a52;
+    --theme-card-to: #07182a;
+    --theme-border: #06b6d4;
+    --theme-text: #e0f2fe;           /* sky-50 — bright water highlight */
+    --theme-text-muted: #7dd3fc;     /* sky-300 — diffused light */
+    background:
+        radial-gradient(ellipse at 25% 15%, rgba(125, 211, 252, 0.10) 0%, transparent 50%),
+        radial-gradient(ellipse at 75% 55%, rgba(14, 116, 144, 0.18) 0%, transparent 55%),
+        radial-gradient(circle at 50% 95%, rgba(5, 13, 24, 0.5) 0%, transparent 65%),
+        linear-gradient(to bottom, #0e3a52, #082338, #050d18) !important;
+}
+
+/* ===== DARK CATHEDRAL (v2.8 round 3 background upgrade, Jun 5, 2026) =====
+   UPGRADED from pure-CSS gradient to STATIC IMAGE BACKGROUND (Jun 5
+   afternoon) per user direction. The image (`icons/cathedral-bg.webp`,
+   user-supplied) is a black-and-crimson gothic cathedral interior with
+   red velvet benches, columns, chandeliers, and a stained-glass altar
+   at the vanishing point. This changes the theme's reading from
+   "solemn medieval" to "gothic crimson cathedral" — palette retuned
+   accordingly:
+     - Primary: violet (#6b21a8) → crimson red-800 (#991b1b)
+     - Accent: warm amber (#f59e0b) → cold cathedral-window slate (#94a3b8)
+     - Border/cards: shift to red-leaning to match the image's
+       saturated red runner and benches
+   The `.particle-mote` warm amber dust that previously partnered the
+   pure-CSS gradient is OVERRIDDEN to pale-moonlight white for this
+   theme (see `body.theme-cathedral .particle-mote` further down) so
+   it doesn't clash with the crimson palette.
+   
+   Movement comes from a small fixed-position candle-flicker layer
+   (`#theme-cathedral-candles` in index.html, gated by
+   `body.theme-cathedral` class). 4 hotspots: two altar candles
+   (always visible at ~50% center) + two inner chandeliers at
+   ~28%/~72% horizontal (still visible after portrait-mobile crop of
+   a 16:9 image at `background-size: cover`). Pure CSS animation,
+   honors prefers-reduced-motion.
+   
+   Background layer stack (top → bottom):
+     1. Bottom vignette — fades the red benches into shadow so they
+        don't compete with bottom-of-screen UI (the saturated red was
+        the #1 legibility risk flagged in the design review).
+     2. Slight overall darkening (rgba black ~12%) for headroom under
+        UI text.
+     3. The actual `cathedral-bg.webp` image, cover-positioned.
+     4. Hardcoded slate-black gradient fallback if the image fails to
+        load (matches the image's dark stone tones so the missing-
+        image state still feels in-theme rather than reverting to
+        default amber).
+   
+   Original pure-CSS version (warm violet+amber 3-radial gradient) is
+   preserved in git history at the commit immediately before this
+   block. To revert if the image direction doesn't land on device,
+   `git show HEAD~1:themes.css` will restore the prior gradient.
+*/
+body.theme-cathedral {
+    --theme-primary: #991b1b;        /* red-800 — deep crimson altar runner */
+    --theme-primary-light: #dc2626;  /* red-600 — bright crimson highlight */
+    --theme-primary-dark: #450a0a;   /* red-950 — almost-black blood red */
+    --theme-secondary: #0c0a09;      /* stone-950 — cathedral shadow */
+    --theme-accent: #94a3b8;         /* slate-400 — cold cathedral-window light */
+    --theme-bg-start: #1c1917;       /* stone-900 — cathedral ceiling */
+    --theme-bg-mid: #0c0a09;         /* stone-950 — nave shadow */
+    --theme-bg-end: #000000;         /* pure black — image fallback floor */
+    --theme-card-from: #292524;
+    --theme-card-to: #0c0a09;
+    --theme-border: #991b1b;
+    --theme-text: #fef2f2;           /* red-50 — crimson-tinged parchment */
+    --theme-text-muted: #fca5a5;     /* red-300 — soft blood-light */
+    background:
+        linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 18%, transparent 38%),
+        linear-gradient(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.12)),
+        url('icons/cathedral-bg.webp') center center / cover no-repeat fixed,
+        linear-gradient(to bottom, #1c1917, #0c0a09, #000000) !important;
+}
+
+/* Pale-moonlight `.particle-mote` override for Cathedral. The default
+   `.particle-mote` (warm amber `#fef3c7`/`#fbbf24`/`#d97706`) was
+   tuned for the original violet+amber pure-CSS gradient and clashes
+   visibly against the new crimson+black palette. Shift to a desaturated
+   off-white with the slightest blue tinge to read as cold cathedral-
+   window light rather than candle warmth. Box-shadow halo color
+   shifts to match. The mote keyframe motion (drift + twinkle) is
+   unchanged. */
+body.theme-cathedral .particle-mote {
+    background: radial-gradient(circle,
+        rgba(248, 250, 252, 0.95) 0%,
+        rgba(203, 213, 225, 0.7) 50%,
+        rgba(100, 116, 139, 0.3) 100%);
+    box-shadow:
+        0 0 4px rgba(248, 250, 252, 0.7),
+        0 0 8px rgba(148, 163, 184, 0.45);
+}
+
+/* (Original pure-CSS violet+amber Cathedral palette removed Jun 5
+   afternoon when the static cathedral-bg.webp image landed. Restore
+   via `git show HEAD~1:themes.css` if reverting the image direction.
+   ROADMAP § 2.4 documents the round 2 → round 3 timeline.) */
+
+/* ===== AURORA SPIRES (v2.8 round 2, Jun 5, 2026, pure-CSS) =====
+   Nighttime aurora-over-mountain-peaks aesthetic: deep indigo
+   midnight sky with green-purple-pink aurora bands suggested via
+   layered radial highlights. Differentiated from Mystic Realm
+   (which uses warm purple + saturated magic-shine GIF) by going
+   cooler/cosmic with sharp star-light highlights instead of
+   diffuse magical glow. The aurora "band" is suggested via two
+   wide horizontal radials (green at upper-mid, magenta at lower-
+   mid) rather than an animated band, keeping this in the pure-
+   CSS lane; if promoted to hybrid later, an animated aurora
+   keyframe via `mix-blend-mode: screen` becomes the natural
+   upgrade path (ROADMAP § 2.4 sketch). Three+ radials:
+     - top: deep night-sky vignette
+     - upper-mid: green aurora cast (#22c55e at low alpha)
+     - lower-mid: magenta aurora tail (#ec4899 at low alpha)
+     - bottom: deep indigo horizon
+   Particles: `.particle-star` (tiny twinkling dots rising). */
+body.theme-aurora {
+    /* Jun 6, 2026 — palette retune to match the user-supplied
+       `aurora-spires-bg.webm` (round 4 finalization). The original
+       pure-CSS palette was indigo-monochromatic (primary #4f46e5,
+       light #818cf8, accent #c084fc purple) with green+pink radial
+       aurora bands. The actual WebM is dominated by saturated CYAN-
+       TEAL (left aurora bands + foreground ice spires) and VIOLET
+       (right aurora bands), with indigo only as the deep night-sky
+       base. Shifting cyan to primary makes Aurora chromatically
+       distinct from Mystic Realm (warm purple primary) and Crystal
+       Caves (fuchsia primary, cyan accent) — Aurora is now cyan-
+       primary, Crystal is fuchsia-primary, clean separation between
+       the two cool prestige themes. Original indigo values preserved
+       in trailing comments next to each var so reverting is one-
+       line-each (mirrors the Stormwatch Jun 3 + Verdant Jun 4
+       palette-tune commenting pattern). Radial gradients also
+       retuned: top green→cyan, bottom pink→violet to match WebM
+       aurora-band hues. ROADMAP § 2.4 round 4. */
+    --theme-primary: #06b6d4;        /* cyan-500 — aurora dominant + ice spires, was #4f46e5 indigo-600 */
+    --theme-primary-light: #22d3ee;  /* cyan-400 — bright ice highlight, was #818cf8 indigo-400 */
+    --theme-primary-dark: #1e1b4b;   /* indigo-950 — deep night base (unchanged) */
+    --theme-secondary: #020617;      /* slate-950 — abyssal sky (unchanged) */
+    --theme-accent: #a78bfa;         /* violet-400 — right-aurora violet, was #c084fc purple-400 */
+    --theme-bg-start: #1e1b4b;       /* deep indigo top (unchanged) */
+    --theme-bg-mid: #0f172a;         /* slate-900 mid sky (unchanged) */
+    --theme-bg-end: #020617;         /* near-black bottom (unchanged) */
+    --theme-card-from: #1e1b4b;
+    --theme-card-to: #0f172a;
+    --theme-border: #22d3ee;         /* cyan-400 — ice-spire foreground tone, was #818cf8 indigo-400 */
+    --theme-text: #ecfeff;           /* cyan-50 — moonlit cyan-tinted text, was #ede9fe violet-50 */
+    --theme-text-muted: #a5f3fc;     /* cyan-200 — soft aurora light, was #c4b5fd violet-300 */
+    background:
+        radial-gradient(ellipse 80% 25% at 50% 25%, rgba(34, 211, 238, 0.14) 0%, transparent 70%),  /* cyan band, was rgba(34, 197, 94, 0.10) green */
+        radial-gradient(ellipse 90% 20% at 50% 50%, rgba(167, 139, 250, 0.12) 0%, transparent 70%), /* violet band, was rgba(192, 132, 252, 0.10) purple */
+        radial-gradient(ellipse 70% 25% at 50% 70%, rgba(168, 85, 247, 0.10) 0%, transparent 70%),  /* magenta-violet, was rgba(236, 72, 153, 0.08) pink */
+        radial-gradient(ellipse at 50% 5%, rgba(2, 6, 23, 0.4) 0%, transparent 50%),
+        linear-gradient(to bottom, #1e1b4b, #0f172a, #020617) !important;
+}
+
+/* ===== CRYSTAL CAVES (v2.8 round 3, Jun 5, 2026, pure-CSS) =====
+   6th v2.8 theme — added to even out the unlock ladder (was a
+   7-level gap between Cathedral 28 and Aurora 35; now Crystal
+   slots at 31 to give two clean 3-4 level jumps). Underground
+   geode aesthetic — deep cave rock base with vivid amethyst-
+   magenta AND bioluminescent cyan crystal cluster highlights.
+   
+   Differentiation from neighboring themes:
+     - vs Aurora: Aurora is OUTDOOR cosmic night (open sky, green-
+       purple bands suggesting atmospheric refraction). Crystal is
+       INDOOR enclosed cavern (point-source crystal cluster
+       radials, no band sweeps).
+     - vs Cathedral: Cathedral is WARM violet + amber candle
+       (architectural, illuminated stone). Crystal is COOL
+       magenta + cyan (mineralogical, self-luminescent).
+     - vs Mystic Realm: Mystic uses diffuse warm-purple magical
+       glow. Crystal uses sharper, jewel-toned, multi-color
+       highlights to read as inorganic refraction rather than
+       organic magic.
+     - vs Shadow Realm: Shadow is pure cool gray-blue with no
+       saturated highlights. Crystal is the inverse — black/slate
+       BASE pierced by extremely saturated jewel-tone highlights.
+   
+   Five radial gradients (more than other v2.8 themes — needed
+   to read as a SCATTERED CLUSTER of crystals rather than a
+   single light source):
+     - top-left: magenta crystal cluster on ceiling
+     - top-right: cyan crystal cluster on opposite ceiling
+     - mid-left: violet crystal vein along left wall
+     - mid-right: small cyan glint
+     - bottom: deep cave floor shadow (suggests depth)
+   The asymmetric layout (magenta top-left vs cyan top-right)
+   makes the cave feel three-dimensional rather than flat — each
+   crystal cluster casts light differently, just like real
+   bioluminescent caves.
+   
+   Particles: `.particle-crystal` (rotating diamond shards with
+   magenta→cyan shimmer). Pure-CSS for now; promotion path to
+   hybrid would be a slow zoom/pan WebM through a real geode
+   cave or a procedural sparkle layer. */
+body.theme-crystal {
+    --theme-primary: #c026d3;        /* fuchsia-600 — amethyst crystal */
+    --theme-primary-light: #e879f9;  /* fuchsia-400 — crystal refraction */
+    --theme-primary-dark: #701a75;   /* fuchsia-900 — deep crystal core */
+    --theme-secondary: #0f172a;      /* slate-900 — cave rock */
+    --theme-accent: #22d3ee;         /* cyan-400 — bioluminescent counter-crystal */
+    --theme-bg-start: #1e1b4b;       /* indigo-950 — cave ceiling */
+    --theme-bg-mid: #0f172a;         /* slate-900 — mid cavern */
+    --theme-bg-end: #020617;         /* slate-950 — cave floor */
+    --theme-card-from: #1e1b4b;
+    --theme-card-to: #020617;
+    --theme-border: #c026d3;
+    --theme-text: #fae8ff;           /* fuchsia-50 — crystal-lit text */
+    --theme-text-muted: #d8b4fe;     /* purple-300 — soft refracted glow */
+    background:
+        radial-gradient(ellipse at 20% 15%, rgba(192, 38, 211, 0.20) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(34, 211, 238, 0.16) 0%, transparent 50%),
+        radial-gradient(ellipse at 15% 60%, rgba(168, 85, 247, 0.14) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 70%, rgba(34, 211, 238, 0.10) 0%, transparent 45%),
+        radial-gradient(circle at 50% 95%, rgba(0, 0, 0, 0.55) 0%, transparent 60%),
+        linear-gradient(to bottom, #1e1b4b, #0f172a, #020617) !important;
+}
+
+/* Verdant Grove moss SVG accents — REMOVED Jun 4, 2026.
+   The moss variety system (4 top × 3 side variants × 7n+5 clean-card
+   override = 84 combos) shipped earlier today and worked correctly,
+   but once the user supplied the actual grove WebM background and we
+   tuned the palette to match its warm sun-dappled forest tones, the
+   pure-CSS moss SVGs felt redundant against the real foliage in the
+   video — the WebM already carries that "ancient grove" identity.
+   Removed cleanly rather than commented out; full implementation is
+   preserved in git history (commit before this change). To restore:
+   git checkout the prior themes.css version of this section, or ask
+   for the moss to be reintroduced and I'll rewrite it tuned for the
+   new warm-olive palette. ROADMAP § 2.4. */
+
+body.theme-stormwatch {
+    /* Jun 3, 2026 — Option A palette tune: shifted accents from
+       saturated sky-blue (`#60a5fa`) toward desaturated steel/slate
+       tones to harmonize with the WebM's overcast cloud video. The old
+       electric-blue values are preserved in inline comments next to
+       each var so reverting is one-line-each. The radial-highlight
+       color in the body fallback gradient was matched (slate-400 in
+       place of blue-400) for the rare case the video fails to decode. */
+    --theme-primary: #64748b;       /* slate-500, was #475569 slate-600 */
+    --theme-primary-light: #94a3b8; /* slate-400, was #64748b slate-500 */
+    --theme-primary-dark: #475569;  /* slate-600, was #334155 slate-700 */
+    --theme-secondary: #1e293b;     /* slate-800 (unchanged) */
+    --theme-accent: #93c5fd;        /* blue-300 paler, was #60a5fa blue-400 */
+    --theme-bg-start: #1e293b;      /* unchanged */
+    --theme-bg-mid: #0f172a;        /* unchanged */
+    --theme-bg-end: #020617;        /* unchanged */
+    --theme-card-from: #1e293b;     /* unchanged */
+    --theme-card-to: #0f172a;       /* unchanged */
+    --theme-border: #94a3b8;        /* slate-400, was #60a5fa blue-400 */
+    --theme-text: #cbd5e1;          /* slate-300 cool, was #e0e7ff indigo-100 */
+    --theme-text-muted: #94a3b8;    /* slate-400, was #93c5fd blue-300 */
+    /* Stormwatch: stormy slate sky with rolling-cloud radials. The
+       fallback gradient below is only visible if the WebM fails to
+       decode — when the video plays, `body.has-theme-bg.theme-stormwatch`
+       in the transparency block at the bottom of this file makes body
+       background transparent. */
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(148, 163, 184, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 60%, rgba(71, 85, 105, 0.18) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 100%, rgba(30, 41, 59, 0.3) 0%, transparent 60%),
+        linear-gradient(to bottom, #1e293b 0%, #0f172a 55%, #020617 100%) !important;
+}
+
 /* ===== COMMON THEME OVERRIDES ===== */
 
 /* Sidebar - solid themed gradient like default */
@@ -428,6 +789,452 @@ body[class*="theme-"] .border-amber-200 {
     transform: none;
 }
 
+/* ===== THEME TILE LIVE PREVIEWS (v2.8 final deliverable, Jun 6, 2026) =====
+   Each tile in the Themes selector now renders a true mini-preview of
+   what the theme actually looks like, layered as:
+     z=0 .theme-tile-bg     — gradient/radial preview mirroring body.theme-X
+     z=1 .theme-tile-video  — autoplay/muted/loop WebM (hybrid themes only)
+     z=2 .theme-tile-content — icon, name, status pill (with text-shadow)
+   The WebM layer covers the gradient when it decodes; the gradient is
+   the no-decode fallback at tile size, mirroring the same Verdant /
+   Crystal / Sunken / Cathedral / Aurora pattern used for the body
+   background. Per-theme `.theme-tile-bg-X` rules below mirror the
+   body.theme-X gradients with slightly amplified alpha — at ~120-180px
+   tile size, body radials at 0.10-0.15 alpha read as nearly invisible,
+   so each preview block bumps alpha by ~50-100% to keep the chromatic
+   identity legible while the tile is shrunken. The linear-gradient
+   base layers stay 1:1 with body for clean color match. ROADMAP § 2.4
+   "Other v2.8 deliverables" final item. */
+
+.theme-option {
+    position: relative;
+    overflow: hidden;
+    /* (Previously had `min-height: 180px` to give the autoplay WebM
+       layer a meaningful stage area — removed Jun 6, 2026 late-evening
+       when the autoplay-per-tile approach was scrapped for the
+       on-demand preview modal. Tiles now size naturally to their
+       content, matching the original v2.7 sizing.) */
+}
+
+.theme-tile-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+}
+
+/* (`.theme-tile-video` rule removed Jun 6, 2026 evening when the per-tile
+   autoplay WebM approach was scrapped in favor of the on-demand preview
+   modal — see `previewTheme()` in goal-manager.js. The earlier approach
+   loaded all six hybrid WebMs into the Themes panel simultaneously,
+   slowing initial render. The modal-based approach decodes only the
+   actively previewed theme's WebM. The static `.theme-tile-bg` gradient
+   layer below remains as the tile's chromatic identity preview.) */
+
+.theme-tile-content {
+    position: relative;
+    z-index: 2;
+    /* Strong text-shadow stack — single-direction shadow + soft halo
+       so text stays legible over both bright (Aurora cyan) and dark
+       (Shadow Realm) preview backgrounds without needing per-theme
+       text-color overrides. */
+    text-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.85),
+        0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Preview backgrounds — mirror body.theme-X gradients */
+
+.theme-tile-bg-default {
+    background:
+        radial-gradient(ellipse at 50% 30%, rgba(251, 191, 36, 0.25) 0%, transparent 60%),
+        radial-gradient(ellipse at 30% 80%, rgba(180, 83, 9, 0.20) 0%, transparent 50%),
+        linear-gradient(to bottom, #78350f, #451a03, #1c1917);
+}
+
+.theme-tile-bg-forest {
+    background:
+        radial-gradient(ellipse at 20% 30%, rgba(52, 211, 153, 0.20) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(5, 150, 105, 0.25) 0%, transparent 45%),
+        linear-gradient(to bottom, #064e3b, #022c22, #0f1510);
+}
+
+.theme-tile-bg-desert {
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(253, 186, 116, 0.30) 0%, transparent 60%),
+        radial-gradient(ellipse at 30% 100%, rgba(194, 65, 12, 0.25) 0%, transparent 50%),
+        linear-gradient(to bottom, #7c2d12, #431407, #1a0f0a);
+}
+
+.theme-tile-bg-ice {
+    background:
+        radial-gradient(ellipse at 10% 20%, rgba(125, 211, 252, 0.25) 0%, transparent 45%),
+        radial-gradient(ellipse at 90% 30%, rgba(56, 189, 248, 0.18) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 80%, rgba(14, 165, 233, 0.20) 0%, transparent 50%),
+        linear-gradient(to bottom, #0c4a6e, #082f49, #0a1929);
+}
+
+.theme-tile-bg-volcanic {
+    background:
+        radial-gradient(ellipse at 30% 90%, rgba(239, 68, 68, 0.40) 0%, transparent 55%),
+        radial-gradient(ellipse at 70% 85%, rgba(220, 38, 38, 0.30) 0%, transparent 50%),
+        linear-gradient(to bottom, #7f1d1d, #450a0a, #1a0505);
+}
+
+.theme-tile-bg-mystic {
+    background:
+        radial-gradient(ellipse at 25% 25%, rgba(139, 92, 246, 0.30) 0%, transparent 45%),
+        radial-gradient(ellipse at 75% 20%, rgba(196, 181, 253, 0.22) 0%, transparent 40%),
+        radial-gradient(ellipse at 60% 70%, rgba(124, 58, 237, 0.25) 0%, transparent 50%),
+        linear-gradient(to bottom, #5b21b6, #3b0764, #1a0533);
+}
+
+.theme-tile-bg-golden {
+    background:
+        radial-gradient(ellipse at 50% 10%, rgba(253, 224, 71, 0.32) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 40%, rgba(202, 138, 4, 0.28) 0%, transparent 50%),
+        linear-gradient(to bottom, #854d0e, #422006, #1a0f03);
+}
+
+.theme-tile-bg-shadow {
+    background:
+        radial-gradient(ellipse at 40% 30%, rgba(75, 85, 99, 0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(55, 65, 81, 0.20) 0%, transparent 45%),
+        linear-gradient(to bottom, #1f2937, #111827, #030712);
+}
+
+/* Hybrid themes — gradients are the no-decode fallback; .theme-tile-video
+   layer covers them at runtime when the WebM autoplays. */
+
+.theme-tile-bg-stormwatch {
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(148, 163, 184, 0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 60%, rgba(71, 85, 105, 0.28) 0%, transparent 50%),
+        linear-gradient(to bottom, #1e293b 0%, #0f172a 55%, #020617 100%);
+}
+
+.theme-tile-bg-verdant {
+    background:
+        radial-gradient(ellipse at 50% 10%, rgba(181, 201, 138, 0.20) 0%, transparent 50%),
+        radial-gradient(ellipse at 30% 50%, rgba(122, 149, 80, 0.22) 0%, transparent 55%),
+        linear-gradient(to bottom, #2d3f22, #161c10, #0a0d07);
+}
+
+.theme-tile-bg-sunken {
+    background:
+        radial-gradient(ellipse at 25% 15%, rgba(125, 211, 252, 0.22) 0%, transparent 55%),
+        radial-gradient(ellipse at 75% 55%, rgba(14, 116, 144, 0.30) 0%, transparent 55%),
+        linear-gradient(to bottom, #0e3a52, #082338, #050d18);
+}
+
+.theme-tile-bg-cathedral {
+    /* Crimson gothic — image fallback skipped at tile size to avoid
+       loading a 885KB .webp per visible tile; the WebM layer is the
+       primary preview, this gradient handles the no-decode case with
+       the dark-stone + crimson-altar suggestion baked in. */
+    background:
+        radial-gradient(ellipse at 50% 65%, rgba(153, 27, 27, 0.40) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 20%, rgba(148, 163, 184, 0.12) 0%, transparent 45%),
+        linear-gradient(to bottom, #1c1917, #0c0a09, #000000);
+}
+
+.theme-tile-bg-aurora {
+    /* Cyan-violet aurora bands over indigo night sky — mirrors the
+       Jun 6 retune of body.theme-aurora. */
+    background:
+        radial-gradient(ellipse 80% 25% at 50% 25%, rgba(34, 211, 238, 0.28) 0%, transparent 70%),
+        radial-gradient(ellipse 90% 20% at 50% 50%, rgba(167, 139, 250, 0.24) 0%, transparent 70%),
+        radial-gradient(ellipse 70% 25% at 50% 70%, rgba(168, 85, 247, 0.20) 0%, transparent 70%),
+        linear-gradient(to bottom, #1e1b4b, #0f172a, #020617);
+}
+
+.theme-tile-bg-crystal {
+    background:
+        radial-gradient(ellipse at 20% 15%, rgba(192, 38, 211, 0.35) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(34, 211, 238, 0.28) 0%, transparent 50%),
+        radial-gradient(ellipse at 15% 60%, rgba(168, 85, 247, 0.22) 0%, transparent 55%),
+        linear-gradient(to bottom, #1e1b4b, #0f172a, #020617);
+}
+
+/* Locked tiles still show the preview but with a desaturating overlay
+   (replaces the existing .opacity-60 inline class for a subtler look —
+   the icon stays readable, the preview reads "muted" rather than "broken"). */
+.theme-option.theme-locked .theme-tile-bg {
+    filter: grayscale(0.7) brightness(0.5);
+}
+
+/* ===== THEME PREVIEW MODAL (v2.8 final, Jun 6, 2026 evening revision) =====
+   Opens via `goalManager.previewTheme(id)` when any tile in the Themes
+   selector is clicked. Replaces the earlier autoplay-WebM-per-tile
+   approach (scrapped after user feedback that 6 simultaneous WebMs
+   slowed Themes-panel initial load). The modal renders a sample mock
+   UI — themed quest card with title, XP bar, and sample button — over
+   the theme's actual background (gradient from `.theme-tile-bg-X` plus
+   the WebM for hybrid themes). Only ONE WebM ever decodes at a time
+   because the overlay is fully removed (and the `<video>` element
+   GC'd) when closed.
+
+   Structure:
+     .theme-preview-modal-overlay   — fullscreen backdrop (fixed, z=10000)
+       .theme-preview-modal         — centered card (max-w-480px)
+         .theme-preview-close       — X button (top-right)
+         .theme-preview-stage       — preview area (4:3 aspect ratio)
+           .theme-tile-bg-X         — reused gradient layer (z=0)
+           .theme-preview-video     — WebM if hybrid (z=1)
+           .theme-preview-stage-content — sample mock card (z=2)
+         .theme-preview-actions     — Apply / Close buttons or lock msg
+*/
+
+.theme-preview-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    transition: opacity 0.18s ease-out;
+}
+
+.theme-preview-modal-overlay.theme-preview-modal-open {
+    opacity: 1;
+}
+
+.theme-preview-modal-overlay.theme-preview-modal-closing {
+    opacity: 0;
+}
+
+.theme-preview-modal {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    background: #1c1917;
+    border: 2px solid #92400e;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    transform: scale(0.94);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.theme-preview-modal-open .theme-preview-modal {
+    transform: scale(1);
+}
+
+.theme-preview-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.65);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.theme-preview-close:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.08);
+}
+
+.theme-preview-stage {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+}
+
+/* The reused .theme-tile-bg-X gradient layer auto-positions absolute
+   from .theme-tile-bg base rule above; just need to confirm it sits
+   below the video and content. */
+
+.theme-preview-video {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    /* Slightly stronger darken than the (former) tile video filter
+       since we're at larger size and need the mock card to read
+       cleanly — Aurora cyan and Sunken teal frames in particular
+       are bright enough to overpower light card chrome. */
+    filter: brightness(0.78);
+}
+
+.theme-preview-stage-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+}
+
+.theme-preview-mock-card {
+    width: 100%;
+    max-width: 320px;
+    border-radius: 0.85rem;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    text-align: center;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.theme-preview-mock-icon {
+    font-size: 2.25rem;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.theme-preview-mock-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0 0 0.2rem 0;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    font-family: 'MedievalSharp', 'Cinzel', serif;
+}
+
+.theme-preview-mock-desc {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.78rem;
+    margin: 0 0 0.8rem 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    font-style: italic;
+}
+
+.theme-preview-mock-quest {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 0.45rem;
+    padding: 0.55rem 0.7rem;
+    margin-bottom: 0.85rem;
+    text-align: left;
+}
+
+.theme-preview-mock-quest-title {
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.theme-preview-mock-xp-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 0.3rem;
+}
+
+.theme-preview-mock-xp-fill {
+    height: 100%;
+    width: 62%;
+    border-radius: 9999px;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.theme-preview-mock-xp-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.65rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    text-align: right;
+}
+
+.theme-preview-mock-button {
+    color: white;
+    font-weight: 600;
+    padding: 0.5rem 1.1rem;
+    border-radius: 0.45rem;
+    font-size: 0.85rem;
+    display: inline-block;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    /* Decorative — not an actual button to avoid implying click action */
+    cursor: default;
+}
+
+.theme-preview-actions {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(to bottom, #1c1917, #0c0a09);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    align-items: center;
+}
+
+.theme-preview-lock-msg {
+    flex: 1;
+    color: #fcd34d;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.theme-preview-btn-secondary,
+.theme-preview-btn-primary {
+    border: none;
+    color: white;
+    font-weight: 600;
+    padding: 0.6rem 1.1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    font-family: inherit;
+}
+
+.theme-preview-btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.theme-preview-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.theme-preview-btn-primary {
+    flex: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.theme-preview-btn-primary:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+@media (max-width: 480px) {
+    .theme-preview-modal {
+        max-width: 100%;
+    }
+    .theme-preview-mock-card {
+        max-width: 280px;
+    }
+}
+
+/* Honor reduced-motion: skip the scale animation but keep the fade. */
+@media (prefers-reduced-motion: reduce) {
+    .theme-preview-modal {
+        transform: none;
+        transition: none;
+    }
+}
+
 /* ===== ANIMATED BACKGROUND OVERRIDES ===== */
 /* These MUST be at the end to override theme backgrounds */
 
@@ -438,7 +1245,13 @@ body.has-theme-bg.theme-ice,
 body.has-theme-bg.theme-volcanic,
 body.has-theme-bg.theme-mystic,
 body.has-theme-bg.theme-golden,
-body.has-theme-bg.theme-shadow {
+body.has-theme-bg.theme-shadow,
+body.has-theme-bg.theme-stormwatch,
+body.has-theme-bg.theme-verdant,
+body.has-theme-bg.theme-crystal,
+body.has-theme-bg.theme-sunken,
+body.has-theme-bg.theme-cathedral,
+body.has-theme-bg.theme-aurora {
     background: transparent !important;
 }
 
@@ -456,9 +1269,38 @@ body.has-theme-bg.theme-mystic .bg-stone-800,
 body.has-theme-bg.theme-golden .flex-1.overflow-y-auto,
 body.has-theme-bg.theme-golden .bg-stone-800,
 body.has-theme-bg.theme-shadow .flex-1.overflow-y-auto,
-body.has-theme-bg.theme-shadow .bg-stone-800 {
+body.has-theme-bg.theme-shadow .bg-stone-800,
+body.has-theme-bg.theme-stormwatch .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-stormwatch .bg-stone-800,
+body.has-theme-bg.theme-verdant .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-verdant .bg-stone-800,
+body.has-theme-bg.theme-crystal .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-crystal .bg-stone-800,
+body.has-theme-bg.theme-sunken .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-sunken .bg-stone-800,
+body.has-theme-bg.theme-cathedral .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-cathedral .bg-stone-800,
+body.has-theme-bg.theme-aurora .flex-1.overflow-y-auto,
+body.has-theme-bg.theme-aurora .bg-stone-800 {
     background: transparent !important;
 }
+
+/* (Round-3 ungated `body.theme-cathedral` transparency block + the
+   `html body.theme-cathedral` image-reassertion rule were REMOVED
+   Jun 5, 2026 evening when Cathedral was promoted from static-image
+   to full hybrid via `icons/dark-cathedral-bg.webm`. Both rules
+   were special-case workarounds for the static-image-only era:
+   without `has-theme-bg` ever being set on body, the standard
+   gated transparency rules above couldn't fire, so an ungated
+   variant was needed to expose the .webp through the `.bg-stone-800`
+   shell. Now Cathedral has `cathedral:` in `videoBackgrounds`,
+   so `updateThemeVideoBackground` sets `has-theme-bg.theme-cathedral`
+   and the standard gated rule (now appearing in the block above)
+   handles transparency — same path as Verdant/Crystal/Sunken. The
+   .webp remains the no-decode fallback via the body background
+   stack at the top of this file under the primary `body.theme-cathedral`
+   rule, which is reached when `hideVideoKeepThemedGradients` strips
+   `has-theme-bg`. Revert path: `git show HEAD~1:themes.css`. */
 
 /* ===== CUSTOM SCROLLBARS PER THEME ===== */
 
@@ -598,4 +1440,208 @@ body.theme-shadow *::-webkit-scrollbar-thumb {
 body.theme-shadow::-webkit-scrollbar-thumb:hover,
 body.theme-shadow *::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(180deg, #9ca3af, #6b7280);
+}
+
+/* Verdant Grove theme scrollbar — v2.8 pure-CSS theme. Jade thumb on
+   deep-grove track to match the ancient-druid palette. Slightly
+   darker than forest's scrollbar so the two nature themes read as
+   distinct surfaces at a glance. */
+body.theme-verdant::-webkit-scrollbar-track,
+body.theme-verdant *::-webkit-scrollbar-track {
+    background: rgba(5, 46, 22, 0.4);
+}
+
+body.theme-verdant::-webkit-scrollbar-thumb,
+body.theme-verdant *::-webkit-scrollbar-thumb {
+    /* Jun 4, 2026 WebM palette tune: warm olive thumb to match the
+       sun-dappled conifer canopy. Was `#22c55e → #15803d` jade. */
+    background: linear-gradient(180deg, #7a9550, #5a7c3f);
+}
+
+body.theme-verdant::-webkit-scrollbar-thumb:hover,
+body.theme-verdant *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9bb877, #7a9550);
+}
+
+/* Stormwatch theme scrollbar — v2.8 marquee. Desaturated steel/slate
+   tones match the Jun 3 palette tune that shifted accents away from
+   saturated sky-blue toward harmonizing with the WebM's overcast
+   cloud video. Track uses slate-900 transparent to read as part of
+   the storm rather than against it. */
+body.theme-stormwatch::-webkit-scrollbar-track,
+body.theme-stormwatch *::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.4);
+}
+
+body.theme-stormwatch::-webkit-scrollbar-thumb,
+body.theme-stormwatch *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #94a3b8, #64748b);
+}
+
+body.theme-stormwatch::-webkit-scrollbar-thumb:hover,
+body.theme-stormwatch *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+}
+
+/* Sunken Library scrollbar — v2.8 round 2 (Jun 5, 2026, pure-CSS).
+   Submerged-teal track + cyan algae-glow thumb. Track uses sky-950
+   transparent so the scrollbar reads as part of the underwater
+   gradient rather than overlaid on it. */
+body.theme-sunken::-webkit-scrollbar-track,
+body.theme-sunken *::-webkit-scrollbar-track {
+    background: rgba(8, 47, 73, 0.4);
+}
+
+body.theme-sunken::-webkit-scrollbar-thumb,
+body.theme-sunken *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #06b6d4, #0e7490);
+}
+
+body.theme-sunken::-webkit-scrollbar-thumb:hover,
+body.theme-sunken *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #67e8f9, #06b6d4);
+}
+
+/* Dark Cathedral scrollbar — v2.8 round 2 (Jun 5, 2026, pure-CSS).
+   Stone track + crimson thumb (round 3 retune Jun 5 afternoon — was
+   violet stained-glass thumb in round 2). Hover shifts to brighter
+   red-600 to suggest blood-light catching on the rail when grabbed. */
+body.theme-cathedral::-webkit-scrollbar-track,
+body.theme-cathedral *::-webkit-scrollbar-track {
+    background: rgba(28, 25, 23, 0.5);
+}
+
+body.theme-cathedral::-webkit-scrollbar-thumb,
+body.theme-cathedral *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #991b1b, #450a0a);
+}
+
+body.theme-cathedral::-webkit-scrollbar-thumb:hover,
+body.theme-cathedral *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #dc2626, #991b1b);
+}
+
+/* Aurora Spires scrollbar — v2.8 round 2 (Jun 5, 2026, pure-CSS).
+   Deep-indigo track + indigo-400 thumb that reads as the aurora
+   itself catching the scrollbar; hover lifts to violet to suggest
+   the band shifting hue as it does in real auroras. */
+body.theme-aurora::-webkit-scrollbar-track,
+body.theme-aurora *::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+}
+
+body.theme-aurora::-webkit-scrollbar-thumb,
+body.theme-aurora *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #818cf8, #4f46e5);
+}
+
+body.theme-aurora::-webkit-scrollbar-thumb:hover,
+body.theme-aurora *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #c4b5fd, #818cf8);
+}
+
+/* Crystal Caves scrollbar — slate cave-rock track + magenta
+   crystal thumb. Thumb-hover shifts to the brighter fuchsia-400
+   to mirror the crystal-shimmer hue-rotate on the particles
+   (crystals "react" to user interaction). */
+body.theme-crystal::-webkit-scrollbar-track,
+body.theme-crystal *::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+}
+
+body.theme-crystal::-webkit-scrollbar-thumb,
+body.theme-crystal *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #c026d3, #701a75);
+}
+
+body.theme-crystal::-webkit-scrollbar-thumb:hover,
+body.theme-crystal *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #e879f9, #c026d3);
+}
+
+/* ============================================================
+   v2.8 ROUND 2 — PER-THEME ACCENT MICRO-STYLING (Jun 5, 2026)
+   ROADMAP § 2.4 deliverable. The audit (see ROADMAP) showed
+   that most "primary" surfaces in the app are already styled
+   with intentional semantic / brand colors that should NOT be
+   theme-tinted:
+     - Toast type gradients (gold=achievement, red=warning,
+       etc.) carry urgency reading
+     - Branded buttons (Streak Shield blue, Save-to-Phone
+       emerald, Equip Title purple) carry feature identity
+     - Level-up burst is universally gold by design
+   So this layer is intentionally MINIMAL: just two additive
+   pieces that add cohesion without breaking those signals.
+   ============================================================ */
+
+/* Achievement-toast theme halo. Layered ON TOP of the existing
+   per-type gradient + thick category border (see goal-manager.js
+   `toastStyles` map). Adds a 1px theme-primary-light ring just
+   outside the category border + a soft outer glow in the theme's
+   primary color. Default theme (no `theme-X` class on body) is
+   excluded via the `[class*="theme-"]` guard so Medieval Kingdom
+   stays exactly as before. The `transparent` fallback inside
+   `var()` means if a theme later gets added without these vars
+   defined, the rule degrades to the original drop-shadow only
+   rather than vanishing entirely.
+
+   Why box-shadow stacking instead of border/outline: the toast
+   already uses a thick `border-4` (Tailwind ~4px) for the
+   category color. Adding another border would shift layout.
+   Stacked box-shadows with 0-spread offset render OUTSIDE the
+   border without affecting box dimensions. */
+body[class*="theme-"] #achievement-toast {
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.6),
+        0 0 0 1px var(--theme-primary-light, transparent),
+        0 0 28px -4px var(--theme-primary, transparent);
+}
+
+/* `.btn-themed-primary` — opt-in class for genuinely-generic
+   primary actions. Used on:
+     - Resume Focus Timer (focus-timer.js / goal-manager.js
+       ~14829)
+     - Search filter "All" active chip (goal-manager.js
+       ~16726, ~16765)
+     - Search Quests sidebar CTA (index.html ~728)
+   NOT used on branded buttons (Streak Shield, Save-to-Phone,
+   Equip Title, etc.) — those keep their semantic colors per
+   the ROADMAP § 2.4 audit. The fallback values inside each
+   var() keep this looking sensible in the default Medieval
+   Kingdom theme (which doesn't define theme palette vars) —
+   default falls back to a tasteful indigo that reads as a
+   "default primary" rather than as the more prominent
+   medieval gold (which would compete with the level-up
+   celebration's gold language).
+
+   Hover: brightens both gradient stops to the lighter shade
+   AND adds a theme-primary glow ring. The combined effect is
+   "this button glows in the theme's color when you hover" —
+   subtle on Medieval Kingdom (indigo glow) and increasingly
+   distinctive on the marquee themes (Stormwatch slate, Verdant
+   olive, Sunken cyan, Cathedral violet, Aurora indigo-blue). */
+.btn-themed-primary {
+    background: linear-gradient(180deg,
+        var(--theme-primary-light, #6366f1),
+        var(--theme-primary, #4f46e5));
+    border: 1px solid var(--theme-border, #818cf8);
+    color: var(--theme-text, #ffffff);
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.btn-themed-primary:hover {
+    background: linear-gradient(180deg,
+        var(--theme-primary-light, #818cf8),
+        var(--theme-primary-light, #6366f1));
+    box-shadow:
+        0 0 14px var(--theme-primary, rgba(79, 70, 229, 0.5)),
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.btn-themed-primary:active {
+    transform: scale(0.97);
 }

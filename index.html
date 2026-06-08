@@ -60,7 +60,7 @@
     <link rel="stylesheet" href="mobile.css">
     <link rel="stylesheet" href="themes.css">
 </head>
-<body class="bg-stone-900" style="color-scheme: dark;">
+<body class="bg-stone-950" style="color-scheme: dark;">
     <!-- Redirect new visitors to landing page (skip if returning user, PWA, or has query params like challenge codes) -->
     <script>
         (function() {
@@ -92,6 +92,12 @@
     
     <!-- Theme Video Background -->
     <video id="theme-video-bg" class="hidden" muted loop playsinline autoplay webkit-playsinline></video>
+
+    <!-- (Cathedral candle-flicker overlay removed Jun 5, 2026
+         afternoon — round 3.5. Image alone carries the atmosphere
+         cleanly; the warm-amber glow points fought the crimson
+         palette. See animations.css comment block for full rationale
+         and revert path via `git show HEAD~1:index.html`.) -->
     
     <!-- Theme Transition Overlay -->
     <div id="theme-transition-overlay"></div>
@@ -109,8 +115,18 @@
     <!-- Notification Toast -->
     <div id="achievement-toast" class="hidden fixed top-8 right-8 z-50 transform transition-all duration-300 scale-0" role="status" aria-live="polite">
         <div id="toast-container" class="bg-gradient-to-br from-yellow-600 via-amber-500 to-yellow-700 text-white p-6 rounded-lg shadow-2xl border-4 border-yellow-400 quest-card">
-            <div class="flex items-center space-x-4">
-                <div id="toast-icon" class="text-6xl animate-bounce">⚔️</div>
+            <!-- v2.7 iconography pass — center-stacked layout: icon on top,
+                 title and message centered below. Previously this was a
+                 horizontal flex (icon-left, text-right). That layout depended
+                 on the emoji icon's built-in padding to optically balance
+                 against the short, single-word titles like "Notice", and the
+                 swap to Remix Icon SVG glyphs broke that balance (the SVG
+                 glyph occupies less visual weight than the equivalent emoji,
+                 leaving the title floating awkwardly to the right of an
+                 under-filled icon column). Center-stacking is layout-stable
+                 across all eight toast types and reads as a deliberate card. -->
+            <div class="flex flex-col items-center text-center gap-2">
+                <div id="toast-icon" class="text-6xl animate-bounce leading-none"><i class="ri-sword-line"></i></div>
                 <div>
                     <div id="toast-title" class="text-2xl font-bold medieval-font">Achievement Unlocked!</div>
                     <div id="achievement-text" class="text-sm mt-1">Quest Completed</div>
@@ -122,7 +138,7 @@
     <!-- Global Search Modal -->
     <div id="search-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Search quests">
         <div class="flex items-start justify-center min-h-screen pt-20">
-            <div class="bg-gradient-to-br from-gray-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 w-full max-w-3xl mx-4">
+            <div class="bg-gradient-to-br from-gray-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
                 <!-- Search Header -->
                 <div class="p-6 border-b-2 border-amber-700/50">
                     <div class="flex items-center gap-4">
@@ -173,7 +189,7 @@
                     </div>
                     <div class="flex gap-3">
                         <button onclick="goalManager.handleQuickAdd({key: 'Enter', target: document.getElementById('quick-add-input')})" 
-                            class="flex-1 bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                            class="btn-ripple flex-1 bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
                             ✓ Add Task
                         </button>
                         <button onclick="goalManager.closeQuickAdd()" 
@@ -186,8 +202,113 @@
         </div>
     </div>
 
+    <!--
+      What's New Modal
+      Shown once per release to existing users; skipped for brand-new
+      installs (heuristic: level <= 1, 0 XP, no badges, no daily tasks).
+      State tracked via the `lastSeenChangelogVersion` localStorage key,
+      compared against `CHANGELOG_VERSION` in goal-manager.js (currently
+      '2.7.1'). Bumping `CHANGELOG_VERSION` re-arms the modal for returning
+      users after each release. Trigger lives in `goal-manager.js`'s
+      constructor (deferred via setTimeout ~3500ms so it lands after
+      login-bonus / referral / period-transition checks).
+    -->
+    <!-- v2.7 sizing note (Jun 3, 2026 fix): the v2.7 rewrite expanded this
+         modal from 2 sections (8 bullets) to 4 sections (11 bullets +
+         closing line), enough to exceed viewport height on shorter phones.
+         The original v2.7 attempt put `overflow-y-auto` on the OUTER
+         wrapper, but that didn't actually solve the bug — `flex
+         items-center` centers a taller-than-viewport card on the screen's
+         vertical midpoint, which positions the card's TOP at a negative
+         offset relative to the scroll origin (unreachable), so users open
+         the modal, see middle-of-content with no header, and assume it's
+         broken. Real fix: cap the CARD at `max-h-[90vh]` and put the
+         scroll INSIDE the card. The card always fits the viewport, the
+         header is always visible at the top when the modal opens, and the
+         user scrolls within the card body to reach the close button at
+         the bottom. `overscroll-contain` keeps phone scroll-bounce from
+         leaking through to the page beneath. The other modals in this
+         file (search, quick-add) don't need this because their content is
+         short and predictable. -->
+    <div id="whats-new-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gradient-to-br from-amber-900/95 via-stone-900/95 to-amber-950/95 rounded-2xl shadow-2xl border-4 border-amber-500 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain" style="animation: fadeIn 0.4s ease-out;">
+                <div class="p-6 md:p-8">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="text-4xl">🌌</div>
+                        <div>
+                            <h3 id="whats-new-title" class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title">What's New in v2.8.0</h3>
+                            <p class="text-amber-200/70 text-xs fancy-font">Theme Expansion</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t-2 border-amber-700/40 my-4"></div>
+
+                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">🌌 <strong class="text-amber-300">Six new realms to explore</strong></p>
+                    <ul class="space-y-2.5 text-amber-100 fancy-font text-sm md:text-base mb-5">
+                        <li class="flex items-start gap-3">
+                            <span class="text-amber-400 text-lg leading-tight">•</span>
+                            <span><strong>Stormwatch</strong> ⛈️, <strong>Sunken Library</strong> 🌊, <strong>Verdant Grove</strong> 🌿, <strong>Dark Cathedral</strong> ⛪, <strong>Crystal Caves</strong> 💎, and <strong>Aurora Spires</strong> 🌌 — every new theme ships with real animated backgrounds and themed particles</span>
+                        </li>
+                    </ul>
+
+                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">🎁 <strong class="text-amber-300">More themes free for everyone</strong></p>
+                    <ul class="space-y-2.5 text-amber-100 fancy-font text-sm md:text-base mb-5">
+                        <li class="flex items-start gap-3">
+                            <span class="text-amber-400 text-lg leading-tight">•</span>
+                            <span><strong>Ice Citadel</strong> is now a free level-15 reward — no premium needed</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-amber-400 text-lg leading-tight">•</span>
+                            <span><strong>Golden Empire</strong> unlocks when you earn 10,000 gold lifetime (was 100 quests) — your existing gold counts</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-amber-400 text-lg leading-tight">•</span>
+                            <span><strong>Shadow Realm</strong> unlocks at 25 bosses defeated (was 5 life goals)</span>
+                        </li>
+                    </ul>
+
+                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">👁️ <strong class="text-amber-300">Preview before you commit</strong></p>
+                    <ul class="space-y-2.5 text-amber-100 fancy-font text-sm md:text-base mb-4">
+                        <li class="flex items-start gap-3">
+                            <span class="text-amber-400 text-lg leading-tight">•</span>
+                            <span>Tap any theme tile to see a full live preview — animated background, themed quest card mockup, and unlock requirements at a glance</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-amber-400 text-lg leading-tight">•</span>
+                            <span>Toasts and primary buttons now subtly tint to your active theme for a more cohesive look</span>
+                        </li>
+                    </ul>
+
+                    <p class="text-amber-200/90 fancy-font text-sm md:text-base text-center italic">Boss visuals and richer chest sequences brewing for v2.9. Quest on.</p>
+
+                    <div class="border-t-2 border-amber-700/40 my-5"></div>
+
+                    <button onclick="goalManager.closeWhatsNewModal()"
+                        class="btn-ripple w-full py-3 rounded-xl font-bold fancy-font text-lg
+                               bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600
+                               text-white shadow-lg shadow-amber-900/40 transition-all hover:scale-[1.02] border-2 border-amber-400/60">
+                        <i class="ri-sword-line mr-1"></i>Onward to Adventure
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bulk Actions Bar -->
-    <div id="bulk-actions-bar" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-900 to-indigo-900 border-t-4 border-purple-600 shadow-2xl p-4">
+    <!-- v2.6 layout-audit fix #2: respect the bottom safe-area inset on
+         notched / gesture-bar phones. Without this, the bar's tap
+         targets sit directly on the iOS home-indicator strip and the
+         Android gesture bar, making "Select All" / "Delete" hard to
+         hit. The `bottom` offset lifts the bar above the inset, and
+         `padding-bottom` extends the colored surface down to the
+         viewport edge so there's no visible gap. The `--mob-bn-h`
+         custom property is also added on mobile so the bar clears the
+         bottom tab nav (handled via the inline style + mobile.css
+         media-query override below; the inline style covers desktop
+         where there is no bottom nav). -->
+    <div id="bulk-actions-bar" class="hidden fixed left-0 right-0 z-50 bg-gradient-to-r from-stone-900 to-amber-950 border-t-4 border-amber-600 shadow-2xl p-4"
+         style="bottom: env(safe-area-inset-bottom, 0px); padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));">
         <div class="flex items-center justify-between max-w-7xl mx-auto">
             <div class="flex items-center gap-4">
                 <div class="text-purple-100 font-bold fancy-font text-lg">
@@ -201,11 +322,11 @@
                 </button>
                 <button onclick="goalManager.bulkArchive()" 
                     class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
-                    📦 Archive All
+                    <i class="ri-archive-line mr-1"></i>Archive All
                 </button>
                 <button onclick="goalManager.bulkDelete()" 
                     class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
-                    🗑️ Delete All
+                    <i class="ri-delete-bin-line mr-1"></i>Delete All
                 </button>
                 <button onclick="goalManager.cancelBulkSelection()" 
                     class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
@@ -264,7 +385,7 @@
             
             <div class="p-6 border-b-2 border-amber-700/50 relative z-10">
                 <h1 class="text-3xl font-bold text-center text-amber-300 medieval-title">
-                    Life Quest Journal ⚔️
+                    Life Quest Journal <i class="ri-sword-line ml-1"></i>
                 </h1>
                 <p class="text-center text-xs text-amber-400 mt-2 fancy-font">Your Life's Grand Adventure</p>
             </div>
@@ -317,11 +438,66 @@
         <!-- Main Content Area -->
         <div class="flex-1 overflow-y-auto bg-stone-800 relative">
             <!-- Player Panel - Collapsed Avatar Button -->
+            <!-- v2.6: wrapper added around the avatar ring so the XP ring SVG can
+                 absolute-position around the existing rarity-color band without
+                 disturbing the level-badge's bottom-right anchoring (still tied
+                 to the button itself, not the wrapper). -->
             <button id="player-panel-toggle" onclick="if(window.goalManager) goalManager.togglePlayerPanel();"
                 class="fixed top-4 right-4 z-50 group" aria-label="Open character sheet">
-                <div id="player-avatar-ring" class="w-14 h-14 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 p-0.5 shadow-2xl border-2 border-gray-500 transition-all group-hover:scale-110 group-hover:shadow-purple-500/30">
-                    <div class="w-full h-full rounded-full bg-gradient-to-br from-stone-800 to-stone-950 flex items-center justify-center">
-                        <span id="player-avatar-icon" class="text-2xl">⚔️</span>
+                <div class="relative inline-block">
+                    <!-- v2.6 Item 2: rarity frame layered into the same SVG as the
+                         XP ring. Order matters — track (back) → progress (mid) →
+                         shimmer (front, only visible tier-7+) → prestige slots
+                         (reserved for v3.0, empty until then). -->
+                    <svg class="xp-ring xp-ring--mini" viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="xp-ring__track" cx="50" cy="50" r="46" pathLength="100" />
+                        <circle id="player-xp-ring-progress" class="xp-ring__progress" cx="50" cy="50" r="46" pathLength="100" />
+                        <circle class="xp-ring__shimmer" cx="50" cy="50" r="46" pathLength="100" />
+                        <g class="xp-ring__prestige-slots" data-prestige-count="0">
+                            <circle class="xp-ring__prestige-anchor" cx="50" cy="2"  r="2.5" data-slot="0" />
+                            <circle class="xp-ring__prestige-anchor" cx="84" cy="16" r="2.5" data-slot="1" />
+                            <circle class="xp-ring__prestige-anchor" cx="98" cy="50" r="2.5" data-slot="2" />
+                            <circle class="xp-ring__prestige-anchor" cx="84" cy="84" r="2.5" data-slot="3" />
+                            <circle class="xp-ring__prestige-anchor" cx="50" cy="98" r="2.5" data-slot="4" />
+                            <circle class="xp-ring__prestige-anchor" cx="16" cy="84" r="2.5" data-slot="5" />
+                            <circle class="xp-ring__prestige-anchor" cx="2"  cy="50" r="2.5" data-slot="6" />
+                            <circle class="xp-ring__prestige-anchor" cx="16" cy="16" r="2.5" data-slot="7" />
+                        </g>
+                    </svg>
+                    <!-- v2.6 (refined): standalone comet shimmer.
+                         Replaces the dashed-stroke shimmer circle (which
+                         rendered as a broken/dashed ring at high tiers
+                         because SVG strokes can't fade per-segment). The
+                         comet artwork is a pre-rendered SVG with a real
+                         radial-gradient head + opacity-faded trail, and
+                         we rotate the whole image around the ring center
+                         with a CSS keyframe.
+
+                         JS swaps `src` per tier (`renderXPDisplay`); the
+                         `data-tier` attribute drives speed + visibility
+                         via the `.xp-ring__comet[data-tier="N"]` rules
+                         in animations.css. Tiers 1-3 leave `src` empty
+                         so the img is invisible. -->
+                    <img id="player-xp-ring-comet" class="xp-ring__comet xp-ring__comet--mini" src="" alt="" aria-hidden="true">
+                    <!-- v2.6 Item 5: active spell sigils orbit the avatar.
+                         The orbit container is a 0×0 anchor at the avatar
+                         center; JS injects sigil children (one per active
+                         spell) with per-child rotation angles so they
+                         distribute evenly. The container itself spins via
+                         a CSS keyframe; each sigil's inner icon counter-
+                         rotates to stay upright. Empty by default — JS
+                         populates / clears it as spells cast and expire. -->
+                    <div id="player-sigil-orbit" class="avatar-sigil-orbit avatar-sigil-orbit--mini" aria-hidden="true"></div>
+                    <!-- v2.6: avatar's `border-2 border-...` was removed because the
+                         XP ring SVG already provides a tier-colored ring at a larger
+                         radius. With both rings rendered, players saw two concentric
+                         rings ~3.5px apart ("doesn't align" complaint). The XP ring
+                         is now the sole visible ring; the avatar relies on its dark
+                         inner gradient + p-0.5 padding ring for visual definition. -->
+                    <div id="player-avatar-ring" class="w-14 h-14 rounded-full shadow-2xl transition-all group-hover:scale-110 group-hover:shadow-purple-500/30">
+                        <div class="w-full h-full rounded-full bg-gradient-to-br from-stone-800 to-stone-950 flex items-center justify-center">
+                            <span id="player-avatar-icon" class="text-2xl">⚔️</span>
+                        </div>
                     </div>
                 </div>
                 <div id="player-level-badge" class="absolute -bottom-1 -right-1 bg-gradient-to-r from-purple-600 to-purple-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-purple-400 shadow-lg">
@@ -339,31 +515,95 @@
                     </button>
 
                     <!-- Avatar & Identity -->
+                    <!-- v2.6: same wrapper pattern as the collapsed avatar above so
+                         the XP ring SVG can ride at slightly larger inset. `inline-block`
+                         + parent `text-center` keeps the avatar horizontally centered. -->
                     <div class="text-center mb-5 pt-2">
-                        <div id="panel-avatar-ring" class="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-gray-600 to-gray-800 p-1 shadow-2xl border-3 border-gray-500 mb-3">
-                            <div class="w-full h-full rounded-full bg-gradient-to-br from-stone-800 to-stone-950 flex items-center justify-center">
-                                <span id="panel-avatar-icon" class="text-5xl">⚔️</span>
+                        <div class="relative inline-block mb-3">
+                            <!-- v2.6 Item 2: same shimmer + prestige-slot stack as
+                                 the mini avatar above. The bigger ring on the
+                                 expanded sheet shows more of the rarity treatment
+                                 because it's the focal point of the character sheet. -->
+                            <svg class="xp-ring xp-ring--panel" viewBox="0 0 100 100" aria-hidden="true">
+                                <circle class="xp-ring__track" cx="50" cy="50" r="46" pathLength="100" />
+                                <circle id="panel-xp-ring-progress" class="xp-ring__progress" cx="50" cy="50" r="46" pathLength="100" />
+                                <circle class="xp-ring__shimmer" cx="50" cy="50" r="46" pathLength="100" />
+                                <g class="xp-ring__prestige-slots" data-prestige-count="0">
+                                    <circle class="xp-ring__prestige-anchor" cx="50" cy="2"  r="2.5" data-slot="0" />
+                                    <circle class="xp-ring__prestige-anchor" cx="84" cy="16" r="2.5" data-slot="1" />
+                                    <circle class="xp-ring__prestige-anchor" cx="98" cy="50" r="2.5" data-slot="2" />
+                                    <circle class="xp-ring__prestige-anchor" cx="84" cy="84" r="2.5" data-slot="3" />
+                                    <circle class="xp-ring__prestige-anchor" cx="50" cy="98" r="2.5" data-slot="4" />
+                                    <circle class="xp-ring__prestige-anchor" cx="16" cy="84" r="2.5" data-slot="5" />
+                                    <circle class="xp-ring__prestige-anchor" cx="2"  cy="50" r="2.5" data-slot="6" />
+                                    <circle class="xp-ring__prestige-anchor" cx="16" cy="16" r="2.5" data-slot="7" />
+                                </g>
+                            </svg>
+                            <!-- Panel-sized comet shimmer (see mini comet comment
+                                 above for full rationale). Same artwork, larger
+                                 footprint to match the panel ring. -->
+                            <img id="panel-xp-ring-comet" class="xp-ring__comet xp-ring__comet--panel" src="" alt="" aria-hidden="true">
+                            <!-- v2.6 Item 5: panel-sized sigil orbit. Same
+                                 mechanics as the mini orbit above, just a
+                                 larger radius (matches the bigger avatar
+                                 footprint). -->
+                            <div id="panel-sigil-orbit" class="avatar-sigil-orbit avatar-sigil-orbit--panel" aria-hidden="true"></div>
+                            <!-- v2.6: see comment on `#player-avatar-ring` above —
+                                 the `border-3 border-...` was removed so the XP
+                                 ring SVG is the only visible ring around the avatar. -->
+                            <div id="panel-avatar-ring" class="w-24 h-24 rounded-full shadow-2xl">
+                                <div class="w-full h-full rounded-full bg-gradient-to-br from-stone-800 to-stone-950 flex items-center justify-center">
+                                    <span id="panel-avatar-icon" class="text-5xl">⚔️</span>
+                                </div>
                             </div>
                         </div>
-                        <div onclick="goalManager.openTitleHall()" class="cursor-pointer hover:opacity-80 transition-opacity" role="button" tabindex="0">
-                            <div id="player-title" class="text-lg font-bold text-amber-300 medieval-title">Peasant</div>
-                            <div id="current-prefix" class="text-sm text-yellow-400 italic fancy-font mt-1"></div>
-                            <div class="text-xs text-amber-500 fancy-font mt-1"><i class="ri-medal-line mr-1"></i>Tap to manage titles</div>
+                        <!-- v2.6 Item 3: equipped title rendered on a parchment-
+                             scroll background. The scroll wraps just the title
+                             + active-prefix lines; the "tap to manage titles"
+                             hint stays outside it as a small caption so the
+                             scroll itself reads as a discrete artifact rather
+                             than a full container. The .medieval-title class
+                             still drives the font, but the on-parchment palette
+                             overrides the old amber/yellow ink (parchment looks
+                             wrong with light text). -->
+                        <div onclick="goalManager.openTitleHall()" class="cursor-pointer hover:opacity-90 transition-opacity" role="button" tabindex="0">
+                            <!-- v2.6 Item 3 (final): scroll background uses the
+                                 user-provided PNG at icons/scroll-banner.png.
+                                 Inline SVG rolls were removed in favor of the
+                                 illustrated artwork. Padding is tuned to keep
+                                 the title text inside the flat parchment area
+                                 (the rolled ends each occupy ~13% of the image
+                                 width; the quill feather sits in the bottom-
+                                 right ~25%, so we add extra right padding to
+                                 keep multi-line titles clear of it). -->
+                            <div class="title-scroll mx-auto">
+                                <div id="player-title" class="title-scroll__name medieval-title">Peasant</div>
+                                <div id="current-prefix" class="title-scroll__prefix fancy-font"></div>
+                            </div>
+                            <div class="text-xs text-amber-500 fancy-font mt-2"><i class="ri-medal-line mr-1"></i>Tap to manage titles</div>
                         </div>
                     </div>
 
                     <!-- Level & XP -->
-                    <div class="quest-card bg-gradient-to-br from-purple-900/60 to-purple-950/60 rounded-xl p-4 border-2 border-purple-700/50 mb-4">
+                    <!-- v2.6 panel-unification: Level/XP card was the start of
+                         a 6-color stack inside the player panel (purple/yellow/
+                         green/purple/blue/etc.) with no semantic logic — it
+                         just looked random. Repainted to amber/stone chrome to
+                         match the default theme's overall identity. The XP
+                         progress bar keeps a yellow→amber gradient because
+                         yellow/gold is the app-wide convention for XP &
+                         rewards (kept consistent across the whole codebase). -->
+                    <div class="quest-card bg-gradient-to-br from-amber-900/50 to-stone-950/60 rounded-xl p-4 border-2 border-amber-700/50 mb-4">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-purple-200 fancy-font font-bold flex items-center">
+                            <span class="text-amber-200 fancy-font font-bold flex items-center">
                                 <i class="ri-vip-crown-line mr-2 text-yellow-400"></i>Level <span id="player-level" class="ml-1 text-yellow-300">1</span>
                             </span>
-                            <span class="text-xs text-purple-300 fancy-font"><span id="player-xp">0</span> XP</span>
+                            <span class="text-xs text-amber-300 fancy-font cursor-help" data-stat-tooltip="xp"><span id="player-xp">0</span> XP</span>
                         </div>
-                        <div class="w-full bg-purple-950 rounded-full h-3 border border-purple-700 mb-2">
-                            <div id="xp-progress" class="bg-gradient-to-r from-purple-500 to-purple-400 h-3 rounded-full transition-all duration-500" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="XP progress"></div>
+                        <div class="progress-bar w-full bg-stone-950 rounded-full h-3 border border-amber-800/60 mb-2">
+                            <div id="xp-progress" class="bg-gradient-to-r from-yellow-500 to-amber-400 h-3 rounded-full transition-all duration-500" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="XP progress"></div>
                         </div>
-                        <div class="text-xs text-purple-300 fancy-font text-center">
+                        <div class="text-xs text-amber-300 fancy-font text-center">
                             <span id="xp-to-next">500 XP</span> to next level
                         </div>
                     </div>
@@ -389,7 +629,7 @@
                         <div class="text-sm font-bold mb-2 text-amber-200 fancy-font flex items-center">
                             <i class="ri-star-fill mr-2 text-yellow-400"></i> Today's Glory
                         </div>
-                        <div class="w-full bg-amber-950 rounded-full h-3 mb-2 border border-amber-700">
+                        <div class="progress-bar w-full bg-amber-950 rounded-full h-3 mb-2 border border-amber-700">
                             <div id="daily-progress" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-3 rounded-full transition-all duration-500" style="width: 0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Daily quest progress"></div>
                         </div>
                         <div class="flex justify-between text-xs text-amber-300 fancy-font">
@@ -399,12 +639,28 @@
                     </div>
 
                     <!-- Active Companion -->
-                    <div id="panel-companion-section" class="quest-card bg-gradient-to-br from-green-900/50 to-green-950/50 rounded-xl p-4 border-2 border-green-700/50 mb-4 cursor-pointer hover:border-green-500 transition-all" onclick="goalManager.openCompanionDen()" role="button" tabindex="0" aria-label="Open companion den">
+                    <!-- v2.6 panel-unification: chrome neutralized to stone +
+                         amber border. Green is preserved as the SECTION-INTERNAL
+                         accent (heading text, badge text, hover highlight) so
+                         the card still has a small green cue tying it to the
+                         companion-den view's green palette, without flooding
+                         the whole panel with green chrome. -->
+                    <div id="panel-companion-section" class="quest-card bg-gradient-to-br from-stone-800/60 to-stone-950/60 rounded-xl p-4 border-2 border-amber-700/40 mb-4 cursor-pointer hover:border-green-500 transition-all" onclick="goalManager.openCompanionDen()" role="button" tabindex="0" aria-label="Open companion den">
                         <div class="text-sm font-bold text-green-300 fancy-font mb-2 flex items-center justify-center">
                             <i class="ri-bear-smile-line mr-2"></i> Companion <i class="ri-arrow-right-s-line ml-auto text-green-500"></i>
                         </div>
+                        <!-- v2.6 Item 4: companion rendered in a circular bubble
+                             portrait with a gentle idle bob animation. The
+                             bubble exists in BOTH this no-companion fallback
+                             markup AND in the dynamic render in goal-manager.js
+                             `updatePlayerPanel()` so the visual is consistent
+                             whether the player has hatched a companion yet or
+                             not. The "No companion yet" copy still uses the
+                             egg emoji as a literal teaser. -->
                         <div id="panel-companion" class="flex items-center justify-center gap-3">
-                            <span class="text-3xl">🥚</span>
+                            <div class="companion-bubble">
+                                <span class="text-3xl">🥚</span>
+                            </div>
                             <div>
                                 <div class="text-green-200 fancy-font text-sm font-bold">No companion yet</div>
                                 <div class="text-green-400 text-xs fancy-font">Open treasure chests!</div>
@@ -413,7 +669,11 @@
                     </div>
 
                     <!-- Active Buffs -->
-                    <div id="panel-buffs-section" class="quest-card bg-gradient-to-br from-purple-900/40 to-indigo-950/40 rounded-xl p-4 border-2 border-purple-700/40 mb-4">
+                    <!-- v2.6 panel-unification: chrome neutralized to stone +
+                         amber border. Purple kept on the heading + icon so
+                         active buffs still read with the spell/magic accent
+                         color used elsewhere (arcane view, spell sigils). -->
+                    <div id="panel-buffs-section" class="quest-card bg-gradient-to-br from-stone-800/60 to-stone-950/60 rounded-xl p-4 border-2 border-amber-700/40 mb-4">
                         <div class="text-sm font-bold text-purple-300 fancy-font mb-2 flex items-center justify-center">
                             <i class="ri-flashlight-line mr-2"></i> Active Buffs
                         </div>
@@ -436,17 +696,21 @@
                     </div>
 
                     <!-- Quest Analytics -->
+                    <!-- v2.6 panel-unification: chrome neutralized to stone +
+                         amber border. Blue kept on heading text + hover
+                         border to match the analytics view's blue palette
+                         (small accent cue, not full chrome takeover). -->
                     <div onclick="goalManager.switchView('analytics'); goalManager.togglePlayerPanel();" 
-                        class="quest-card bg-gradient-to-br from-blue-900/50 to-blue-950/50 rounded-xl p-4 border-2 border-blue-700/40 mb-4 cursor-pointer hover:border-blue-500 transition-all" role="button" tabindex="0" aria-label="View quest analytics">
+                        class="quest-card bg-gradient-to-br from-stone-800/60 to-stone-950/60 rounded-xl p-4 border-2 border-amber-700/40 mb-4 cursor-pointer hover:border-blue-500 transition-all" role="button" tabindex="0" aria-label="View quest analytics">
                         <div class="text-sm font-bold text-blue-300 fancy-font mb-2 flex items-center justify-center">
                             <i class="ri-line-chart-line mr-2"></i> Quest Analytics <i class="ri-arrow-right-s-line ml-auto text-blue-500"></i>
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-center">
-                            <div>
+                            <div data-stat-tooltip="completed" class="cursor-help">
                                 <div class="text-lg font-bold text-green-300 fancy-font" id="panel-stat-completed">0</div>
                                 <div class="text-xs text-stone-400 fancy-font">Completed</div>
                             </div>
-                            <div>
+                            <div data-stat-tooltip="rate" class="cursor-help">
                                 <div class="text-lg font-bold text-yellow-300 fancy-font" id="panel-stat-rate">0%</div>
                                 <div class="text-xs text-stone-400 fancy-font">Rate</div>
                             </div>
@@ -459,15 +723,15 @@
                             <i class="ri-archive-line mr-2"></i> Inventory
                         </div>
                         <div class="grid grid-cols-3 gap-2 text-center">
-                            <div>
+                            <div data-stat-tooltip="spells" class="cursor-help">
                                 <div class="text-lg font-bold text-purple-300 fancy-font" id="panel-spell-count">0</div>
                                 <div class="text-xs text-stone-400 fancy-font">Spells</div>
                             </div>
-                            <div>
+                            <div data-stat-tooltip="companions" class="cursor-help">
                                 <div class="text-lg font-bold text-green-300 fancy-font" id="panel-companion-count">0</div>
                                 <div class="text-xs text-stone-400 fancy-font">Pets</div>
                             </div>
-                            <div>
+                            <div data-stat-tooltip="titles" class="cursor-help">
                                 <div class="text-lg font-bold text-yellow-300 fancy-font" id="panel-title-count">0</div>
                                 <div class="text-xs text-stone-400 fancy-font">Titles</div>
                             </div>
@@ -479,11 +743,11 @@
                         <button onclick="goalManager.showShareCardPreview(); goalManager.togglePlayerPanel();" class="w-full text-sm bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white px-3 py-2.5 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-400 flex items-center justify-center">
                             <i class="ri-share-line mr-2"></i> Share Stat Card
                         </button>
-                        <button onclick="goalManager.openSearchModal(); goalManager.togglePlayerPanel();" class="w-full text-sm bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-2.5 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-indigo-500 flex items-center justify-center">
+                        <button onclick="goalManager.openSearchModal(); goalManager.togglePlayerPanel();" class="w-full text-sm btn-themed-primary px-3 py-2.5 rounded-lg font-bold fancy-font flex items-center justify-center">
                             <i class="ri-search-line mr-2"></i> Search Quests
                         </button>
                         <button onclick="goalManager.switchView('tools'); goalManager.togglePlayerPanel();" class="w-full text-sm bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold fancy-font transition-all shadow-lg border-2 border-amber-500">
-                            ⚙️ Settings
+                            <i class="ri-settings-3-line mr-1"></i>Settings
                         </button>
                     </div>
                 </div>
@@ -492,7 +756,7 @@
             <!-- Dashboard View -->
             <div id="dashboard-view" class="view-container p-4 md:p-8">
                 <header class="mb-8 text-center">
-                    <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-1 overflow-hidden">Life Quest Journal ⚔️</h2>
+                    <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-1 overflow-hidden">Life Quest Journal</h2>
                     <p class="text-amber-200 fancy-font text-base md:text-lg">Your Life's Grand Adventure</p>
 
                     <!-- Current Title Banner -->
@@ -502,50 +766,91 @@
                     </div>
 
                     <!-- Motivational Quote -->
-                    <div class="mt-6 quest-card bg-gradient-to-br from-purple-900/40 to-purple-950/40 p-4 rounded-lg border-2 border-purple-600/30 max-w-2xl mx-auto">
-                        <div class="text-purple-200 fancy-font italic text-lg" id="motivational-quote">
+                    <!-- v2.6 panel-unification: motivational quote was an
+                         arbitrary purple panel inside an otherwise amber
+                         dashboard header. Repainted to amber/stone so the
+                         dashboard header reads as a single visual unit. -->
+                    <div class="mt-6 quest-card bg-gradient-to-br from-amber-900/30 to-stone-950/40 p-4 rounded-lg border-2 border-amber-700/30 max-w-2xl mx-auto">
+                        <div class="text-amber-200 fancy-font italic text-lg" id="motivational-quote">
                             "Loading wisdom..."
                         </div>
-                        <div class="text-purple-400 text-sm mt-2" id="quote-author">- Ancient Sage</div>
-                        <button onclick="goalManager.render()" class="text-xs text-purple-300 hover:text-purple-100 mt-2 underline">
-                            🔄 New Quote
+                        <div class="text-amber-400 text-sm mt-2" id="quote-author">- Ancient Sage</div>
+                        <button onclick="goalManager.render()" class="text-xs text-amber-300 hover:text-amber-100 mt-2 underline">
+                            <i class="ri-refresh-line mr-1"></i>New Quote
                         </button>
                     </div>
 
                 </header>
 
                 <!-- Daily Quest Board + Wooden Chest -->
+                <!-- v2.7.1 audit fix M5: removed the static "Loading quests..." /
+                     "Loading..." text stubs that flashed on every dashboard
+                     paint before `renderDailyQuestBoard()` and `renderWoodenChest()`
+                     populated their containers. The mounts are now empty so
+                     there's no FOUC — JS injects the actual content (or its
+                     proper empty state) on the next render tick. -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <div class="lg:col-span-2 quest-card bg-gradient-to-br from-indigo-900/80 to-indigo-950/80 rounded-xl shadow-2xl p-6 border-4 border-indigo-700/60">
-                        <h3 class="text-xl font-bold text-indigo-300 medieval-title mb-4">📜 Daily Quest Board</h3>
-                        <div id="daily-quest-board" class="space-y-3">
-                            <div class="text-indigo-200/60 text-center py-4 fancy-font">Loading quests...</div>
-                        </div>
+                    <!-- v2.6 panel-unification: Daily Quest Board was indigo,
+                         which clashed visually with the amber/orange dashboard
+                         stat-grid below it. Repainted to stone/amber so the
+                         board reads as part of the dashboard's amber identity
+                         while the 4 stat cards keep their semantic category
+                         colors (red/blue/green/orange). -->
+                    <div class="lg:col-span-2 quest-card bg-gradient-to-br from-stone-800/80 to-stone-950/80 rounded-xl shadow-2xl p-6 border-4 border-amber-700/60">
+                        <h3 class="text-xl font-bold text-amber-300 medieval-title mb-4"><i class="ri-scroll-line mr-2"></i>Daily Quest Board</h3>
+                        <div id="daily-quest-board" class="space-y-3"></div>
                     </div>
                     <div class="quest-card bg-gradient-to-br from-yellow-900/70 to-amber-950/70 rounded-xl shadow-2xl p-6 border-4 border-yellow-700/50 flex flex-col items-center justify-center text-center">
-                        <h3 class="text-xl font-bold text-yellow-300 medieval-title mb-3">🪵 Daily Wooden Chest</h3>
-                        <div id="daily-wooden-chest" class="w-full">
-                            <div class="text-amber-200/60 text-center py-4 fancy-font">Loading...</div>
-                        </div>
+                        <h3 class="text-xl font-bold text-yellow-300 medieval-title mb-3"><i class="ri-treasure-map-line mr-2"></i>Daily Wooden Chest</h3>
+                        <div id="daily-wooden-chest" class="w-full"></div>
                     </div>
                 </div>
 
                 <!-- Today's Quests (moved to top for quick access) -->
+                <!-- v2.7.1 audit fix M4: removed the static text empty-state
+                     stub. `renderTodayTasks()` injects an illustrated
+                     `_renderEmptyState` card (parchment + medallion + CTA)
+                     on the next tick, so the static text was just a brief
+                     FOUC of unstyled copy. Empty mount lets the proper
+                     empty state appear without flashing the placeholder. -->
                 <div class="quest-card bg-gradient-to-br from-amber-900 to-amber-950 rounded-xl shadow-2xl p-8 border-4 border-amber-700 mb-8">
                     <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3">
-                        <h3 class="text-2xl font-bold text-amber-300 medieval-title">📜 Today's Quests</h3>
+                        <h3 class="text-2xl font-bold text-amber-300 medieval-title"><i class="ri-scroll-line mr-2"></i>Today's Quests</h3>
                         <button onclick="addDailyTask()" class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg hover:scale-105 transition-transform border-2 border-amber-700">
                             <i class="ri-add-line mr-2"></i>New Quest
                         </button>
                     </div>
                     
-                    <div id="today-tasks-list" class="space-y-3">
-                        <div class="text-amber-200 text-center py-8 fancy-font">No quests for today. Begin your adventure!</div>
-                    </div>
+                    <div id="today-tasks-list" class="space-y-3"></div>
+                </div>
+
+                <!-- v2.7.1 audit fix M3: contextual welcome card for brand-
+                     new users. Shown when the user has level 1 AND zero
+                     quests across all tabs — i.e. the would-be empty stats
+                     grid below has nothing meaningful to display yet.
+                     `renderDashboard()` toggles the `hidden` class on this
+                     card and the stats grid below in a mutually-exclusive
+                     pair so the dashboard never has a visible empty band
+                     above the fold. As soon as the user adds their first
+                     quest (or hits level 2), the welcome card hides and
+                     the stats grid reveals. -->
+                <div id="dashboard-welcome-card" class="hidden quest-card bg-gradient-to-br from-amber-900/40 to-stone-950/60 rounded-xl shadow-2xl p-6 border-4 border-amber-700/50 mb-8 text-center">
+                    <div class="text-5xl mb-3">📜</div>
+                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2">Your Adventure Begins</h3>
+                    <p class="text-amber-200/90 fancy-font text-base md:text-lg max-w-xl mx-auto">
+                        Add your first quest above to start tracking XP, gold, and progress.
+                        New realms — Treasury, Spellbook, Boss Battles — unlock as you level up.
+                    </p>
                 </div>
 
                 <!-- Stats Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- v2.7.1 audit fix M3: `id="dashboard-stats-grid"` added so
+                     `renderDashboard()` can hide this entire grid for brand-
+                     new users (level 1, no quests yet) who would otherwise
+                     see four big "0" cards above the fold reading as "you
+                     have accomplished nothing." The welcome card above takes
+                     this slot until they have any progress to display. -->
+                <div id="dashboard-stats-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div onclick="goalManager.switchView('goals'); goalManager.switchGoalTab('life-goals');" class="quest-card bg-gradient-to-br from-red-900 to-red-950 text-white p-6 rounded-xl shadow-2xl border-4 border-red-700 hover:scale-105 transition-transform cursor-pointer" role="button" tabindex="0" aria-label="View Epic Quests">
                         <div class="flex justify-between items-start mb-4">
                             <div>
@@ -591,34 +896,91 @@
                     </div>
                 </div>
 
-                <!-- Period Summaries (moved to bottom) -->
-                <div class="flex justify-center gap-4 flex-wrap">
-                    <button onclick="goalManager.showPeriodSummary('week')" 
-                        class="bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-green-500">
-                        <i class="ri-shield-line mr-2"></i>Week Summary
-                    </button>
-                    <button onclick="goalManager.showPeriodSummary('month')" 
-                        class="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-blue-500">
-                        <i class="ri-book-3-line mr-2"></i>Month Summary
-                    </button>
-                    <button onclick="goalManager.showPeriodSummary('year')" 
-                        class="bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-purple-500">
-                        <i class="ri-file-paper-2-line mr-2"></i>Year Summary
-                    </button>
-                    <button onclick="goalManager.showWeeklyRecapPreview()" 
-                        class="bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-600 hover:to-teal-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-emerald-500">
-                        <i class="ri-share-line mr-2"></i>Share Weekly Recap
-                    </button>
-                </div>
-                <div class="flex justify-center gap-4 flex-wrap mt-3">
-                    <button onclick="goalManager.showCreateChallenge()" 
-                        class="bg-gradient-to-r from-orange-700 to-orange-800 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-orange-500">
-                        <i class="ri-sword-line mr-2"></i>Challenge a Friend
-                    </button>
-                    <button onclick="goalManager.showActiveChallenges()" 
-                        class="bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-600 hover:to-amber-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-amber-500">
-                        <i class="ri-trophy-line mr-2"></i>My Challenges
-                    </button>
+                <!-- ===== Dashboard secondary actions =================
+                     v2.6 button-consolidation: this block previously held SIX
+                     full-color buttons in two flex-wrap rows (Week/Month/Year
+                     Summary, Share Weekly Recap, Challenge a Friend, My
+                     Challenges) — green/blue/purple/teal/orange/amber, ragged
+                     widths because each button sized to its label, and
+                     visually competing with the 4 semantic stat cards above
+                     for attention. Replaced with TWO consolidated dropdown
+                     menus (Reports / Challenges) in matching amber/stone
+                     chrome to align with the panel-unification work.
+
+                     Each dropdown opens an absolutely-positioned menu with
+                     the same sub-actions, retaining a small icon-color
+                     accent per row (green/blue/purple/teal/orange/amber)
+                     so the original category cues survive in the menu
+                     items. Closing logic is handled by `toggleActionMenu()`
+                     in the inline script at the bottom of <body>: clicking
+                     outside or selecting an item closes the open menu;
+                     opening one menu auto-closes the other.
+
+                     Sub-actions: Reports → showPeriodSummary(week/month/
+                     year), showWeeklyRecapPreview. Challenges →
+                     showCreateChallenge, showActiveChallenges. No
+                     functionality changed; only the entry-point UI was
+                     consolidated. ============================================ -->
+                <div class="flex justify-center gap-3 flex-wrap">
+                    <!-- Reports dropdown -->
+                    <div class="relative inline-block" data-action-menu="reports">
+                        <button id="reports-menu-btn" type="button"
+                            onclick="toggleActionMenu('reports')"
+                            aria-haspopup="menu" aria-expanded="false" aria-controls="reports-menu"
+                            class="w-full sm:w-auto min-w-[200px] bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-600 hover:to-amber-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-amber-500 flex items-center justify-center gap-2">
+                            <i class="ri-bar-chart-2-line"></i>
+                            <span>Reports</span>
+                            <i class="ri-arrow-down-s-line action-menu-chevron transition-transform"></i>
+                        </button>
+                        <div id="reports-menu" role="menu" aria-labelledby="reports-menu-btn"
+                            class="action-menu hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-gradient-to-b from-stone-900 to-stone-950 border-2 border-amber-600 rounded-lg shadow-2xl z-30 overflow-hidden">
+                            <button type="button" role="menuitem"
+                                onclick="toggleActionMenu('reports'); goalManager.showPeriodSummary('week')"
+                                class="w-full text-left px-4 py-3 text-amber-100 hover:bg-amber-900/40 fancy-font font-bold flex items-center transition-colors border-b border-amber-800/30">
+                                <i class="ri-shield-line mr-3 text-green-400"></i>Week Summary
+                            </button>
+                            <button type="button" role="menuitem"
+                                onclick="toggleActionMenu('reports'); goalManager.showPeriodSummary('month')"
+                                class="w-full text-left px-4 py-3 text-amber-100 hover:bg-amber-900/40 fancy-font font-bold flex items-center transition-colors border-b border-amber-800/30">
+                                <i class="ri-book-3-line mr-3 text-blue-400"></i>Month Summary
+                            </button>
+                            <button type="button" role="menuitem"
+                                onclick="toggleActionMenu('reports'); goalManager.showPeriodSummary('year')"
+                                class="w-full text-left px-4 py-3 text-amber-100 hover:bg-amber-900/40 fancy-font font-bold flex items-center transition-colors border-b border-amber-800/30">
+                                <i class="ri-file-paper-2-line mr-3 text-purple-400"></i>Year Summary
+                            </button>
+                            <button type="button" role="menuitem"
+                                onclick="toggleActionMenu('reports'); goalManager.showWeeklyRecapPreview()"
+                                class="w-full text-left px-4 py-3 text-amber-100 hover:bg-amber-900/40 fancy-font font-bold flex items-center transition-colors">
+                                <i class="ri-share-line mr-3 text-emerald-400"></i>Share Weekly Recap
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Challenges dropdown -->
+                    <div class="relative inline-block" data-action-menu="challenges">
+                        <button id="challenges-menu-btn" type="button"
+                            onclick="toggleActionMenu('challenges')"
+                            aria-haspopup="menu" aria-expanded="false" aria-controls="challenges-menu"
+                            class="w-full sm:w-auto min-w-[200px] bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-600 hover:to-amber-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 fancy-font border-2 border-amber-500 flex items-center justify-center gap-2">
+                            <i class="ri-sword-line"></i>
+                            <span>Challenges</span>
+                            <i class="ri-arrow-down-s-line action-menu-chevron transition-transform"></i>
+                        </button>
+                        <div id="challenges-menu" role="menu" aria-labelledby="challenges-menu-btn"
+                            class="action-menu hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-gradient-to-b from-stone-900 to-stone-950 border-2 border-amber-600 rounded-lg shadow-2xl z-30 overflow-hidden">
+                            <button type="button" role="menuitem"
+                                onclick="toggleActionMenu('challenges'); goalManager.showCreateChallenge()"
+                                class="w-full text-left px-4 py-3 text-amber-100 hover:bg-amber-900/40 fancy-font font-bold flex items-center transition-colors border-b border-amber-800/30">
+                                <i class="ri-sword-line mr-3 text-orange-400"></i>Challenge a Friend
+                            </button>
+                            <button type="button" role="menuitem"
+                                onclick="toggleActionMenu('challenges'); goalManager.showActiveChallenges()"
+                                class="w-full text-left px-4 py-3 text-amber-100 hover:bg-amber-900/40 fancy-font font-bold flex items-center transition-colors">
+                                <i class="ri-trophy-line mr-3 text-amber-400"></i>My Challenges
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -738,13 +1100,13 @@
                             All
                         </button>
                         <button onclick="goalManager.filterSideQuests('high')" id="filter-high" class="px-3 py-1.5 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font text-sm hover:bg-cyan-700 transition-all">
-                            ⚡ High
+                            <i class="ri-flashlight-line mr-1"></i>High
                         </button>
                         <button onclick="goalManager.filterSideQuests('medium')" id="filter-medium" class="px-3 py-1.5 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font text-sm hover:bg-cyan-700 transition-all">
-                            ⭐ Medium
+                            <i class="ri-star-line mr-1"></i>Medium
                         </button>
                         <button onclick="goalManager.filterSideQuests('low')" id="filter-low" class="px-3 py-1.5 rounded-lg bg-cyan-800/50 text-cyan-200 font-semibold fancy-font text-sm hover:bg-cyan-700 transition-all">
-                            💫 Low
+                            <i class="ri-sparkling-line mr-1"></i>Low
                         </button>
                     </div>
                     <div id="sidequests-container" class="space-y-4"></div>
@@ -867,7 +1229,8 @@
                         </h3>
                         <p class="text-xs text-amber-200 mb-4 fancy-font">Your quest completion history (last 12 weeks)</p>
                         <div id="activity-heatmap" class="overflow-x-auto">
-                            <!-- Will be populated dynamically -->
+                            <!-- v2.5 skeleton: replaced by renderActivityHeatmap() -->
+                            <div class="skeleton" style="height: 6.5rem; max-width: 360px;"></div>
                         </div>
                     </div>
 
@@ -878,7 +1241,8 @@
                         </h3>
                         <p class="text-xs text-amber-200 mb-4 fancy-font">Experience points earned (last 30 days)</p>
                         <div id="xp-timeline-chart" class="h-64">
-                            <!-- Will be populated dynamically -->
+                            <!-- v2.5 skeleton: replaced by renderXPTimeline() -->
+                            <div class="skeleton" style="height: 100%;"></div>
                         </div>
                     </div>
                 </div>
@@ -892,7 +1256,8 @@
                         </h3>
                         <p class="text-xs text-amber-200 mb-4 fancy-font">Completed quests by category</p>
                         <div id="task-breakdown-chart" class="flex items-center justify-center h-64">
-                            <!-- Will be populated dynamically -->
+                            <!-- v2.5 skeleton: replaced by renderTaskBreakdown() -->
+                            <div class="skeleton skeleton-circle"></div>
                         </div>
                     </div>
 
@@ -903,7 +1268,16 @@
                         </h3>
                         <p class="text-xs text-amber-200 mb-4 fancy-font">Average tasks completed by day of week</p>
                         <div id="productivity-pattern-chart" class="h-64">
-                            <!-- Will be populated dynamically -->
+                            <!-- v2.5 skeleton: replaced by renderProductivityPattern() -->
+                            <div class="skeleton-bars">
+                                <div class="skeleton-bar" style="height: 45%;"></div>
+                                <div class="skeleton-bar" style="height: 70%;"></div>
+                                <div class="skeleton-bar" style="height: 55%;"></div>
+                                <div class="skeleton-bar" style="height: 85%;"></div>
+                                <div class="skeleton-bar" style="height: 40%;"></div>
+                                <div class="skeleton-bar" style="height: 65%;"></div>
+                                <div class="skeleton-bar" style="height: 50%;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -914,7 +1288,10 @@
                         <i class="ri-trophy-line mr-2"></i>Personal Records
                     </h3>
                     <div id="personal-records" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Will be populated dynamically -->
+                        <!-- v2.5 skeleton: replaced by renderPersonalRecords() -->
+                        <div class="skeleton" style="height: 5.5rem;"></div>
+                        <div class="skeleton" style="height: 5.5rem;"></div>
+                        <div class="skeleton" style="height: 5.5rem;"></div>
                     </div>
                 </div>
 
@@ -925,7 +1302,19 @@
                     </h3>
                     <p class="text-xs text-amber-200 mb-4 fancy-font">Current status of all active quests</p>
                     <div id="goals-progress-overview" class="space-y-4">
-                        <!-- Will be populated dynamically -->
+                        <!-- v2.5 skeleton: replaced by renderGoalsProgressOverview() -->
+                        <div>
+                            <div class="skeleton skeleton-line med"></div>
+                            <div class="skeleton skeleton-line full" style="height: 8px;"></div>
+                        </div>
+                        <div>
+                            <div class="skeleton skeleton-line short"></div>
+                            <div class="skeleton skeleton-line full" style="height: 8px;"></div>
+                        </div>
+                        <div>
+                            <div class="skeleton skeleton-line med"></div>
+                            <div class="skeleton skeleton-line full" style="height: 8px;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1063,7 +1452,7 @@
                             <div id="focus-timer-display" class="text-8xl font-bold text-blue-100 mb-6 fancy-font tracking-wider">25:00</div>
                             
                             <!-- Progress Bar -->
-                            <div class="w-full bg-blue-950 rounded-full h-4 border-2 border-blue-700 mb-6">
+                            <div class="progress-bar w-full bg-blue-950 rounded-full h-4 border-2 border-blue-700 mb-6">
                                 <div id="focus-timer-progress" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-4 rounded-full shadow-lg transition-all duration-1000" style="width: 0%"></div>
                             </div>
 
@@ -1134,7 +1523,7 @@
 
                     <!-- Info -->
                     <div class="quest-card bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-lg border-2 border-gray-600">
-                        <h3 class="text-xl font-bold text-amber-300 medieval-title mb-3">📜 How It Works</h3>
+                        <h3 class="text-xl font-bold text-amber-300 medieval-title mb-3"><i class="ri-scroll-line mr-2"></i>How It Works</h3>
                         <ul class="text-amber-200 fancy-font space-y-2 text-sm">
                             <li>✨ Complete 25-minute focus sessions to earn 1 Focus Crystal</li>
                             <li>💎 Use Focus Crystals to purchase powerful enchantments</li>
@@ -1219,14 +1608,14 @@
 
                         <!-- Active Enchantments -->
                         <div class="mb-8">
-                            <h3 class="text-2xl font-bold text-pink-300 medieval-title mb-4 text-center">🔮 Active Enchantments</h3>
+                            <h3 class="text-2xl font-bold text-pink-300 medieval-title mb-4 text-center"><i class="ri-magic-line mr-2"></i>Active Enchantments</h3>
                             <div id="active-enchantments-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             </div>
                         </div>
 
                         <!-- Available Enchantments -->
                         <div>
-                            <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center">🛒 Enchantment Shop</h3>
+                            <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center"><i class="ri-shopping-cart-2-line mr-2"></i>Enchantment Shop</h3>
                             <div id="enchantments-shop-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             </div>
                         </div>
@@ -1245,26 +1634,33 @@
                 <!-- Quick Actions -->
                 <div class="flex justify-center gap-4 mb-6 flex-wrap">
                     <button onclick="goalManager.undo()" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
-                        ↩️ Undo (Ctrl+Z)
+                        <i class="ri-arrow-go-back-line mr-1"></i>Undo (Ctrl+Z)
                     </button>
                     <button onclick="goalManager.redo()" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
-                        ↪️ Redo (Ctrl+Y)
+                        <i class="ri-arrow-go-forward-line mr-1"></i>Redo (Ctrl+Y)
                     </button>
-                    <button onclick="goalManager.toggleBulkSelectionMode()" class="bg-purple-700 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
-                        📦 Bulk Actions
+                    <button onclick="goalManager.toggleBulkSelectionMode()" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
+                        <i class="ri-checkbox-multiple-line mr-1"></i>Bulk Actions
                     </button>
                     <button onclick="goalManager.switchView('archives')" class="bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
-                        📦 Archives (<span id="archive-count">0</span>)
+                        <i class="ri-archive-2-line mr-1"></i>Archives (<span id="archive-count">0</span>)
                     </button>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Backup & Export -->
-                    <div class="quest-card bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border-4 border-gray-600">
+                    <!-- v2.6 panel-unification: chrome shifted from neutral
+                         gray to stone + amber border to match the Tools view's
+                         new amber/stone identity. The Export (blue), Import
+                         (green), and Delete (red) buttons inside KEEP their
+                         functional colors — those carry universal meaning
+                         (download/upload/destructive) that should not be
+                         neutralized. -->
+                    <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-6 rounded-xl shadow-2xl border-4 border-amber-700/50">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
                             <i class="ri-save-line mr-2"></i> Backup & Export
                         </h3>
-                        <p class="text-gray-200 fancy-font mb-4 text-sm text-center">Protect your quest data by exporting backups</p>
+                        <p class="text-amber-200/80 fancy-font mb-4 text-sm text-center">Protect your quest data by exporting backups</p>
                         <div class="space-y-3">
                             <button onclick="goalManager.exportData()" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-blue-500">
                                 <i class="ri-download-line mr-2"></i> Export All Data (JSON)
@@ -1273,7 +1669,7 @@
                                 <i class="ri-upload-line mr-2"></i> Import Data from Backup
                             </button>
                             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="goalManager.importData(event)">
-                            <div class="border-t-2 border-gray-700 pt-3 mt-3">
+                            <div class="border-t-2 border-amber-800/30 pt-3 mt-3">
                                 <button onclick="goalManager.deleteAllData()" class="w-full bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-600">
                                     <i class="ri-delete-bin-line mr-2"></i> Delete All Data
                                 </button>
@@ -1285,18 +1681,27 @@
                     </div>
 
                     <!-- Settings -->
-                    <div class="quest-card bg-gradient-to-br from-indigo-800 to-indigo-900 p-6 rounded-xl shadow-2xl border-4 border-indigo-600">
+                    <!-- v2.6 panel-unification: this was the most jarring
+                         panel in the Tools view — full indigo chrome with
+                         indigo selects, indigo dividers, indigo buttons, and
+                         indigo text on every label. Repainted to stone +
+                         amber-border to match the rest of the Tools view.
+                         All internal indigo-* classes are remapped to
+                         amber-* / stone-* equivalents. The audio toggle
+                         keeps its green-when-enabled state because that's a
+                         functional ON/OFF cue, not a chrome color. -->
+                    <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-6 rounded-xl shadow-2xl border-4 border-amber-700/50">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
                             <i class="ri-settings-3-line mr-2"></i> Settings
                         </h3>
-                        <p class="text-indigo-200 fancy-font mb-4 text-sm text-center">Customize your quest journal</p>
+                        <p class="text-amber-200/80 fancy-font mb-4 text-sm text-center">Customize your quest journal</p>
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-indigo-200 fancy-font text-sm mb-2">
+                                <label class="block text-amber-200 fancy-font text-sm mb-2">
                                     <i class="ri-time-line mr-1"></i> Time Zone
                                 </label>
                                 <select id="timezone-select" 
-                                    class="w-full px-4 py-3 rounded-lg bg-indigo-950 border-2 border-indigo-600 text-white fancy-font focus:border-indigo-400 focus:outline-none"
+                                    class="w-full px-4 py-3 rounded-lg bg-stone-950 border-2 border-amber-700/50 text-white fancy-font focus:border-amber-500 focus:outline-none"
                                     onchange="goalManager.updateTimezone(this.value)">
                                     <option value="auto">Auto-detect</option>
                                     <option value="-12">UTC-12:00 (Baker Island)</option>
@@ -1327,22 +1732,22 @@
                                     <option value="12">UTC+12:00 (Fiji, Auckland)</option>
                                     <option value="13">UTC+13:00 (Tonga)</option>
                                 </select>
-                                <p class="text-xs text-indigo-300 mt-2 fancy-font" id="timezone-info">
+                                <p class="text-xs text-amber-300 mt-2 fancy-font" id="timezone-info">
                                     Current: Auto-detected
                                 </p>
                             </div>
                             
                             <!-- Audio Settings -->
-                            <div class="border-t-2 border-indigo-700 pt-4">
-                                <label class="block text-indigo-200 fancy-font text-sm mb-2">
+                            <div class="border-t-2 border-amber-800/30 pt-4">
+                                <label class="block text-amber-200 fancy-font text-sm mb-2">
                                     <i class="ri-volume-up-line mr-1"></i> Sound Effects
                                 </label>
                                 
                                 <!-- Enable/Disable Toggle -->
                                 <div class="flex items-center justify-between mb-3">
-                                    <span class="text-indigo-200 text-sm">Enable Sounds</span>
+                                    <span class="text-amber-200 text-sm">Enable Sounds</span>
                                     <button onclick="toggleAudio()" id="audio-toggle-btn" 
-                                        class="relative h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-green-600">
+                                        class="relative h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 bg-green-600">
                                         <span id="audio-toggle-circle" class="absolute left-1 top-1 w-4 h-4 transform transition-transform bg-white rounded-full shadow translate-x-5"></span>
                                     </button>
                                 </div>
@@ -1350,19 +1755,61 @@
                                 <!-- Volume Slider -->
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
-                                        <span class="text-indigo-200 text-sm">Volume</span>
-                                        <span id="volume-display" class="text-indigo-300 text-sm font-bold">50%</span>
+                                        <span class="text-amber-200 text-sm">Volume</span>
+                                        <span id="volume-display" class="text-amber-300 text-sm font-bold">50%</span>
                                     </div>
                                     <input type="range" id="volume-slider" min="0" max="100" value="50" 
-                                        class="w-full h-2 bg-indigo-950 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        class="w-full h-2 bg-stone-950 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                         oninput="updateVolume(this.value)">
                                 </div>
                                 
                                 <!-- Test Sound Button -->
                                 <button onclick="testSound()" 
-                                    class="w-full mt-3 bg-indigo-700 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold fancy-font transition-all">
+                                    class="w-full mt-3 bg-stone-700 hover:bg-stone-600 text-white px-4 py-2 rounded-lg text-sm font-bold fancy-font transition-all border border-amber-700/40">
                                     <i class="ri-play-circle-line mr-1"></i> Test Sound
                                 </button>
+                            </div>
+
+                            <!-- Animation Intensity -->
+                            <div class="border-t-2 border-amber-800/30 pt-4 mt-4">
+                                <label class="block text-amber-200 fancy-font text-sm mb-2">
+                                    <i class="ri-sparkling-2-line mr-1"></i> Animation Intensity
+                                </label>
+                                <p class="text-amber-300/70 text-xs mb-3">Controls visual flair for level-ups, enchantments, and rewards</p>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button onclick="setAnimationIntensity('full')" id="fx-intensity-full"
+                                        class="fx-intensity-btn bg-stone-700 hover:bg-stone-600 text-white px-2 py-2 rounded-lg text-xs font-bold fancy-font transition-all border border-amber-700/40">
+                                        Full
+                                    </button>
+                                    <button onclick="setAnimationIntensity('reduced')" id="fx-intensity-reduced"
+                                        class="fx-intensity-btn bg-stone-700 hover:bg-stone-600 text-white px-2 py-2 rounded-lg text-xs font-bold fancy-font transition-all border border-amber-700/40">
+                                        Reduced
+                                    </button>
+                                    <button onclick="setAnimationIntensity('minimal')" id="fx-intensity-minimal"
+                                        class="fx-intensity-btn bg-stone-700 hover:bg-stone-600 text-white px-2 py-2 rounded-lg text-xs font-bold fancy-font transition-all border border-amber-700/40">
+                                        Minimal
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- v2.5 — Title Style (gendered level-title chain) -->
+                            <div class="border-t-2 border-amber-800/30 pt-4 mt-4">
+                                <label class="block text-amber-200 fancy-font text-sm mb-2">
+                                    <i class="ri-vip-crown-line mr-1"></i> Title Style
+                                </label>
+                                <p class="text-amber-300/70 text-xs mb-3">Choose how your noble titles appear as you level up</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="goalManager.setTitleStyle('masculine')" id="title-style-masculine"
+                                        class="title-style-btn bg-stone-700 hover:bg-stone-600 text-white px-2 py-3 rounded-lg text-xs font-bold fancy-font transition-all border border-amber-700/40">
+                                        ♂ Masculine
+                                        <div class="text-[10px] font-normal opacity-70 mt-1">King · Prince · Duke</div>
+                                    </button>
+                                    <button onclick="goalManager.setTitleStyle('feminine')" id="title-style-feminine"
+                                        class="title-style-btn bg-stone-700 hover:bg-stone-600 text-white px-2 py-3 rounded-lg text-xs font-bold fancy-font transition-all border border-amber-700/40">
+                                        ♀ Feminine
+                                        <div class="text-[10px] font-normal opacity-70 mt-1">Queen · Princess · Duchess</div>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1386,11 +1833,16 @@
                     </div>
 
                     <!-- Theme Selector -->
-                    <div class="quest-card bg-gradient-to-br from-purple-800 to-purple-900 p-6 rounded-xl shadow-2xl border-4 border-purple-600">
+                    <!-- v2.6 panel-unification: chrome shifted from full purple
+                         to stone + amber border, matching Task Reminders /
+                         Settings. Each theme tile inside the picker keeps its
+                         own palette — those ARE the themes the user is
+                         choosing between, so coloring them is essential UX. -->
+                    <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-6 rounded-xl shadow-2xl border-4 border-amber-700/50">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
                             <i class="ri-palette-line mr-2"></i> Realm Themes
                         </h3>
-                        <p class="text-purple-200 fancy-font mb-4 text-sm text-center">Choose your kingdom's colors (unlock more by leveling up!)</p>
+                        <p class="text-amber-200/80 fancy-font mb-4 text-sm text-center">Choose your kingdom's colors (unlock more by leveling up!)</p>
                         <div id="theme-premium-banner"></div>
                         <div id="theme-selector-container" class="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <!-- Themes will be rendered here by JavaScript -->
@@ -1398,11 +1850,17 @@
                     </div>
 
                     <!-- Tutorial -->
-                    <div class="quest-card bg-gradient-to-br from-blue-800 to-blue-900 p-6 rounded-xl shadow-2xl border-4 border-blue-600">
+                    <!-- v2.6 panel-unification: chrome shifted from full blue
+                         to stone + amber border. The two action buttons
+                         inside KEEP their original blue/green coloring —
+                         they're CTAs and the colors are doing real work
+                         (blue=tutorial/info, green=add-something), not just
+                         chrome decoration. -->
+                    <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-6 rounded-xl shadow-2xl border-4 border-amber-700/50">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
                             <i class="ri-booklet-line mr-2"></i> Tutorial & Help
                         </h3>
-                        <p class="text-blue-200 fancy-font mb-4 text-sm text-center">Learn how to master Life Quest Journal</p>
+                        <p class="text-amber-200/80 fancy-font mb-4 text-sm text-center">Learn how to master Life Quest Journal</p>
                         <div class="space-y-3">
                             <button onclick="goalManager.restartTutorial()" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-blue-500">
                                 <i class="ri-play-circle-line mr-2"></i> Restart Tutorial
@@ -1410,18 +1868,24 @@
                             <button onclick="goalManager.showStarterTasksModal()" class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-green-500">
                                 <i class="ri-file-list-3-line mr-2"></i> Add Starter Quests
                             </button>
-                            <p class="text-xs text-blue-300 fancy-font text-center">
+                            <p class="text-xs text-amber-300/70 fancy-font text-center">
                                 Review the tutorial or add preset quests to jumpstart your adventure
                             </p>
                         </div>
                     </div>
 
                     <!-- Share & Community -->
-                    <div class="quest-card bg-gradient-to-br from-indigo-700 to-violet-900 p-6 rounded-xl shadow-2xl border-4 border-indigo-500">
+                    <!-- v2.6 panel-unification: chrome shifted from indigo/
+                         violet to stone + amber border. Inside, the Discord
+                         CTA KEEPS its indigo/violet gradient — that's
+                         Discord's actual brand color and changing it would
+                         confuse users about what they're clicking. The
+                         amber Share Stat Card button was already on-brand. -->
+                    <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-6 rounded-xl shadow-2xl border-4 border-amber-700/50">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
                             <i class="ri-share-line mr-2"></i> Share & Community
                         </h3>
-                        <p class="text-indigo-200 fancy-font mb-4 text-sm text-center">Share your adventure and connect with fellow adventurers</p>
+                        <p class="text-amber-200/80 fancy-font mb-4 text-sm text-center">Share your adventure and connect with fellow adventurers</p>
                         <div class="space-y-3">
                             <button onclick="goalManager.showShareCardPreview()" 
                                 class="w-full bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
@@ -1434,23 +1898,27 @@
                                 class="w-full block text-center bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-indigo-400">
                                 <i class="ri-discord-fill mr-2"></i> Join Our Discord
                             </a>
-                            <p class="text-xs text-indigo-300 fancy-font text-center">
+                            <p class="text-xs text-amber-300/70 fancy-font text-center">
                                 Chat with the community, report bugs, and suggest features
                             </p>
                         </div>
                     </div>
 
                     <!-- Privacy & Legal -->
-                    <div class="quest-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl shadow-2xl border-4 border-slate-600">
+                    <!-- v2.6 panel-unification: chrome shifted from slate to
+                         stone + amber border. The Privacy Policy CTA keeps a
+                         neutral slate gradient — it's intentionally low-
+                         emphasis (legal document, not a primary action). -->
+                    <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-6 rounded-xl shadow-2xl border-4 border-amber-700/50">
                         <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center">
                             <i class="ri-shield-check-line mr-2"></i> Privacy & Legal
                         </h3>
-                        <p class="text-slate-200 fancy-font mb-4 text-sm text-center">Your data stays private and secure</p>
+                        <p class="text-amber-200/80 fancy-font mb-4 text-sm text-center">Your data stays private and secure</p>
                         <div class="space-y-3">
                             <a href="privacy-policy.html" target="_blank" class="w-full block text-center bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-slate-500">
                                 <i class="ri-file-text-line mr-2"></i> Privacy Policy
                             </a>
-                            <p class="text-xs text-slate-300 fancy-font text-center">
+                            <p class="text-xs text-amber-300/70 fancy-font text-center">
                                 🔒 All your data is stored locally on your device. We never collect or transmit your personal information.
                             </p>
                         </div>
@@ -1461,7 +1929,7 @@
 
                 <!-- App Version -->
                 <div class="mt-8 text-center">
-                    <p class="text-sm text-gray-500 fancy-font">Life Quest Journal v1.0.0</p>
+                    <p class="text-sm text-gray-500 fancy-font">Life Quest Journal v2.8.0</p>
                 </div>
             </div>
 
@@ -1482,7 +1950,7 @@
             <!-- Archives View -->
             <div id="archives-view" class="view-container hidden p-4 md:p-8">
                 <header class="mb-8 text-center">
-                    <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-1">📦 Hall of Legends 📦</h2>
+                    <h2 class="text-3xl md:text-4xl font-bold text-amber-300 medieval-title mb-1"><i class="ri-archive-line mr-2"></i>Hall of Legends<i class="ri-archive-line ml-2"></i></h2>
                     <p class="text-amber-200 fancy-font text-base md:text-lg">Your archived quests and past victories</p>
                 </header>
 
@@ -1528,9 +1996,6 @@
             <!-- Title Hall View (accessed from Player Panel only) -->
             <div id="titles-view" class="view-container hidden p-4 md:p-8">
                 <header class="mb-8 text-center">
-                    <button onclick="goalManager.switchView(goalManager.previousView || 'dashboard')" class="absolute left-4 top-4 md:left-8 md:top-8 text-purple-300 hover:text-purple-100 transition-colors">
-                        <i class="ri-arrow-left-line text-2xl"></i>
-                    </button>
                     <h2 class="text-3xl md:text-4xl font-bold text-purple-300 medieval-title mb-1">Title Hall</h2>
                     <div class="text-3xl mb-2"><i class="ri-medal-line text-purple-400"></i></div>
                     <p class="text-purple-200 fancy-font text-base md:text-lg">Your earned titles and achievements</p>
@@ -1538,7 +2003,11 @@
 
                 <!-- Current Title Display -->
                 <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-yellow-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                    <!-- v2.7 layout fix — inline icon (instead of flex row)
+                         so the header never overflows its parent and clips
+                         the icon at the left edge on narrow viewports. See
+                         Active Companion h3 below for the full rationale. -->
+                    <h3 class="text-2xl md:text-3xl font-bold text-yellow-300 medieval-title mb-4 text-center md:text-left">
                         <i class="ri-vip-crown-line mr-3"></i>Current Title
                     </h3>
                     <div id="active-title-display">
@@ -1548,7 +2017,7 @@
 
                 <!-- All Titles Collection -->
                 <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                    <h3 class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title mb-4 text-center md:text-left">
                         <i class="ri-gallery-line mr-3"></i>Earned Titles
                     </h3>
                     <div id="titles-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1558,7 +2027,7 @@
 
                 <!-- Locked Titles -->
                 <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-stone-400 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                    <h3 class="text-2xl md:text-3xl font-bold text-stone-400 medieval-title mb-4 text-center md:text-left">
                         <i class="ri-lock-line mr-3"></i>Undiscovered
                     </h3>
                     <div id="titles-locked-grid">
@@ -1570,9 +2039,6 @@
             <!-- Companions View (accessed from Player Panel only) -->
             <div id="companions-view" class="view-container hidden p-4 md:p-8">
                 <header class="mb-8 text-center">
-                    <button onclick="goalManager.switchView(goalManager.previousView || 'dashboard')" class="absolute left-4 top-4 md:left-8 md:top-8 text-green-300 hover:text-green-100 transition-colors">
-                        <i class="ri-arrow-left-line text-2xl"></i>
-                    </button>
                     <h2 class="text-3xl md:text-4xl font-bold text-green-300 medieval-title mb-1">Companion Den</h2>
                     <div class="text-3xl mb-2"><i class="ri-bear-smile-line text-green-400"></i></div>
                     <p class="text-green-200 fancy-font text-base md:text-lg">Your loyal companions and their abilities</p>
@@ -1580,7 +2046,19 @@
 
                 <!-- Active Companion Display -->
                 <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-green-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                    <!-- v2.7 layout fix — was `flex items-center
+                         justify-center md:justify-start`. A flex row with
+                         `justify-center` overflows symmetrically when the
+                         icon + bold medieval-title text together exceed the
+                         parent's content width on narrow viewports, clipping
+                         the icon at the left edge (reported by user on a
+                         ~390px viewport). Inline rendering (`text-center
+                         md:text-left`) keeps the icon in the text flow so it
+                         travels with the title and wraps to a second line if
+                         the content is too wide. The icon retains its `mr-3`
+                         spacing inline because `<i>` is a default-inline
+                         element under Remix Icon. -->
+                    <h3 class="text-2xl md:text-3xl font-bold text-green-300 medieval-title mb-4 text-center md:text-left">
                         <i class="ri-shield-star-line mr-3"></i>Active Companion
                     </h3>
                     <div id="active-companion-display">
@@ -1590,7 +2068,7 @@
 
                 <!-- Companion Collection -->
                 <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                    <h3 class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title mb-4 text-center md:text-left">
                         <i class="ri-gallery-line mr-3"></i>Your Collection
                     </h3>
                     <div id="companion-collection-grid">
@@ -1600,7 +2078,7 @@
 
                 <!-- Undiscovered Companions -->
                 <div class="mb-8">
-                    <h3 class="text-2xl md:text-3xl font-bold text-stone-400 medieval-title mb-4 flex items-center justify-center md:justify-start">
+                    <h3 class="text-2xl md:text-3xl font-bold text-stone-400 medieval-title mb-4 text-center md:text-left">
                         <i class="ri-question-line mr-3"></i>Undiscovered
                     </h3>
                     <div id="companion-undiscovered-grid">
@@ -1663,15 +2141,27 @@
 
     <!-- PWA Install Button (hidden by default, shown when installable) -->
     <button id="pwa-install-button" onclick="installPWA()" class="hidden fixed bottom-6 right-6 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6 py-4 rounded-full shadow-2xl font-bold fancy-font transition-all hover:scale-110 z-50 border-2 border-green-400">
-        📱 Install App
+        <i class="ri-smartphone-line mr-1"></i>Install App
     </button>
 
     <script src="analytics-methods.js"></script>
     <script src="capacitor-bridge.js"></script>
     <script src="pwa-handler.js"></script>
     <script src="audio-manager.js"></script>
+    <script src="effects-manager.js"></script>
     <script src="goal-manager.js"></script>
     <script src="mobile-touch.js"></script>
+    <!-- v2.7 Phase 4: pointer-tracked 3D parallax tilt for epic+ rarity
+         cards. Self-contained module, uses event delegation so it works
+         across re-renders without needing to re-bind listeners. Bails at
+         init on touch / prefers-reduced-motion; respects fx-reduced /
+         fx-minimal at runtime via body class checks. -->
+    <script src="parallax-tilt.js"></script>
+    <!-- v2.6 Item 6: stat-breakdown tooltips. Loaded AFTER goal-manager
+         so the module's `getStatBreakdown` lookup finds the manager
+         instance. The script self-initializes via an IIFE; no bootstrap
+         call needed from the GoalManager constructor. -->
+    <script src="stat-tooltip.js"></script>
     
     <!-- Initialize GoalManager -->
     <script>
@@ -1701,7 +2191,7 @@
                             <p class="text-red-200 mb-4">Sorry, the app couldn't load properly.</p>
                             <p class="text-red-300/70 text-sm mb-6">${err.message}</p>
                             <button onclick="location.reload()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold">
-                                🔄 Reload App
+                                <i class="ri-refresh-line mr-1"></i>Reload App
                             </button>
                         </div>
                     </div>
@@ -1789,7 +2279,7 @@
     </script>
 
     <!-- Quick-Add FAB (mobile only) -->
-    <div id="quick-add-fab" class="fixed bottom-6 right-6 z-[50] md:hidden">
+    <div id="quick-add-fab" class="fixed bottom-24 right-6 z-[50] md:hidden" style="bottom: calc(5rem + env(safe-area-inset-bottom));">
         <!-- Backdrop -->
         <div id="quick-add-backdrop" class="hidden fixed inset-0 bg-black/40" onclick="closeQuickAdd()"></div>
         
@@ -1799,8 +2289,16 @@
                 <i class="ri-sword-line text-amber-400"></i>
                 <span class="text-amber-300 font-bold fancy-font text-sm">Quick Quest</span>
             </div>
-            <form id="quick-add-form" onsubmit="submitQuickAdd(event)">
-                <input id="quick-add-input" type="text" placeholder="Enter quest title..." 
+            <form id="quick-add-fab-form" onsubmit="submitQuickAdd(event)">
+                <!-- Category picker. Populated by `toggleQuickAdd()` from
+                     `goalManager.goalTabUnlockLevels` so locked tabs (e.g.
+                     Life/Yearly before level 9) never show up. Default
+                     value is restored from `lastQuickAddCategory` in
+                     localStorage, falling back to 'daily'. -->
+                <label class="block text-amber-300/80 text-xs fancy-font mb-1.5">Add to</label>
+                <select id="quick-add-fab-category"
+                    class="w-full bg-stone-700/80 border border-amber-700/50 rounded-lg px-3 py-2 text-amber-100 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 fancy-font mb-3"></select>
+                <input id="quick-add-fab-input" type="text" placeholder="Enter quest title..." 
                     class="w-full bg-stone-700/80 border border-amber-700/50 rounded-lg px-3 py-2.5 text-amber-100 placeholder-amber-200/40 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 fancy-font"
                     autocomplete="off" maxlength="100">
                 <button type="submit" 
@@ -1819,6 +2317,43 @@
     </div>
 
     <script>
+        // Master order for the FAB category picker. Listed from the
+        // longest-horizon goal type down to the most immediate, with
+        // Side at the bottom as the "miscellaneous" bucket. Each entry
+        // also lists the `goalManager` method to invoke on submit and
+        // the unlock key in `goalTabUnlockLevels` (null = always
+        // available, like Daily which is unlocked from level 1).
+        const QUICK_ADD_CATEGORIES = [
+            { value: 'life',    label: '\ud83c\udff0 Life Goal',    method: 'quickAddLifeGoal',    unlockKey: 'life-goals' },
+            { value: 'yearly',  label: '\ud83d\udcdc Yearly',       method: 'quickAddYearlyGoal',  unlockKey: 'yearly' },
+            { value: 'monthly', label: '\ud83d\udcd6 Monthly',      method: 'quickAddMonthlyGoal', unlockKey: 'monthly' },
+            { value: 'weekly',  label: '\ud83d\udee1\ufe0f Weekly', method: 'quickAddWeeklyGoal',  unlockKey: 'weekly' },
+            { value: 'daily',   label: '\u2694\ufe0f Daily Task',   method: 'quickAddDailyTask',   unlockKey: null },
+            { value: 'side',    label: '\ud83e\udded Side Quest',   method: 'quickAddSideQuest',   unlockKey: 'sidequests' }
+        ];
+
+        // Build the <option> list filtered by what the player has
+        // unlocked. Called every time the popup opens so newly-unlocked
+        // categories appear without needing a page reload.
+        function populateQuickAddCategories() {
+            const select = document.getElementById('quick-add-fab-category');
+            if (!select) return;
+            const level = (window.goalManager && goalManager.level) || 1;
+            const unlocks = (window.goalManager && goalManager.goalTabUnlockLevels) || {};
+            const remembered = localStorage.getItem('lastQuickAddCategory') || 'daily';
+
+            select.innerHTML = QUICK_ADD_CATEGORIES
+                .filter(c => !c.unlockKey || level >= (unlocks[c.unlockKey] || 1))
+                .map(c => `<option value="${c.value}">${c.label}</option>`)
+                .join('');
+
+            // Restore last-used selection if it's still in the (now
+            // possibly-filtered) option list; otherwise fall back to
+            // Daily, which is always present.
+            const available = Array.from(select.options).map(o => o.value);
+            select.value = available.includes(remembered) ? remembered : 'daily';
+        }
+
         function toggleQuickAdd() {
             const popup = document.getElementById('quick-add-popup');
             const backdrop = document.getElementById('quick-add-backdrop');
@@ -1828,10 +2363,11 @@
             if (isOpen) {
                 closeQuickAdd();
             } else {
+                populateQuickAddCategories();
                 popup.classList.remove('hidden');
                 backdrop.classList.remove('hidden');
                 icon.className = 'ri-close-line text-white text-2xl font-bold';
-                document.getElementById('quick-add-input').focus();
+                document.getElementById('quick-add-fab-input').focus();
             }
         }
 
@@ -1842,21 +2378,100 @@
             popup.classList.add('hidden');
             backdrop.classList.add('hidden');
             icon.className = 'ri-add-line text-white text-2xl font-bold';
-            document.getElementById('quick-add-input').value = '';
+            document.getElementById('quick-add-fab-input').value = '';
         }
 
         function submitQuickAdd(e) {
             e.preventDefault();
-            const input = document.getElementById('quick-add-input');
+            const input = document.getElementById('quick-add-fab-input');
+            const select = document.getElementById('quick-add-fab-category');
             const title = input.value.trim();
             if (!title) return;
-            
-            if (window.goalManager) {
-                goalManager.quickAddDailyTask(title);
+
+            // Look up the chosen category. Fall back to Daily if the
+            // select somehow holds a stale or unknown value (e.g. a
+            // category was removed between page loads).
+            const category = QUICK_ADD_CATEGORIES.find(c => c.value === select.value)
+                          || QUICK_ADD_CATEGORIES.find(c => c.value === 'daily');
+
+            if (window.goalManager && typeof goalManager[category.method] === 'function') {
+                goalManager[category.method](title);
+                // Remember the choice so the next quick-add defaults to
+                // the same bucket \u2014 users who batch-add side quests
+                // shouldn't have to re-pick every time.
+                localStorage.setItem('lastQuickAddCategory', category.value);
             }
             input.value = '';
             closeQuickAdd();
         }
+
+        // ===== Dashboard action-menu dropdowns ============================
+        // v2.6 button-consolidation: replaces the previous flat 6-button row
+        // with two dropdowns (Reports / Challenges). This helper handles all
+        // open/close state for both menus:
+        //   • Clicking a button toggles its menu and auto-closes the other.
+        //   • Clicking outside any open menu closes it.
+        //   • Pressing Escape closes the open menu (a11y requirement for
+        //     ARIA disclosure-pattern menus).
+        //   • The chevron icon rotates 180° while open as a visual affordance.
+        // The outside-click and Escape listeners are bound ONCE at module
+        // load (not per-toggle) so we don't accumulate listeners over the
+        // session. The handlers are no-ops when no menu is open, so the
+        // cost is negligible.
+        // ==================================================================
+        function toggleActionMenu(name) {
+            const allMenus = document.querySelectorAll('[data-action-menu]');
+            let opened = false;
+
+            allMenus.forEach(wrapper => {
+                const isTarget = wrapper.getAttribute('data-action-menu') === name;
+                const menu = wrapper.querySelector('.action-menu');
+                const btn = wrapper.querySelector('button[aria-haspopup="menu"]');
+                const chevron = btn?.querySelector('.action-menu-chevron');
+                if (!menu || !btn) return;
+
+                if (isTarget) {
+                    const willOpen = menu.classList.contains('hidden');
+                    menu.classList.toggle('hidden', !willOpen);
+                    btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                    if (chevron) chevron.style.transform = willOpen ? 'rotate(180deg)' : '';
+                    opened = willOpen;
+                } else {
+                    // Auto-close any other open menu so only one is visible
+                    // at a time (mirrors native <select> / OS menubar UX).
+                    menu.classList.add('hidden');
+                    btn.setAttribute('aria-expanded', 'false');
+                    if (chevron) chevron.style.transform = '';
+                }
+            });
+        }
+
+        // Outside-click + Escape handlers, bound once.
+        document.addEventListener('click', (e) => {
+            // Ignore clicks that originate inside any action-menu wrapper —
+            // those are handled by the buttons' onclick attributes directly.
+            if (e.target.closest('[data-action-menu]')) return;
+            // Close every open menu on outside click.
+            document.querySelectorAll('[data-action-menu] .action-menu:not(.hidden)').forEach(menu => {
+                menu.classList.add('hidden');
+                const wrapper = menu.closest('[data-action-menu]');
+                const btn = wrapper?.querySelector('button[aria-haspopup="menu"]');
+                if (btn) btn.setAttribute('aria-expanded', 'false');
+                const chevron = btn?.querySelector('.action-menu-chevron');
+                if (chevron) chevron.style.transform = '';
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            const open = document.querySelector('[data-action-menu] .action-menu:not(.hidden)');
+            if (!open) return;
+            const wrapper = open.closest('[data-action-menu]');
+            const name = wrapper?.getAttribute('data-action-menu');
+            if (name) toggleActionMenu(name); // toggle closes it
+            // Return focus to the trigger button for keyboard users.
+            wrapper?.querySelector('button[aria-haspopup="menu"]')?.focus();
+        });
     </script>
 </body>
 </html>

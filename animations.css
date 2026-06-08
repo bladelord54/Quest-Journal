@@ -1,3 +1,110 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.7 — Motion Token System
+   ═══════════════════════════════════════════════════════════════════════════
+   Single source of truth for animation durations and easings across the app.
+   Adopted in v2.7 alongside the motion calm pass; future passes should
+   reference these tokens instead of inlining literal `200ms` / `1.5s` values.
+
+   Why a token system
+   ──────────────────
+   Before v2.7 the codebase carried ~25 distinct duration values
+   (`80ms, 200ms, 250ms, 300ms, 400ms, 500ms, 600ms, 800ms, 1s, 1.2s,
+   1.4s, 1.5s, 1.6s, 1.8s, 2s, 2.4s, 2.5s, 2.8s, 3s, 3.5s, 5s, 6s, 12s,
+   24s` and so on) — most ad-hoc, with subtle inconsistency between
+   sibling components (one toast slid in over 200ms, another over
+   300ms). The token table collapses those into 9 named buckets that
+   correspond to specific motion intents, so future review can ask
+   "is this animation a `medium` or a `long`?" instead of arguing
+   whether 320ms or 280ms is right.
+
+   Sourcing
+   ────────
+   • Durations follow Material Design 3 motion guidelines (short /
+     medium / long / extra-long), extended with `confirm`,
+     `celebration`, `epic`, `ambient`, and `ambient-slow` to cover
+     this app's gamification context (boss defeats, XP-ring orbits,
+     etc. — categories Material doesn't have because productivity
+     apps don't usually need them).
+   • Easings: `--ease-out-standard` is Material's "decelerate" curve;
+     `--ease-out-soft` is the existing custom curve already used by
+     the view-container transition (kept verbatim so migrating to
+     the token doesn't shift existing motion).
+
+   Usage pattern
+   ─────────────
+       transition: opacity var(--motion-medium) var(--ease-out-soft);
+       animation: someKeyframe var(--motion-celebration) var(--ease-out-standard) forwards;
+
+   Migration policy
+   ────────────────
+   v2.7 migrates only the canonical "exemplar" animations listed at
+   the bottom of this comment. Most existing rules still inline their
+   durations — those should migrate opportunistically when next
+   touched. Avoid mass `Find/Replace` migrations: some literal values
+   are intentionally off-token (e.g. the boss-defeat shatter sequence
+   uses bespoke timings tuned per-keyframe).
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    /* ── Durations ───────────────────────────────────────────────
+       Each token is keyed to a specific motion intent. Numbers ramp
+       roughly geometrically (×2.5 per step at the small end, ×4 at
+       the ambient end) so adjacent tokens read as clearly distinct
+       durations rather than indistinguishable neighbors. */
+    --motion-micro:        80ms;     /* press feedback, hover lift, tactile micro-interaction */
+    --motion-short:        200ms;    /* small fades, toast slide-in, hover glow */
+    --motion-medium:       300ms;    /* view transitions, modal entrance, panel slide */
+    --motion-long:         500ms;    /* hero entrances, big screen-wide moves */
+    --motion-confirm:      800ms;    /* action-confirmed bursts (sparkle, ripple, flash) */
+    --motion-celebration: 1500ms;    /* moderate reward moments (XP gain, spell cast core) */
+    --motion-epic:        2500ms;    /* major reward sequences (boss defeat, level-up) */
+    --motion-ambient:     6000ms;    /* slow always-on ornament (XP ring comet) */
+    --motion-ambient-slow: 24000ms;  /* very-slow ornament (sigil orbit, empty-state rays) */
+
+    /* ── Easings ─────────────────────────────────────────────────
+       Use `--ease-out-soft` for entrances that need a "settle into
+       place" feel (view changes, modals); `--ease-out-standard` for
+       most other one-shot motions; `--ease-in-out-loop` for
+       breathing pulses; `--ease-linear-loop` for continuous rotation. */
+    --ease-out-standard: cubic-bezier(0.2, 0, 0, 1);     /* Material "decelerate" */
+    --ease-out-soft:     cubic-bezier(0.16, 1, 0.3, 1);  /* app's existing soft-landing curve */
+    --ease-in-out-loop:  ease-in-out;                    /* breathing ambient pulses */
+    --ease-linear-loop:  linear;                         /* continuous rotation */
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Accessibility: respect OS-level reduced-motion preference.
+   effects-manager.js auto-sets in-app intensity to 'reduced' on init when this
+   media query matches, but the heaviest full-screen overlays in this file
+   (boss-defeat-flash, levelup-flash, chest-flash, spell-flash, confetti-fall,
+   spotlight-pulse, screen-shake) are spawned directly by goal-manager.js
+   without checking that intensity. This CSS-level guard suppresses the most
+   strobing/flashing effects for motion-sensitive users as a safety net.
+   Non-strobing reward feedback (floating text, gentle bursts) still plays so
+   the user still gets confirmation their action registered.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .confetti-particle,
+    .levelup-flash,
+    .boss-defeat-flash,
+    .chest-flash,
+    .spell-flash,
+    .levelup-pillar,
+    .levelup-ring,
+    .boss-defeat-ring,
+    .spell-circle-outer,
+    .spell-circle-inner,
+    .boss-hit-shake,
+    .streak-confetti {
+        animation: none !important;
+        display: none !important;
+    }
+    /* Keep the spotlight visible for tutorials but stop it from pulsing. */
+    [style*="spotlight-pulse"],
+    .tutorial-spotlight {
+        animation: none !important;
+    }
+}
+
 /* Tutorial Spotlight Pulse */
 @keyframes spotlight-pulse {
     0%, 100% {
@@ -90,7 +197,10 @@
     height: 100vh;
     pointer-events: none;
     z-index: 9996;
-    animation: spell-flash 0.8s ease-out forwards;
+    /* v2.7 motion tokens — was `0.8s ease-out` (literal). 800ms is the
+       `confirm` bucket; spell-flash is the canonical full-screen action-
+       confirmation burst, so it's the exemplar use of `--motion-confirm`. */
+    animation: spell-flash var(--motion-confirm) var(--ease-out-standard) forwards;
 }
 
 @keyframes spell-flash {
@@ -1059,14 +1169,19 @@
 }
 
 /* ===== Empty State Animations ===== */
-.empty-state-icon {
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
+/* v2.7 motion calm pass — the base `.empty-state-icon` rule used to
+   apply a 3s infinite `float` translateY bob to every empty-state
+   glyph. Per NN/g's "motion must have a purpose" rule, empty states
+   are read-once-and-dismissed; perpetual motion on them is
+   gratuitous and competes with the rotating rays already animating
+   in the `.empty-state-medallion` wrapper for attention. The
+   medallion's override at the bottom of this file (`animation: none`)
+   already neutralized this in every in-app usage, so removing the
+   base rule eliminates dead code and prevents accidental re-adoption
+   by future empty states. The `@keyframes float` definition is also
+   removed — `feature-graphic.html` and `landing.html` carry their
+   own scoped copies for marketing pages, so no external consumer
+   breaks. */
 
 /* ===== Toast Notification Animations ===== */
 .animate-slide-down {
@@ -1399,29 +1514,37 @@ input[type="checkbox"]:checked {
 
 
 
-/* Sand drift animation (Desert) */
+/* Sand drift animation (Desert)
+   v2.7.1 (Jun 2, 2026) rewrite: the previous keyframe pinned every sand
+   particle to translateY(~50vh) and walked them horizontally across the
+   full viewport. Result: a single narrow horizontal band of sand dots
+   marching mid-screen — nothing like wind-blown desert sand. Rewritten
+   to fall top→bottom (matching spawnParticle's `top:0` start) with a
+   pronounced horizontal sway that reads as wind. `particle.style.left`
+   is randomized per-spawn in `spawnParticle`, so the wind direction
+   reads as varied across particles. Rotation kept for grain-tumbling. */
 @keyframes sand-drift {
     0% {
-        transform: translateX(-20px) translateY(50vh) rotate(0deg);
+        transform: translateY(-10vh) translateX(-30px) rotate(0deg);
         opacity: 0;
     }
     10% {
         opacity: 0.7;
     }
     25% {
-        transform: translateX(25vw) translateY(48vh) rotate(90deg);
+        transform: translateY(25vh) translateX(35px) rotate(90deg);
     }
     50% {
-        transform: translateX(50vw) translateY(52vh) rotate(180deg);
+        transform: translateY(50vh) translateX(-25px) rotate(180deg);
     }
     75% {
-        transform: translateX(75vw) translateY(46vh) rotate(270deg);
+        transform: translateY(75vh) translateX(40px) rotate(270deg);
     }
     90% {
-        opacity: 0.4;
+        opacity: 0.5;
     }
     100% {
-        transform: translateX(100vw) translateY(50vh) rotate(360deg);
+        transform: translateY(110vh) translateX(-15px) rotate(360deg);
         opacity: 0;
     }
 }
@@ -1554,6 +1677,280 @@ input[type="checkbox"]:checked {
     filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.8));
 }
 
+/* Verdant Grove leaf particles — v2.8 (Jun 4, 2026)
+   Pure-CSS leaf shape via asymmetric border-radius (eye-shape),
+   reusing the proven `gif-fall` keyframe for the falling motion.
+   Continues the strategy D direction set by Stormwatch: no GIF
+   runtime dep, scales infinitely with theme expansion, DevTools-
+   live iteration. Designed slower & more contemplative than
+   forest's leaf.gif (12-18s drift vs forest's 10-15s) so Verdant
+   Grove reads as the deeper, ancient-druid grove rather than a
+   palette swap of the forest kingdom. The asymmetric radius
+   creates a soft leaf silhouette that, paired with `gif-fall`'s
+   tumbling rotation, sells the falling-leaf metaphor without a
+   raster asset. Drop-shadow uses a low-opacity emerald glow to
+   keep the leaf visible against the dark grove background. */
+.particle-leaf {
+    width: 14px;
+    height: 18px;
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #15803d 100%);
+    border-radius: 0% 100% 0% 100% / 0% 100% 0% 100%;
+    animation: gif-fall linear forwards;
+    filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.45));
+}
+
+/* ============================================================
+   v2.8 ROUND 2 (Jun 5, 2026) — three new pure-CSS particle
+   classes for the remaining v2.8 themes (Sunken Library, Dark
+   Cathedral, Aurora Spires). Each follows the strategy D
+   pattern established by .particle-rain / .particle-leaf:
+   pure-CSS, no GIF runtime dep, palette-tunable, DevTools-
+   live. All three are spawned by goal-manager.js's
+   spawnParticle (themed by `currentTheme`) and registered in
+   the `risingParticles` list there if they rise from bottom.
+   ROADMAP § 2.4. */
+
+/* Sunken Library bubbles — small luminous spheres rising slowly
+   from the bottom with a sideways sway, fading near the surface.
+   Spawned bottom:0 (added to risingParticles). The radial gradient
+   plus inset shadow give them a 3D water-bead read; the box-
+   shadow glow keeps them visible against the deep teal palette
+   even at small sizes. The shimmer sub-keyframe creates a slow
+   pulse that suggests bioluminescence catching the light. */
+@keyframes bubble-rise {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.6);
+        opacity: 0;
+    }
+    10% { opacity: 0.85; }
+    25% {
+        transform: translateY(-25vh) translateX(15px) scale(0.9);
+    }
+    50% {
+        transform: translateY(-50vh) translateX(-12px) scale(1);
+    }
+    75% {
+        transform: translateY(-75vh) translateX(18px) scale(1.05);
+    }
+    90% { opacity: 0.4; }
+    100% {
+        transform: translateY(-105vh) translateX(-8px) scale(1.1);
+        opacity: 0;
+    }
+}
+
+@keyframes bubble-shimmer {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.4); }
+}
+
+.particle-bubble {
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle at 30% 30%,
+        rgba(224, 242, 254, 0.95) 0%,
+        rgba(125, 211, 252, 0.65) 45%,
+        rgba(6, 182, 212, 0.35) 100%);
+    border-radius: 50%;
+    border: 1px solid rgba(125, 211, 252, 0.55);
+    animation: bubble-rise linear forwards, bubble-shimmer 1.4s ease-in-out infinite;
+    box-shadow:
+        inset -2px -2px 4px rgba(6, 182, 212, 0.45),
+        0 0 6px rgba(125, 211, 252, 0.55),
+        0 0 12px rgba(6, 182, 212, 0.3);
+}
+
+/* Dark Cathedral dust motes — soft warm specks drifting upward
+   slowly with a gentle horizontal sway, suggesting dust caught in
+   stained-glass light shafts. Spawned bottom:0 (rising). Smaller
+   and slower than embers, no flicker (cathedral stillness over
+   forge urgency); the warm candle-gold gradient nods to the
+   stained-glass-and-candlelight palette. The mote-twinkle keyframe
+   is a slow opacity breath rather than a fast flicker. */
+@keyframes mote-drift {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.7);
+        opacity: 0;
+    }
+    15% { opacity: 0.75; }
+    35% {
+        transform: translateY(-30vh) translateX(20px) scale(0.9);
+    }
+    65% {
+        transform: translateY(-65vh) translateX(-25px) scale(1);
+    }
+    85% { opacity: 0.5; }
+    100% {
+        transform: translateY(-105vh) translateX(15px) scale(1.05);
+        opacity: 0;
+    }
+}
+
+@keyframes mote-twinkle {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.6); }
+}
+
+.particle-mote {
+    width: 4px;
+    height: 4px;
+    background: radial-gradient(circle,
+        rgba(254, 243, 199, 0.95) 0%,
+        rgba(251, 191, 36, 0.7) 50%,
+        rgba(217, 119, 6, 0.3) 100%);
+    border-radius: 50%;
+    animation: mote-drift linear forwards, mote-twinkle 2.5s ease-in-out infinite;
+    box-shadow:
+        0 0 4px rgba(254, 243, 199, 0.7),
+        0 0 8px rgba(251, 191, 36, 0.45);
+}
+
+/* Aurora Spires stars — tiny twinkling dots drifting upward very
+   slowly, suggesting starfield ascending behind aurora bands.
+   Spawned bottom:0 (rising). Different from mote: cooler palette
+   (white-blue-violet), even smaller, sharper edges (no soft
+   gradient), and the twinkle is a sharper opacity blink rather
+   than a brightness pulse to read as starlight rather than
+   firelight. The star-twinkle keyframe staggers per particle via
+   `animation-delay` randomization handled in spawnParticle's
+   per-spawn jitter (if added later) or simply by offset spawn
+   times producing visual randomness. */
+@keyframes star-rise {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.5);
+        opacity: 0;
+    }
+    20% { opacity: 0.9; }
+    50% {
+        transform: translateY(-50vh) translateX(8px) scale(1);
+    }
+    80% { opacity: 0.7; }
+    100% {
+        transform: translateY(-105vh) translateX(-5px) scale(1.1);
+        opacity: 0;
+    }
+}
+
+@keyframes star-twinkle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    25% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.15); }
+    75% { opacity: 0.6; transform: scale(0.9); }
+}
+
+.particle-star {
+    width: 3px;
+    height: 3px;
+    background: radial-gradient(circle,
+        #ffffff 0%,
+        #c4b5fd 50%,
+        #818cf8 100%);
+    border-radius: 50%;
+    animation: star-rise linear forwards, star-twinkle 1.8s ease-in-out infinite;
+    box-shadow:
+        0 0 3px #ffffff,
+        0 0 6px rgba(196, 181, 253, 0.7),
+        0 0 12px rgba(129, 140, 248, 0.4);
+}
+
+/* Crystal Caves shards — v2.8 round 3 (Jun 5, 2026, 6th theme).
+   Diamond-shape particles drifting upward from the cave floor,
+   suggesting flecks of dislodged crystal catching cave-glow. The
+   45deg rotated square + magenta-to-cyan gradient is the visual
+   signature that differentiates this from the soft round particles
+   of Cathedral (warm dust motes) and Aurora (cool starlight dots).
+   Geometric instead of organic — appropriate for a mineralogical
+   theme.
+   
+   Three keyframes are stacked:
+     1. `crystal-rise` — vertical drift bottom→top with horizontal
+        sway (smaller sway than bubbles; crystals are denser, fall
+        more directly upward when buoyed by cave-air convection)
+     2. `crystal-tumble` — slow continuous 360deg rotation around
+        the particle's own center; the diamond orientation reads
+        more clearly when it's actively rotating. Period is offset
+        from the rise duration so each particle's tumble phase
+        differs from its rise phase (avoids synchronized spinning).
+     3. `crystal-shimmer` — hue-rotate + brightness pulse, NOT a
+        simple opacity blink. Hue-rotate is cheap (single CSS
+        filter, GPU-accelerated) and gives the crystals a
+        "refracting light" feel as they rotate through magenta→
+        cyan→magenta. This is the visual punch that separates a
+        crystal from a generic colored speck.
+   
+   Why not `clip-path: polygon(...)` for a true diamond outline?
+   The 45deg rotate + square is identical visually but cheaper
+   to render (single transform vs path-clip). The combined
+   transform on each frame interpolates via the GPU. */
+@keyframes crystal-rise {
+    0% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+    }
+    15% { opacity: 0.85; }
+    50% {
+        transform: translateY(-50vh) translateX(15px);
+    }
+    85% { opacity: 0.6; }
+    100% {
+        transform: translateY(-105vh) translateX(-10px);
+        opacity: 0;
+    }
+}
+
+@keyframes crystal-tumble {
+    from { rotate: 45deg; }
+    to   { rotate: 405deg; }
+}
+
+@keyframes crystal-shimmer {
+    0%, 100% { filter: hue-rotate(0deg) brightness(1); }
+    50%      { filter: hue-rotate(40deg) brightness(1.45); }
+}
+
+.particle-crystal {
+    width: 6px;
+    height: 6px;
+    /* Magenta→cyan radial — the duality that signals "crystal" at
+       a glance. The center is bright fuchsia (refracted light
+       source), the outer is cyan (rim glow), with a violet midband
+       suggesting amethyst between them. */
+    background: radial-gradient(circle,
+        #f0abfc 0%,
+        #c026d3 40%,
+        #22d3ee 100%);
+    /* Diamond shape via 45deg rotation; crystal-tumble keyframe
+       drives it from 45deg→405deg so it always reads as oriented
+       on a vertex. Combined with crystal-rise + crystal-shimmer
+       in a single shorthand. Note: `rotate` (the standalone CSS
+       property, not `transform: rotate`) is used in crystal-tumble
+       so it doesn't conflict with crystal-rise's `transform:
+       translateY/X` — they compose cleanly without one clobbering
+       the other. */
+    rotate: 45deg;
+    animation:
+        crystal-rise linear forwards,
+        crystal-tumble 4s linear infinite,
+        crystal-shimmer 2.2s ease-in-out infinite;
+    box-shadow:
+        0 0 4px rgba(240, 171, 252, 0.9),
+        0 0 10px rgba(192, 38, 211, 0.6),
+        0 0 16px rgba(34, 211, 238, 0.4);
+}
+
+/* (Dark Cathedral candle-flicker layer was REMOVED Jun 5, 2026
+   afternoon — round 3.5 patch. The 4-candle pure-CSS overlay
+   shipped earlier in round 3 didn't read well on the actual
+   image: the warm yellow-amber glow points fought the image's
+   crimson palette and the irregular flicker drew the eye away
+   from the altar centerpiece rather than reinforcing it. Image
+   alone (which has its own painted candle highlights baked in)
+   carries the cathedral atmosphere cleanly. Keyframes, class,
+   and the #theme-cathedral-candles container in index.html are
+   all stripped. To revert: `git show HEAD~1:animations.css` for
+   the keyframes/class and `git show HEAD~1:index.html` for the
+   container div. ROADMAP § 2.4 round 3.5 documents the rationale. */
+
 /* Theme Video Background - LOWEST layer */
 #theme-video-bg {
     position: fixed;
@@ -1579,24 +1976,28 @@ input[type="checkbox"]:checked {
     display: block !important;
 }
 
-/* GIF background layer - sits behind all content */
-body.has-theme-bg::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-image: var(--theme-bg-image);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    opacity: 1;
-    z-index: -1;
-    pointer-events: none;
-}
+/* v2.7.1: GIF background layer removed (the GIF fallbacks themselves were
+   deleted from the bundle; see ROADMAP § 1.6 / § 2.3.1 patch notes and
+   goal-manager.js `videoBackgrounds` comment). The animated layer is now
+   entirely the <video> element; on hardware-decode failure we degrade to
+   the static themed sidebar/quest-card gradients below. The previous rule
+   was:
 
-/* When animated bg is active, make main content area transparent so GIF shows */
+   body.has-theme-bg::before {
+       content: '';
+       position: fixed;
+       top: 0; left: 0;
+       width: 100vw; height: 100vh;
+       background-image: var(--theme-bg-image);
+       background-size: cover;
+       background-position: center;
+       background-repeat: no-repeat;
+       z-index: -1;
+       opacity: 0.85;
+   }
+*/
+
+/* When animated bg is active, make main content area transparent so video shows */
 /* This selector is more specific than themes.css to override the !important */
 body.has-theme-bg .flex-1.overflow-y-auto,
 body.has-theme-bg .bg-stone-800 {
@@ -1659,59 +2060,123 @@ body.has-theme-bg.theme-shadow .quest-card {
     background: linear-gradient(to bottom right, #1f2937, #0f1623) !important;
 }
 
-/* Gold shimmer animation (Golden Empire) */
-@keyframes gold-shimmer {
+/* ===== STORMWATCH (v2.8 prototype, hybrid) =====
+   v2.8 PROTOTYPE timeline:
+     Jun 2 — Landed CSS-only as strategy D proof-of-concept:
+                stormy-slate body gradient + full-viewport white lightning
+                flash overlay (mix-blend-mode:screen, 11s double-flicker
+                keyframe) + .particle-rain class.
+     Jun 3 — Promoted to hybrid marquee: `icons/stormwatch-bg.webm` v1
+                (861KB pure-atmosphere stormy clouds, no baked-in
+                lightning/rain) added as the base atmospheric layer via
+                the standard `#theme-video-bg` element + videoBackgrounds
+                map in `goal-manager.js`.
+     Jun 3 — Lightning flash rewritten to a horizon glow (radial gradient
+                anchored below viewport, prefers-reduced-motion-gated)
+                after the original full-viewport flash was flagged as
+                uncomfortably close to WCAG 2.3.1's three-flashes-per-
+                second threshold.
+     Jun 3 — **CSS lightning effect dropped entirely.** Both the original
+                flash and its horizon-glow successor read as "off" rather
+                than atmospheric on device. Decided to let the WebM's
+                cloud motion + .particle-rain streaks carry the storm
+                cue on their own (which is honestly accurate: most real
+                storms are visible primarily as rain + dark moving
+                clouds, with the actual bolt being a rare event).
+     Jun 3 — **WebM v2 (992KB).** User updated the source video to add
+                small cloud-to-cloud lightning flashes baked INTO the
+                footage (visible behind the clouds rather than as a
+                full-viewport overlay). This restores the lightning cue
+                without reintroducing any of the WCAG-2.3.1 / prefers-
+                reduced-motion concerns that killed the CSS-side
+                attempts: video flashes are constrained to the cloud
+                region, naturally limited in contrast (the WebM encoder
+                + the partially-occluded-by-cloud framing keep peaks
+                well below pure white), and the WebView treats them as
+                ordinary video content rather than synthetic UI motion.
+                If a lightning cue is ever added back IN CSS (e.g. for
+                a brighter strike during boss-battle storm events), the
+                Jun 3 horizon-glow implementation with its reduced-
+                motion gate is the recommended starting point — see git
+                history for this file at commit ~Jun 3.
+
+   Current layering (top to bottom):
+     1. `.particle-rain` streaks — spawn at top, fall to bottom
+     2. App content (sidebar + quest cards stay opaque slate via
+        themes.css's COMMON THEME OVERRIDES + applyThemeToCards
+        inline-style pass for readability against the moving clouds)
+     3. `icons/stormwatch-bg.webm` clouds — base layer at
+        `#theme-video-bg`, z-index 0
+   No `body::after` lightning layer in this version. */
+
+/* Rain particle — narrow vertical streak with a soft trailing gradient.
+   spawnParticle (goal-manager.js) places these at top:0 then the animation
+   carries them off the bottom. Light blur on the body gives the wet-air
+   feel; the streaks themselves stay crisp at 1.5px width so they read as
+   rain rather than as smudges. */
+.particle-rain {
+    width: 1.5px;
+    height: 18px;
+    background: linear-gradient(to bottom,
+        transparent 0%,
+        rgba(147, 197, 253, 0.4) 30%,
+        rgba(191, 219, 254, 0.85) 100%);
+    border-radius: 0;
+    animation: rain-fall linear forwards;
+    opacity: 0.75;
+    box-shadow: 0 0 2px rgba(147, 197, 253, 0.4);
+}
+
+@keyframes rain-fall {
     0% {
-        transform: translateY(-20px) scale(0.5) rotate(0deg);
+        transform: translateY(-20px);
         opacity: 0;
     }
-    20% {
-        opacity: 1;
-        transform: translateY(20vh) scale(1) rotate(72deg);
-    }
-    40% {
-        transform: translateY(40vh) scale(1.1) rotate(144deg);
-    }
-    60% {
-        transform: translateY(60vh) scale(0.9) rotate(216deg);
-    }
-    80% {
-        opacity: 0.9;
-        transform: translateY(80vh) scale(1) rotate(288deg);
-    }
+    10% { opacity: 0.85; }
+    90% { opacity: 0.7; }
     100% {
-        transform: translateY(100vh) scale(0.7) rotate(360deg);
+        transform: translateY(110vh);
+        opacity: 0;
+    }
+}
+
+/* Gold shimmer animation (Golden Empire)
+   v2.7.1 (Jun 2, 2026) rewrite: the previous design used a 12px container
+   with a `::before` pseudo rendering the ◆ BLACK DIAMOND glyph at 16px
+   font-size. On device it read as a chunky filled diamond shape rather
+   than as gold dust glittering. Rewritten as a pure-CSS sparkle: a 5px
+   radial-gradient dot (warm-yellow core fading to amber edge) with a
+   soft golden glow halo via box-shadow, and a calmer twinkle (brightness
+   pulse via filter, no transform conflict with the shimmer fall). Reads
+   as "floating treasure-room gold motes" instead of pixel-art diamonds.
+   The `::before` glyph rule is deleted. */
+@keyframes gold-shimmer {
+    0% {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    15% { opacity: 1; }
+    85% { opacity: 0.85; }
+    100% {
+        transform: translateY(110vh);
         opacity: 0;
     }
 }
 
 @keyframes gold-twinkle {
-    0%, 100% { filter: brightness(1) drop-shadow(0 0 5px #fde047); }
-    25% { filter: brightness(1.5) drop-shadow(0 0 10px #fbbf24); }
-    50% { filter: brightness(1.2) drop-shadow(0 0 8px #f59e0b); }
-    75% { filter: brightness(1.6) drop-shadow(0 0 12px #fde047); }
+    0%, 100% { filter: brightness(0.85) drop-shadow(0 0 4px #fde047); }
+    50% { filter: brightness(1.7) drop-shadow(0 0 10px #fbbf24); }
 }
 
 .particle-gold {
-    width: 12px;
-    height: 12px;
-    background: transparent;
-    position: relative;
-    animation: gold-shimmer linear forwards, gold-twinkle 0.4s ease-in-out infinite;
-}
-
-.particle-gold::before {
-    content: '◆';
-    position: absolute;
-    font-size: 16px;
-    color: #fde047;
-    text-shadow: 
-        0 0 5px #fbbf24,
-        0 0 10px #f59e0b,
-        0 0 20px rgba(251, 191, 36, 0.8);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    width: 5px;
+    height: 5px;
+    background: radial-gradient(circle, #fef3c7 0%, #fde047 35%, #f59e0b 70%, transparent 100%);
+    border-radius: 50%;
+    animation: gold-shimmer linear forwards, gold-twinkle 0.7s ease-in-out infinite;
+    box-shadow:
+        0 0 6px #fde047,
+        0 0 14px rgba(251, 191, 36, 0.55);
 }
 
 /* ===== THEME TRANSITION ANIMATIONS ===== */
@@ -1775,30 +2240,39 @@ body .bg-stone-800 {
     animation: theme-flash 0.5s ease-out forwards;
 }
 
-/* Particles burst on theme change */
-@keyframes theme-particle-burst {
-    0% {
-        transform: translate(-50%, -50%) scale(0);
-        opacity: 1;
-    }
-    100% {
-        transform: translate(var(--tx), var(--ty)) scale(1);
-        opacity: 0;
-    }
-}
-
-.theme-particle {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    animation: theme-particle-burst 0.8s ease-out forwards;
-    pointer-events: none;
-}
+/* v2.7.1 (Jun 2): deleted a duplicate `.theme-particle` rule + its
+   `@keyframes theme-particle-burst` that sat here. The rule was added
+   alongside a never-completed "burst on theme change" feature but
+   accidentally re-declared `.theme-particle` with `width:10px;
+   height:10px; border-radius:50%; animation: theme-particle-burst 0.8s
+   ease-out forwards`. Because CSS cascade picks the later rule at equal
+   specificity, this silently clobbered the per-theme particle classes
+   (`.particle-ember`, `.particle-sand`, `.particle-gold`,
+   `.particle-shadow`, `.particle-gif`) — every ambient particle spawned,
+   ran a 0.8s burst keyframe that translated it off-anchor and faded to
+   opacity:0, then sat invisible until JS removed it. Net effect: themed
+   ambient particles never visibly rendered despite the `initThemeParticles`
+   spawn loop in goal-manager.js working correctly. The intended burst
+   effect (`createCompletionParticles` at goal-manager.js:7117) uses the
+   `.completion-particle` class and its own inline Web Animations API
+   `.animate()` call, never referenced this keyframe — so removing both
+   is a pure dead-code delete that unblocks the ambient particles.
+   The base `.theme-particle` rule at line 1461 (position:absolute;
+   pointer-events:none; will-change:transform,opacity) is the canonical
+   one and remains. */
 
 /* ===== ENHANCED CARD HOVER EFFECTS ===== */
 
 /* Base card hover setup */
+/* v2.5: position+overflow+transition baseline for the hover/active states
+   below. Resting box-shadow is intentionally NOT set here — .quest-card
+   instances throughout the app already pair the class with Tailwind shadow
+   utilities (`shadow-xl`, `shadow-2xl`, `shadow-lg`) tuned per surface, and
+   the v2.5.x attempts at a universal baseline shadow either disappeared
+   into warm-dark themed backgrounds (amber/indigo panels) or visually
+   competed with those Tailwind utilities. Letting Tailwind own the resting
+   shadow keeps each surface's design intent intact; the :hover/:active
+   rules below still add their lift/press shadow on top. */
 .quest-card {
     position: relative;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -1807,11 +2281,31 @@ body .bg-stone-800 {
     overflow: hidden;
 }
 
-/* Lift and enhanced shadow on hover */
+/* Lift and enhanced shadow on hover. The :hover cascade also lifts the
+   card when a child is hovered, but on touch devices `mobile.css` neutralizes
+   the hover transform entirely under `@media (hover: none)`, so this only
+   affects desktop where hovering a child button briefly lifting the panel
+   reads as expected hover-state behavior, not as a flicker. */
 .quest-card:hover {
     transform: translateY(-6px) scale(1.02);
     z-index: 10;
 }
+
+/* v2.5 universal quest-card press feedback — REMOVED post-release.
+   The rule `.quest-card:active { transform: scale(0.97); ... }` produced
+   a visible flicker on every tap inside a quest panel because CSS
+   `:active` cascades to every ancestor of the pressed element — tapping
+   any button, checkbox, label, or even plain text inside a card put the
+   outer `.quest-card` into `:active` and fired the press-scale + shadow
+   swap for 80ms. A `:has(*:active)` scoping attempt (v422) was either
+   not respected by the user's WebView or didn't catch every case, so the
+   rule was removed entirely.
+   
+   Inner buttons retain their press feedback via the universal
+   `button:active { transform: scale(0.97) }` rule in this file. Cards
+   that open detail modals on tap rely on the modal entrance animation
+   for visual confirmation. The card-level press effect provided
+   marginal value relative to the bug it caused. */
 
 /* Shimmer overlay effect */
 .quest-card::after {
@@ -1959,4 +2453,1736 @@ body.theme-shadow .quest-card:hover {
 .quest-card[data-priority="low"]:hover,
 .quest-card.priority-low:hover {
     transform: translateY(-3px) scale(1.01);
+}
+
+/* ===== View Transitions (v2.5) =====================================
+   Triggered by goal-manager's `_animateViewEnter()` helper, which adds
+   `is-entering` to the newly-shown view-container on every switchView()
+   call. The class is force-reapplied (with a reflow between remove/add)
+   so the keyframe re-runs even when navigating back to a view that was
+   previously visible.
+
+   Curve: cubic-bezier(0.16, 1, 0.3, 1) is a "decelerate-out" easing
+   that feels native-app polished — fast start, soft landing.
+
+   prefers-reduced-motion: animation suppressed; users see an instant
+   view swap. The `effectsManager.intensity === 'minimal'` gate is also
+   honored in JS (the helper skips adding the class entirely).
+   ================================================================== */
+@keyframes viewEnter {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.view-container.is-entering {
+    /* v2.5.2 fix: STATIC opacity/transform from-state. `animation-fill-mode:
+       backwards` only applies during `animation-delay`, and our delay is 0,
+       so it's effectively a no-op — some WebViews still paint one frame at
+       natural state (opacity 1) between `classList.add('is-entering')` and
+       the animation's first computed frame, producing a visible blink-in-
+       out flicker. Setting opacity/transform as static styles guarantees
+       the first paint after class-add is already in the from-state. The
+       animation's keyframe interpolation then drives the fade-in; `forwards`
+       retains the to-state until JS removes the class on animationend. */
+    opacity: 0;
+    transform: translateY(12px);
+    /* v2.7 motion tokens — was `280ms cubic-bezier(0.16, 1, 0.3, 1)`
+       (literal). 280ms snaps to the 300ms `--motion-medium` bucket
+       (20ms is below human perception threshold and well within
+       Material Design's 250-400ms `medium` band). The cubic-bezier
+       is preserved verbatim as `--ease-out-soft`. View-container
+       entrance is THE canonical app-level transition; if any other
+       animation needs the same feel, copy this declaration. */
+    animation: viewEnter var(--motion-medium) var(--ease-out-soft) forwards;
+    will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .view-container.is-entering {
+        /* Override the static from-state too — without `opacity: 1` here,
+           the element would stay invisible since `animation: none` cancels
+           the keyframe that would have animated it back to visible. */
+        opacity: 1;
+        transform: none;
+        animation: none;
+    }
+}
+
+/* ===== Active Nav-Link Spotlight (v2.5) ============================
+   A gentle, slow outer-glow pulse on the currently-active sidebar
+   nav-link so the user always sees at a glance where they are. Soft
+   white halo cycles every 2.4s — slow enough to fade into peripheral
+   vision after the first second, bright enough to register on a fresh
+   glance. Layers cleanly over the existing border-left accent (white
+   in default theme; `var(--theme-accent)` under any theme override).
+
+   Press feedback: a quick scale-down on `:active` for haptic-feeling
+   touch UX. Mobile already enforces 44×44px min hit areas via mobile.css.
+
+   prefers-reduced-motion suppresses both the pulse and the press scale.
+   ================================================================== */
+/* v2.7 motion calm pass — the active nav indicator was previously a
+   2.4s infinite pulse (`navActivePulse`). NN/g and Apple HIG both flag
+   perpetual motion on resting UI as attention-hijacking: the user
+   already knows what tab they're on, so the pulse is signal without
+   information and dilutes the impact of actual reward animations
+   (boss kills, level-ups) that need to read as "loud" against a calm
+   baseline. Replaced with a static glow at the visual weight of the
+   pulse's peak frame so the active state stays legible without the
+   loop. Press scale stays — that's a 80ms interaction-feedback
+   micro-animation, exactly the use case NN/g recommends. */
+.nav-link.active {
+    box-shadow: 0 0 14px 1px rgba(255, 255, 255, 0.20);
+}
+
+.nav-link:active {
+    transform: scale(0.97);
+    /* v2.7 motion tokens — was `80ms ease-out` (literal). Press feedback
+       is the canonical `--motion-micro` use case. */
+    transition: transform var(--motion-micro) var(--ease-out-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-link:active { transform: none; transition: none; }
+}
+
+/* ===== Button Microinteractions (v2.5) =============================
+   Two layers of polish:
+
+   1. Universal press scale on every <button>. A 97% scale-down on
+      `:active` reads as tactile feedback for both desktop click and
+      touch tap. Safe at 3% — barely perceptible visually but registers
+      kinaesthetically. Excluded for the mobile sidebar pull-tab and
+      anything explicitly marked `.no-press`.
+
+   2. Opt-in `.fx-success-flash` class. Fires a 600ms green pulse + glow
+      when temporarily applied. Use after a successful confirm action
+      (claim reward, complete quest) for instant positive feedback.
+      The animation runs once (default iteration count) and naturally
+      returns the box-shadow to its 0% keyframe value. Class cleanup is
+      handled by the caller — `effects-manager.js` exposes
+      `effectsManager.successFlash(target)` which does the
+      reflow-restart pattern + a 700ms setTimeout to strip the class so
+      the next call can re-trigger the animation. (CSS animations only
+      fire once per class addition, so leaving the class on permanently
+      would make subsequent successFlash calls no-op.)
+
+   3. Opt-in `.btn-ripple` class. Adds a Material-style click ripple — a
+      circle that expands from the exact tap/click point and fades over
+      600ms. CSS-only ripples were attempted in v2.5.1-v2.5.3 and failed
+      on Android Chromium WebView (mix-blend-mode + pseudo-element
+      issues), so the implementation is now JS-driven. A single delegated
+      `pointerdown` listener in `effects-manager.js` (`_initRipple`)
+      handles all `.btn-ripple` buttons, computing the click-to-corner
+      radius so the wave fully covers the button, then injecting a
+      `<span class="ripple-wave">` that self-removes on animationend.
+      The CSS below provides the styling + the keyframe; JS owns spawn
+      coordinates, sizing, and lifecycle.
+
+   prefers-reduced-motion suppresses all three. */
+button:active:not(#mobile-nav-toggle):not(.no-press) {
+    transform: scale(0.97);
+    /* v2.7 motion tokens — was `80ms ease-out` (literal). Universal
+       button press feedback; mirrors the `.nav-link:active` rule above
+       and uses the same `--motion-micro` token. */
+    transition: transform var(--motion-micro) var(--ease-out-standard);
+}
+
+/* v2.5 ripple — base rule on the trigger element. `position: relative`
+   lets us absolutely-position the wave inside; `overflow: hidden` clips
+   the expanding circle to the button's rounded rectangle so it doesn't
+   bleed beyond the border-radius; `isolation: isolate` creates a fresh
+   stacking context so the ripple's z-order can't accidentally interact
+   with siblings (e.g., adjacent buttons in a flex row). */
+.btn-ripple {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+/* The ripple wave itself. JS sets left/top to the click coordinates and
+   width/height to 2× the click-to-farthest-corner radius. The transform
+   centers the wave on the click point and scales it from 0 to 1 over the
+   keyframe lifetime, while opacity fades from 0.55 to 0 — the classic
+   Material expand-and-dissolve. `pointer-events: none` keeps the wave
+   from intercepting taps. */
+.ripple-wave {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.55);
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    animation: ripple-expand 600ms ease-out forwards;
+}
+
+@keyframes ripple-expand {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
+    to   { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ripple-wave { display: none !important; }
+}
+
+@keyframes fx-success-flash {
+    0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+           background-color: inherit; }
+    25%  { box-shadow: 0 0 18px 3px rgba(34, 197, 94, 0.65); }
+    50%  { box-shadow: 0 0 24px 6px rgba(34, 197, 94, 0.45); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+.fx-success-flash {
+    animation: fx-success-flash 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button:active:not(#mobile-nav-toggle):not(.no-press) {
+        transform: none;
+        transition: none;
+    }
+    .fx-success-flash { animation: none; }
+}
+
+/* ===== Skeleton Loaders (v2.5) =====================================
+   Shimmer placeholders for the analytics view's chart containers. The
+   skeleton markup lives directly in `index.html` inside each chart
+   container, so users see content-shaped loading shimmers instead of
+   empty boxes during the brief render window (synchronous, but can
+   reach 100–300ms on low-end Android with 12 weeks of heatmap cells +
+   4 charts + records + progress overview).
+
+   Skeletons self-clear: `renderAnalytics()` and friends overwrite
+   `innerHTML` with real markup, so the shimmer is replaced as soon as
+   the data lands. No JS cleanup required.
+
+   Colors match the stone/amber palette so the shimmer reads as part
+   of the app, not a generic gray loader.
+
+   prefers-reduced-motion holds the skeleton at the dim phase — the
+   shape is preserved (so layout doesn't shift) but the shimmer stops.
+   ================================================================== */
+@keyframes skeletonShimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+}
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(120, 113, 108, 0.18) 25%,
+        rgba(168, 162, 158, 0.30) 50%,
+        rgba(120, 113, 108, 0.18) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.6s ease-in-out infinite;
+    border-radius: 6px;
+    display: block;
+}
+
+.skeleton-line { height: 12px; margin: 8px 0; }
+.skeleton-line.short { width: 40%; }
+.skeleton-line.med   { width: 65%; }
+.skeleton-line.full  { width: 100%; }
+
+.skeleton-block {
+    width: 100%;
+    height: 100%;
+    min-height: 8rem;
+    border-radius: 8px;
+}
+
+.skeleton-circle {
+    width: 9rem;
+    height: 9rem;
+    border-radius: 50%;
+    margin: 0 auto;
+}
+
+/* Heatmap-shaped skeleton: a 12×7 grid of dim squares with a slow
+   wave shimmer that washes left→right. */
+.skeleton-heatmap {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 4px;
+    max-width: 360px;
+}
+.skeleton-heatmap .skeleton-cell {
+    aspect-ratio: 1 / 1;
+    border-radius: 3px;
+    /* re-use the shimmer but lower opacity so 84 cells aren't visually heavy */
+    background: linear-gradient(
+        90deg,
+        rgba(120, 113, 108, 0.14) 25%,
+        rgba(168, 162, 158, 0.24) 50%,
+        rgba(120, 113, 108, 0.14) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+/* Bar-chart-shaped skeleton: 7 vertical bars of varying heights to
+   suggest the eventual productivity-by-day-of-week visualization. */
+.skeleton-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 100%;
+    padding: 0 8px;
+}
+.skeleton-bars .skeleton-bar {
+    flex: 1;
+    border-radius: 4px 4px 0 0;
+    background: linear-gradient(
+        180deg,
+        rgba(168, 162, 158, 0.28) 0%,
+        rgba(120, 113, 108, 0.18) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton,
+    .skeleton-heatmap .skeleton-cell,
+    .skeleton-bars .skeleton-bar {
+        animation: none;
+    }
+}
+
+/* ===== List-Stagger Entrance (v2.5) ================================
+   Cards in list views (Daily Quests, Side Quests, calendar day tasks,
+   etc.) already use the `.task-item` class with the existing 0.3s
+   `fadeIn` keyframe in `styles.css`. v2.5 layers a per-item 40ms
+   stagger on top so the list reads as "filled in" rather than "popped"
+   all at once. Caps at item 10 — anything beyond renders immediately
+   (no compounding 1s+ delays on long lists).
+
+   `animation-fill-mode: both` is the critical bit: it keeps each item
+   in its initial `from` state (opacity 0, translateY 10px) during the
+   pre-delay window, so items don't flash visible-then-hidden-then-
+   animated. Overrides `styles.css:104` which uses only `forwards`.
+
+   prefers-reduced-motion drops every delay to 0 so the list still
+   appears, just without the staggered choreography.
+   ================================================================== */
+/* v2.5 — task-item entrance animation. Scoped to `.is-entering` ancestor
+   so it ONLY runs during view-enter (the staggered cascade as the user
+   navigates to a list view). After the view-enter window ends and
+   `.is-entering` is removed (~280ms post switchView), the rule no longer
+   matches — fresh `.task-item` nodes created by incremental re-renders
+   (toggleTask → render() innerHTML rebuild, etc.) appear instantly with
+   no animation, so the panel never "flickers" mid-interaction. */
+.is-entering .task-item {
+    animation: fadeIn 0.3s ease-out forwards;
+    animation-fill-mode: both;
+}
+
+/* v2.5.1: stagger is now SCOPED to view-enter via `.is-entering` on the
+   ancestor view-container. This means:
+   • Switching to a list view triggers the visible cascade.
+   • Adding a single task to an existing list does NOT make that one
+     task wait for an inherited nth-child delay — its animation fires
+     immediately.
+   Per-item delay bumped from 40ms → 80ms with a 60ms base offset so the
+   cascade reads consciously instead of as one quick blur. Cap at item 8
+   keeps the total under 700ms even for the slowest tail. */
+.is-entering .task-item:nth-child(1) { animation-delay:  60ms; }
+.is-entering .task-item:nth-child(2) { animation-delay: 140ms; }
+.is-entering .task-item:nth-child(3) { animation-delay: 220ms; }
+.is-entering .task-item:nth-child(4) { animation-delay: 300ms; }
+.is-entering .task-item:nth-child(5) { animation-delay: 380ms; }
+.is-entering .task-item:nth-child(6) { animation-delay: 460ms; }
+.is-entering .task-item:nth-child(7) { animation-delay: 540ms; }
+.is-entering .task-item:nth-child(8) { animation-delay: 620ms; }
+/* v2.5 audit fix: items 9+ get pinned to the same 620ms delay as item 8 so
+   they all appear together AFTER the cascade completes, instead of (without
+   this rule) firing immediately at t=0 with no delay — which produced the
+   bizarre visual of bottom-of-list items appearing BEFORE items 1-8. With
+   this cap, long lists read as "top 8 cascade in order, then the rest pop
+   in together," which is much closer to the intuitive top-down feel. */
+.is-entering .task-item:nth-child(n+9) { animation-delay: 620ms; }
+
+@media (prefers-reduced-motion: reduce) {
+    .is-entering .task-item { animation-delay: 0ms !important; }
+}
+
+/* ===== Sub-Tab Spotlight (v2.5) =====================================
+   Extends the v2.5 active-nav-link pulse to the sub-tabs inside the
+   Goals view (Epic / Yearly / Monthly / Weekly / Side) and the Arcane
+   view (Spellbook / Enchantments). Same visual language as the main
+   sidebar so the "you are here" cue is consistent at every level of
+   navigation.
+
+   Goal tabs use an amber glow to match `.active-goal-tab`'s
+   `rgba(217, 119, 6, ...)` accent. Arcane tabs use a purple glow to
+   match `.active-arcane-tab`'s `rgba(147, 51, 234, ...)` accent.
+
+   Slightly tighter (10px vs 14px) than the sidebar pulse since tabs
+   are smaller targets — the smaller halo reads as proportional.
+   ================================================================== */
+/* v2.7 motion calm pass — like `.nav-link.active`, the goal/arcane
+   tab active indicators were 2.4s infinite pulses. Replaced with a
+   static glow at the pulse peak so the active tab is still
+   unmistakably highlighted, but the dashboard no longer has two
+   competing tab rows pulsing in the user's peripheral vision. See
+   `.nav-link.active` block above for the full rationale. */
+.goal-tab.active-goal-tab {
+    box-shadow: 0 0 10px 1px rgba(217, 119, 6, 0.40);
+}
+
+.arcane-tab.active-arcane-tab {
+    box-shadow: 0 0 10px 1px rgba(147, 51, 234, 0.45);
+}
+
+/* ===== XP Ring (v2.6) ==============================================
+   Live-updating progress arc around the player avatar — both the
+   collapsed top-right button and the expanded character-sheet portrait.
+   Item 1 of the v2.6 "Character Sheet & Player Panel Overhaul" roadmap.
+
+   Architecture
+   ────────────
+   • Each avatar is wrapped in `<div class="relative inline-block">`.
+   • Two children: an SVG `.xp-ring` overlay positioned absolutely just
+     outside the avatar's existing color band, and the avatar `div`
+     (unchanged) sitting at its natural size below it.
+   • The SVG hosts two concentric `<circle>` elements at the same
+     center/radius — the `__track` (muted backdrop) and the `__progress`
+     (level-tier-tinted arc whose stroke-dashoffset is driven by JS).
+   • `pathLength="100"` normalizes the circle's path-length to exactly
+     100 units. With `stroke-dasharray: 100`, `stroke-dashoffset = 100 -
+     percent` maps 1-to-1 to "percent of ring filled," so the JS in
+     `renderXPDisplay()` doesn't need to know the actual circumference
+     (which would change if we ever resize the viewBox).
+
+   Why rotate the SVG -90°
+   ───────────────────────
+   SVG circles start their path at 3 o'clock by default. Users expect
+   progress rings to fill from 12 o'clock clockwise (mental model from
+   activity rings, podcast players, fitness apps). The rotation shifts
+   the path start to the top so a fresh XP-bar at 1% draws a tiny arc
+   pointing up-and-right rather than out-and-right.
+
+   Tier coloring
+   ─────────────
+   `.tier-1` through `.tier-10` mirror the existing `ringColors` palette
+   in `goal-manager.js:renderXPDisplay()` so the progress stroke always
+   matches the avatar's color band. JS sets `.tier-N` on the
+   `__progress` circle each render based on the player's level. Solid
+   strokes for now — gradient tier-9 (purple→cyan, matching the existing
+   level-9+ avatar gradient) is deferred to a v2.6 polish pass since it
+   requires an `<svg><defs><linearGradient>` def per ring.
+
+   Animation
+   ─────────
+   600ms cubic-bezier ease on `stroke-dashoffset` so XP gains animate as
+   a satisfying fill rather than snapping. The stroke color also fades
+   over 300ms so a level-up cleanly transitions tier-N → tier-N+1
+   without a hard flash.
+
+   Reduced-motion / minimal-intensity
+   ──────────────────────────────────
+   `prefers-reduced-motion: reduce` AND `body.fx-minimal` both collapse
+   the transition to 0ms — the ring still renders, the progress is still
+   accurate, just no smooth-fill animation. `body.fx-reduced` keeps the
+   ring (it's a status indicator, not eye candy) but shortens the fill
+   to 300ms so it feels snappy without the satisfying slow-fill.
+   ================================================================== */
+.xp-ring {
+    position: absolute;
+    inset: -4px;
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    transform: rotate(-90deg);
+    pointer-events: none;
+    /* Layer below the avatar's existing border so the rarity color band
+       sits on top of the ring track — visually the ring frames the
+       avatar without overlapping its tier border. */
+    z-index: 0;
+    /* CRITICAL: SVG defaults to `overflow: hidden` in most browsers,
+       which clips the drop-shadow glow and rounded stroke-linecap caps
+       wherever they extend past the 100×100 viewBox edge. On panel-
+       size rings with tier-10 double-glow, the glow at the bottom and
+       right gets visibly chopped, creating a "ring leaking out the
+       bottom" artifact (reported by users on tier-10 panel ring).
+       Setting `overflow: visible` lets the glow halo extend past the
+       SVG box cleanly. */
+    overflow: visible;
+}
+
+.xp-ring--mini {
+    /* 56px avatar + 4px each side = 64px ring */
+    inset: -4px;
+}
+
+/* All circles inside the ring SVG get `transform-box: fill-box` so any
+   transform applied via CSS resolves its origin against the circle's
+   own bounding box, not the SVG viewport. Defensive — current code no
+   longer rotates individual circles, but this future-proofs against
+   the WebView <88 regression that originally caused the shimmer to
+   swing outside the ring. */
+.xp-ring circle {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.xp-ring--panel {
+    /* 96px avatar + 8px each side = 112px ring (the bigger avatar earns
+       a thicker breathing band so the progress arc reads at a glance). */
+    inset: -8px;
+    width: calc(100% + 16px);
+    height: calc(100% + 16px);
+}
+
+.xp-ring__track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.07);
+    stroke-width: 5;
+}
+
+.xp-ring--panel .xp-ring__track {
+    /* Thicker stroke on the bigger ring so the track stays visible
+       relative to the larger avatar surface. */
+    stroke-width: 4;
+}
+
+.xp-ring__progress {
+    fill: none;
+    stroke: #c084fc;  /* fallback if no tier class applied */
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;  /* default: 0% filled */
+    transition: stroke-dashoffset 600ms cubic-bezier(0.22, 1, 0.36, 1),
+                stroke 300ms ease;
+    /* Soft glow matching the tier color via `drop-shadow(currentColor)`-
+       style trick: we apply the glow as a separate filter so it
+       inherits the same color as the stroke. Subtle — 2px blur is just
+       enough to give the ring a sense of being "lit" without
+       washing out at small sizes. */
+    filter: drop-shadow(0 0 2px currentColor);
+}
+
+.xp-ring--panel .xp-ring__progress {
+    stroke-width: 4;
+}
+
+/* Tier color palette — mirrors `ringColors` in goal-manager.js so the
+   progress stroke always matches the avatar's rarity band. */
+.xp-ring__progress.tier-1  { stroke: #9ca3af; color: #9ca3af; }   /* gray-400 */
+.xp-ring__progress.tier-2  { stroke: #d1d5db; color: #d1d5db; }   /* gray-300 */
+.xp-ring__progress.tier-3  { stroke: #b45309; color: #b45309; }   /* amber-700 */
+.xp-ring__progress.tier-4  { stroke: #d97706; color: #d97706; }   /* amber-600 */
+.xp-ring__progress.tier-5  { stroke: #94a3b8; color: #94a3b8; }   /* slate-400 */
+.xp-ring__progress.tier-6  { stroke: #60a5fa; color: #60a5fa; }   /* blue-400 */
+.xp-ring__progress.tier-7  { stroke: #eab308; color: #eab308; }   /* yellow-500 */
+.xp-ring__progress.tier-8  { stroke: #facc15; color: #facc15; }   /* yellow-400 */
+.xp-ring__progress.tier-9  { stroke: #c084fc; color: #c084fc; }   /* purple-400 */
+.xp-ring__progress.tier-10 { stroke: #67e8f9; color: #67e8f9; }   /* cyan-300 */
+
+@media (prefers-reduced-motion: reduce) {
+    .xp-ring__progress {
+        transition: none;
+    }
+}
+
+body.fx-reduced .xp-ring__progress {
+    /* Snappier fill but still animated — the ring is a status
+       indicator, not an effect, so we don't strip the animation
+       entirely on `reduced`. */
+    transition: stroke-dashoffset 300ms ease, stroke 200ms ease;
+}
+
+body.fx-minimal .xp-ring__progress {
+    transition: none;
+    /* Strip the glow too — `filter: drop-shadow` is GPU-cheap on
+       desktop but real-cost on low-end Android, and minimal-intensity
+       is specifically for that audience. */
+    filter: none;
+}
+
+/* ===== Avatar Rarity Frame (v2.6 Item 2) ============================
+   Builds directly on the XP ring stack from Item 1. Two new visual
+   layers were added inside each `.xp-ring` SVG:
+
+   1. `.xp-ring__shimmer` — a comet-like dashed arc (8% lit, 92% dark)
+      that rotates around the ring for tier-7+ players. Subtle on epic
+      (tier 7-8), brighter and faster on legendary (tier 9-10). Common
+      and uncommon tiers (1-6) hide it entirely so low-level players
+      see only the clean track + progress arc.
+
+   2. `.xp-ring__prestige-slots` — a `<g>` with 8 `<circle>` anchors
+      at cardinal + intercardinal positions around the ring. Reserved
+      for v3.0's prestige system; opacity 0 until v3.0 wires them up
+      via `data-prestige-count` driven CSS. The anchors live in the
+      same SVG so future "stars orbit the avatar" animation can simply
+      rotate the whole `<g>` without coordinate gymnastics.
+
+   The "rarity frame" effect for v2.6 also intensifies the existing
+   progress-arc glow per tier — common tiers get a barely-there 1px
+   blur, epic gets 3px, legendary gets a 4px double-stop glow that
+   reads as "this player is endgame." Stripped on `fx-minimal` (set
+   already in the Item 1 block above).
+   ================================================================== */
+/* v2.6 (refined): the SVG-circle shimmer rendered as a broken/dashed
+   ring at high tiers because SVG strokes can't fade per-segment. It's
+   superseded by `.xp-ring__comet` (pre-rendered SVG comet image rotated
+   around the ring center). The circle is kept in markup but rendered
+   invisible here so the existing HTML doesn't need surgery and the
+   old class hook remains available for fallback. */
+.xp-ring__shimmer {
+    display: none;
+}
+
+/* ===== Comet shimmer (v2.6 refined) ===============================
+   A rotating SVG comet image overlaid on the XP ring. Each tier maps
+   to a different-colored comet artwork (`icons/comet-*.svg`); the JS
+   swaps `src` and sets `data-tier="N"` in `renderXPDisplay`. The
+   rotation speed steps up with tier so legendary players see a
+   noticeably more urgent shimmer.
+
+   IMPORTANT: rotating an HTML `<img>` is safe on every WebView we
+   support — `transform-origin: center` resolves to the element's
+   visual center without needing `transform-box: fill-box` (that
+   workaround was only needed for SVG `<circle>` rotation, which
+   was the original "ring leaking outside" regression). */
+.xp-ring__comet {
+    position: absolute;
+    pointer-events: none;
+    /* Tailwind preflight applies `max-width: 100%; height: auto` to
+       every <img>, which clips our `calc(100% + Npx)` widths back
+       down to the parent size — silently halving the comet's
+       rendered radius and putting the trail well INSIDE the ring
+       instead of on it. Explicit overrides restore the intended
+       sizing math. */
+    max-width: none;
+    /* Default hidden — the [data-tier] rules below opt in tiers 4-10.
+       Empty `src` (tiers 1-3) also keeps this invisible since the
+       browser renders no image. */
+    opacity: 0;
+    /* Rotation runs by default; speed comes from per-tier rules.
+       `animation-play-state: paused` would normally suppress idle
+       cost, but mobile WebViews don't actually skip work for paused
+       transform animations — leaving it running is simpler and any
+       perf cost is bounded by the prefers-reduced-motion + fx-minimal
+       paths below. */
+    /* v2.7 motion tokens — was `6s linear infinite` (literal). XP-ring
+       comet is the canonical `--motion-ambient` exemplar — the orbit
+       speed that should set the pace for any other 5-7s ambient loop
+       added in future. `fx-reduced` overrides further down adjust the
+       duration token-free since they're tier-specific tweaks. */
+    animation: xpRingCometSpin var(--motion-ambient) var(--ease-linear-loop) infinite;
+    transform-origin: 50% 50%;
+    /* Slight extra glow so the comet head reads bright on the dark
+       panel background; the artwork already has its own internal
+       Gaussian-blur filter, so we keep this soft. */
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
+    will-change: transform;
+}
+
+/* Sizing math (kept here for future tweaks):
+   • Comet artwork: 240×240 viewBox, trail arc at radius 88 from
+     center → trail sits at 88/120 = 73% of canvas half-width.
+   • XP ring: 100×100 viewBox, stroke at radius 46 → ring sits at
+     46/50 = 92% of canvas half-width.
+   • To put the comet trail ON the ring (not inside it), the image
+     must be scaled so its 73%-radius arc lands at the ring's
+     92%-radius position: scale factor = 92 / 73 ≈ 1.26.
+   • So the comet img needs to be ~1.26× the ring's outer-rect width,
+     extending past the avatar boundary on every side. */
+/* Static pixel sizing with !important — the earlier calc()-based
+   sizing was being silently clamped by either Tailwind preflight's
+   `max-width: 100%` rule or another inherited image constraint,
+   leaving the comet rendered at the parent's intrinsic width instead
+   of the larger calculated size. Hard pixel values + !important on
+   width/height/inset removes any ambiguity. If the wrapper avatar
+   sizes ever change (currently `w-14` = 56px and `w-24` = 96px),
+   these numbers need to be re-derived against the comet's 73%
+   trail-radius vs the ring's 92% stroke-radius (see math comment
+   above the section). */
+.xp-ring__comet--mini {
+    top: -12px !important;
+    left: -12px !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 80px !important;
+    height: 80px !important;
+    max-width: none !important;
+}
+
+.xp-ring__comet--panel {
+    top: -22px !important;
+    left: -22px !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 140px !important;
+    height: 140px !important;
+    max-width: none !important;
+}
+
+@keyframes xpRingCometSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* Tier visibility + speed. Tiers 1-3 stay shimmer-free (no rule = no
+   opacity change from the 0 default). Tiers 4-6 get a gentle slow
+   spin, 7-8 picks up, 9-10 is brisk + legendary feel.
+   `data-tier` is the source of truth so we don't have to mirror the
+   `tier-N` class scheme; JS sets both in the same render. */
+.xp-ring__comet[data-tier="4"],
+.xp-ring__comet[data-tier="5"],
+.xp-ring__comet[data-tier="6"] {
+    opacity: 0.9;
+    animation-duration: 8s;
+}
+.xp-ring__comet[data-tier="7"],
+.xp-ring__comet[data-tier="8"] {
+    opacity: 1;
+    animation-duration: 6s;
+}
+.xp-ring__comet[data-tier="9"],
+.xp-ring__comet[data-tier="10"] {
+    opacity: 1;
+    animation-duration: 4.5s;
+    /* Legendary: stronger halo behind the head. */
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+}
+
+/* Accessibility / perf gates — mirror the existing shimmer rules. */
+@media (prefers-reduced-motion: reduce) {
+    .xp-ring__comet {
+        animation: none;
+        opacity: 0;
+    }
+}
+body.fx-reduced .xp-ring__comet {
+    /* Halve the speed on reduced-effects so the motion reads as a
+       gentle ambient drift rather than active spinning. */
+    animation-duration: 14s;
+}
+body.fx-reduced .xp-ring__comet[data-tier="9"],
+body.fx-reduced .xp-ring__comet[data-tier="10"] {
+    animation-duration: 10s;
+}
+body.fx-minimal .xp-ring__comet {
+    display: none;
+}
+
+/* ===== Active Spell Sigils (v2.6 Item 5) ===========================
+   Small rarity-tinted bubble icons orbiting the avatar — one per
+   currently-active spell. JS injects `.avatar-sigil` children into
+   the orbit container with per-child rotation angles so N sigils
+   distribute evenly around the orbit circumference.
+
+   Architecture:
+     • `.avatar-sigil-orbit` — 0×0 anchor at the avatar center. The
+       container itself rotates slowly (`sigilOrbit` keyframe) so all
+       sigils sweep around together.
+     • `.avatar-sigil` — absolutely positioned at the anchor; an
+       inline `--angle` custom property drives the per-child rotation
+       offset. Transform is `rotate(--angle) translate(0, -radius)
+       rotate(-(--angle))` — the trailing counter-rotation cancels
+       the per-child angle on the LOCAL frame, but the PARENT's
+       rotation still carries the sigil around the orbit.
+     • `.avatar-sigil__icon` — the inner emoji span. Counter-rotates
+       at the same speed/duration as the parent orbit (using the
+       same keyframe + `reverse`) so the icon stays upright while
+       its bubble orbits the avatar.
+
+   Sigil count: JS caps the visible count at 7 + a `+N` overflow
+   badge (8 visible max) — at the panel's 68px radius that gives
+   ~53px of arc per sigil with 26px bubbles, plenty of breathing
+   room. ================================================================== */
+.avatar-sigil-orbit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* 0×0 anchor — only used as a rotation parent. Children opt-in
+       to being positioned at top:0 left:0 (= the anchor point) and
+       are then offset via transform. */
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    /* Rotate the whole orbit. Sigils ride along like planets on
+       a turntable. Speed is deliberately slow so the icons can be
+       read; the comet shimmer's ~5s pace plus this 24s orbit reads
+       as two distinct layers of motion rather than one busy blur. */
+    /* v2.7 motion tokens — was `24s linear infinite` (literal). Sigil
+       orbit is the canonical `--motion-ambient-slow` exemplar; any
+       other slow ambient ornament (e.g. empty-state rays below)
+       should match this pace. */
+    animation: sigilOrbit var(--motion-ambient-slow) var(--ease-linear-loop) infinite;
+    transform-origin: center;
+    /* z-index above the XP ring + comet so sigils never get clipped
+       behind the ring stroke or eaten by the comet's drop-shadow. */
+    z-index: 3;
+}
+
+.avatar-sigil-orbit--mini {
+    /* Orbit radius is set as a custom property so the inline sigil
+       transform (set by JS) can `translate(0, calc(-1 * var(--orbit-radius)))`
+       generically across mini + panel without duplicate logic. */
+    --orbit-radius: 38px;
+    --sigil-size: 18px;
+}
+
+.avatar-sigil-orbit--panel {
+    --orbit-radius: 68px;
+    --sigil-size: 26px;
+}
+
+@keyframes sigilOrbit {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.avatar-sigil {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--sigil-size);
+    height: var(--sigil-size);
+    /* Negative margin centers the bubble ON the anchor point so the
+       transform's `translate(0, -radius)` moves the bubble's center
+       (not its top-left) to the orbit radius. */
+    margin-top: calc(var(--sigil-size) / -2);
+    margin-left: calc(var(--sigil-size) / -2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Per-child rotation offset is set as an inline `--angle` style
+       by `renderActiveSpellSigils()`. The transform composition:
+         1. rotate by --angle around the orbit center (moves the
+            bubble around the orbit circle)
+         2. translate outward by orbit radius
+         3. rotate back by -(--angle) — this cancels the FIRST
+            rotation's effect on the LOCAL bubble orientation but
+            preserves the orbital positioning (because translate
+            happens between them).
+       The net result: bubbles are placed at distinct angles around
+       the orbit but each bubble starts upright. The parent's
+       `sigilOrbit` animation then carries the whole arrangement
+       around together. */
+    transform:
+        rotate(var(--angle, 0deg))
+        translate(0, calc(-1 * var(--orbit-radius)))
+        rotate(calc(-1 * var(--angle, 0deg)));
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    /* Spawn animation: brief scale-in so newly-cast spells "pop" into
+       the orbit instead of teleporting onto it. */
+    animation: sigilSpawn 320ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+.avatar-sigil__icon {
+    /* Inner span holds the emoji. Counter-rotation cancels the
+       parent's `sigilOrbit` so the icon stays upright while the
+       bubble orbits. Same duration + linear easing + `reverse`
+       direction = exact cancellation regardless of where in the
+       cycle the icon was first painted. */
+    display: block;
+    line-height: 1;
+    font-size: calc(var(--sigil-size) * 0.65);
+    /* Slight text-shadow improves emoji contrast on the colored
+       bubble background. */
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+    /* v2.7 motion tokens — same `--motion-ambient-slow` token as the
+       parent orbit but `reverse` keyword keeps icons upright as the
+       orbit rotates. */
+    animation: sigilOrbit var(--motion-ambient-slow) var(--ease-linear-loop) infinite reverse;
+}
+
+.avatar-sigil-orbit--panel .avatar-sigil__icon {
+    /* Panel sigils are bigger; bump the icon proportion slightly so
+       the emoji fills the bubble without rim crowding. */
+    font-size: calc(var(--sigil-size) * 0.62);
+}
+
+@keyframes sigilSpawn {
+    from {
+        /* `transform` is already animated dynamically via inline
+           --angle; we can't just override it without losing the
+           orbit placement. So use `scale` via the inline transform's
+           composition isn't possible — fall back to opacity-only
+           spawn (still reads as a "fade in" pop). */
+        opacity: 0;
+    }
+    to { opacity: 1; }
+}
+
+/* Rarity tints — match the spell-card color palette used in the
+   spellbook (gray/green/blue/purple/yellow for common→legendary).
+   Each bubble has a radial highlight (top-left brighter) + tinted
+   shadow ring so it reads as a glassy gemstone. */
+.avatar-sigil--common {
+    background: radial-gradient(circle at 30% 30%, rgba(203, 213, 225, 0.95), rgba(71, 85, 105, 0.9));
+    border-color: rgba(203, 213, 225, 0.7);
+    box-shadow: 0 0 6px rgba(148, 163, 184, 0.6), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.avatar-sigil--uncommon {
+    background: radial-gradient(circle at 30% 30%, rgba(134, 239, 172, 0.95), rgba(22, 101, 52, 0.9));
+    border-color: rgba(134, 239, 172, 0.7);
+    box-shadow: 0 0 7px rgba(34, 197, 94, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.avatar-sigil--rare {
+    background: radial-gradient(circle at 30% 30%, rgba(147, 197, 253, 0.95), rgba(30, 64, 175, 0.9));
+    border-color: rgba(147, 197, 253, 0.7);
+    box-shadow: 0 0 7px rgba(59, 130, 246, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.avatar-sigil--epic {
+    background: radial-gradient(circle at 30% 30%, rgba(196, 181, 253, 0.95), rgba(88, 28, 135, 0.9));
+    border-color: rgba(196, 181, 253, 0.7);
+    box-shadow: 0 0 9px rgba(168, 85, 247, 0.8), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.avatar-sigil--legendary {
+    background: radial-gradient(circle at 30% 30%, rgba(253, 224, 71, 0.95), rgba(146, 64, 14, 0.9));
+    border-color: rgba(253, 224, 71, 0.75);
+    box-shadow: 0 0 11px rgba(234, 179, 8, 0.85), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Overflow badge — replaces the 8th sigil when there are >7 active
+   spells. Shows "+N" in a muted purple bubble so it reads as a
+   summary count rather than a real spell. */
+.avatar-sigil--overflow {
+    background: radial-gradient(circle at 30% 30%, rgba(216, 180, 254, 0.9), rgba(59, 7, 100, 0.9));
+    border-color: rgba(216, 180, 254, 0.55);
+    box-shadow: 0 0 6px rgba(147, 51, 234, 0.6), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.avatar-sigil--overflow .avatar-sigil__icon {
+    /* Numeric badge content — use the bubble's font scale but slightly
+       smaller so "+12" fits without bleeding past the rim. */
+    font-size: calc(var(--sigil-size) * 0.48);
+    font-weight: 700;
+    color: #f3e8ff;
+    font-family: 'Cinzel', serif;
+}
+
+/* Accessibility / perf gates — mirror the comet's reduced-motion rules. */
+@media (prefers-reduced-motion: reduce) {
+    /* Static placement: keep the sigils visible at their initial
+       angles but stop the orbit rotation. Icons stop counter-rotating
+       too (otherwise they'd spin in place while the parent is still). */
+    .avatar-sigil-orbit,
+    .avatar-sigil__icon {
+        animation: none;
+    }
+}
+body.fx-reduced .avatar-sigil-orbit,
+body.fx-reduced .avatar-sigil__icon {
+    /* Slow the orbit considerably on reduced-effects so the motion
+       reads as ambient ornament rather than active rotation. */
+    animation-duration: 60s;
+}
+body.fx-minimal .avatar-sigil-orbit {
+    display: none;
+}
+
+/* v2.7 motion calm pass — the `.xp-ring__shimmer` SVG circle used to
+   carry a rotating "comet streak" (`xpRingShimmer`, 5-7s infinite) plus
+   a "breathing" drop-shadow pulse (`xpRingShimmerPulse`, 2.4-3s
+   infinite) on tier 7-10. With the separate `.xp-ring__comet` <img>
+   element already orbiting the ring at 6s, the shimmer was the *third*
+   simultaneous infinite loop on a single status indicator, which
+   crossed the line from "the ring feels alive" into the
+   attention-density problem NN/g calls out (perpetual ambient motion
+   on resting UI). Per the v2.7 motion audit: keep the comet (it's the
+   most expressive of the three layers and works at every tier via
+   `data-tier` gating), drop the shimmer + pulse. The shimmer circle
+   stays in the markup so we don't have to touch index.html, but it
+   renders invisibly. The keyframes `xpRingShimmer` and
+   `xpRingShimmerPulse` are removed since nothing references them
+   anymore. The tier-graded `drop-shadow` glow on `.xp-ring__progress`
+   below (tier-1/2/7/8/9/10) is preserved — it's a static filter, not
+   an animation, and it carries the "rarity" signal independent of the
+   shimmer. */
+.xp-ring__shimmer {
+    display: none;
+}
+
+/* Tier-graded glow — incrementally intensify the drop-shadow on the
+   progress arc as the player climbs tiers. Tier 1-2 stays clean (no
+   glow), tier 3-6 keeps the Item 1 default 2px glow, tier 7-8 grows
+   to 3px, tier 9-10 layers two drop-shadows for a real "lit" feel. */
+.xp-ring__progress.tier-1,
+.xp-ring__progress.tier-2 {
+    filter: none;
+}
+.xp-ring__progress.tier-7,
+.xp-ring__progress.tier-8 {
+    filter: drop-shadow(0 0 3px currentColor);
+}
+.xp-ring__progress.tier-9,
+.xp-ring__progress.tier-10 {
+    filter: drop-shadow(0 0 4px currentColor)
+            drop-shadow(0 0 2px currentColor);
+}
+
+/* Panel ring is larger (112px) and sits inside the player panel where
+   the avatar already commands attention; the full tier-9/10 double-
+   glow ends up rendering a noticeable halo below the bottom of the
+   ring (user-reported "ring leaking at the bottom"). Tame the panel-
+   size halo to a single 2px stop so the ring reads as a clean circle
+   while still feeling "lit" for endgame tiers. The mini ring keeps
+   the full double-glow since at 64px the bloom is already small
+   enough to feel contained. */
+.xp-ring--panel .xp-ring__progress.tier-9,
+.xp-ring--panel .xp-ring__progress.tier-10 {
+    filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* Prestige slot anchors (v3.0 will populate; invisible in v2.6) */
+.xp-ring__prestige-slots {
+    opacity: 0;
+    pointer-events: none;
+}
+.xp-ring__prestige-anchor {
+    fill: currentColor;
+}
+
+/* v2.7 motion calm pass — the shimmer-specific `prefers-reduced-motion`
+   / `body.fx-reduced` / `body.fx-minimal` overrides were removed since
+   the base `.xp-ring__shimmer { display: none }` rule above takes the
+   element out of the render tree entirely on every variant. The
+   intensity gates that still matter (comet + sigil orbit reductions)
+   live in their own blocks earlier in this file. */
+
+/* fx-minimal: strip the heavy double-glow filter from legendary tiers
+   on low-end Android (the tier color alone carries the rarity signal
+   without the GPU-cost drop-shadow). */
+body.fx-minimal .xp-ring__progress.tier-7,
+body.fx-minimal .xp-ring__progress.tier-8,
+body.fx-minimal .xp-ring__progress.tier-9,
+body.fx-minimal .xp-ring__progress.tier-10 {
+    filter: none;
+}
+
+/* ============================================================================
+   v2.7 — Rarity Frame System
+   ============================================================================
+   Generic chrome layer for tiered items (spells, companions, loot drops,
+   future inventory cards). Add `class="rarity-frame"` + `data-rarity="<tier>"`
+   to any card to opt into:
+
+     common    — clean defined edge, no glow
+     uncommon  — green accent + soft outer halo
+     rare      — blue accent + outer glow + inner sheen
+     epic      — purple accent + breathing outer glow (3.6s pulse)
+     legendary — gold accent + strongest glow + diagonal shimmer sweep (5s)
+
+   Background gradients stay in the existing Tailwind classes on the card
+   itself — only the chrome layer (border + shadow + ornament) is driven
+   by the rarity attribute. This keeps the per-color background (which
+   already encodes the rarity) and adds the next-level "this is rare"
+   visual signal on top.
+
+   Accessibility / intensity
+   ─────────────────────────
+   `prefers-reduced-motion: reduce` kills the epic pulse and legendary
+   shimmer (the border + glow alone still encode the tier). `fx-reduced`
+   slows both animations considerably so they read as ambient ornament
+   rather than active motion. `fx-minimal` strips them entirely — the
+   tier is still 100% legible from the static border + glow.
+   ============================================================================ */
+
+.rarity-frame {
+    position: relative;
+    border-width: 3px;
+    border-style: solid;
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 240ms ease-out;
+}
+
+/* COMMON — barely-there edge */
+.rarity-frame[data-rarity="common"] {
+    border-color: rgba(156, 163, 175, 0.55);
+}
+
+/* UNCOMMON — green accent, bright outline + wide halo + inner sheen
+   Each tier uses a 3-layer shadow stack:
+     1. A tight 1px outline ring (acts like a second border edge that
+        catches the eye even when the glow blends into the card's
+        green/blue/purple background gradient)
+     2. A wide outer halo with POSITIVE spread (positive spread is what
+        makes the glow actually project — the original pass used
+        negative spread which choked it inward)
+     3. An inset sheen for depth from the card edge inward
+   Border color is now fully solid (no rgba alpha) so the edge reads
+   crisp against the dark gradient. */
+.rarity-frame[data-rarity="uncommon"] {
+    border-color: #34d399;
+    box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.55),
+                0 0 24px 2px rgba(52, 211, 153, 0.65),
+                inset 0 0 22px -4px rgba(110, 231, 183, 0.38);
+}
+
+/* RARE — blue accent, bright outline + wide halo + inner sheen */
+.rarity-frame[data-rarity="rare"] {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.65),
+                0 0 30px 3px rgba(96, 165, 250, 0.7),
+                inset 0 0 26px -4px rgba(147, 197, 253, 0.45);
+}
+
+/* EPIC — purple frame + traveling sheen along the border
+   ───────────────────────────────────────────────────────
+   Visual hierarchy reset:
+     - Rare:      static blue glow
+     - Epic:      MOTION ON the border (a bright sheen orbits
+                  the rounded perimeter every 4s)
+     - Legendary: MOTION ACROSS the card (diagonal shimmer sweep)
+
+   The orbiting sheen uses a conic-gradient on a ::before pseudo,
+   masked to a thin ring along the card outline. The gradient's
+   `from` angle is animated via the registered @property
+   `--epic-sheen-angle` (declared near the top of the file) so the
+   browser can interpolate the angle smoothly each frame. Without
+   @property support the conic gradient stays static (graceful
+   fallback — card still has the static purple frame).
+
+   The static purple frame (border + outline + inner sheen) reads
+   epic on its own; the sheen is the kinetic differentiator vs rare. */
+.rarity-frame[data-rarity="epic"] {
+    border-color: #c084fc;
+    box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.55),
+                inset 0 0 22px -4px rgba(216, 180, 254, 0.4);
+}
+
+.rarity-frame[data-rarity="epic"]::before {
+    content: '';
+    position: absolute;
+    /* Sits flush with the parent's box (`inset: 0`) so it stays
+       INSIDE any overflow:hidden ancestor — mobile.css applies
+       `overflow: hidden` to .quest-card at <=768px which clips
+       anything painted outside. With padding: 3px the ring overlays
+       the parent's own 3px border exactly, masking the static
+       purple line and replacing it with the moving sheen. */
+    inset: 0;
+    border-radius: inherit;
+    /* `padding` defines the ring thickness. The mask trick below
+       carves out the content-box area, leaving only the padding-area
+       ring visible. The first 3px overlay the parent's static border;
+       the remaining 4px extend INTO the card interior so the sheen
+       reads as a chunky luminous frame rather than a hairline accent. */
+    padding: 7px;
+    background: conic-gradient(
+        from var(--epic-sheen-angle, 0deg),
+        transparent 0deg,
+        transparent 200deg,
+        rgba(216, 180, 254, 0.6) 260deg,
+        rgba(255, 255, 255, 1)   295deg,
+        rgba(216, 180, 254, 0.6) 330deg,
+        transparent 360deg
+    );
+    /* Standard "hollow border ring" mask: composite two solid
+       black masks (one clipped to content-box, one to border-box)
+       with `exclude` so only the padding ring remains opaque.
+       Both -webkit- prefixed and standard properties listed for
+       cross-engine support (Chromium honors either; older WebKit
+       needs the prefixed `-webkit-mask-composite: xor`). */
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+            mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    animation: epicBorderSheen 4s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Registered custom property — without this the conic-gradient's
+   `from` angle can't be interpolated, and the sheen stays frozen
+   at 0deg. Supported in Chromium 85+ and Safari 16.4+; older
+   engines silently fall back to a static gradient. */
+@property --epic-sheen-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes epicBorderSheen {
+    to { --epic-sheen-angle: 360deg; }
+}
+
+/* LEGENDARY — gold accent + strongest glow + diagonal shimmer sweep
+   `overflow: hidden` is scoped to legendary only so the ::before
+   shimmer pseudo-element is clipped to the card. Box-shadow paints
+   outside the border-box so the outer glow is unaffected. */
+.rarity-frame[data-rarity="legendary"] {
+    border-color: #fcd34d;
+    box-shadow: 0 0 0 1px rgba(252, 211, 77, 0.85),
+                0 0 40px 4px rgba(251, 191, 36, 0.75),
+                inset 0 0 30px -4px rgba(254, 240, 138, 0.55);
+    overflow: hidden;
+}
+
+.rarity-frame[data-rarity="legendary"]::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -100%;
+    width: 60%;
+    height: 200%;
+    background: linear-gradient(115deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0)    35%,
+        rgba(255, 255, 255, 0.28) 50%,
+        rgba(255, 255, 255, 0)    65%,
+        transparent 100%);
+    transform: skewX(-15deg);
+    animation: rarityLegendaryShimmer 5s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes rarityLegendaryShimmer {
+    0%, 100% { left: -100%; opacity: 0; }
+    10%      { opacity: 1; }
+    55%      { left: 165%; opacity: 1; }
+    60%      { opacity: 0; }
+}
+
+/* Rarity nameplate — small stamp at foot of card. The blur background
+   gives it a frosted-glass feel that reads on any underlying gradient.
+   `line-height: 1` keeps the pill height tight so it doesn't bloat
+   the card's vertical rhythm. */
+.rarity-nameplate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.18rem 0.7rem;
+    border-radius: 9999px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border: 1px solid;
+    background: rgba(12, 10, 9, 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    line-height: 1;
+}
+
+.rarity-nameplate i {
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.rarity-nameplate[data-rarity="common"]    { color: #d1d5db; border-color: rgba(156, 163, 175, 0.55); }
+.rarity-nameplate[data-rarity="uncommon"]  { color: #6ee7b7; border-color: rgba(52, 211, 153, 0.6); }
+.rarity-nameplate[data-rarity="rare"]      { color: #93c5fd; border-color: rgba(96, 165, 250, 0.7); }
+.rarity-nameplate[data-rarity="epic"]      { color: #d8b4fe; border-color: rgba(192, 132, 252, 0.75); }
+.rarity-nameplate[data-rarity="legendary"] {
+    color: #fcd34d;
+    border-color: rgba(252, 211, 77, 0.85);
+    text-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+}
+
+/* Accessibility & intensity gates
+   ───────────────────────────────
+   The orbiting sheen now lives on `epic::before` (not the element
+   itself), so motion overrides target the pseudo. `prefers-reduced-motion`
+   stops both the orbit and the legendary shimmer entirely; fx-reduced
+   slows them; fx-minimal removes the moving sheen but keeps the static
+   purple frame so the tier is still recognizable. */
+@media (prefers-reduced-motion: reduce) {
+    .rarity-frame[data-rarity="epic"]::before { animation: none; }
+    .rarity-frame[data-rarity="legendary"]::before {
+        animation: none;
+        opacity: 0;
+    }
+}
+
+body.fx-reduced .rarity-frame[data-rarity="epic"]::before {
+    /* Slow the orbit so it reads as ambient drift rather than an
+       active highlight chasing the border. */
+    animation-duration: 8s;
+}
+body.fx-reduced .rarity-frame[data-rarity="legendary"]::before {
+    animation-duration: 8s;
+}
+
+body.fx-minimal .rarity-frame[data-rarity="epic"]::before {
+    animation: none;
+    /* Hide the static gradient too — without motion it'd look like
+       a random bright spot on the border. The base frame's purple
+       border + outline ring + inner sheen still mark it as epic. */
+    display: none;
+}
+body.fx-minimal .rarity-frame[data-rarity="legendary"]::before {
+    display: none;
+}
+
+/* ============================================================================
+   v2.7 — Progress Bar Polish
+   ============================================================================
+   Adds two layers of feedback to any bar marked with `.progress-bar`:
+
+     1. A subtle diagonal SHIMMER sweeping across the inner fill every 3.5s,
+        so the bar reads as "alive" and progress-driven rather than a
+        static slab of color.
+     2. A NEAR-COMPLETION glow (90-99%) and COMPLETE glow + pulse (100%)
+        that fire from the inner fill's inline `style="width: NN%"` value.
+        The codebase uniformly renders integer percents (Math.round'd at
+        render time), so the attribute-selector hack reliably matches.
+
+   The marker class goes on the OUTER container; the CSS targets its
+   direct child (the gradient fill div). Apart from the one class name
+   per bar, no markup changes are required — existing Tailwind
+   gradient/transition/color classes all carry forward.
+
+   Accessibility / intensity gates
+   ───────────────────────────────
+   `prefers-reduced-motion: reduce` drops the shimmer entirely and stops
+   the complete-pulse (the gold halo stays — it's a status indicator,
+   not eye candy). `fx-reduced` slows the shimmer from 3.5s to 7s
+   (ambient drift) and softens the pulse to 4s. `fx-minimal` kills the
+   shimmer + pulse animations; the static glow remains so completion
+   is still visually obvious.
+   ============================================================================ */
+
+.progress-bar {
+    position: relative;
+    overflow: hidden;
+}
+
+/* The inner fill needs its own positioning context so the shimmer
+   pseudo is clipped to the FILL (not the empty track). overflow: hidden
+   ensures the rounded-full shape clips the shimmer pseudo cleanly. */
+.progress-bar > div {
+    position: relative;
+    overflow: hidden;
+}
+
+/* v2.7 motion calm pass — the progress-bar shimmer used to run as a
+   3.5s infinite loop on *every* progress bar on screen, which on a
+   list-heavy view (e.g. daily quests with 10+ bars) meant 10+
+   concurrent GPU-paint loops at idle. Refactored to a scroll-driven
+   trigger: the shimmer pseudo carries no `animation` by default, and
+   only plays when the parent `.progress-bar` gets the `.shimmer-once`
+   class added by the IntersectionObserver in `goal-manager.js`
+   (`_initProgressBarShimmerObserver`). That class is removed after
+   2 iterations (~7s) so the shimmer reads as "noticed when scrolled
+   into view, then settles." On re-scroll into view the class
+   re-adds, retriggering the animation. Mobile users (no hover) now
+   get the shimmer on initial appearance instead of never seeing it;
+   desktop users still get the legacy `:hover` shimmer on quest
+   cards as before. */
+.progress-bar > div::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -40%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(105deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0)    30%,
+        rgba(255, 255, 255, 0.45) 50%,
+        rgba(255, 255, 255, 0)    70%,
+        transparent 100%);
+    pointer-events: none;
+    opacity: 0;
+}
+
+.progress-bar.shimmer-once > div::after {
+    /* `forwards` keeps the shimmer at its end-state (off-screen right)
+       after the 2 iterations complete, so it sits invisibly until the
+       class is removed-and-re-added by the observer. */
+    animation: progressBarShimmer 3.5s ease-in-out 2 forwards;
+    opacity: 1;
+}
+
+@keyframes progressBarShimmer {
+    0%   { left: -40%; }
+    100% { left: 110%; }
+}
+
+/* NEAR-COMPLETION (90-99%) — soft gold glow that hints at the finish.
+   Matches inline widths starting with "9" but excludes the literal
+   "9%" case via :not(). Both selector variants cover the two inline
+   style spellings used across the codebase: `width: 9X%` (with space)
+   and `width:9X%` (no space). Decimal percents (e.g. 9.5%) would also
+   match but the codebase renders integers everywhere, so the selector
+   is safe in practice. */
+.progress-bar > div[style*="width: 9"]:not([style*="width: 9%"]),
+.progress-bar > div[style*="width:9"]:not([style*="width:9%"]) {
+    box-shadow: 0 0 12px 1px rgba(251, 191, 36, 0.55),
+                inset 0 0 8px -2px rgba(254, 240, 138, 0.4);
+}
+
+/* COMPLETE (100%) — stronger glow + breathing pulse on the gold halo.
+   IMPORTANT: only the pulse runs on the FILL div itself. The shimmer
+   keyframe animates `left`, which on a `position: relative` element
+   would slide the entire fill across the track — earlier this caused
+   the visible bar to literally translate left-to-right at 100%. The
+   diagonal shimmer is handled exclusively by `::after` (above), so
+   leaving it off here is correct. Both space variants listed so it
+   doesn't matter how the call site writes the style. */
+.progress-bar > div[style*="width: 100%"],
+.progress-bar > div[style*="width:100%"] {
+    box-shadow: 0 0 18px 2px rgba(251, 191, 36, 0.75),
+                inset 0 0 10px -2px rgba(254, 240, 138, 0.55);
+    animation: progressBarCompletePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes progressBarCompletePulse {
+    0%, 100% {
+        box-shadow: 0 0 18px 2px rgba(251, 191, 36, 0.75),
+                    inset 0 0 10px -2px rgba(254, 240, 138, 0.55);
+    }
+    50% {
+        box-shadow: 0 0 26px 3px rgba(251, 191, 36, 0.9),
+                    inset 0 0 12px -2px rgba(254, 240, 138, 0.7);
+    }
+}
+
+/* Accessibility / intensity gates — static glows stay (status indicator);
+   only the animated layers respond to motion preferences.
+
+   v2.7 motion calm pass — the `prefers-reduced-motion` / `fx-minimal`
+   rules below override `.shimmer-once` by suppressing the pseudo's
+   animation regardless of class state. The JS observer in
+   `goal-manager.js` also short-circuits on those preferences so the
+   class never even gets added on those paths, but the CSS overrides
+   stay as belt-and-suspenders in case the observer is ever bypassed
+   (e.g. user toggles intensity at runtime after first paint). */
+@media (prefers-reduced-motion: reduce) {
+    .progress-bar > div::after,
+    .progress-bar.shimmer-once > div::after { animation: none; opacity: 0; }
+    .progress-bar > div[style*="width: 100%"] { animation: none; }
+}
+body.fx-reduced .progress-bar.shimmer-once > div::after {
+    /* Halve the shimmer speed on reduced-effects so the 2-cycle
+       sweep reads as ambient drift rather than active highlight. */
+    animation-duration: 7s;
+}
+body.fx-reduced .progress-bar > div[style*="width: 100%"],
+body.fx-reduced .progress-bar > div[style*="width:100%"] {
+    animation: progressBarCompletePulse 4s ease-in-out infinite;
+}
+body.fx-minimal .progress-bar > div::after,
+body.fx-minimal .progress-bar.shimmer-once > div::after { display: none; }
+body.fx-minimal .progress-bar > div[style*="width: 100%"] { animation: none; }
+
+/* ============================================================================
+   v2.7 — Empty State Polish (Phase 3)
+   ============================================================================
+   Replaces the plain text+emoji empty-states with an illustrated tile that
+   reads like a medieval illuminated manuscript page rather than a "nothing
+   here yet" text wall. Layered scene composition:
+
+     1. OUTER CARD — parchment-tinted radial+linear gradient, soft golden
+        inset glow, double box-shadow for depth. `overflow: hidden` clips
+        the decorative layers to the card boundary.
+     2. CORNER FLOURISHES — 4 inline-SVG ornaments (L-bracket + dot) anchored
+        at each corner, mirrored via transform: scale(-1, ±1). Static.
+     3. RAY BURST — 16-ray SVG sunburst behind the icon medallion, slowly
+        rotating (24s) so the eye registers the scene as "alive" without
+        the motion ever being distracting.
+     4. ICON MEDALLION — emoji wrapped in a circular double-ringed frame
+        (gold rim + dark spacer + amber outer rim) with a radial highlight
+        and a strong drop shadow on the emoji glyph itself.
+     5. SPARKLE PARTICLES — 4 floating dust motes drifting on staggered
+        5-6.5s timelines, opacity ramps so each fades in/out smoothly.
+
+   Stacking: decorative layers sit at z-index 0; content (medallion, h3, p,
+   button) is bumped to z-index 1 so the rays/corners never cover text.
+
+   Accessibility & intensity gates:
+     - prefers-reduced-motion / fx-minimal: drop the rotating rays and
+       particle drift entirely; static composition still reads as a polished
+       tile (corners + medallion + parchment).
+     - fx-reduced: slow the rotation (24s → 60s) and particle drift (×2.2)
+       so the scene feels like ambient drift rather than active motion.
+
+   Structure is intended to be a reusable primitive — once approved on
+   life-goals it'll be wrapped in a JS helper and rolled out to the
+   other 10 surfaces identified in the survey.
+   ============================================================================ */
+
+.empty-state-card {
+    position: relative;
+    overflow: hidden;
+    padding: 4rem 2rem 3rem;
+    border-radius: 1rem;
+    background:
+        radial-gradient(circle at 50% 0%,
+            rgba(251, 191, 36, 0.12) 0%,
+            transparent 55%),
+        linear-gradient(to bottom right,
+            rgba(68, 64, 60, 0.55),
+            rgba(28, 25, 23, 0.78));
+    border: 2px solid rgba(180, 83, 9, 0.45);
+    box-shadow:
+        inset 0 1px 0 rgba(252, 211, 77, 0.18),
+        inset 0 0 70px -25px rgba(180, 83, 9, 0.4),
+        0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* Promote content above the decorative layers. */
+.empty-state-card > h3,
+.empty-state-card > p,
+.empty-state-card > button,
+.empty-state-card > .empty-state-medallion {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Corner flourishes ────────────────────────────────────────────────
+   4 spans inside `.empty-state-corners` are positioned at each corner and
+   mirrored. The SVG is a small L-bracket with a corner dot — encoded
+   inline as a data URI to avoid an extra HTTP request. */
+.empty-state-corners {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.empty-state-corners span {
+    display: block;
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'><path d='M3 3 L16 3 M3 3 L3 16 M3 3 L9 9' stroke='%23fcd34d' stroke-width='1.5' stroke-linecap='round' opacity='0.65'/><circle cx='3' cy='3' r='2' fill='%23fbbf24' opacity='0.75'/></svg>");
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0.85;
+}
+.empty-state-corners span:nth-child(1) { top: 12px; left: 12px; }
+.empty-state-corners span:nth-child(2) { top: 12px; right: 12px; transform: scaleX(-1); }
+.empty-state-corners span:nth-child(3) { bottom: 12px; left: 12px; transform: scaleY(-1); }
+.empty-state-corners span:nth-child(4) { bottom: 12px; right: 12px; transform: scale(-1, -1); }
+
+/* ── Ray burst ────────────────────────────────────────────────────────
+   16 rays (8 long primary + 8 shorter secondary at 22.5° offsets), all
+   anchored to a 200×200 viewBox so they fan out from the center where
+   the icon medallion sits. The wrapper rotates at a steady 24s linear
+   so the rays appear to "shimmer" past the static rim. */
+.empty-state-rays {
+    position: absolute;
+    /* Center the ray-burst on the medallion's center, NOT on the card.
+       Medallion sits at `top: 4rem` (the card's padding-top) and is
+       `6rem` tall, so its vertical center is at 7rem from the card top.
+       The ray container is 220px square, so its top edge must be
+       (7rem - 110px) for its center to align with the medallion's. */
+    top: calc(7rem - 110px);
+    left: 50%;
+    width: 220px;
+    height: 220px;
+    margin-left: -110px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' fill='none'><g stroke='%23fcd34d' stroke-width='2' stroke-linecap='round' opacity='0.22'><line x1='100' y1='10' x2='100' y2='40'/><line x1='100' y1='160' x2='100' y2='190'/><line x1='10' y1='100' x2='40' y2='100'/><line x1='160' y1='100' x2='190' y2='100'/><line x1='29' y1='29' x2='58' y2='58'/><line x1='171' y1='29' x2='142' y2='58'/><line x1='29' y1='171' x2='58' y2='142'/><line x1='171' y1='171' x2='142' y2='142'/></g><g stroke='%23fbbf24' stroke-width='1.5' stroke-linecap='round' opacity='0.16'><line x1='100' y1='15' x2='100' y2='35' transform='rotate(22.5 100 100)'/><line x1='100' y1='15' x2='100' y2='35' transform='rotate(67.5 100 100)'/><line x1='100' y1='15' x2='100' y2='35' transform='rotate(112.5 100 100)'/><line x1='100' y1='15' x2='100' y2='35' transform='rotate(157.5 100 100)'/><line x1='100' y1='15' x2='100' y2='35' transform='rotate(202.5 100 100)'/><line x1='100' y1='15' x2='100' y2='35' transform='rotate(247.5 100 100)'/><line x1='100' y1='15' x2='100' y2='35' transform='rotate(292.5 100 100)'/><line x1='100' y1='15' x2='100' y2='35' transform='rotate(337.5 100 100)'/></g></svg>");
+    background-size: contain;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    /* v2.7 motion tokens — was `24s linear infinite` (literal). Matches
+       the sigil-orbit pace via `--motion-ambient-slow` so both ambient
+       loops on the empty-state card share a tempo. */
+    animation: emptyStateRayRotate var(--motion-ambient-slow) var(--ease-linear-loop) infinite;
+    /* z-index: 0 (default) — sits above the card background but below
+       the content layer (z-index: 1 set above). */
+}
+
+@keyframes emptyStateRayRotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ── Icon medallion ───────────────────────────────────────────────────
+   Layered ring effect via stacked box-shadows: gold inner rim → dark
+   spacer → amber outer rim. The radial gradient gives a subtle highlight
+   in the upper-left, simulating a light source. */
+.empty-state-medallion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 6rem;
+    height: 6rem;
+    margin: 0 auto 1.5rem;
+    border-radius: 9999px;
+    background:
+        radial-gradient(circle at 35% 30%,
+            rgba(254, 240, 138, 0.22),
+            rgba(28, 25, 23, 0.65) 65%);
+    border: 2px solid rgba(252, 211, 77, 0.6);
+    box-shadow:
+        0 0 0 4px rgba(28, 25, 23, 0.55),
+        0 0 0 6px rgba(180, 83, 9, 0.5),
+        0 0 30px -4px rgba(251, 191, 36, 0.5);
+}
+
+/* The medallion's icon is a static glyph — override the existing
+   `.empty-state-icon` float animation since the medallion already
+   carries motion via the rotating rays behind it. Doubling up reads
+   as busy. */
+.empty-state-medallion .empty-state-icon {
+    font-size: 3.5rem;
+    line-height: 1;
+    animation: none;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+}
+
+/* ── Sparkle particles ────────────────────────────────────────────────
+   4 dust motes drifting upward in a loop. Staggered delays + slightly
+   different durations so they never sync up into a marching column.
+   Position: 2 above the medallion, 2 below the body text. */
+.empty-state-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.empty-state-particles span {
+    display: block;
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: radial-gradient(circle,
+        rgba(254, 240, 138, 0.95),
+        rgba(251, 191, 36, 0));
+    opacity: 0;
+    animation: emptyStateParticleDrift 5s ease-in-out infinite;
+}
+.empty-state-particles span:nth-child(1) { top: 30%;    left: 18%;  animation-duration: 5s;   animation-delay: 0s; }
+.empty-state-particles span:nth-child(2) { top: 25%;    right: 18%; animation-duration: 6s;   animation-delay: 0.7s; }
+.empty-state-particles span:nth-child(3) { bottom: 30%; left: 25%;  animation-duration: 5.5s; animation-delay: 1.4s; }
+.empty-state-particles span:nth-child(4) { bottom: 35%; right: 28%; animation-duration: 6.5s; animation-delay: 2.1s; }
+
+@keyframes emptyStateParticleDrift {
+    0%, 100% { transform: translateY(0)     scale(1);   opacity: 0; }
+    25%      {                                          opacity: 0.85; }
+    50%      { transform: translateY(-22px) scale(1.3); opacity: 1; }
+    75%      {                                          opacity: 0.55; }
+}
+
+/* ── Accessibility / intensity gates ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .empty-state-rays { animation: none; }
+    .empty-state-particles span {
+        animation: none;
+        opacity: 0.5;
+    }
+}
+body.fx-reduced .empty-state-rays {
+    animation-duration: 60s;
+}
+body.fx-reduced .empty-state-particles span {
+    animation-duration: 11s !important;
+}
+body.fx-minimal .empty-state-rays { display: none; }
+body.fx-minimal .empty-state-particles { display: none; }
+
+/* ============================================================================
+   v2.7 — Phase 4: Parallax Tilt on Epic+ Items
+   ============================================================================
+   Adds a subtle 3D pointer-tracked tilt + follow-the-cursor sheen highlight
+   to cards already marked with `.rarity-frame[data-rarity="epic"]` or
+   `[data-rarity="legendary"]`. Transforms are driven by CSS custom
+   properties set by `parallax-tilt.js`:
+
+     --tilt-x / --tilt-y   degrees of rotateX / rotateY
+     --mx     / --my       percentages of the radial-gradient center
+
+   Tier-gated: common/uncommon/rare keep their static frames \u2014 the goal is
+   to elevate the *epic+* visual hierarchy, not paint motion on every card.
+
+   Accessibility / intensity gates
+   \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   The transform is composited-only (no layout/paint thrash) but it is
+   still motion, so we apply the standard cascade:
+     - `(hover: none)` (touch)              \u2192 disabled (JS bails at init)
+     - `prefers-reduced-motion: reduce`     \u2192 disabled (JS bails at init)
+     - `body.fx-reduced`                    \u2192 max tilt 4\u00b0 instead of 8\u00b0
+                                              + softer return-to-rest timing
+     - `body.fx-minimal`                    \u2192 tilt + highlight removed
+   ============================================================================ */
+
+/* Reset transform via custom properties so the JS only writes
+   `--tilt-x` / `--tilt-y` and the CSS does the projection. A 900px
+   perspective gives a believable depth without exaggerated foreshortening
+   on cards that span half a tablet screen. */
+.rarity-frame[data-rarity="epic"],
+.rarity-frame[data-rarity="legendary"] {
+    transform: perspective(900px)
+               rotateX(var(--tilt-x, 0deg))
+               rotateY(var(--tilt-y, 0deg));
+    transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 240ms ease-out;
+    will-change: transform;
+}
+
+/* While the pointer is over the card, kill the transform transition so
+   the card tracks the cursor instantly. JS adds `.is-tilting` on enter
+   and removes it on leave \u2014 the transition reappears for the
+   return-to-rest swing. */
+.rarity-frame[data-rarity="epic"].is-tilting,
+.rarity-frame[data-rarity="legendary"].is-tilting {
+    transition: box-shadow 240ms ease-out;
+}
+
+/* Cursor-follow sheen highlight \u2014 a radial gradient anchored at the
+   pointer location (set via `--mx` / `--my` percentages). Sits ABOVE
+   the existing orbiting-sheen / shimmer `::before` pseudo (z-index 1)
+   and below text content (no z-index = auto, ends up below the
+   raised pseudo layer but card body content already has its own
+   stacking context via Tailwind's flex / grid containers, so this
+   stays purely as ambient highlight). `pointer-events: none` is
+   critical so buttons inside the card remain clickable. */
+.rarity-frame[data-rarity="epic"]::after,
+.rarity-frame[data-rarity="legendary"]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255, 255, 255, 0.20) 0%,
+        rgba(255, 255, 255, 0.08) 25%,
+        transparent 55%
+    );
+    opacity: 0;
+    transition: opacity 280ms ease-out;
+    pointer-events: none;
+    z-index: 2;
+}
+.rarity-frame[data-rarity="epic"].is-tilting::after,
+.rarity-frame[data-rarity="legendary"].is-tilting::after {
+    opacity: 1;
+}
+
+/* Accessibility & intensity gates
+   \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   The JS also bails at init for touch + reduce-motion, but we belt-
+   and-suspender the CSS too so any custom-property writes that
+   sneak through still produce no visible motion. */
+@media (hover: none), (prefers-reduced-motion: reduce) {
+    .rarity-frame[data-rarity="epic"],
+    .rarity-frame[data-rarity="legendary"] {
+        transform: none;
+    }
+    .rarity-frame[data-rarity="epic"]::after,
+    .rarity-frame[data-rarity="legendary"]::after {
+        display: none;
+    }
+}
+
+body.fx-reduced .rarity-frame[data-rarity="epic"],
+body.fx-reduced .rarity-frame[data-rarity="legendary"] {
+    /* JS clamps the tilt angle; here we soften the return-to-rest
+       so the swing back to flat reads more leisurely. */
+    transition: transform 540ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 240ms ease-out;
+}
+
+body.fx-minimal .rarity-frame[data-rarity="epic"],
+body.fx-minimal .rarity-frame[data-rarity="legendary"] {
+    transform: none;
+}
+body.fx-minimal .rarity-frame[data-rarity="epic"]::after,
+body.fx-minimal .rarity-frame[data-rarity="legendary"]::after {
+    display: none;
 }

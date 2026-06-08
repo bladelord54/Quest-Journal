@@ -1,5 +1,45 @@
-const CACHE_NAME = 'life-quest-journal-v384';
-const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v264';
+// v2.7.0: bumped CACHE_NAME so returning PWA users get the v2.6+v2.7
+// consolidated payload — Character Sheet & Player Panel overhaul,
+// repainted Tools view, rarity-frame chrome on spells/companions/loot/
+// chests/titles/badges, illustrated empty-states, parallax tilt on epic+
+// items, progress-bar polish, mobile-nav contrast, recurring-task
+// discoverability, and the analytics-page correctness pass. Without
+// this bump, returning PWA users would be served stale HTML/JS/CSS
+// from the v2.5 cache. Hundreds-digit ramps per minor release (v2.5
+// = v4xx, v2.6 unreleased = v5xx, v2.7 = v6xx) so two clients on
+// neighboring versions can never mistake each other's caches.
+//
+// v2.7.1: bumped CACHE_NAME for the GIF fallback removal + preventive
+// modal-containment audit. LAZY_CACHE_NAME also bumped (v270 → v280)
+// because the previous lazy cache held ~95 MB of `*-bg.gif` payloads
+// that returning PWA users no longer need; the new name forces the
+// activate handler's cache-cleanup branch to evict the stale lazy
+// cache on next launch. The lazyAssets array is now empty (kept
+// in place as wiring for a future lazy-cached large asset).
+//
+// v2.7.1 (build 25): re-bumped CACHE_NAME for the pre-ship UX audit
+// fixes (M1-M8). Returning PWA users need fresh index.html (welcome
+// card + stats-grid id + removed FOUC stubs), mobile.css (sidebar
+// selector hardening), and goal-manager.js (tutorial copy + search
+// empty state + renderDashboard visibility logic). No lazy-cache
+// payload change so LAZY_CACHE_NAME stays at v280.
+//
+// v2.8.0 (build 26): bumped CACHE_NAME for the full v2.8 theme expansion
+// release — 6 hybrid theme WebMs (Stormwatch, Verdant, Sunken,
+// Cathedral, Crystal, Aurora) post-compression sweep (-34.8% bundle),
+// Proposal B free/premium rebalance (5 free / 9 premium), live theme
+// preview modal with focus trap + scroll lock, per-theme accent
+// micro-styling, totalGoldEarned lifetime counter + migration. Returning
+// PWA users need fresh themes.css (all 6 hybrid blocks + transparency
+// rules + tile preview gradients), animations.css (particle classes for
+// rain/leaf/bubble/crystal/mote/star), goal-manager.js (Proposal B
+// themeDefinitions, previewTheme overhaul, addGold counter, migration),
+// index.html (preview modal markup), and all 6 hybrid WebMs in icons/.
+// No lazy-cache payload change so LAZY_CACHE_NAME stays at v280 (theme
+// WebMs remain in the standard CACHE_NAME alongside other static assets
+// per the v2.7.1 GIF-removal sweep that emptied lazyAssets).
+const CACHE_NAME = 'life-quest-journal-v613';
+const LAZY_CACHE_NAME = 'life-quest-journal-lazy-v280';
 // Local files: must all succeed or install fails (a missing local file = real bug)
 const localUrlsToCache = [
   './',
@@ -7,6 +47,7 @@ const localUrlsToCache = [
   './landing.html',
   './goal-manager.js',
   './audio-manager.js',
+  './effects-manager.js',
   './mobile-touch.js',
   './pwa-handler.js',
   './analytics-methods.js',
@@ -49,17 +90,19 @@ const cdnUrlsToCache = [
   'https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;700&family=Uncial+Antiqua&display=swap'
 ];
 
-// Large assets cached lazily on first use (theme backgrounds, etc.)
-const lazyAssets = [
-  './icons/forest-bg.gif',
-  './icons/desert-bg.gif',
-  './icons/ice-bg.gif',
-  './icons/volcanic-bg.gif',
-  './icons/volcanic-bg.mp4',
-  './icons/mystic-bg.gif',
-  './icons/golden-bg.gif',
-  './icons/shadow-bg.gif'
-];
+// Large assets cached lazily on first use.
+// Note: WebM/MP4 files are intentionally NOT listed here — the fetch handler
+// bypasses the SW entirely for video media so HTTP Range requests work
+// correctly.
+//
+// v2.7.1: emptied. Previously held the seven `icons/*-bg.gif` runtime
+// fallbacks (~95 MB total). Those GIFs were deleted from the bundle
+// because every supported device (Android 7.0+ per `minSdkVersion=24`'s
+// CDD requirement) hardware-decodes WebM, making the GIF fallback path
+// effectively dead weight. The infrastructure is kept in place so a
+// future large lazy-cached asset can opt into LAZY_CACHE_NAME by
+// re-populating this array.
+const lazyAssets = [];
 
 // Install event - cache resources
 // Uses cache:'reload' to bypass browser/CDN HTTP cache, ensuring fresh files on every SW update
@@ -124,6 +167,18 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // Bypass the SW entirely for video media (.webm/.mp4). The <video> element
+  // issues HTTP Range requests for streaming/seeking; if we intercept and
+  // return a cached full-body Response with status 200, Android WebView's
+  // media stack silently rejects it (no `error` event, blank video). Letting
+  // the request go straight to the network/asset-loader preserves proper
+  // 206 Partial Content handling. These files are still bundled in the
+  // Capacitor app, so "offline" still works on native — only the browser PWA
+  // pays a one-time network cost per theme switch (then HTTP cache covers it).
+  if (/\.(webm|mp4)(\?.*)?$/i.test(url.pathname)) {
+    return; // no respondWith() = browser handles fetch natively
+  }
 
   // Determine if this response should be cached on network fetch
   const isSameOrigin = url.origin === self.location.origin;

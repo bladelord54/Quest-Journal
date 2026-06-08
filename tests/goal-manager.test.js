@@ -47,6 +47,36 @@ const source = fs.readFileSync(sourceFile, 'utf-8');
 eval(source + '\nwindow.GoalManager = GoalManager;');
 const GoalManager = window.GoalManager;
 
+// Extract `themeDefinitions = { ... }` class-field literal from the source so
+// tests can validate the real data without booting the full constructor (which
+// touches DOM, audio, localStorage, render scheduling etc.). Class-field
+// initializers can't be invoked in isolation in pure JS — they run as part of
+// the constructor body — so we slice the literal out by brace-balance and
+// `eval` just that fragment. Brittle to comments containing braces, so the
+// extraction is anchored to the well-known `themeDefinitions = {` opener and
+// stops at the matching close brace using a depth counter that ignores
+// braces inside `/* ... */` comments and `'...'` strings.
+const extractedThemeDefs = (() => {
+    const startMatch = source.match(/themeDefinitions\s*=\s*\{/);
+    if (!startMatch) throw new Error('themeDefinitions literal not found in source');
+    const start = startMatch.index + startMatch[0].length - 1; // points at `{`
+    let depth = 0, i = start, inBlockComment = false, inLineComment = false, inStr = null;
+    for (; i < source.length; i++) {
+        const c = source[i], n = source[i + 1];
+        if (inBlockComment) { if (c === '*' && n === '/') { inBlockComment = false; i++; } continue; }
+        if (inLineComment) { if (c === '\n') inLineComment = false; continue; }
+        if (inStr) { if (c === '\\') { i++; continue; } if (c === inStr) inStr = null; continue; }
+        if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
+        if (c === '/' && n === '/') { inLineComment = true; i++; continue; }
+        if (c === '"' || c === "'" || c === '`') { inStr = c; continue; }
+        if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) { i++; break; } }
+    }
+    const literal = source.slice(start, i);
+    // eslint-disable-next-line no-eval
+    return eval('(' + literal + ')');
+})();
+
 /**
  * Create a minimal GoalManager instance without triggering the constructor.
  * Sets up all required properties and stubs for DOM-dependent methods.
@@ -85,6 +115,26 @@ function createTestManager(overrides = {}) {
     gm.spellDefinitions = gm.initializeSpells();
     gm.isCastingSpell = false;
     gm.spellsCast = 0;
+
+    // Class fields — these are declared with `FIELD = {...}` syntax in
+    // goal-manager.js and are assigned per-instance during `new GoalManager()`.
+    // The factory uses `Object.create(GoalManager.prototype)` to bypass the
+    // constructor (which has heavy side effects: DOM lookups, audio init,
+    // localStorage reads, render scheduling), so class fields are NOT
+    // present on the resulting instance and must be re-declared here.
+    // Symptom when a needed field is missing: any code path that touches
+    // it crashes with `Cannot read properties of undefined`. Mirror them
+    // verbatim from the production source.
+
+    // LEVEL_TITLES — consumed by getLevelTitle(), called from levelUp().
+    // Without this, any test that triggers a level-up (directly via
+    // levelUp(), or transitively via addXP() / boss defeat / task toggle
+    // crossing a level threshold) crashes inside getLevelTitle.
+    gm.LEVEL_TITLES = {
+        masculine: ['Peasant', 'Squire', 'Knight', 'Baron',    'Earl',     'Duke',    'Prince',   'King',  'Emperor', 'Legend'],
+        feminine:  ['Peasant', 'Squire', 'Dame',   'Baroness', 'Countess', 'Duchess', 'Princess', 'Queen', 'Empress', 'Legend']
+    };
+    gm.titleStyle = 'masculine';
 
     // Starter Task Presets (class field, not on prototype)
     gm.starterTaskPresets = {
@@ -152,6 +202,15 @@ function createTestManager(overrides = {}) {
     gm.chestsOpened = 0;
     gm.bossesDefeated = 0;
     gm.focusSessionsCompleted = 0;
+    // v2.8 lifetime gold-earned counter (Jun 7, 2026). Drives Golden
+    // Empire theme unlock criteria. Initialized to 0 here so the
+    // factory matches the production constructor; tests can override.
+    gm.totalGoldEarned = 0;
+    // Theme catalog — class field on production instances. Extracted
+    // from source above (see `extractedThemeDefs`) so tests validate
+    // the real data and `checkRewardUnlocks()` can iterate it without
+    // booting the full constructor.
+    gm.themeDefinitions = extractedThemeDefs;
 
     // Settings
     gm.timezone = 'auto';
@@ -954,24 +1013,90 @@ describe('GoalManager', () => {
             expect(gm.addXP).toHaveBeenCalledWith(15, 'daily');
         });
 
-        test('toggleTask uncompletes a task without XP clawback', () => {
+        // v2.6.x test refresh — the previous test asserted "no XP clawback"
+        // with `expect(gm.xp).toBe(100)`. That expectation predates the v2.5
+        // anti-exploit refund logic in `toggleTask` (goal-manager.js ~6841)
+        // which deliberately refunds the exact multiplied reward (or a
+        // fallback baseline) on uncomplete to close a check/uncheck farming
+        // loop on buffed tasks. The original test also mocked `gm.addXP =
+        // jest.fn()` expecting that to intercept the clawback, but the
+        // refund branch mutates `this.xp` directly and never goes through
+        // addXP, so the mock did nothing. Replacing one stale assertion
+        // with two explicit ones that lock the documented contract:
+        //   (a) legacy task (rewarded:true, no lastRewards) → fallback refund
+        //   (b) modern task with a lastRewards snapshot → exact-amount refund
+        test('toggleTask uncomplete: legacy task without lastRewards refunds the fallback baseline', () => {
             const gm = createTestManager();
             gm.xp = 100;
+            gm.goldCoins = 50;
+            gm.attackCharges = 5;
             gm.dealBossDamage = jest.fn();
-            gm.addXP = jest.fn();
 
             gm.dailyTasks = [{
                 id: 1,
-                title: 'Test Task',
+                title: 'Legacy Task',
                 completed: true,
                 rewarded: true,
+                // intentionally no lastRewards — pre-v2.5 data shape
                 dueDate: '2025-01-15'
             }];
 
             gm.toggleTask(1, { target: { closest: () => null } });
 
             expect(gm.dailyTasks[0].completed).toBe(false);
-            expect(gm.xp).toBe(100); // No XP clawback
+            expect(gm.dailyTasks[0].rewarded).toBe(false);
+            expect(gm.dailyTasks[0].lastRewards).toBeNull();
+            // Fallback baseline { xp: 15, gold: 5, charges: 1 } refunded
+            expect(gm.xp).toBe(85);
+            expect(gm.goldCoins).toBe(45);
+            expect(gm.attackCharges).toBe(4);
+        });
+
+        test('toggleTask uncomplete: modern task refunds the exact lastRewards snapshot', () => {
+            const gm = createTestManager();
+            gm.xp = 200;
+            gm.goldCoins = 100;
+            gm.attackCharges = 10;
+            gm.dealBossDamage = jest.fn();
+
+            // Snapshot reflects e.g. a Blessing 2x grant — refund must mirror
+            // it so the user nets zero across check/uncheck cycles.
+            gm.dailyTasks = [{
+                id: 1,
+                title: 'Buffed Task',
+                completed: true,
+                rewarded: true,
+                lastRewards: { xp: 30, gold: 10, charges: 2, shards: 0, crystals: 0 },
+                dueDate: '2025-01-15'
+            }];
+
+            gm.toggleTask(1, { target: { closest: () => null } });
+
+            expect(gm.dailyTasks[0].completed).toBe(false);
+            expect(gm.dailyTasks[0].rewarded).toBe(false);
+            expect(gm.dailyTasks[0].lastRewards).toBeNull();
+            expect(gm.xp).toBe(170);          // 200 - 30
+            expect(gm.goldCoins).toBe(90);    // 100 - 10
+            expect(gm.attackCharges).toBe(8); // 10 - 2
+        });
+
+        test('toggleTask uncomplete: refund clamps at zero (never negative)', () => {
+            const gm = createTestManager();
+            gm.xp = 5;          // less than fallback 15
+            gm.goldCoins = 2;   // less than fallback 5
+            gm.attackCharges = 0;
+            gm.dealBossDamage = jest.fn();
+
+            gm.dailyTasks = [{
+                id: 1, title: 'Edge Case', completed: true, rewarded: true,
+                dueDate: '2025-01-15'
+            }];
+
+            gm.toggleTask(1, { target: { closest: () => null } });
+
+            expect(gm.xp).toBe(0);
+            expect(gm.goldCoins).toBe(0);
+            expect(gm.attackCharges).toBe(0);
         });
 
         test('toggleTask does not award XP on re-completion (exploit prevention)', () => {
@@ -1756,6 +1881,534 @@ describe('GoalManager', () => {
             expect(gm2.xp).toBe(500);
             expect(gm2.level).toBe(2);
             expect(gm2.goldCoins).toBe(1000);
+        });
+    });
+
+    // ==================== SECURITY HARDENING (v2.7 audit) ====================
+    //
+    // Pre-release security audit identified that `bossLog[i].message` is
+    // rendered via `innerHTML` (legacy entries embed `<i class="ri-...">`
+    // icon prefixes) and `importData()` restores `bossLog` verbatim
+    // from a user-supplied JSON file. Without sanitization, a hostile
+    // backup could plant an XSS payload that fires on the next boss
+    // arena render. `_sanitizeBossLogMessage` is the chokepoint that
+    // prevents this — these tests pin its allowlist.
+
+    describe('Boss Log XSS Sanitizer', () => {
+
+        test('escapes plain HTML tags', () => {
+            const gm = createTestManager();
+            const out = gm._sanitizeBossLogMessage('<script>alert(1)</script>');
+            expect(out).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+            expect(out).not.toContain('<script>');
+        });
+
+        // Helper: parse the sanitizer output as HTML and confirm only
+        // benign nodes survive. Anything that would have executed
+        // (script, img with onerror, anchor with javascript:) must be
+        // rendered as inert text — i.e., not present as DOM elements.
+        function parsedNodeNames(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            return Array.from(div.querySelectorAll('*')).map(el => el.tagName.toLowerCase());
+        }
+
+        test('img onerror payload renders as inert text, not an <img>', () => {
+            const gm = createTestManager();
+            const out = gm._sanitizeBossLogMessage('<img src=x onerror=alert(1)>');
+            expect(parsedNodeNames(out)).not.toContain('img');
+            // Original `<` must have been entity-escaped
+            expect(out.startsWith('&lt;img')).toBe(true);
+        });
+
+        test('<i> tag with disallowed class is escaped, not rendered', () => {
+            const gm = createTestManager();
+            const out = gm._sanitizeBossLogMessage('<i class="evil-class" onclick="x">!</i>');
+            // The disallowed <i> stays escaped — no <i> node in the DOM
+            expect(parsedNodeNames(out)).not.toContain('i');
+            expect(out).toContain('&lt;i class=&quot;evil-class&quot;');
+        });
+
+        test('preserves allowlisted ri- icon tags as real DOM nodes', () => {
+            const gm = createTestManager();
+            const out = gm._sanitizeBossLogMessage('<i class="ri-trophy-line mr-1"></i>Victory!');
+            expect(parsedNodeNames(out)).toContain('i');
+            expect(out).toContain('<i class="ri-trophy-line mr-1"></i>');
+            expect(out).toContain('Victory!');
+        });
+
+        test('handles non-string input gracefully', () => {
+            const gm = createTestManager();
+            expect(gm._sanitizeBossLogMessage(null)).toBe('');
+            expect(gm._sanitizeBossLogMessage(undefined)).toBe('');
+            expect(gm._sanitizeBossLogMessage({ malicious: '<script>' })).toBe('');
+        });
+
+        test('javascript: URI in <a> is rendered as inert text, not an anchor', () => {
+            const gm = createTestManager();
+            const out = gm._sanitizeBossLogMessage('<a href="javascript:alert(1)">x</a>');
+            expect(parsedNodeNames(out)).not.toContain('a');
+            expect(out.startsWith('&lt;a')).toBe(true);
+        });
+
+        test('rejects ri-* spoofing via injected attributes', () => {
+            const gm = createTestManager();
+            // Attacker tries to smuggle an event handler by claiming a valid class
+            const out = gm._sanitizeBossLogMessage('<i class="ri-fire-line" onclick="alert(1)"></i>');
+            // The whole tag must not be re-inflated because the original markup
+            // has more than just `class="..."`. Outer regex anchors on the exact
+            // shape `<i class="..."></i>`, so any extra attrs cause the
+            // escape-pass to win.
+            expect(parsedNodeNames(out)).not.toContain('i');
+        });
+    });
+
+    // ==================== ANALYTICS AGGREGATION (v2.6.x audit) ====================
+    //
+    // These tests pin down the aggregation logic surfaced by `renderQuickStats`,
+    // `renderXPTimeline`, `renderProductivityPattern`, `renderPersonalRecords`,
+    // and `renderGoalsProgressOverview` after the v2.6.x analytics audit. They
+    // exercise the *data shape* the renderers consume rather than the DOM
+    // output, since jsdom doesn't carry the analytics view's element ids by
+    // default and the bugs being guarded against were arithmetic / parsing
+    // bugs, not markup bugs.
+
+    describe('Analytics Aggregation', () => {
+
+        // Helper: set up DOM elements the renderers look up. Returns a teardown.
+        function mountAnalyticsDom() {
+            const ids = [
+                'stat-total-completed', 'stat-current-streak', 'stat-total-xp', 'stat-completion-rate',
+                'activity-heatmap', 'xp-timeline-chart', 'task-breakdown-chart',
+                'productivity-pattern-chart', 'personal-records', 'goals-progress-overview'
+            ];
+            ids.forEach(id => {
+                const el = document.createElement('div');
+                el.id = id;
+                document.body.appendChild(el);
+            });
+            return () => ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            });
+        }
+
+        test('completion rate is capped at 100% and uses a denominator that spans all counted collections', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                // 3 daily completed, 1 weekly completed, 1 monthly completed,
+                // 1 yearly completed, 1 life completed = 7 completed of 7 total.
+                gm.dailyTasks = [
+                    { id: 1, completed: true, dueDate: '2025-01-15' },
+                    { id: 2, completed: true, dueDate: '2025-01-15' },
+                    { id: 3, completed: true, dueDate: '2025-01-15' }
+                ];
+                gm.weeklyGoals = [{ id: 10, completed: true }];
+                gm.monthlyGoals = [{ id: 20, completed: true }];
+                gm.yearlyGoals = [{ id: 30, completed: true }];
+                gm.lifeGoals = [{ id: 40, completed: true }];
+                gm.sideQuests = [];
+                gm.xp = 1234;
+                gm.loginStreak = 5;
+
+                gm.renderQuickStats();
+
+                expect(document.getElementById('stat-total-completed').textContent).toBe((7).toLocaleString());
+                expect(document.getElementById('stat-completion-rate').textContent).toBe('100%');
+                // Regression: denominator previously excluded yearlyGoals + lifeGoals,
+                // so this exact dataset would have rendered (7/5) = 140%.
+            } finally { teardown(); }
+        });
+
+        test('completion rate is 0% when there are no tasks at all', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                gm.xp = 0;
+                gm.loginStreak = 0;
+                gm.renderQuickStats();
+                expect(document.getElementById('stat-completion-rate').textContent).toBe('0%');
+                expect(document.getElementById('stat-total-completed').textContent).toBe('0');
+            } finally { teardown(); }
+        });
+
+        test('Day Streak tile sources loginStreak, not max habit streak', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                gm.loginStreak = 12;
+                // A higher habit streak should NOT win — the tile is the login streak.
+                gm.habits = [{ streak: 99, longestStreak: 99 }];
+                gm.renderQuickStats();
+                expect(document.getElementById('stat-current-streak').textContent).toBe((12).toLocaleString());
+            } finally { teardown(); }
+        });
+
+        test('XP Timeline renders one bar per day across the 30-day window', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                gm.dailyTasks = [
+                    { id: 1, completed: true, dueDate: gm.dateToLocalString(new Date()) }
+                ];
+                gm.renderXPTimeline();
+                const container = document.getElementById('xp-timeline-chart');
+                // 30 bar columns rendered (one per day), regardless of data density
+                const bars = container.querySelectorAll('.flex-1.flex.flex-col');
+                expect(bars.length).toBe(30);
+                // Tooltip uses "task(s) completed" language, not synthetic "XP"
+                expect(container.innerHTML).toMatch(/task[s]? completed/);
+                expect(container.innerHTML).not.toMatch(/\d+ XP/);
+            } finally { teardown(); }
+        });
+
+        test('Productivity Pattern parses dueDate strings as LOCAL days (no UTC off-by-one)', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                // 2025-01-15 is a Wednesday in every timezone east of the
+                // dateline. The previous renderer (`new Date('2025-01-15')`)
+                // parsed this as UTC-midnight, which in negative-UTC zones
+                // local-renders as 2025-01-14 (Tuesday). The fix appends
+                // `T12:00:00` so local-day is preserved regardless of TZ.
+                gm.dailyTasks = [
+                    { id: 1, completed: true, dueDate: '2025-01-15' },
+                    { id: 2, completed: true, dueDate: '2025-01-15' },
+                    { id: 3, completed: true, dueDate: '2025-01-15' }
+                ];
+                gm.renderProductivityPattern();
+                const html = document.getElementById('productivity-pattern-chart').innerHTML;
+                // Wednesday's bar should report 3 completions
+                expect(html).toMatch(/Wednesday:\s*3 tasks/);
+                // Tuesday's bar should report 0 (regression guard)
+                expect(html).toMatch(/Tuesday:\s*0 tasks/);
+            } finally { teardown(); }
+        });
+
+        test('Productivity Pattern skips tasks missing or with invalid dueDate', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                gm.dailyTasks = [
+                    { id: 1, completed: true, dueDate: '2025-01-15' },
+                    { id: 2, completed: true, dueDate: null },
+                    { id: 3, completed: true, dueDate: undefined },
+                    { id: 4, completed: true, dueDate: 'not-a-date' }
+                ];
+                // Should not throw, should still render 7 day columns
+                expect(() => gm.renderProductivityPattern()).not.toThrow();
+                const bars = document.getElementById('productivity-pattern-chart')
+                    .querySelectorAll('.flex-1.flex.flex-col');
+                expect(bars.length).toBe(7);
+            } finally { teardown(); }
+        });
+
+        test('Personal Records uses literal Tailwind class names (no dynamic interpolation)', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                gm.dailyTasks = [];
+                gm.habits = [{ longestStreak: 4, streak: 4 }];
+                gm.goldCoins = 50;
+                gm.treasureChests = [];
+                gm.level = 3;
+
+                gm.renderPersonalRecords();
+                const html = document.getElementById('personal-records').innerHTML;
+
+                // Each palette entry must appear as a literal substring — these
+                // are exactly what Tailwind needs to see at scan time to
+                // generate the rules.
+                ['from-orange-900', 'from-purple-900', 'from-blue-900',
+                 'from-green-900', 'from-yellow-900', 'from-red-900',
+                 'text-orange-300', 'text-purple-300', 'text-blue-300',
+                 'text-green-300', 'text-yellow-300', 'text-red-300'].forEach(cls => {
+                    expect(html).toContain(cls);
+                });
+
+                // Sanity: no `from-${...}` template fragments leaked through.
+                expect(html).not.toMatch(/\$\{[^}]*color[^}]*\}/);
+            } finally { teardown(); }
+        });
+
+        test('Goals Progress Overview clamps progress to [0, 100] and uses literal class names', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                gm.lifeGoals = [{ id: 1, title: 'Life A', completed: false, progress: 150 }]; // over-shot
+                gm.yearlyGoals = [{ id: 2, title: 'Year A', completed: false, progress: -10 }]; // underflow
+                gm.monthlyGoals = [{ id: 3, title: 'Month A', completed: false, progress: 42 }];
+                gm.weeklyGoals = [];
+
+                gm.renderGoalsProgressOverview();
+                const html = document.getElementById('goals-progress-overview').innerHTML;
+
+                expect(html).toContain('100%'); // Life A clamped down
+                expect(html).toContain('0%');   // Year A clamped up
+                expect(html).toContain('42%');  // Month A passes through
+
+                // Literal palette classes present
+                ['bg-red-900/30', 'bg-purple-900/30', 'bg-blue-900/30'].forEach(cls => {
+                    expect(html).toContain(cls);
+                });
+            } finally { teardown(); }
+        });
+
+        test('Goals Progress Overview renders the empty state when there are no incomplete goals', () => {
+            const teardown = mountAnalyticsDom();
+            try {
+                const gm = createTestManager();
+                gm.lifeGoals = [];
+                gm.yearlyGoals = [{ id: 1, title: 'Done', completed: true }];
+                gm.monthlyGoals = [];
+                gm.weeklyGoals = [];
+
+                gm.renderGoalsProgressOverview();
+                const html = document.getElementById('goals-progress-overview').innerHTML;
+                expect(html).toMatch(/All goals completed/i);
+            } finally { teardown(); }
+        });
+    });
+
+    // ==================== THEME SYSTEM (v2.8 audit S6) ====================
+    //
+    // Regression tests added Jun 7, 2026 after the v2.8 audit identified
+    // that the theme system had no test coverage despite carrying the
+    // bulk of v2.8's surface area. These guard:
+    //   - themeDefinitions structural integrity (all 14 themes present
+    //     with required fields), so a future refactor can't silently
+    //     drop a theme or break a field used by previewTheme()
+    //   - Proposal B free/premium split (5 free / 9 premium) — the
+    //     pricing rebalance shipped Jun 7 morning, this locks it in
+    //   - totalGoldEarned counter behavior (post-multiplier increment,
+    //     save/load round-trip) — drives Golden Empire unlock criteria
+    //   - checkRewardUnlocks() achievement gates for Golden Empire
+    //     (10k gold lifetime) and Shadow Realm (25 bosses defeated)
+    //
+    describe('Theme System (v2.8)', () => {
+
+        test('themeDefinitions has all 14 v2.8 themes with required fields', () => {
+            const gm = createTestManager();
+            const expectedThemes = [
+                'default', 'forest', 'desert', 'ice', 'volcanic', 'mystic',
+                'golden', 'shadow', 'stormwatch', 'verdant', 'sunken',
+                'cathedral', 'aurora', 'crystal'
+            ];
+            expect(Object.keys(gm.themeDefinitions).sort()).toEqual(expectedThemes.sort());
+
+            // Every theme must have name, icon, color, and explicit
+            // premium boolean — previewTheme() and renderThemes() rely
+            // on all four. Missing any breaks the modal mock card.
+            expectedThemes.forEach(id => {
+                const t = gm.themeDefinitions[id];
+                expect(t.name).toEqual(expect.any(String));
+                expect(t.icon).toEqual(expect.any(String));
+                expect(t.color).toMatch(/^#[0-9a-fA-F]{6}$/);
+                expect(typeof t.premium).toBe('boolean');
+            });
+        });
+
+        test('Proposal B split: exactly 5 free themes and 9 premium themes', () => {
+            const gm = createTestManager();
+            const free = Object.entries(gm.themeDefinitions)
+                .filter(([_, t]) => !t.premium)
+                .map(([id]) => id);
+            const premium = Object.entries(gm.themeDefinitions)
+                .filter(([_, t]) => t.premium)
+                .map(([id]) => id);
+
+            expect(free.sort()).toEqual(['default', 'forest', 'golden', 'ice', 'shadow']);
+            expect(premium.sort()).toEqual([
+                'aurora', 'cathedral', 'crystal', 'desert', 'mystic',
+                'stormwatch', 'sunken', 'verdant', 'volcanic'
+            ]);
+        });
+
+        test('addGold increments totalGoldEarned by the post-multiplier amount', () => {
+            const gm = createTestManager();
+            gm.totalGoldEarned = 0;
+
+            // Plain add — no multipliers active
+            gm.addGold(100, 'daily');
+            expect(gm.totalGoldEarned).toBe(100);
+
+            // With companion gold bonus (+20%) — counter must follow
+            // finalGold (post-multiplier), not the raw input. This is
+            // the contract the Golden Empire unlock relies on.
+            gm.companions = [{ type: 'dragon', bonusType: 'gold', bonusAmount: 0.20, rarity: 'epic' }];
+            gm.activeCompanionId = 'dragon';
+            gm.addGold(100, 'daily');
+            expect(gm.totalGoldEarned).toBe(220); // 100 + 120
+            expect(gm.goldCoins).toBe(220);       // counter and balance match
+        });
+
+        test('totalGoldEarned never decreases when gold is spent', () => {
+            const gm = createTestManager();
+            gm.totalGoldEarned = 5000;
+            gm.goldCoins = 5000;
+
+            // Simulate spending — the counter is a lifetime accumulator,
+            // only addGold() touches it. Direct goldCoins decrement
+            // (chest purchase, spell cast) must not affect the counter.
+            gm.goldCoins -= 3000;
+            expect(gm.totalGoldEarned).toBe(5000);
+            expect(gm.goldCoins).toBe(2000);
+        });
+
+        test('save/load round-trip preserves totalGoldEarned', () => {
+            const gm = createTestManager();
+            gm.totalGoldEarned = 7500;
+            // Use the real save path, not the stubbed one
+            delete gm.saveData;
+            gm._doSave();
+
+            const gm2 = createTestManager();
+            delete gm2.checkRewardUnlocks; // let real load logic run cleanly
+            gm2.loadData();
+            expect(gm2.totalGoldEarned).toBe(7500);
+        });
+
+        test('N3 migration: missing totalGoldEarned seeds from goldCoins (existing user)', () => {
+            // v2.8 N3 (Jun 7, 2026 audit) — existing users upgrading
+            // from pre-v2.8 saves get their CURRENT goldCoins balance
+            // copied into totalGoldEarned as the lifetime starting
+            // point. Strictly correct lower bound (gold can only enter
+            // via addGold, so balance ≤ true lifetime earned).
+            const gm = createTestManager();
+            localStorage.setItem('lifeOrganizeData', JSON.stringify({
+                version: '2.7.0',
+                xp: 100,
+                level: 2,
+                goldCoins: 8500,
+                unlockedThemes: ['default'],
+                currentTheme: 'default'
+                // totalGoldEarned intentionally absent
+            }));
+            delete gm.checkRewardUnlocks;
+            gm.loadData();
+            expect(gm.totalGoldEarned).toBe(8500);
+        });
+
+        test('N3 migration: field present as 0 stays 0 (new player or zero-balance returning user)', () => {
+            // The `??` (nullish coalesce) gate must distinguish
+            // "field absent" (seed from goldCoins) from "field present
+            // and explicitly 0" (genuine new save state). Without this
+            // distinction a new player who happens to have spent all
+            // their gold would get re-seeded every load.
+            const gm = createTestManager();
+            localStorage.setItem('lifeOrganizeData', JSON.stringify({
+                version: '2.8.0',
+                xp: 0,
+                level: 1,
+                goldCoins: 250,
+                totalGoldEarned: 0, // explicitly zero
+                unlockedThemes: ['default'],
+                currentTheme: 'default'
+            }));
+            delete gm.checkRewardUnlocks;
+            gm.loadData();
+            expect(gm.totalGoldEarned).toBe(0);
+        });
+
+        test('N3 migration: missing field with no goldCoins falls back to 0', () => {
+            // Defensive case — a corrupt or hand-edited save with
+            // neither field. Should not throw, should not set NaN,
+            // should land at 0.
+            const gm = createTestManager();
+            localStorage.setItem('lifeOrganizeData', JSON.stringify({
+                version: '2.7.0',
+                xp: 0,
+                level: 1,
+                unlockedThemes: ['default'],
+                currentTheme: 'default'
+                // both totalGoldEarned and goldCoins absent
+            }));
+            delete gm.checkRewardUnlocks;
+            gm.loadData();
+            expect(gm.totalGoldEarned).toBe(0);
+        });
+
+        test('N3 migration: existing user with 10k+ goldCoins auto-unlocks Golden Empire on first post-upgrade load', () => {
+            // The end-to-end intent of N3 option A: a returning player
+            // already past 10k gold should see Golden Empire unlocked
+            // immediately, not have to grind one more gold drop. The
+            // constructor's retroactive `checkRewardUnlocks()` sweep
+            // (with toasts suppressed) is what closes the loop. We
+            // simulate that sweep here by calling it after loadData,
+            // matching the production flow at goal-manager.js:236.
+            const gm = createTestManager();
+            localStorage.setItem('lifeOrganizeData', JSON.stringify({
+                version: '2.7.0',
+                xp: 500,
+                level: 5,
+                goldCoins: 12000,
+                unlockedThemes: ['default'],
+                currentTheme: 'default'
+                // totalGoldEarned absent — pre-v2.8 save
+            }));
+            delete gm.checkRewardUnlocks;
+            gm.loadData();
+            expect(gm.totalGoldEarned).toBe(12000);
+            // Constructor-equivalent retroactive sweep
+            gm._suppressRewardToasts = true;
+            gm.checkRewardUnlocks();
+            gm._suppressRewardToasts = false;
+            expect(gm.unlockedThemes).toContain('golden');
+        });
+
+        test('checkRewardUnlocks unlocks Golden Empire at 10,000 totalGoldEarned', () => {
+            const gm = createTestManager();
+            // Restore the real method (factory stubs it out)
+            delete gm.checkRewardUnlocks;
+            gm.unlockedThemes = ['default'];
+            gm.totalGoldEarned = 9999;
+            gm.bossesDefeated = 0;
+            gm.level = 1;
+
+            gm.checkRewardUnlocks();
+            expect(gm.unlockedThemes).not.toContain('golden');
+
+            gm.totalGoldEarned = 10000;
+            gm.checkRewardUnlocks();
+            expect(gm.unlockedThemes).toContain('golden');
+        });
+
+        test('checkRewardUnlocks unlocks Shadow Realm at 25 bossesDefeated', () => {
+            const gm = createTestManager();
+            delete gm.checkRewardUnlocks;
+            gm.unlockedThemes = ['default'];
+            gm.totalGoldEarned = 0;
+            gm.bossesDefeated = 24;
+            gm.level = 1;
+
+            gm.checkRewardUnlocks();
+            expect(gm.unlockedThemes).not.toContain('shadow');
+
+            gm.bossesDefeated = 25;
+            gm.checkRewardUnlocks();
+            expect(gm.unlockedThemes).toContain('shadow');
+        });
+
+        test('checkRewardUnlocks does NOT re-toast already-unlocked achievement themes', () => {
+            // Existing players who already had golden/shadow under the
+            // old criteria keep them — the new criteria don't re-lock,
+            // and unlockTheme guards against double-add. This locks in
+            // the migration safety net.
+            const gm = createTestManager();
+            delete gm.checkRewardUnlocks;
+            gm.unlockedThemes = ['default', 'golden', 'shadow'];
+            gm.totalGoldEarned = 50000;
+            gm.bossesDefeated = 100;
+            gm.level = 1;
+
+            const before = [...gm.unlockedThemes];
+            gm.checkRewardUnlocks();
+            // No duplicates
+            expect(gm.unlockedThemes.filter(t => t === 'golden')).toHaveLength(1);
+            expect(gm.unlockedThemes.filter(t => t === 'shadow')).toHaveLength(1);
+            // Original entries still present
+            before.forEach(t => expect(gm.unlockedThemes).toContain(t));
         });
     });
 });

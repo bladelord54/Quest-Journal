@@ -52,6 +52,16 @@ class GoalManager {
         this.bossesDefeated = 0;
         this.focusSessionsCompleted = 0;
         this.spellsCast = 0;
+        // v2.8 (Jun 7, 2026) — lifetime gold-earned counter for the
+        // Golden Empire theme unlock (10,000 gold earned, NOT current
+        // balance — players who spend gold on chests/spells shouldn't
+        // re-lose the unlock). Incremented in `addGold()` AFTER all
+        // multipliers (blessing, spells, enchantments, companion) so
+        // the counter reflects what actually hit the wallet. Migrated
+        // for existing users in loadData via the standard `data.x || 0`
+        // fallback — first-time-loading existing users get 0 and earn
+        // the unlock organically from their next gold drop forward.
+        this.totalGoldEarned = 0;
         
         // Boss Battle System (auto-generated daily/weekly/monthly bosses)
         this.dailyBoss = null;
@@ -88,14 +98,14 @@ class GoalManager {
         this.activeChallenges = [];
         this.completedChallenges = [];
         this.challengePresets = [
-            { id: 'tasks_today', title: 'Complete {n} tasks today', icon: '⚔️', field: 'tasksCompleted', trackType: 'daily', defaults: { n: 5 }, options: [3, 5, 7, 10] },
-            { id: 'habits_today', title: 'Complete {n} habits today', icon: '🔄', field: 'habitsCompleted', trackType: 'daily', defaults: { n: 3 }, options: [2, 3, 5] },
-            { id: 'login_streak', title: 'Reach a {n}-day login streak', icon: '🔥', field: 'loginStreak', trackType: 'cumulative', defaults: { n: 7 }, options: [3, 7, 14, 30] },
-            { id: 'defeat_boss', title: 'Defeat {n} boss(es)', icon: '💀', field: 'bossesDefeated', trackType: 'delta', defaults: { n: 1 }, options: [1, 3, 5] },
-            { id: 'focus_sessions', title: 'Complete {n} focus session(s)', icon: '🎯', field: 'focusSessions', trackType: 'daily', defaults: { n: 1 }, options: [1, 2, 3] },
-            { id: 'earn_xp', title: 'Earn {n} XP today', icon: '⭐', field: 'xpEarned', trackType: 'daily', defaults: { n: 100 }, options: [50, 100, 200, 500] },
-            { id: 'earn_gold', title: 'Earn {n} gold today', icon: '💰', field: 'goldEarned', trackType: 'daily', defaults: { n: 50 }, options: [25, 50, 100, 200] },
-            { id: 'side_quests', title: 'Complete {n} side quest(s)', icon: '🧭', field: 'sideQuestsCompleted', trackType: 'daily', defaults: { n: 2 }, options: [1, 2, 3, 5] }
+            { id: 'tasks_today', title: 'Complete {n} tasks today', icon: '<i class="ri-sword-line"></i>', field: 'tasksCompleted', trackType: 'daily', defaults: { n: 5 }, options: [3, 5, 7, 10] },
+            { id: 'habits_today', title: 'Complete {n} habits today', icon: '<i class="ri-loop-right-line"></i>', field: 'habitsCompleted', trackType: 'daily', defaults: { n: 3 }, options: [2, 3, 5] },
+            { id: 'login_streak', title: 'Reach a {n}-day login streak', icon: '<i class="ri-fire-line"></i>', field: 'loginStreak', trackType: 'cumulative', defaults: { n: 7 }, options: [3, 7, 14, 30] },
+            { id: 'defeat_boss', title: 'Defeat {n} boss(es)', icon: '<i class="ri-skull-2-line"></i>', field: 'bossesDefeated', trackType: 'delta', defaults: { n: 1 }, options: [1, 3, 5] },
+            { id: 'focus_sessions', title: 'Complete {n} focus session(s)', icon: '<i class="ri-focus-3-line"></i>', field: 'focusSessions', trackType: 'daily', defaults: { n: 1 }, options: [1, 2, 3] },
+            { id: 'earn_xp', title: 'Earn {n} XP today', icon: '<i class="ri-star-fill"></i>', field: 'xpEarned', trackType: 'daily', defaults: { n: 100 }, options: [50, 100, 200, 500] },
+            { id: 'earn_gold', title: 'Earn {n} gold today', icon: '<i class="ri-coin-line"></i>', field: 'goldEarned', trackType: 'daily', defaults: { n: 50 }, options: [25, 50, 100, 200] },
+            { id: 'side_quests', title: 'Complete {n} side quest(s)', icon: '<i class="ri-compass-3-line"></i>', field: 'sideQuestsCompleted', trackType: 'daily', defaults: { n: 2 }, options: [1, 2, 3, 5] }
         ];
         
         // Daily Free Wooden Chest
@@ -185,6 +195,15 @@ class GoalManager {
         // Beginner's Blessing (2x XP & Gold for first 3 calendar days)
         this.accountCreatedDate = null;
         this.BEGINNER_BLESSING_DAYS = 3;
+
+        // v2.5 — Level-title style. 'masculine' keeps every existing user's
+        // title chain unchanged on upgrade; 'feminine' swaps the gendered
+        // entries (Knight→Dame, Baron→Baroness, Earl→Countess, Duke→
+        // Duchess, Prince→Princess, King→Queen, Emperor→Empress). Toggleable
+        // in Settings → Title Style. Defaults to 'masculine' for backward
+        // compatibility — the load path also normalizes any unexpected value
+        // back to 'masculine' so save corruption can't cause weird titles.
+        this.titleStyle = 'masculine';
         
         // Referral System
         this.referralCode = null;
@@ -201,7 +220,24 @@ class GoalManager {
         this.reviewLeft = false;
         
         this.loadData();
-        
+
+        // v2.8 (Jun 4, 2026): retroactive theme-unlock sweep on load.
+        // Previously `checkRewardUnlocks()` only ran on gold/XP gain, so
+        // a player who hit the level threshold for a newly-added theme
+        // (e.g. stormwatch lvl 18 / verdant lvl 22 added in v2.8 to a
+        // save that was already past lvl 25) wouldn't see the unlock
+        // until their next gold drop. Suppress toasts for this pass so
+        // returning players don't get spammed with retroactive
+        // achievements they didn't just earn — the themes silently
+        // appear in the picker, exactly like they would have if the
+        // unlock had fired at the original level-up.
+        this._suppressRewardToasts = true;
+        try {
+            this.checkRewardUnlocks();
+        } finally {
+            this._suppressRewardToasts = false;
+        }
+
         this.checkNotificationPermission();
         this.checkHabitReset();
         
@@ -239,6 +275,13 @@ class GoalManager {
         this.setupKeyboardShortcuts();
         this.updateTimezoneDisplay();
         this.checkFirstTimeUser();
+        // v2.7 motion calm pass — wire the IntersectionObserver that
+        // re-triggers `.progress-bar.shimmer-once` as bars scroll into
+        // view. See `_initProgressBarShimmerObserver` for full
+        // rationale; the method itself short-circuits on
+        // prefers-reduced-motion and `body.fx-minimal`, so calling it
+        // unconditionally here is safe.
+        this._initProgressBarShimmerObserver();
         
         // Check for period transitions after a short delay to let UI render first
         setTimeout(() => this.checkPeriodTransitions(), 1000);
@@ -258,6 +301,16 @@ class GoalManager {
         setTimeout(() => this.checkExpiredSpells(), 500);
         this.spellCheckInterval = setInterval(() => this.checkExpiredSpells(), 60000); // Check every minute
         
+        // v2.5: show "What's New" modal once per existing user after update.
+        // Deferred to 3500ms so it lands AFTER login bonus / referral / period
+        // transition checks — never two modals stacked on top of each other.
+        setTimeout(() => this.maybeShowWhatsNew(), 3500);
+
+        // v2.5: reflect the persisted titleStyle on the Settings buttons so
+        // the active state is correct on first paint (not just after toggle).
+        // Deferred one frame so the DOM is fully populated.
+        requestAnimationFrame(() => this._refreshTitleStyleButtons());
+        
         // Re-check habit reset when app returns to foreground (handles sleep/backgrounded)
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
@@ -265,6 +318,14 @@ class GoalManager {
                 this.scheduleMidnightReset(); // Recalculate next midnight in case we slept through it
                 this._onFocusTimerVisibilityChange();
                 this.render();
+                // v2.6 Item 5 — after a backgrounded WebView resumes,
+                // the parent orbit and icon counter-rotation animations
+                // may resume from slightly desynced timelines (Chromium
+                // doesn't guarantee a single resume tick for all
+                // animations). Re-sync explicitly here so the icons land
+                // upright on the very first foreground paint instead of
+                // sitting at a fixed tilt until the next spell event.
+                requestAnimationFrame(() => this._syncSigilCounterRotation());
             }
         });
         
@@ -476,6 +537,28 @@ class GoalManager {
                 this.chestsOpened = data.chestsOpened || 0;
                 this.bossesDefeated = data.bossesDefeated || 0;
                 this.focusSessionsCompleted = data.focusSessionsCompleted || 0;
+                // v2.8 N3 migration (Jun 7, 2026 audit) — when the field
+                // is ABSENT from the save (existing user upgrading from a
+                // pre-v2.8 build), seed from `data.goldCoins` rather than
+                // 0. The current balance is a strictly correct lower
+                // bound on lifetime earnings (gold can only enter via
+                // addGold, so currentBalance ≤ trueLifetimeEarned),
+                // which means seeding never falsely unlocks Golden
+                // Empire — it just under-credits players who spent
+                // heavily. Better than punishing every existing player
+                // by starting at 0. Uses `??` not `||` to distinguish
+                // "field absent" (seed) from "field present and 0"
+                // (genuine new player or zero-balance returning user —
+                // stays 0). The subsequent retroactive
+                // `checkRewardUnlocks()` pass at end of `loadData()`
+                // will auto-grant Golden Empire to any player whose
+                // seeded counter already crosses 10,000.
+                this.totalGoldEarned = data.totalGoldEarned ?? (data.goldCoins || 0);
+
+                // v2.5 — Level-title style preference. Normalize any
+                // unexpected value (corrupt save, foreign import) back to
+                // 'masculine' so the title chain is always renderable.
+                this.titleStyle = data.titleStyle === 'feminine' ? 'feminine' : 'masculine';
                 this.spellsCast = data.spellsCast || 0;
                 
                 // Boss Battle System
@@ -620,6 +703,7 @@ class GoalManager {
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
                 spellsCast: this.spellsCast,
+                totalGoldEarned: this.totalGoldEarned,
                 dailyBoss: this.dailyBoss,
                 weeklyBoss: this.weeklyBoss,
                 monthlyBoss: this.monthlyBoss,
@@ -632,6 +716,7 @@ class GoalManager {
                 bossKillsThisMonth: this.bossKillsThisMonth,
                 bossKillsMonth: this.bossKillsMonth,
                 accountCreatedDate: this.accountCreatedDate,
+                titleStyle: this.titleStyle,
                 seenFeatureTutorials: this.seenFeatureTutorials,
                 progressiveUnlockInitialized: this.progressiveUnlockInitialized,
                 dailyQuestBoard: this.dailyQuestBoard,
@@ -851,7 +936,7 @@ class GoalManager {
             if (this.monthlyBoss && this.monthlyBoss.spawnMonth !== currentMonth) {
                 if (!this.monthlyBoss.defeated) {
                     this.monthlyBossStreak = 0;
-                    this.addBossLog(`💨 ${this.monthlyBoss.name} vanished as the new moon rose!`);
+                    this.addBossLog(`<i class="ri-windy-line mr-1"></i>${this.monthlyBoss.name} vanished as the new moon rose!`);
                 }
                 this.monthlyBoss = null;
             }
@@ -863,7 +948,7 @@ class GoalManager {
             if (this.dailyBoss && !this.dailyBoss.defeated && this.dailyBoss.spawnDate !== today) {
                 // Boss fled — break streak
                 this.dailyBossStreak = 0;
-                this.addBossLog(`💨 ${this.dailyBoss.name} fled into the shadows!`);
+                this.addBossLog(`<i class="ri-windy-line mr-1"></i>${this.dailyBoss.name} fled into the shadows!`);
             }
             this.generateDailyBoss(today);
         }
@@ -872,7 +957,7 @@ class GoalManager {
         if (!this.weeklyBoss || this.weeklyBoss.spawnWeek !== currentWeek) {
             if (this.weeklyBoss && !this.weeklyBoss.defeated && this.weeklyBoss.spawnWeek !== currentWeek) {
                 this.weeklyBossStreak = 0;
-                this.addBossLog(`💨 ${this.weeklyBoss.name} retreated to its lair!`);
+                this.addBossLog(`<i class="ri-windy-line mr-1"></i>${this.weeklyBoss.name} retreated to its lair!`);
             }
             this.generateWeeklyBoss(currentWeek);
         }
@@ -903,7 +988,7 @@ class GoalManager {
                 gold: 30 + bossLevel * 15
             }
         };
-        this.addBossLog(`⚔️ ${theme.icon} ${theme.name} appeared! (${maxHP} HP)`);
+        this.addBossLog(`<i class="ri-sword-line mr-1"></i>${theme.icon} ${theme.name} appeared! (${maxHP} HP)`);
     }
     
     generateWeeklyBoss(week) {
@@ -929,7 +1014,7 @@ class GoalManager {
                 gold: 150 + bossLevel * 25
             }
         };
-        this.addBossLog(`🔥 ${theme.icon} ${theme.name} emerges! (${maxHP} HP)`);
+        this.addBossLog(`<i class="ri-fire-line mr-1"></i>${theme.icon} ${theme.name} emerges! (${maxHP} HP)`);
     }
     
     canChallengeMonthlyBoss() {
@@ -965,7 +1050,7 @@ class GoalManager {
                 gold: 400 + bossLevel * 40
             }
         };
-        this.addBossLog(`🏴 ${theme.icon} ${theme.name} has been summoned! (${maxHP} HP) — MONTHLY CHAMPION`);
+        this.addBossLog(`<i class="ri-flag-2-line mr-1"></i>${theme.icon} ${theme.name} has been summoned! (${maxHP} HP) — MONTHLY CHAMPION`);
         this.saveData();
         this.renderBossBattles();
     }
@@ -983,7 +1068,149 @@ class GoalManager {
         this.bossLog.unshift({ message, time: Date.now() });
         if (this.bossLog.length > 20) this.bossLog.length = 20;
     }
-    
+
+    // v2.7 security hardening — `bossLog[i].message` is rendered via
+    // `innerHTML` in `renderBossLog()` because legacy entries embed
+    // `<i class="ri-...">` icon prefixes. Internal `addBossLog()` calls
+    // only ever interpolate boss names/icons sourced from a hardcoded
+    // theme catalog, so the in-app write path is safe — but
+    // `importData()` restores `bossLog` verbatim from a user-supplied
+    // JSON file, which means a hostile backup could plant a payload
+    // like `<img src=x onerror=...>` and the next boss arena render
+    // would execute it. This sanitizer HTML-escapes the entire
+    // message, then re-inflates ONLY a tight allowlist of icon tags
+    // (`<i class="ri-foo mr-1"></i>` style) so the legacy chrome
+    // still renders while any tag, attribute, or handler outside the
+    // allowlist stays inert escaped text.
+    _sanitizeBossLogMessage(message) {
+        if (typeof message !== 'string') return '';
+        const escaped = message
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        return escaped.replace(
+            /&lt;i class=&quot;([a-z0-9 \/-]+)&quot;&gt;&lt;\/i&gt;/g,
+            (match, classes) => {
+                const tokens = classes.split(/\s+/).filter(Boolean);
+                const allowed = tokens.every(c => /^(ri-[a-z0-9-]+|mr-[0-6])$/.test(c));
+                return allowed ? `<i class="${tokens.join(' ')}"></i>` : match;
+            }
+        );
+    }
+
+    // v2.7 motion calm pass — Progress-bar shimmer used to run as a
+    // 3.5s infinite loop on every progress bar in the DOM. On a
+    // list-heavy view (e.g. daily quests with 10+ bars), that's 10+
+    // concurrent GPU-paint loops at idle, plus the same on every
+    // re-render. The CSS now gates the animation behind a
+    // `.shimmer-once` class on `.progress-bar`, and this observer
+    // owns the class lifecycle: when a bar scrolls into view it plays
+    // 2 cycles (~7s) then settles, retriggering on subsequent
+    // re-entries. Pure-CSS scroll-driven animations (`view-timeline`)
+    // would do this without JS, but Safari support hasn't landed and
+    // the Capacitor Android WebView's coverage is still patchy below
+    // Chromium 115, so we drive it from JS for cross-platform parity.
+    //
+    // Lifecycle:
+    //   1. Singleton init runs once from the constructor.
+    //   2. The IntersectionObserver fires when any observed
+    //      `.progress-bar` crosses the 10% visibility threshold.
+    //   3. We toggle `.shimmer-once` off (forcing reflow via
+    //      `offsetWidth`) then on — CSS animations only restart when
+    //      the rule applies fresh, so the off-then-on dance is what
+    //      makes the shimmer replay on re-scroll.
+    //   4. A 7.5s timeout removes the class so subsequent re-entries
+    //      can trigger it again.
+    //   5. A MutationObserver watches `document.body` for new
+    //      `.progress-bar` nodes (the app re-renders lists frequently)
+    //      and registers them with the IntersectionObserver. Each
+    //      observed element gets a `data-shimmer-observed` flag so
+    //      we don't double-register.
+    //
+    // Short-circuit conditions (no work done at all):
+    //   • `prefers-reduced-motion: reduce` — CSS already suppresses
+    //     the animation, but we skip the observers entirely to save
+    //     the MutationObserver overhead on accessibility-conscious
+    //     devices.
+    //   • `body.fx-minimal` — same rationale for low-end Android.
+    //   • Missing `IntersectionObserver` (legacy WebView fallback) —
+    //     the shimmer simply never plays, which is a safe degradation.
+    _initProgressBarShimmerObserver() {
+        if (this._progressBarShimmerInit) return;
+        this._progressBarShimmerInit = true;
+
+        // Accessibility / intensity bail-outs. The CSS overrides are
+        // still in place as belt-and-suspenders if the user toggles
+        // intensity after first paint, but skipping the observers
+        // here saves the MutationObserver tick cost on devices that
+        // would never see the shimmer anyway.
+        if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
+        const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReduced) return;
+        if (document.body?.classList.contains('fx-minimal')) return;
+
+        // Two iterations × 3.5s base duration + 100ms safety margin
+        // so the class removal happens cleanly after the second pass
+        // completes. `fx-reduced` slows individual iterations to 7s
+        // each (CSS override), so on that path the class lives longer
+        // than the 7.1s timeout — but the worst case is the shimmer
+        // gets cut short on its second pass, which reads as "the
+        // sweep ran once and a half" rather than "the sweep glitched."
+        // Acceptable trade-off vs branching the timeout based on
+        // current intensity.
+        const PLAY_DURATION = 7100;
+
+        const intersectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                const el = entry.target;
+                // Clear any in-flight removal so we don't yank the
+                // class mid-replay if the user scrolls fast.
+                const existingTimer = el._shimmerTimer;
+                if (existingTimer) clearTimeout(existingTimer);
+                el.classList.remove('shimmer-once');
+                // Force reflow so the next add triggers a fresh
+                // animation run. Reading `offsetWidth` is the
+                // canonical way to flush pending style invalidations.
+                void el.offsetWidth;
+                el.classList.add('shimmer-once');
+                el._shimmerTimer = setTimeout(() => {
+                    el.classList.remove('shimmer-once');
+                    el._shimmerTimer = null;
+                }, PLAY_DURATION);
+            });
+        }, { threshold: 0.1 });
+
+        const registerNewBars = () => {
+            const fresh = document.querySelectorAll('.progress-bar:not([data-shimmer-observed])');
+            fresh.forEach(el => {
+                el.setAttribute('data-shimmer-observed', 'true');
+                intersectionObserver.observe(el);
+            });
+        };
+
+        // Initial pass: register every bar already rendered.
+        registerNewBars();
+
+        // MutationObserver picks up new bars rendered by subsequent
+        // `render()` calls. Scoped to `childList: true, subtree: true`
+        // so we catch nested re-renders (e.g. quest cards inside a
+        // re-rendered week view). `attributes: false` keeps the cost
+        // bounded — we don't care about attribute changes, only the
+        // arrival of new nodes.
+        const mutationObserver = new MutationObserver(() => {
+            registerNewBars();
+        });
+        mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+        // Stash references so manual teardown is possible in tests /
+        // future intensity-toggle paths without leaking observers.
+        this._progressBarShimmerIO = intersectionObserver;
+        this._progressBarShimmerMO = mutationObserver;
+    }
+
     grantAttackCharge(amount, source) {
         // Battle Fury enchantment: +1 bonus charge per charge earned
         if (this.hasActiveEnchantment('bonus_charges')) {
@@ -1050,6 +1277,10 @@ class GoalManager {
             damage = Math.ceil(damage * 1.5);
             isCrit = true;
             messages.push('💥 CRITICAL HIT!');
+            if (window.effectsManager) {
+                const bossEl = document.getElementById(`boss-card-${bossType}`);
+                window.effectsManager.bossCrit(bossEl);
+            }
         }
         
         // Apply damage
@@ -1206,7 +1437,10 @@ class GoalManager {
         loot.forEach(reward => {
             if (reward.type === 'gold') this.addGold(reward.amount, 'boss');
             if (reward.type === 'xp') this.addXP(reward.amount, 'boss');
-            if (reward.type === 'charges') this.attackCharges += reward.amount;
+            // Route charge loot through grantAttackCharge so Battle Fury
+            // enchantment applies and dailyTracking.chargesEarned ticks,
+            // matching how task/habit/quest-earned charges are granted.
+            if (reward.type === 'charges') this.grantAttackCharge(reward.amount, 'loot');
             if (reward.type === 'theme') {
                 const result = this.tryUnlockRandomTheme();
                 if (result) reward._resolved = result;
@@ -1235,7 +1469,7 @@ class GoalManager {
         if (this.defeatedBossList.length > 50) this.defeatedBossList.length = 50;
         
         const streakText = streak > 1 ? ` (x${streak} streak!)` : '';
-        this.addBossLog(`🏆 ${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold, +${crystalReward} 💎${streakText}`);
+        this.addBossLog(`<i class="ri-trophy-line mr-1"></i>${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold, +${crystalReward} 💎${streakText}`);
         
         // Clear any queued sounds so boss defeated sound plays immediately
         if (window.audioManager) {
@@ -1289,7 +1523,7 @@ class GoalManager {
         boss.currentHP = 0;
         boss.defeated = true;
         
-        this.addBossLog(`💀 EXECUTE! ${boss.icon} ${boss.name} instantly slain!`);
+        this.addBossLog(`<i class="ri-skull-2-line mr-1"></i>EXECUTE! ${boss.icon} ${boss.name} instantly slain!`);
         
         setTimeout(() => this.onBossDefeated(bossType), 300);
         this.saveData();
@@ -1967,14 +2201,15 @@ class GoalManager {
             if (!lockedMsg) {
                 lockedMsg = document.createElement('div');
                 lockedMsg.id = 'goals-locked-message';
-                lockedMsg.className = 'text-center py-16 px-6';
-                lockedMsg.innerHTML = `
-                    <div class="text-7xl mb-6">📜</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Your Quest Log Awaits!</h3>
-                    <p class="text-amber-200 fancy-font text-lg mb-2">Complete daily quests to level up and unlock new quest types.</p>
-                    <p class="text-amber-400 fancy-font mt-4">⚔️ Weekly Battles & Side Quests unlock at <span class="font-bold text-yellow-300">Level 6</span></p>
-                    <p class="text-amber-400/70 fancy-font mt-1">📖 Monthly Raids at <span class="text-yellow-300">Lv.7</span> · 🚩 Life Goals at <span class="text-yellow-300">Lv.9</span></p>
-                `;
+                // The .empty-state-card primitive carries its own padding/styling,
+                // so the wrapper element only needs to exist as a mount point.
+                lockedMsg.innerHTML = this._renderEmptyState({
+                    icon: '📜',
+                    title: 'Your Quest Log Awaits!',
+                    body: `Complete daily quests to level up and unlock new quest types.<br><br>
+                        <span class="text-amber-400">⚔️ Weekly Battles & Side Quests unlock at <span class="font-bold text-yellow-300">Level 6</span></span><br>
+                        <span class="text-amber-400/70">📖 Monthly Raids at <span class="text-yellow-300">Lv.7</span> · 🚩 Life Goals at <span class="text-yellow-300">Lv.9</span></span>`
+                });
                 // Insert after the tab bar
                 const tabBar = goalsView.querySelector('.flex.justify-center.mb-6');
                 if (tabBar) {
@@ -2070,6 +2305,149 @@ class GoalManager {
         if (window.audioManager) window.audioManager.playAchievement('weekly');
     }
     
+    // v2.5 — single source of truth for the level-title chain. Indexed by
+    // level (1-based; level 1 maps to titles[0], level >= titles.length maps
+    // to the last entry, i.e. 'Legend' / 'Legend'). Masculine and feminine
+    // chains are the same length so every level has a counterpart entry.
+    LEVEL_TITLES = {
+        masculine: ['Peasant', 'Squire', 'Knight', 'Baron',    'Earl',     'Duke',    'Prince',   'King',  'Emperor', 'Legend'],
+        feminine:  ['Peasant', 'Squire', 'Dame',   'Baroness', 'Countess', 'Duchess', 'Princess', 'Queen', 'Empress', 'Legend']
+    };
+
+    getLevelTitle(level) {
+        const style = this.titleStyle === 'feminine' ? 'feminine' : 'masculine';
+        const titles = this.LEVEL_TITLES[style];
+        const idx = Math.min(Math.max((level || 1) - 1, 0), titles.length - 1);
+        return titles[idx];
+    }
+
+    // v2.5 — user-facing toggle for the level-title style. Persists
+    // immediately and re-renders the visible XP display so the new title
+    // shows up without a page refresh. The button-active state is refreshed
+    // via `_refreshTitleStyleButtons()`.
+    setTitleStyle(style) {
+        if (style !== 'masculine' && style !== 'feminine') return;
+        if (this.titleStyle === style) return;
+        this.titleStyle = style;
+        this.saveData();
+        if (typeof this.renderXPDisplay === 'function') this.renderXPDisplay();
+        this._refreshTitleStyleButtons();
+    }
+
+    _refreshTitleStyleButtons() {
+        ['masculine', 'feminine'].forEach(s => {
+            const btn = document.getElementById(`title-style-${s}`);
+            if (!btn) return;
+            const active = this.titleStyle === s;
+            // Use the same active/inactive pattern as the animation-intensity
+            // buttons in effects-manager.js for visual consistency.
+            btn.classList.toggle('bg-amber-600', active);
+            btn.classList.toggle('bg-indigo-700', !active);
+            btn.classList.toggle('ring-2', active);
+            btn.classList.toggle('ring-amber-300', active);
+        });
+    }
+
+    // v2.5 — re-trigger the `viewEnter` keyframe in animations.css whenever a
+    // view-container becomes the active view. CSS animations only run once
+    // per class addition, so we remove the class, force a reflow, then re-add
+    // it; this works even when the user navigates back to a view that was
+    // previously visible. The class self-cleans on `animationend` so it never
+    // stacks across rapid navigations.
+    // Skipped under `effectsManager.intensity === 'minimal'`; the CSS rule
+    // also no-ops automatically under `prefers-reduced-motion`.
+    //
+    // v2.5 audit fixes:
+    //   • Listener-accumulation: rapid view switches cancel the in-flight
+    //     animation before its `animationend` fires; `{ once: true }` never
+    //     fires for canceled animations, so each rapid switch leaks one
+    //     closure. We now stash the handler on the element and remove the
+    //     prior one before attaching the new one.
+    //   • Bubbling-defense: `animationend` bubbles from descendants, so we
+    //     filter the handler to only react to the view-container's own
+    //     `viewEnter` animation. Today no descendant finite animation
+    //     completes before the 280ms `viewEnter` (Tailwind's animate-* are
+    //     all infinite, task-item fadeIn is 300ms+ so always longer), but
+    //     guarding now prevents a future sub-280ms child animation from
+    //     prematurely stripping `is-entering`.
+    _animateViewEnter(viewEl) {
+        if (!viewEl) return;
+        if (window.effectsManager && window.effectsManager.intensity === 'minimal') {
+            viewEl.classList.remove('is-entering');
+            return;
+        }
+        // Detach any prior pending listener (carried over from a canceled
+        // earlier animation) before installing the new one.
+        if (viewEl._viewEnterCleanup) {
+            viewEl.removeEventListener('animationend', viewEl._viewEnterCleanup);
+            viewEl._viewEnterCleanup = null;
+        }
+        viewEl.classList.remove('is-entering');
+        // Force reflow so the next class addition restarts the keyframe.
+        void viewEl.offsetWidth;
+        viewEl.classList.add('is-entering');
+        const cleanup = (e) => {
+            // Only react to the view-container's own viewEnter ending, not
+            // children's animationends bubbling up.
+            if (e.target !== viewEl || e.animationName !== 'viewEnter') return;
+            viewEl.classList.remove('is-entering');
+            viewEl.removeEventListener('animationend', cleanup);
+            viewEl._viewEnterCleanup = null;
+        };
+        viewEl._viewEnterCleanup = cleanup;
+        viewEl.addEventListener('animationend', cleanup);
+    }
+
+    // v2.7+ — One-time "What's New" modal logic. Re-armed each release
+    // by bumping `CHANGELOG_VERSION` below to match the modal's headline
+    // (v2.7.1 = polish & performance patch on top of v2.7's visual
+    // overhaul). Shows for existing users upgrading; suppressed for
+    // brand-new installs (those users have never seen anything else, so
+    // a "what's new" would be confusing). State persisted in localStorage
+    // so the modal never re-shows on the same install. Suppressed if a
+    // tutorial is currently up so we never stack two overlays.
+    CHANGELOG_VERSION = '2.8.0';
+
+    maybeShowWhatsNew() {
+        try {
+            const seen = localStorage.getItem('lastSeenChangelogVersion');
+            if (seen === this.CHANGELOG_VERSION) return;
+
+            // Brand-new install heuristic: fresh user with no real activity yet.
+            // We silently mark this version as seen so they only see "What's New"
+            // on FUTURE updates, not on their first launch.
+            const isBrandNew = this.level <= 1
+                && this.xp === 0
+                && (!this.badges || this.badges.length === 0)
+                && (!this.dailyTasks || this.dailyTasks.length === 0);
+            if (isBrandNew) {
+                localStorage.setItem('lastSeenChangelogVersion', this.CHANGELOG_VERSION);
+                return;
+            }
+
+            // Don't pile on top of an active tutorial overlay.
+            const tutorial = document.getElementById('tutorial-overlay');
+            if (tutorial && !tutorial.classList.contains('hidden')) return;
+
+            const modal = document.getElementById('whats-new-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            if (window.audioManager) {
+                window.audioManager.playAchievement?.('weekly');
+            }
+        } catch (e) {
+            // localStorage may be unavailable in private-browsing — fail open.
+        }
+    }
+
+    closeWhatsNewModal() {
+        const modal = document.getElementById('whats-new-modal');
+        if (modal) modal.classList.add('hidden');
+        try {
+            localStorage.setItem('lastSeenChangelogVersion', this.CHANGELOG_VERSION);
+        } catch (e) { /* ignore */ }
+    }
+
     switchView(viewName) {
         // Progressive unlock gating
         const directViewCheck = this.featureUnlockLevels[viewName];
@@ -2087,7 +2465,9 @@ class GoalManager {
             document.querySelectorAll('.view-container').forEach(view => {
                 view.classList.add('hidden');
             });
-            document.getElementById('arcane-view').classList.remove('hidden');
+            const arcaneView = document.getElementById('arcane-view');
+            arcaneView.classList.remove('hidden');
+            this._animateViewEnter(arcaneView);
             
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
@@ -2115,7 +2495,9 @@ class GoalManager {
             document.querySelectorAll('.view-container').forEach(view => {
                 view.classList.add('hidden');
             });
-            document.getElementById('goals-view').classList.remove('hidden');
+            const goalsView = document.getElementById('goals-view');
+            goalsView.classList.remove('hidden');
+            this._animateViewEnter(goalsView);
             
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
@@ -2135,7 +2517,11 @@ class GoalManager {
         document.querySelectorAll('.view-container').forEach(view => {
             view.classList.add('hidden');
         });
-        document.getElementById(`${viewName}-view`).classList.remove('hidden');
+        const targetView = document.getElementById(`${viewName}-view`);
+        if (targetView) {
+            targetView.classList.remove('hidden');
+            this._animateViewEnter(targetView);
+        }
         
         // Update navigation link active states
         document.querySelectorAll('.nav-link').forEach(link => {
@@ -2422,60 +2808,67 @@ class GoalManager {
         const toastTitle = this.getElement('toast-title');
         const achievementText = this.getElement('achievement-text');
         
+        // v2.7 iconography pass — toast big-icon swapped from emoji to
+        // Remix Icon SVG so it renders identically across Android brands
+        // (Samsung, Pixel, OnePlus all paint emoji differently — Remix
+        // Icons are a font asset, so they look the same everywhere).
+        // The `iconClass` is a Remix Icon class name; `_processToastQueue`
+        // renders it inside an <i> tag at 6xl size to match the previous
+        // emoji proportions.
         const toastStyles = {
             achievement: {
                 gradient: 'from-yellow-600 via-amber-500 to-yellow-700',
                 border: 'border-yellow-400',
-                icon: '⚔️',
+                iconClass: 'ri-sword-line',
                 title: 'Achievement Unlocked!',
                 animate: true
             },
             success: {
                 gradient: 'from-green-600 via-emerald-500 to-green-700',
                 border: 'border-green-400',
-                icon: '✨',
+                iconClass: 'ri-check-double-line',
                 title: 'Quest Complete!',
                 animate: false
             },
             bonus: {
                 gradient: 'from-purple-600 via-violet-500 to-purple-700',
                 border: 'border-purple-400',
-                icon: '🎯',
+                iconClass: 'ri-focus-3-line',
                 title: 'Bonus Activated!',
                 animate: true
             },
             loot: {
                 gradient: 'from-amber-600 via-orange-500 to-amber-700',
                 border: 'border-orange-400',
-                icon: '🎁',
+                iconClass: 'ri-treasure-map-line',
                 title: 'Treasure Found!',
                 animate: true
             },
             protection: {
                 gradient: 'from-blue-600 via-cyan-500 to-blue-700',
                 border: 'border-cyan-400',
-                icon: '🛡️',
+                iconClass: 'ri-shield-line',
                 title: 'Protection Active!',
                 animate: true
             },
             warning: {
                 gradient: 'from-red-600 via-rose-500 to-red-700',
                 border: 'border-red-400',
-                icon: '⚠️',
+                iconClass: 'ri-error-warning-line',
                 title: 'Warning',
                 animate: false
             },
             companion: {
                 gradient: 'from-teal-600 via-emerald-500 to-teal-700',
                 border: 'border-teal-400',
-                icon: '🐾',
+                iconClass: 'ri-footprint-line',
                 title: 'Companion Update!',
                 animate: false
             },
             info: {
                 gradient: 'from-slate-600 via-gray-500 to-slate-700',
                 border: 'border-slate-400',
-                icon: '📜',
+                iconClass: 'ri-scroll-line',
                 title: 'Notice',
                 animate: false
             }
@@ -2483,10 +2876,18 @@ class GoalManager {
         
         const style = toastStyles[type] || toastStyles.info;
         
-        // Update toast appearance
+        // Update toast appearance. innerHTML is safe here because
+        // `iconClass` is a hard-coded value from the toastStyles map
+        // above (never user input) — there is no XSS surface.
         toastContainer.className = `bg-gradient-to-br ${style.gradient} text-white p-6 rounded-lg shadow-2xl border-4 ${style.border} quest-card`;
-        toastIcon.textContent = style.icon;
-        toastIcon.className = style.animate ? 'text-6xl animate-bounce' : 'text-6xl';
+        toastIcon.innerHTML = `<i class="${style.iconClass}"></i>`;
+        // v2.7 iconography pass — center-stacked toast layout: parent flex
+        // handles horizontal centering, this just keeps `leading-none` so the
+        // icon's line-box matches the glyph height (avoids an extra ~10px
+        // gap between the icon and the title under the default 1.5 line-
+        // height of the inherited body font).
+        const iconBase = 'text-6xl leading-none';
+        toastIcon.className = style.animate ? `${iconBase} animate-bounce` : iconBase;
         toastTitle.textContent = style.title;
         achievementText.textContent = text;
         
@@ -2719,6 +3120,91 @@ class GoalManager {
         this.showAchievement('⚔️ Quest added! Go forth and conquer.', 'daily');
     }
 
+    // The quick-add FAB used to route to the regular `addX(text)` functions,
+    // but those take an optional positional *parentId* (not a title) — so the
+    // typed text was either silently discarded (side quests, no params) or,
+    // worse, written into the parent-link array (weekly/monthly/yearly/life)
+    // corrupting `monthlyGoalIds`/`yearlyGoalIds`/`lifeGoalIds` with stringy
+    // garbage. These helpers mirror `quickAddDailyTask`: push a minimal
+    // record with sensible defaults (medium priority, empty description, no
+    // parent link) and re-render. No modals.
+    quickAddSideQuest(title) {
+        this.sideQuests.push({
+            id: this.uniqueId(),
+            title: title,
+            description: '',
+            priority: 'medium',
+            created: new Date().toISOString(),
+            completed: false,
+            checklist: []
+        });
+        this.saveData();
+        this.render();
+        this.showAchievement('🧭 Side quest added!', 'daily');
+    }
+
+    quickAddWeeklyGoal(title) {
+        this.weeklyGoals.push({
+            id: this.uniqueId(),
+            title: title,
+            description: '',
+            monthlyGoalIds: [],
+            created: new Date().toISOString(),
+            completed: false,
+            progress: 0,
+            checklist: [],
+            priority: 'medium'
+        });
+        this.saveData();
+        this.render();
+        this.showAchievement('🛡️ Weekly goal added!', 'daily');
+    }
+
+    quickAddMonthlyGoal(title) {
+        this.monthlyGoals.push({
+            id: this.uniqueId(),
+            title: title,
+            description: '',
+            yearlyGoalIds: [],
+            created: new Date().toISOString(),
+            completed: false,
+            progress: 0,
+            priority: 'medium'
+        });
+        this.saveData();
+        this.render();
+        this.showAchievement('📖 Monthly raid added!', 'daily');
+    }
+
+    quickAddYearlyGoal(title) {
+        this.yearlyGoals.push({
+            id: this.uniqueId(),
+            title: title,
+            description: '',
+            lifeGoalIds: [],
+            created: new Date().toISOString(),
+            completed: false,
+            progress: 0,
+            priority: 'medium'
+        });
+        this.saveData();
+        this.render();
+        this.showAchievement('📜 Yearly campaign added!', 'daily');
+    }
+
+    quickAddLifeGoal(title) {
+        this.lifeGoals.push({
+            id: this.uniqueId(),
+            title: title,
+            description: '',
+            created: new Date().toISOString(),
+            completed: false
+        });
+        this.saveData();
+        this.render();
+        this.showAchievement('🏰 Life goal added!', 'daily');
+    }
+
     // ==================== RECURRING TASKS ====================
     
     addRecurringTask() {
@@ -2741,10 +3227,10 @@ class GoalManager {
                     title: 'Recurrence Pattern',
                     icon: 'ri-repeat-line',
                     choices: [
-                        { value: '2', label: 'Weekly', icon: '📅', description: 'Specific days each week' },
-                        { value: '3', label: 'Bi-weekly', icon: '📆', description: 'Every two weeks' },
-                        { value: '4', label: 'Monthly (Date)', icon: '🗓️', description: 'Same date each month' },
-                        { value: '5', label: 'Monthly (Day)', icon: '📋', description: 'e.g., First Monday' }
+                        { value: '2', label: 'Weekly', icon: '<i class="ri-calendar-line"></i>', description: 'Specific days each week' },
+                        { value: '3', label: 'Bi-weekly', icon: '<i class="ri-calendar-2-line"></i>', description: 'Every two weeks' },
+                        { value: '4', label: 'Monthly (Date)', icon: '<i class="ri-calendar-event-line"></i>', description: 'Same date each month' },
+                        { value: '5', label: 'Monthly (Day)', icon: '<i class="ri-calendar-schedule-line"></i>', description: 'e.g., First Monday' }
                     ]
                 }, (patternChoice) => {
                     this.finishRecurringTaskSetup(title.trim(), (description || '').trim(), patternChoice);
@@ -2813,11 +3299,11 @@ class GoalManager {
                     title: 'Which Week?',
                     icon: 'ri-calendar-line',
                     choices: [
-                        { value: '1', label: 'First', icon: '1️⃣' },
-                        { value: '2', label: 'Second', icon: '2️⃣' },
-                        { value: '3', label: 'Third', icon: '3️⃣' },
-                        { value: '4', label: 'Fourth', icon: '4️⃣' },
-                        { value: '-1', label: 'Last', icon: '🔚' }
+                        { value: '1', label: 'First', icon: '<i class="ri-number-1"></i>' },
+                        { value: '2', label: 'Second', icon: '<i class="ri-number-2"></i>' },
+                        { value: '3', label: 'Third', icon: '<i class="ri-number-3"></i>' },
+                        { value: '4', label: 'Fourth', icon: '<i class="ri-number-4"></i>' },
+                        { value: '-1', label: 'Last', icon: '<i class="ri-skip-back-line"></i>' }
                     ]
                 }, (week) => {
                     this.showSelectModal({
@@ -2845,9 +3331,10 @@ class GoalManager {
         modal.style.cssText = 'display: flex; align-items: center; justify-content: center; padding: 24px;';
         modal.innerHTML = `
             <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down" style="width: 320px; max-width: calc(100vw - 48px);">
-                <h3 class="text-lg font-bold text-amber-300 medieval-title mb-4 text-center">
+                <h3 class="text-lg font-bold text-amber-300 medieval-title mb-1 text-center">
                     <i class="ri-calendar-check-line mr-2"></i>Select Days
                 </h3>
+                <p class="text-amber-200/70 text-xs text-center mb-4 fancy-font">Tap one or more days &mdash; the task will repeat on each selected day every week.</p>
                 <div class="grid grid-cols-4 gap-2 mb-4">
                     ${days.map((d, i) => `
                         <button type="button" data-day="${d}" 
@@ -3013,19 +3500,15 @@ class GoalManager {
         if (!container) return;
         
         if (this.recurringTasks.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-12 px-8">
-                    <div class="text-6xl mb-4">🔄</div>
-                    <h3 class="text-xl font-bold text-cyan-300 medieval-title mb-2">Forge Recurring Quests</h3>
-                    <p class="text-cyan-200/70 fancy-font text-sm mb-4 max-w-sm mx-auto">
-                        Set up tasks that repeat on a schedule. They'll auto-generate so you never forget!
-                    </p>
-                    <button onclick="goalManager.addRecurringTask()"
-                        class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-5 py-2.5 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-cyan-400 text-sm">
-                        <i class="ri-repeat-line mr-2"></i>Add Recurring Task
-                    </button>
-                </div>
-            `;
+            container.innerHTML = this._renderEmptyState({
+                icon: '🔄',
+                title: 'Forge Recurring Quests',
+                body: "Set up tasks that repeat on a schedule. They'll auto-generate so you never forget!",
+                ctaLabel: 'Add Recurring Task',
+                ctaIcon: 'ri-repeat-line',
+                ctaOnclick: 'goalManager.addRecurringTask()',
+                ctaColor: 'cyan'
+            });
             return;
         }
         
@@ -3111,18 +3594,49 @@ class GoalManager {
                     return;
                 }
             }
-            
+
             quest.completed = !quest.completed;
             if (quest.completed && !quest.rewarded) {
                 quest.rewarded = true;
-                const xpReward = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
-                this.addXP(xpReward, 'side');
+                const baseXp = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
+                // Snapshot pre-grant values so a future uncheck refunds the
+                // ACTUAL multiplied amounts (Blessing 2x, Quest Doubler, etc.)
+                // instead of the raw base reward. Mirrors `toggleTask` and
+                // closes the asymmetry where un-checking a side quest used
+                // to leave the XP / charge / shard granted permanently.
+                const xpBefore = this.xp;
+                const chargesBefore = this.attackCharges;
+                const shardsBefore = this.focusCrystalShards || 0;
+                const crystalsBefore = this.focusCrystals || 0;
+                this.addXP(baseXp, 'side');
                 this.grantAttackCharge(1, 'sidequest');
                 this.addFocusCrystalShards(1);
                 this.checkSerenityBonus();
+                quest.lastRewards = {
+                    xp: Math.max(0, this.xp - xpBefore),
+                    charges: Math.max(0, this.attackCharges - chargesBefore),
+                    shards: Math.max(0, (this.focusCrystalShards || 0) - shardsBefore),
+                    crystals: Math.max(0, (this.focusCrystals || 0) - crystalsBefore)
+                };
                 this.trackDaily('sideQuestsCompleted');
-                this.showAchievement(`Side Quest Completed! +${xpReward} XP 🧭`, 'daily');
+                if (window.effectsManager) {
+                    const questEl = document.querySelector(`[data-side-quest-id="${quest.id}"]`);
+                    window.effectsManager.sideQuestCompleted(questEl, baseXp);
+                } else {
+                    this.showAchievement(`Side Quest Completed! +${baseXp} XP 🧭`, 'daily');
+                }
                 this.checkOnboardingShareHook();
+            } else if (!quest.completed && quest.rewarded) {
+                // Refund EXACT multiplied amounts and clear `rewarded` so a
+                // future re-completion grants symmetrically (no net gain or
+                // loss across check/uncheck cycles).
+                const r = quest.lastRewards || { xp: 15, charges: 1, shards: 1, crystals: 0 };
+                this.xp = Math.max(0, this.xp - (r.xp || 0));
+                this.attackCharges = Math.max(0, this.attackCharges - (r.charges || 0));
+                this.focusCrystalShards = Math.max(0, (this.focusCrystalShards || 0) - (r.shards || 0));
+                if (r.crystals) this.focusCrystals = Math.max(0, (this.focusCrystals || 0) - r.crystals);
+                quest.rewarded = false;
+                quest.lastRewards = null;
             }
             this.saveData();
             this.render();
@@ -3205,12 +3719,20 @@ class GoalManager {
             if (item) {
                 item.completed = !item.completed;
                 
-                // Award small XP for completing checklist item
+                // Award small XP for completing checklist item.
+                // Snapshot the multiplied delta so unchecking refunds the
+                // ACTUAL gain (Blessing 2x etc.) — previously refund was
+                // raw 8 while grant was multiplied, allowing endless
+                // farming by toggling a checklist item on buffed accounts.
                 if (item.completed) {
+                    const xpBefore = this.xp;
                     this.addXP(8, 'checklist');
+                    item.lastXp = Math.max(0, this.xp - xpBefore);
                     this.showAchievement('✓ Checklist item complete! +8 XP', 'daily');
                 } else {
-                    this.xp = Math.max(0, this.xp - 8);
+                    const refund = item.lastXp != null ? item.lastXp : 8;
+                    this.xp = Math.max(0, this.xp - refund);
+                    item.lastXp = null;
                 }
                 
                 // Update parent task progress
@@ -3328,7 +3850,7 @@ class GoalManager {
                     `).join('')}
                 </div>
                 ${progress.completed > 0 && progress.completed < progress.total ? `
-                    <div class="w-full bg-purple-950/60 rounded-full h-2 mt-2 border border-purple-700">
+                    <div class="progress-bar w-full bg-purple-950/60 rounded-full h-2 mt-2 border border-purple-700">
                         <div class="bg-gradient-to-r from-purple-500 to-purple-400 h-2 rounded-full shadow-lg transition-all duration-500" style="width: ${progress.percent}%"></div>
                     </div>
                 ` : ''}
@@ -3610,7 +4132,7 @@ class GoalManager {
                 @keyframes shieldSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
             </style>
             <div style="animation:shieldSlideUp 0.4s ease-out;max-width:380px;width:100%;" onclick="event.stopPropagation()">
-                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-6 rounded-2xl shadow-2xl border-4 border-red-500/60 relative">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-6 rounded-2xl shadow-2xl border-4 border-red-500/60 relative max-h-[90vh] overflow-y-auto">
                     <!-- Streak broken warning -->
                     <div class="text-center mb-4">
                         <div class="text-5xl mb-2">💔</div>
@@ -3714,11 +4236,16 @@ class GoalManager {
         const totalXP = xpReward + (milestone ? milestone.xpBonus : 0);
         const totalGold = goldReward + (milestone ? milestone.goldBonus : 0);
         
-        // Award base + milestone rewards (routed through addXP/addGold so Beginner's Blessing applies)
+        // Award base + milestone rewards (routed through addXP/addGold so Beginner's Blessing applies).
+        // Suppress both sounds AND reward toasts/sprites here — the login streak
+        // modal that opens immediately after already displays the gold/XP totals,
+        // so a flying gold sprite + XP toast would visually collide with it.
         this._suppressRewardSounds = true;
+        this._suppressRewardToasts = true;
         this.addXP(totalXP, 'login');
         this.addGold(totalGold, 'login');
         this._suppressRewardSounds = false;
+        this._suppressRewardToasts = false;
         
         // Award milestone extras
         if (milestone && milestone.extra) {
@@ -3745,6 +4272,11 @@ class GoalManager {
         
         // Find next milestone for preview
         const nextMilestone = this.LOGIN_STREAK_MILESTONES.find(m => m.day > this.loginStreak);
+
+        // Streak milestone celebration effect (fires on 7/14/30/etc. days defined in LOGIN_STREAK_MILESTONES)
+        if (milestone && window.effectsManager) {
+            window.effectsManager.streakMilestone(this.loginStreak, milestone.label);
+        }
         
         // Show the streak modal
         this.showLoginStreakModal({
@@ -3879,7 +4411,7 @@ class GoalManager {
                     <div class="streak-confetti" style="top:-8px;left:75%;animation-delay:0.5s">🎊</div>
                     <div class="streak-confetti" style="top:-12px;left:90%;animation-delay:0.3s">✨</div>
                 ` : ''}
-                <div class="bg-gradient-to-br ${bgGradient} p-6 rounded-2xl ${glowClass} border-4 ${borderColor} relative">
+                <div class="bg-gradient-to-br ${bgGradient} p-6 rounded-2xl ${glowClass} border-4 ${borderColor} relative max-h-[90vh] overflow-y-auto">
                     <!-- Close X button -->
                     <button onclick="goalManager.closeLoginStreakModal()" 
                         class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
@@ -4094,7 +4626,12 @@ class GoalManager {
         quest.claimed = true;
         this.addXP(def.xp, 'daily');
         this.addGold(def.gold, 'daily');
-        this.showAchievement(`📜 ${def.name} complete! +${def.xp} XP, +${def.gold} Gold`, 'daily');
+        if (window.effectsManager) {
+            const questCard = document.querySelector(`[data-daily-quest-id="${quest.id}"]`);
+            window.effectsManager.dailyQuestCompleted(questCard, def.xp, def.gold);
+        } else {
+            this.showAchievement(`📜 ${def.name} complete! +${def.xp} XP, +${def.gold} Gold`, 'daily');
+        }
         
         // Check if all 3 claimed — bonus reward
         const allClaimed = this.dailyQuestBoard.quests.every(q => q.claimed);
@@ -4131,18 +4668,21 @@ class GoalManager {
             if (!def) return '';
             const progress = def.check(tracking);
             const statusClass = quest.claimed ? 'opacity-50' : quest.completed ? 'border-green-500/70 bg-green-900/20' : '';
+            // statusIcon kept for any external reference; daily quest row
+            // below uses Remix Icon SVG for the claimed state to render
+            // identically across Android brands.
             const statusIcon = quest.claimed ? '✅' : quest.completed ? '🎉' : '○';
             
             return `
-                <div class="flex items-center gap-3 p-3 rounded-lg border-2 border-amber-700/40 ${statusClass} transition-all">
-                    <span class="text-2xl">${quest.claimed ? '✅' : def.icon}</span>
+                <div class="flex items-center gap-3 p-3 rounded-lg border-2 border-amber-700/40 ${statusClass} transition-all" data-daily-quest-id="${quest.id}">
+                    <span class="text-2xl">${quest.claimed ? '<i class="ri-checkbox-circle-fill text-green-400"></i>' : def.icon}</span>
                     <div class="flex-1 min-w-0">
                         <div class="text-amber-100 font-bold text-sm fancy-font">${def.name}</div>
                         <div class="text-amber-300/70 text-xs">${def.desc}</div>
                     </div>
                     <div class="flex-shrink-0 text-right">
                         ${quest.claimed ? '<span class="text-green-400 text-xs font-bold">CLAIMED</span>' :
-                          quest.completed ? `<button onclick="goalManager.claimDailyQuest('${quest.id}')" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold fancy-font shadow transition-all hover:scale-105">Claim</button>` :
+                          quest.completed ? `<button onclick="goalManager.claimDailyQuest('${quest.id}')" class="btn-ripple bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold fancy-font shadow transition-all hover:scale-105">Claim</button>` :
                           `<span class="text-amber-400/60 text-xs">${def.xp} XP</span>`}
                     </div>
                 </div>
@@ -4195,7 +4735,8 @@ class GoalManager {
         // Apply reward
         if (reward.type === 'gold') this.addGold(reward.amount, 'chest');
         if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
-        if (reward.type === 'charges') this.attackCharges += reward.amount;
+        // Charges route through grantAttackCharge for Battle Fury + tracking
+        if (reward.type === 'charges') this.grantAttackCharge(reward.amount, 'loot');
         if (reward.type === 'shards') this.addFocusCrystalShards(reward.amount);
         if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.amount);
         
@@ -4213,7 +4754,7 @@ class GoalManager {
                 <div class="text-6xl mb-3 animate-bounce">🪵</div>
                 <p class="text-amber-200/80 fancy-font text-sm mb-4">A free chest awaits you each day!</p>
                 <button onclick="goalManager.claimWoodenChest()" 
-                    class="bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-yellow-400/60">
+                    class="btn-ripple bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-yellow-400/60">
                     <i class="ri-gift-line mr-2"></i>Open Chest
                 </button>
             `;
@@ -4365,15 +4906,23 @@ class GoalManager {
         // Apply companion bonus (Owl: +10% XP)
         const companionBonus = 1 + this.getCompanionBonus('xp');
         
-        // Check for Quest Doubler spell (2x reward on next quest)
+        // Quest Doubler spell: 2x XP & Gold on next QUEST completion only.
+        // Gated to quest sources so it isn't consumed by chest XP loot, focus
+        // session bonuses, habit completions, etc. The gold flag is also
+        // auto-cleared on the next microtask to prevent leak — if no addGold
+        // call follows synchronously, the flag won't apply to an unrelated
+        // future gold gain (e.g. a chest opened later).
         let questDoublerMultiplier = 1;
-        const questDoublerActive = this.activeSpells.find(s => s.spellId === 'quest_doubler');
-        if (questDoublerActive) {
-            questDoublerMultiplier = 2;
-            this._questDoublerGoldPending = 2; // Flag for addGold to pick up
-            // Consume the spell after use
-            this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'quest_doubler');
-            this.showAchievement('📋 QUEST DOUBLER! 2x XP & Gold earned!', 'weekly');
+        const questDoublerSources = ['daily', 'weekly', 'monthly', 'life', 'epic', 'side'];
+        if (questDoublerSources.includes(source)) {
+            const questDoublerActive = this.activeSpells.find(s => s.spellId === 'quest_doubler');
+            if (questDoublerActive) {
+                questDoublerMultiplier = 2;
+                this._questDoublerGoldPending = 2;
+                Promise.resolve().then(() => { this._questDoublerGoldPending = null; });
+                this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'quest_doubler');
+                this.showAchievement('📋 QUEST DOUBLER! 2x XP & Gold earned!', 'weekly');
+            }
         }
         
         const finalXP = Math.floor(amount * blessingMultiplier * xpMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
@@ -4417,8 +4966,7 @@ class GoalManager {
     }
     
     showXPToast(amount, oldXP, oldLevel) {
-        const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
-        const title = titles[Math.min(oldLevel - 1, titles.length - 1)];
+        const title = this.getLevelTitle(oldLevel);
         
         const currentLevelXP = this.getTotalXPForLevel(oldLevel);
         const nextLevelXP = this.getTotalXPForLevel(oldLevel + 1);
@@ -4532,11 +5080,22 @@ class GoalManager {
         const finalGold = Math.floor(amount * blessingMultiplier * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
         
         this.goldCoins += finalGold;
+        // Lifetime gold-earned counter — drives Golden Empire theme
+        // unlock (10,000 lifetime threshold). Tracked POST-multipliers
+        // so the counter matches what actually hit the wallet, and
+        // never decremented when gold is spent.
+        this.totalGoldEarned = (this.totalGoldEarned || 0) + finalGold;
         this.trackDaily('goldEarned', finalGold);
         // Skip gold sound for routine task/habit completions (they have their own sound)
         const quietSources = ['daily', 'habit', 'weekly', 'monthly'];
         if (!this._suppressRewardSounds && !quietSources.includes(source) && window.audioManager) {
             window.audioManager.playGoldEarned();
+        }
+        // Flying gold sprite to the top-right inventory badge for non-quiet
+        // sources (focus session bonuses, chest loot, boss rewards, etc.).
+        // Daily/habit/weekly/monthly gold uses dailyQuestCompleted's float-up.
+        if (!this._suppressRewardToasts && !quietSources.includes(source) && finalGold > 0 && window.effectsManager) {
+            window.effectsManager.goldEarned(finalGold);
         }
         this.checkRewardUnlocks();
     }
@@ -4567,13 +5126,18 @@ class GoalManager {
         if (['weekly', 'monthly', 'yearly', 'life'].includes(source)) {
             this.showLootDrop(rarity, reward);
             this.addGold(reward.coins, 'loot');
-            // Add loot bonus XP directly (not through addXP) to avoid
-            // recursive notification chain — the loot toast already shows the XP
+            // Route loot bonus XP through addXP so it ticks dailyTracking
+            // ('xpEarned' for daily challenges), runs checkTitleUnlocks /
+            // checkBadges, and applies XP multipliers consistently. We suppress
+            // the floating XP toast since the loot panel already displays it.
             if (reward.xpBonus) {
-                this.xp += reward.xpBonus;
-                this.grantCompanionXP(reward.xpBonus);
-                const xpForNext = this.getTotalXPForLevel(this.level + 1);
-                if (this.xp >= xpForNext) this.levelUp();
+                const prevSuppress = this._suppressRewardToasts;
+                this._suppressRewardToasts = true;
+                try {
+                    this.addXP(reward.xpBonus, 'loot');
+                } finally {
+                    this._suppressRewardToasts = prevSuppress;
+                }
             }
             if (reward.special === 'theme_unlock') this.tryUnlockRandomTheme();
             if (reward.special === 'ability_unlock') {
@@ -4786,34 +5350,48 @@ class GoalManager {
 
     // Theme System
     checkRewardUnlocks() {
-        // Theme unlocks based on level
-        if (this.level >= 6 && !this.unlockedThemes.includes('forest')) {
-            this.unlockTheme('forest', 'Forest Kingdom');
-        }
-        if (this.level >= 10 && !this.unlockedThemes.includes('desert')) {
-            this.unlockTheme('desert', 'Desert Oasis');
-        }
-        if (this.level >= 15 && !this.unlockedThemes.includes('ice')) {
-            this.unlockTheme('ice', 'Ice Citadel');
-        }
-        if (this.level >= 20 && !this.unlockedThemes.includes('volcanic')) {
-            this.unlockTheme('volcanic', 'Volcanic Forge');
-        }
-        if (this.level >= 25 && !this.unlockedThemes.includes('mystic')) {
-            this.unlockTheme('mystic', 'Mystic Realm');
-        }
-        
+        // v2.8 (Jun 4, 2026): refactored from hardcoded per-theme level
+        // checks (forest/desert/ice/volcanic/mystic) to a data-driven
+        // loop over `themeDefinitions`. The hardcoded version silently
+        // dropped stormwatch (lvl 18) and verdant (lvl 22) when they
+        // were added in v2.8 — players past those levels never had
+        // either theme auto-unlock, even though the lock UI showed them
+        // as available. Now any theme with `unlockLevel > 0` and no
+        // `special` field (golden/shadow have their own achievement
+        // gates handled below) auto-unlocks via this loop, so future
+        // themes inherit the behavior automatically.
+        Object.entries(this.themeDefinitions).forEach(([id, theme]) => {
+            if (id === 'default') return;
+            if (theme.special) return; // achievement-gated, handled below
+            if (!theme.unlockLevel || theme.unlockLevel <= 0) return;
+            if (this.level >= theme.unlockLevel && !this.unlockedThemes.includes(id)) {
+                this.unlockTheme(id, theme.name);
+            }
+        });
+
         // Special unlock conditions
         const totalCompleted = this.dailyTasks.filter(t => t.completed).length +
                               this.weeklyGoals.filter(g => g.completed).length +
                               this.monthlyGoals.filter(g => g.completed).length;
         
-        if (totalCompleted >= 100 && !this.unlockedThemes.includes('golden')) {
+        // Golden Empire: lifetime gold earned threshold (Proposal B,
+        // Jun 7, 2026). Migrated from the old "100 completed quests"
+        // criterion to better fit the "Empire" theme — it's about
+        // the wealth you've amassed, not just the busywork done.
+        // Uses `totalGoldEarned` (post-multiplier lifetime counter)
+        // not `goldCoins` (current balance), so spending gold on
+        // chests/spells doesn't re-lock the unlock.
+        if ((this.totalGoldEarned || 0) >= 10000 && !this.unlockedThemes.includes('golden')) {
             this.unlockTheme('golden', 'Golden Empire');
         }
         
-        const completedLifeGoals = this.lifeGoals.filter(g => g.completed).length;
-        if (completedLifeGoals >= 5 && !this.unlockedThemes.includes('shadow')) {
+        // Shadow Realm: bosses defeated threshold (Proposal B,
+        // Jun 7, 2026). Migrated from the old "5 life goals"
+        // criterion — the dark/sinister aesthetic now matches the
+        // combat-focused unlock path. 25 sits between the existing
+        // Champion title (10) and Dragon Slayer title (50) in the
+        // boss progression ladder.
+        if ((this.bossesDefeated || 0) >= 25 && !this.unlockedThemes.includes('shadow')) {
             this.unlockTheme('shadow', 'Shadow Realm');
         }
     }
@@ -4852,6 +5430,13 @@ class GoalManager {
     // Treasure Chest System
     openTreasureChest(type, free = false) {
         const costs = { bronze: 200, silver: 600, gold: 1500, royal: 5000 };
+        // Defensive: reject unknown chest types so a bad call (e.g. from the
+        // console) can't make `costs[type]` undefined and poison goldCoins
+        // with NaN via `goldCoins -= undefined`.
+        if (!(type in costs)) {
+            console.warn('openTreasureChest: unknown chest type', type);
+            return;
+        }
         if (!free && this.goldCoins < costs[type]) {
             this.showAchievement(`💰 Not enough gold! Need ${costs[type]} coins.`, 'daily');
             return;
@@ -4887,7 +5472,8 @@ class GoalManager {
         rewards.forEach(reward => {
             if (reward.type === 'gold') this.addGold(reward.amount, 'chest');
             if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
-            if (reward.type === 'charges') this.attackCharges += reward.amount;
+            // Charges route through grantAttackCharge for Battle Fury + tracking
+            if (reward.type === 'charges') this.grantAttackCharge(reward.amount, 'loot');
             if (reward.type === 'shards') this.addFocusCrystalShards(reward.amount);
             if (reward.type === 'theme') {
                 const result = this.tryUnlockRandomTheme();
@@ -5274,14 +5860,14 @@ class GoalManager {
                 </div>
                 <div class="space-y-3 mb-6">
                     ${rewardItems.map((item, i) => `
-                        <div class="flex items-center gap-3 p-3 rounded-xl border-2 ${rarityColors[item.rarity] || rarityColors.common}"
+                        <div data-rarity="${item.rarity}" class="flex items-center gap-3 p-3 rounded-xl rarity-frame ${rarityColors[item.rarity] || rarityColors.common}"
                              style="animation: lootItemIn 0.3s ease-out ${0.3 + i * 0.15}s both;">
                             <div class="text-3xl flex-shrink-0">${item.icon}</div>
                             <div class="flex-1 min-w-0">
                                 <div class="font-bold text-sm">${item.name}</div>
                                 <div class="text-xs opacity-70">${item.desc}</div>
                             </div>
-                            <div class="text-[10px] uppercase font-bold opacity-60">${item.rarity}</div>
+                            <div class="flex-shrink-0">${this._rarityNameplate(item.rarity)}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -5494,6 +6080,9 @@ class GoalManager {
             const crystalsFormed = Math.floor(this.focusCrystalShards / 10);
             this.focusCrystalShards = this.focusCrystalShards % 10;
             this.focusCrystals += crystalsFormed;
+            if (window.effectsManager) {
+                window.effectsManager.crystalEarned(crystalsFormed);
+            }
             this.showAchievement(`💎 ${crystalsFormed} Focus Crystal${crystalsFormed > 1 ? 's' : ''} formed from shards!`, 'weekly');
         }
         this.saveData();
@@ -5502,6 +6091,9 @@ class GoalManager {
     checkSerenityBonus() {
         if (this.hasActiveEnchantment('crystal_chance') && Math.random() < 0.3) {
             this.focusCrystals++;
+            if (window.effectsManager) {
+                window.effectsManager.crystalEarned(1);
+            }
             this.showAchievement('🧘 Serenity! Bonus Focus Crystal earned! 💎', 'daily');
             this.saveData();
         }
@@ -5525,6 +6117,9 @@ class GoalManager {
             leveled = true;
         }
         if (leveled) {
+            if (window.effectsManager) {
+                window.effectsManager.companionLevelUp(companion);
+            }
             this.showAchievement(`${companion.icon} ${companion.name} leveled up to Lv.${companion.level}!`, 'weekly');
         }
     }
@@ -5540,8 +6135,7 @@ class GoalManager {
 
     levelUp(depth = 0) {
         this.level++;
-        const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
-        const title = titles[Math.min(this.level - 1, titles.length - 1)];
+        const title = this.getLevelTitle(this.level);
         
         // Defer level-up visuals if inside a boss defeat sequence
         if (this._suppressRewardToasts) {
@@ -5650,16 +6244,43 @@ class GoalManager {
                     habit.completionHistory.push(today);
                 }
                 
-                // Wrap reward chain in try/catch so render always fires
+                // Wrap reward chain in try/catch so render always fires.
+                // Snapshot pre-grant values so the uncheck refund subtracts the
+                // ACTUAL multiplied amounts gained (Beginner's Blessing 2x,
+                // gold spells, companion bonus, Battle Fury 2x charges, etc.),
+                // not the raw 10/3/1/1 — closing a farming exploit where
+                // toggling a habit on/off harvested the multiplier delta.
                 try {
+                    const xpBefore = this.xp;
+                    const goldBefore = this.goldCoins;
+                    const chargesBefore = this.attackCharges;
+                    const shardsBefore = this.focusCrystalShards || 0;
+                    const crystalsBefore = this.focusCrystals || 0;
                     this.addXP(10, 'habit');
                     this.addGold(3, 'habit');
                     this.grantAttackCharge(1, 'habit');
                     this.addFocusCrystalShards(1);
                     this.checkSerenityBonus();
                     this.trackDaily('habitsCompleted');
+                    // Record exact gains for accurate refund on uncheck
+                    habit.lastRewards = {
+                        xp: Math.max(0, this.xp - xpBefore),
+                        gold: Math.max(0, this.goldCoins - goldBefore),
+                        charges: Math.max(0, this.attackCharges - chargesBefore),
+                        shards: Math.max(0, (this.focusCrystalShards || 0) - shardsBefore),
+                        crystals: Math.max(0, (this.focusCrystals || 0) - crystalsBefore)
+                    };
                     if (typeof trackEvent === 'function') trackEvent('habit_completed');
                     this.checkOnboardingShareHook();
+                    // Sparkle burst + floating XP/gold over the habit card,
+                    // mirroring the daily quest completion feedback. Use the
+                    // ACTUAL multiplied gains (lastRewards) so spell/blessing
+                    // bonuses show in the float text.
+                    if (window.effectsManager) {
+                        const habitCard = document.querySelector(`[data-habit-id="${habit.id}"]`);
+                        const r = habit.lastRewards || { xp: 10, gold: 3 };
+                        window.effectsManager.habitCompleted(habitCard, r.xp || 0, r.gold || 0);
+                    }
                 } catch (e) {
                     console.error('toggleHabit reward error:', e);
                 }
@@ -5685,11 +6306,19 @@ class GoalManager {
                     habit.rewardedToday = null;
                     // Remove from completion history
                     habit.completionHistory = habit.completionHistory.filter(d => d !== today);
-                    // Revoke rewards to prevent check/uncheck exploit
-                    this.xp = Math.max(0, this.xp - 10);
-                    this.goldCoins = Math.max(0, this.goldCoins - 3);
-                    this.attackCharges = Math.max(0, this.attackCharges - 1);
-                    this.focusCrystalShards = Math.max(0, (this.focusCrystalShards || 0) - 1);
+                    // Revoke EXACT multiplied rewards (recorded at grant time)
+                    // to close the check/uncheck farming exploit. Falls back
+                    // to the legacy raw values for habits rewarded before this
+                    // tracking was added.
+                    const r = habit.lastRewards || { xp: 10, gold: 3, charges: 1, shards: 1, crystals: 0 };
+                    this.xp = Math.max(0, this.xp - (r.xp || 0));
+                    this.goldCoins = Math.max(0, this.goldCoins - (r.gold || 0));
+                    this.attackCharges = Math.max(0, this.attackCharges - (r.charges || 0));
+                    this.focusCrystalShards = Math.max(0, (this.focusCrystalShards || 0) - (r.shards || 0));
+                    if (r.crystals) {
+                        this.focusCrystals = Math.max(0, (this.focusCrystals || 0) - r.crystals);
+                    }
+                    habit.lastRewards = null;
                 }
             }
             
@@ -6230,6 +6859,17 @@ class GoalManager {
         // Deduct cost
         this.focusCrystals -= enchantment.cost;
         
+        // Reset per-day counters tied to the enchantment so a re-cast after
+        // expiry doesn't carry over stale counts (e.g. early_bird previously
+        // gave 0 benefit on re-cast because earlyBirdTasksToday was already
+        // at the cap until midnight).
+        if (enchantment.effect === 'early_bird') {
+            this.earlyBirdTasksToday = 0;
+        }
+        if (enchantment.effect === 'momentum') {
+            this.momentumStack = 0;
+        }
+        
         // Add to active enchantments
         const activeEnchantment = {
             id: enchantment.id,
@@ -6244,7 +6884,12 @@ class GoalManager {
         // Schedule expiry notification
         this.scheduleEnchantmentExpiryNotification(activeEnchantment);
         
-        this.showAchievement(`✨ ${enchantment.icon} ${enchantment.name} activated!`, 'weekly');
+        if (window.effectsManager) {
+            window.effectsManager.enchantmentCast(enchantment);
+        } else {
+            this.showAchievement(`✨ ${enchantment.icon} ${enchantment.name} activated!`, 'weekly');
+        }
+        if (window.audioManager) window.audioManager.playSpell();
         this.saveData();
         this.render();
     }
@@ -6256,19 +6901,22 @@ class GoalManager {
 
     checkExpiredEnchantments() {
         const now = Date.now();
-        const expiredCount = this.activeEnchantments.length;
+        const expired = this.activeEnchantments.filter(e => e.expiresAt <= now);
+        if (expired.length === 0) return;
         
-        this.activeEnchantments = this.activeEnchantments.filter(e => {
-            if (e.expiresAt <= now) {
-                this.showAchievement(`⏱️ ${e.icon} ${e.name} has expired`, 'daily');
-                return false;
-            }
-            return true;
-        });
+        this.activeEnchantments = this.activeEnchantments.filter(e => e.expiresAt > now);
         
-        if (expiredCount !== this.activeEnchantments.length) {
-            this.saveData();
+        // Batch into a single toast (mirrors checkExpiredSpells) to avoid a
+        // flood of notifications when the user returns after a long absence
+        // with multiple enchantments expiring at once.
+        if (expired.length === 1) {
+            this.showAchievement(`⏱️ ${expired[0].icon} ${expired[0].name} has expired`, 'daily');
+        } else {
+            const names = expired.map(e => `${e.icon} ${e.name}`).join(', ');
+            this.showAchievement(`⏱️ ${expired.length} enchantments expired: ${names}`, 'daily');
         }
+        
+        this.saveData();
     }
 
     getEnchantmentMultiplier(type) {
@@ -6375,11 +7023,27 @@ class GoalManager {
             task.completed = !task.completed;
             if (task.completed && !task.rewarded) {
                 task.rewarded = true;
+                // Snapshot pre-grant values so uncheck refunds the ACTUAL
+                // multiplied amounts (Blessing 2x, Quest Doubler, etc.) and
+                // not the raw 15/5/1/1. Closes the check/uncheck farming
+                // exploit on buffed tasks.
+                const xpBefore = this.xp;
+                const goldBefore = this.goldCoins;
+                const chargesBefore = this.attackCharges;
+                const shardsBefore = this.focusCrystalShards || 0;
+                const crystalsBefore = this.focusCrystals || 0;
                 this.addXP(15, 'daily');
                 this.addGold(5, 'daily');
                 this.grantAttackCharge(1, 'task');
                 this.addFocusCrystalShards(1);
                 this.checkSerenityBonus();
+                task.lastRewards = {
+                    xp: Math.max(0, this.xp - xpBefore),
+                    gold: Math.max(0, this.goldCoins - goldBefore),
+                    charges: Math.max(0, this.attackCharges - chargesBefore),
+                    shards: Math.max(0, (this.focusCrystalShards || 0) - shardsBefore),
+                    crystals: Math.max(0, (this.focusCrystals || 0) - crystalsBefore)
+                };
                 this.trackDaily('tasksCompleted');
                 const hour = new Date().getHours();
                 if (hour < 12) this.trackDaily('tasksBeforeNoon');
@@ -6389,6 +7053,17 @@ class GoalManager {
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
                 this.checkOnboardingShareHook();
+            } else if (!task.completed && task.rewarded) {
+                // Refund EXACT multiplied amounts and clear rewarded flag so
+                // a future re-completion grants symmetrically (no net gain).
+                const r = task.lastRewards || { xp: 15, gold: 5, charges: 1, shards: 1, crystals: 0 };
+                this.xp = Math.max(0, this.xp - (r.xp || 0));
+                this.goldCoins = Math.max(0, this.goldCoins - (r.gold || 0));
+                this.attackCharges = Math.max(0, this.attackCharges - (r.charges || 0));
+                this.focusCrystalShards = Math.max(0, (this.focusCrystalShards || 0) - (r.shards || 0));
+                if (r.crystals) this.focusCrystals = Math.max(0, (this.focusCrystals || 0) - r.crystals);
+                task.rewarded = false;
+                task.lastRewards = null;
             }
             this.updateParentProgress();
             this.saveData();
@@ -6411,16 +7086,31 @@ class GoalManager {
             goal.completed = !goal.completed;
             if (goal.completed && !goal.rewarded) {
                 goal.rewarded = true;
+                const xpBefore = this.xp;
+                const goldBefore = this.goldCoins;
+                const chargesBefore = this.attackCharges;
                 this.addXP(50, 'weekly');
                 this.addGold(15, 'weekly');
                 this.grantAttackCharge(2, 'weekly');
                 this.checkSerenityBonus();
+                goal.lastRewards = {
+                    xp: Math.max(0, this.xp - xpBefore),
+                    gold: Math.max(0, this.goldCoins - goldBefore),
+                    charges: Math.max(0, this.attackCharges - chargesBefore)
+                };
                 this.trackDaily('weeklyProgress');
                 this.showAchievement('Weekly Quest Conquered! +50 XP, +15 Gold 🛡️', 'weekly');
                 if (typeof trackEvent === 'function') trackEvent('quest_completed', { type: 'weekly' });
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
                 this.checkOnboardingShareHook();
+            } else if (!goal.completed && goal.rewarded) {
+                const r = goal.lastRewards || { xp: 50, gold: 15, charges: 2 };
+                this.xp = Math.max(0, this.xp - (r.xp || 0));
+                this.goldCoins = Math.max(0, this.goldCoins - (r.gold || 0));
+                this.attackCharges = Math.max(0, this.attackCharges - (r.charges || 0));
+                goal.rewarded = false;
+                goal.lastRewards = null;
             }
             this.updateParentProgress();
             this.saveData();
@@ -6434,14 +7124,29 @@ class GoalManager {
             goal.completed = !goal.completed;
             if (goal.completed && !goal.rewarded) {
                 goal.rewarded = true;
+                const xpBefore = this.xp;
+                const goldBefore = this.goldCoins;
+                const chargesBefore = this.attackCharges;
                 this.addXP(200, 'monthly');
                 this.addGold(50, 'monthly');
                 this.grantAttackCharge(3, 'monthly');
                 this.checkSerenityBonus();
+                goal.lastRewards = {
+                    xp: Math.max(0, this.xp - xpBefore),
+                    gold: Math.max(0, this.goldCoins - goldBefore),
+                    charges: Math.max(0, this.attackCharges - chargesBefore)
+                };
                 this.showAchievement('Monthly Victory Achieved! +200 XP, +50 Gold 👑', 'monthly');
                 if (typeof trackEvent === 'function') trackEvent('quest_completed', { type: 'monthly' });
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
+            } else if (!goal.completed && goal.rewarded) {
+                const r = goal.lastRewards || { xp: 200, gold: 50, charges: 3 };
+                this.xp = Math.max(0, this.xp - (r.xp || 0));
+                this.goldCoins = Math.max(0, this.goldCoins - (r.gold || 0));
+                this.attackCharges = Math.max(0, this.attackCharges - (r.charges || 0));
+                goal.rewarded = false;
+                goal.lastRewards = null;
             }
             this.updateParentProgress();
             this.saveData();
@@ -6540,15 +7245,25 @@ class GoalManager {
         const goal = this.yearlyGoals.find(g => g.id === goalId);
         if (goal) {
             goal.completed = !goal.completed;
-            if (goal.completed) {
+            if (goal.completed && !goal.rewarded) {
+                // Gate behind `rewarded` flag and snapshot multiplied deltas
+                // so uncheck refunds EXACTLY what was granted. Previously
+                // re-checking re-granted while uncheck only refunded raw
+                // 1000 XP — buffed players could farm net XP each cycle.
+                goal.rewarded = true;
+                const xpBefore = this.xp;
                 this.addXP(1000, 'yearly');
+                goal.lastRewards = { xp: Math.max(0, this.xp - xpBefore) };
                 this.showAchievement('Yearly Triumph! LEGENDARY! +1000 XP 🏆', 'yearly');
                 // Deal damage to parent boss if exists
                 this.dealBossDamage(goal, 'yearly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
-            } else {
-                this.xp = Math.max(0, this.xp - 1000);
+            } else if (!goal.completed && goal.rewarded) {
+                const r = goal.lastRewards || { xp: 1000 };
+                this.xp = Math.max(0, this.xp - (r.xp || 0));
+                goal.rewarded = false;
+                goal.lastRewards = null;
             }
             this.updateParentProgress();
             this.saveData();
@@ -6560,13 +7275,21 @@ class GoalManager {
         const goal = this.lifeGoals.find(g => g.id === goalId);
         if (goal) {
             goal.completed = !goal.completed;
-            if (goal.completed) {
+            if (goal.completed && !goal.rewarded) {
+                // Same fix as yearly goals: gate behind rewarded flag and
+                // snapshot multiplied delta for exact refund symmetry.
+                goal.rewarded = true;
+                const xpBefore = this.xp;
                 this.addXP(5000, 'life');
+                goal.lastRewards = { xp: Math.max(0, this.xp - xpBefore) };
                 this.showAchievement('LIFE GOAL MASTERED! +5000 XP! ⚡👑⚡', 'life');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
-            } else {
-                this.xp = Math.max(0, this.xp - 5000);
+            } else if (!goal.completed && goal.rewarded) {
+                const r = goal.lastRewards || { xp: 5000 };
+                this.xp = Math.max(0, this.xp - (r.xp || 0));
+                goal.rewarded = false;
+                goal.lastRewards = null;
             }
             this.saveData();
             this.render();
@@ -6726,7 +7449,11 @@ class GoalManager {
                         'life-goals': () => this.renderLifeGoals(),
                         'yearly': () => this.renderYearlyGoals(),
                         'monthly': () => this.renderMonthlyGoals(),
-                        'weekly': () => this.renderWeeklyGoals()
+                        'weekly': () => this.renderWeeklyGoals(),
+                        // Without this entry, `render()` was a no-op when on the
+                        // Side Quests tab — deletes/edits required navigating
+                        // away and back to see the list refresh.
+                        'sidequests': () => this.renderSideQuests()
                     };
                     if (tabRender[tab]) tabRender[tab]();
                 },
@@ -6819,8 +7546,7 @@ class GoalManager {
     }
     
     renderXPDisplay() {
-        const titles = ['Peasant', 'Squire', 'Knight', 'Baron', 'Earl', 'Duke', 'Prince', 'King', 'Emperor', 'Legend'];
-        const title = titles[Math.min(this.level - 1, titles.length - 1)];
+        const title = this.getLevelTitle(this.level);
         
         const currentLevelXP = this.getTotalXPForLevel(this.level);
         const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
@@ -6896,29 +7622,525 @@ class GoalManager {
         const ring = ringColors[Math.min(this.level - 1, ringColors.length - 1)];
         const miniRing = document.getElementById('player-avatar-ring');
         if (miniRing) {
-            miniRing.className = `w-14 h-14 rounded-full bg-gradient-to-br ${ring.from} ${ring.to} p-0.5 shadow-2xl border-2 ${ring.border} transition-all group-hover:scale-110 group-hover:shadow-purple-500/30`;
+            // v2.6: removed `border-2 ${ring.border}` — the XP ring SVG
+            // overlay already renders a tier-colored ring at a larger
+            // radius. Keeping the avatar's own border created two
+            // concentric rings ~3.5px apart ("doesn't align" bug).
+            // v2.6 (further): also removed `bg-gradient-to-br ${ring.from} ${ring.to} p-0.5`
+            // because the gradient padding rendered a 2px tier-color
+            // band at the avatar's edge that read as an "inner ring"
+            // separate from the XP ring SVG. With both the solid
+            // border AND the gradient padding gone, only the XP ring
+            // is visible around the avatar.
+            miniRing.className = `w-14 h-14 rounded-full shadow-2xl transition-all group-hover:scale-110 group-hover:shadow-purple-500/30`;
         }
-        
+
+        // v2.6 — XP ring progress on both the collapsed top-right avatar
+        // and the expanded character-sheet portrait. `pathLength="100"` on
+        // each SVG circle means `stroke-dashoffset = 100 - percent` maps
+        // 1-to-1 to "percent of ring filled" — no circumference math needed
+        // (and resilient to any future viewBox/radius tweak in
+        // `animations.css`).
+        //
+        // Tier coloring mirrors the existing `ringColors` array above so the
+        // progress stroke always matches the avatar's rarity band. We clamp
+        // to `tier-10` to match the array's 10-entry palette; players at
+        // level 11+ stay locked to the legendary cyan tier until v3.0
+        // prestige introduces higher tiers.
+        const xpRingOffset = 100 - Math.max(0, Math.min(100, xpProgress));
+        const xpTierIndex = Math.min(this.level, 10);  // tier-1 .. tier-10
+        const xpTierClass = `xp-ring__progress tier-${xpTierIndex}`;
+        const miniRingProgress = document.getElementById('player-xp-ring-progress');
+        const panelRingProgress = document.getElementById('panel-xp-ring-progress');
+        if (miniRingProgress) {
+            miniRingProgress.style.strokeDashoffset = xpRingOffset;
+            miniRingProgress.setAttribute('class', xpTierClass);
+        }
+        if (panelRingProgress) {
+            panelRingProgress.style.strokeDashoffset = xpRingOffset;
+            panelRingProgress.setAttribute('class', xpTierClass);
+        }
+
+        // v2.6 (refined) — comet shimmer: swap src + data-tier on the
+        // overlay <img>s. Tiers 1-3 clear the src so the image is
+        // invisible (and the CSS `opacity: 0` default keeps it hidden
+        // even if a stale src lingers). Tiers 4-10 each get their own
+        // colored comet artwork from `icons/comet-*.svg`.
+        //
+        // Mapping is intentionally a flat array — easier to swap one
+        // color for another (just rename a file or reorder this list)
+        // without restructuring the rendering logic. Index 0 = tier 4.
+        const cometByTier = {
+            4: 'icons/comet-mint.svg',
+            5: 'icons/comet-ice-blue.svg',
+            6: 'icons/comet-violet.svg',
+            7: 'icons/comet-amber.svg',
+            8: 'icons/comet-coral.svg',
+            9: 'icons/comet-hot-pink.svg',
+            10: 'icons/comet-white.svg'
+        };
+        const cometSrc = cometByTier[xpTierIndex] || '';
+        const cometTierAttr = cometSrc ? String(xpTierIndex) : '';
+        const applyComet = (img) => {
+            if (!img) return;
+            // Only touch `src` if it actually changed; avoids re-decoding
+            // the SVG on every renderXPDisplay call (which fires on
+            // every XP gain).
+            if (img.getAttribute('src') !== cometSrc) {
+                img.setAttribute('src', cometSrc);
+            }
+            if (img.getAttribute('data-tier') !== cometTierAttr) {
+                img.setAttribute('data-tier', cometTierAttr);
+            }
+        };
+        applyComet(document.getElementById('player-xp-ring-comet'));
+        applyComet(document.getElementById('panel-xp-ring-comet'));
+
+        // v2.6 Item 5 — active spell sigils orbit the avatar. Piggybacks
+        // on the XP-ring render path so the orbit re-syncs every time
+        // anything in the avatar HUD updates. `castSpell` /
+        // `checkExpiredSpells` also call this directly so the UI reacts
+        // instantly to spell state changes, even between full renders.
+        this.renderActiveSpellSigils();
+    }
+
+    /**
+     * v2.6 Item 5 — populate the avatar's sigil orbit with one bubble per
+     * currently-active spell. Renders into BOTH the mini and panel orbit
+     * containers (#player-sigil-orbit and #panel-sigil-orbit). Idempotent;
+     * safe to call whenever spell state changes or the avatar HUD redraws.
+     *
+     * Layout: sigils are distributed evenly around the orbit at angles
+     * `i * 360 / total`. Cap is 7 visible spell sigils + 1 "+N" overflow
+     * badge (8 bubbles total max) — at the panel orbit's 68px radius
+     * that's ~53px of arc per bubble, which keeps even small (mini)
+     * sigils legible without overlap.
+     *
+     * Each sigil:
+     *   • `.avatar-sigil` outer bubble — gets the rarity class
+     *     (`--common` / `--uncommon` / `--rare` / `--epic` / `--legendary`)
+     *     for the gradient + glow color, and an inline `--angle` custom
+     *     property that the CSS transform consumes for placement.
+     *   • `.avatar-sigil__icon` inner span — carries the emoji and
+     *     counter-rotates to stay upright while the orbit spins.
+     *
+     * Returns early if the orbit containers don't exist (e.g., during
+     * onboarding before the avatar HUD mounts).
+     */
+    renderActiveSpellSigils() {
+        const miniOrbit = document.getElementById('player-sigil-orbit');
+        const panelOrbit = document.getElementById('panel-sigil-orbit');
+        if (!miniOrbit && !panelOrbit) return;
+
+        // Filter to truly-active spells (skip any with a past expiry that
+        // the periodic checkExpiredSpells hasn't reaped yet — keeps the
+        // orbit accurate even between cleanup ticks).
+        const now = Date.now();
+        const active = (this.activeSpells || []).filter(s => {
+            return s.expiresAt === -1 || s.expiresAt > now;
+        });
+
+        // Visual cap: 7 individual sigils + 1 overflow badge = 8 slots.
+        // The badge only appears if there are >7 active spells.
+        const MAX_VISIBLE_SIGILS = 7;
+        const visible = active.slice(0, MAX_VISIBLE_SIGILS);
+        const overflowCount = active.length - visible.length;
+        const totalBubbles = visible.length + (overflowCount > 0 ? 1 : 0);
+
+        if (totalBubbles === 0) {
+            // No active spells → clear both orbits. Setting innerHTML to
+            // empty is cheap and guarantees no stale bubbles linger after
+            // the last spell expires.
+            if (miniOrbit)  miniOrbit.innerHTML  = '';
+            if (panelOrbit) panelOrbit.innerHTML = '';
+            return;
+        }
+
+        // Build the bubble HTML once; both orbits use identical markup.
+        // The orbit-radius / sigil-size differences come from the CSS
+        // custom properties on `.avatar-sigil-orbit--mini` vs `--panel`,
+        // so the per-sigil transform automatically scales to each size.
+        const bubbles = [];
+        visible.forEach((activeSpell, index) => {
+            const spellDef = this.spellDefinitions[activeSpell.spellId];
+            if (!spellDef) return;  // Defensive: skip if definition vanished
+            // Even angular distribution around the full 360° orbit.
+            const angle = (index / totalBubbles) * 360;
+            const rarity = spellDef.rarity || 'common';
+            const icon = spellDef.icon || '✨';
+            const name = spellDef.name || 'Active spell';
+            bubbles.push(
+                `<div class="avatar-sigil avatar-sigil--${rarity}"` +
+                ` style="--angle: ${angle.toFixed(2)}deg"` +
+                ` title="${this.escapeHTML(name)}">` +
+                `<span class="avatar-sigil__icon">${icon}</span>` +
+                `</div>`
+            );
+        });
+
+        if (overflowCount > 0) {
+            // Overflow badge always takes the LAST slot in the rotation
+            // so the 7 named sigils stay together and the "+N" reads as
+            // a continuation marker rather than a random bubble.
+            const angle = ((totalBubbles - 1) / totalBubbles) * 360;
+            bubbles.push(
+                `<div class="avatar-sigil avatar-sigil--overflow"` +
+                ` style="--angle: ${angle.toFixed(2)}deg"` +
+                ` title="+${overflowCount} more active spell${overflowCount === 1 ? '' : 's'}">` +
+                `<span class="avatar-sigil__icon">+${overflowCount}</span>` +
+                `</div>`
+            );
+        }
+
+        const html = bubbles.join('');
+        // Only rewrite innerHTML when the content actually changed —
+        // avoids restarting the spawn-fade animation on every render.
+        let mutated = false;
+        if (miniOrbit && miniOrbit.innerHTML !== html) {
+            miniOrbit.innerHTML = html;
+            mutated = true;
+        }
+        if (panelOrbit && panelOrbit.innerHTML !== html) {
+            panelOrbit.innerHTML = html;
+            mutated = true;
+        }
+
+        // v2.6 Item 5 — re-sync icon counter-rotations whenever bubbles
+        // are (re)mounted. CSS animation start times are per-element:
+        // the parent `.avatar-sigil-orbit` starts at page load, but
+        // each `.avatar-sigil__icon` starts when its <span> first
+        // renders. Without intervention the two run at the same speed
+        // but from different phases, leaving every icon visibly tilted
+        // by a fixed offset (the bug the user reported — "icons were
+        // slightly turned to the left"). Syncing via WAAPI fixes that.
+        if (mutated) {
+            // Defer one frame so the freshly-inserted spans have
+            // actually started their CSS animations (getAnimations()
+            // returns nothing for elements that haven't had their
+            // animations realized yet).
+            requestAnimationFrame(() => this._syncSigilCounterRotation());
+        }
+    }
+
+    /**
+     * v2.6 Item 5 — keep each sigil icon's counter-rotation animation
+     * in phase with its parent orbit's rotation animation. Both use
+     * the same 24s linear keyframe (icon in `reverse`); aligning their
+     * `Animation.currentTime` makes the icon's rotation exactly cancel
+     * the parent's at every paint, so the emoji stays upright while
+     * the bubble orbits.
+     *
+     * Without this sync the icons sit at a fixed-but-non-zero tilt
+     * angle (= the parent's progress at the moment the icon mounted)
+     * forever — the bug the user observed. A WebView pause/resume can
+     * coincidentally re-align the two timelines, which is why the
+     * icons "straightened out" after re-entering the app.
+     *
+     * Implementation notes:
+     *   • Uses the Web Animations API (`Element.getAnimations()`),
+     *     which is supported by every Chromium-based WebView this app
+     *     targets. If the API is unavailable we silently no-op — the
+     *     icons just sit at a fixed tilt, no worse than v2.6's initial
+     *     release.
+     *   • Safe to call repeatedly. The parent orbit's currentTime is
+     *     unchanged on read; only the icons' currentTimes are written.
+     *   • Called from `renderActiveSpellSigils()` after a re-render
+     *     AND from `_onSigilVisibilityChange()` so re-sync also runs
+     *     after the WebView resumes from background.
+     */
+    _syncSigilCounterRotation() {
+        const orbits = [
+            document.getElementById('player-sigil-orbit'),
+            document.getElementById('panel-sigil-orbit')
+        ].filter(Boolean);
+
+        orbits.forEach(orbit => {
+            if (typeof orbit.getAnimations !== 'function') return;
+            const orbitAnims = orbit.getAnimations();
+            if (orbitAnims.length === 0) return;
+            // Read the parent orbit's current position in its 24s
+            // cycle. CSSNumericValue → fall back to number; modern
+            // Chromium returns a plain number (ms).
+            const raw = orbitAnims[0].currentTime;
+            const parentTime = (typeof raw === 'number')
+                ? raw
+                : (raw && typeof raw.value === 'number' ? raw.value : null);
+            if (parentTime == null) return;
+
+            // Write the same currentTime onto every icon's animation.
+            // Because the icon's animation is `reverse` (and has the
+            // same duration + keyframe), matching currentTime makes
+            // the icon's rotation an exact negative of the parent's,
+            // i.e. they cancel and the emoji renders upright.
+            orbit.querySelectorAll('.avatar-sigil__icon').forEach(icon => {
+                if (typeof icon.getAnimations !== 'function') return;
+                const iconAnims = icon.getAnimations();
+                if (iconAnims.length > 0) {
+                    try {
+                        iconAnims[0].currentTime = parentTime;
+                    } catch (e) {
+                        // Some browsers throw if the animation hasn't
+                        // entered a playable state yet — harmless,
+                        // the next render pass will retry.
+                    }
+                }
+            });
+        });
+    }
+
+    /**
+     * v2.6 Item 6 — return a structured breakdown for a stat key, used
+     * by `stat-tooltip.js` to render hover/long-press tooltips on stat
+     * elements throughout the character sheet.
+     *
+     * Each breakdown returns:
+     *   {
+     *     title: string                  // header line above the rows
+     *     rows: [{ label, value, accent }]  // breakdown lines
+     *     footnote?: string              // small caption below rows
+     *   }
+     *
+     * `accent` is one of `default | good | warn | bad | rare | epic |
+     * legendary` and maps to a CSS class on `.stat-tooltip__row` for
+     * color tinting (see styles.css `.stat-tooltip__row--*`).
+     *
+     * Returns `null` for unknown keys (the tooltip module silently
+     * no-ops in that case — graceful degradation).
+     */
+    getStatBreakdown(key /*, triggerEl */) {
+        switch (key) {
+            case 'xp':
+                return this._statBreakdownXP();
+            case 'completed':
+                return this._statBreakdownCompleted();
+            case 'rate':
+                return this._statBreakdownRate();
+            case 'spells':
+                return this._statBreakdownInventory('spells');
+            case 'companions':
+                return this._statBreakdownInventory('companions');
+            case 'titles':
+                return this._statBreakdownInventory('titles');
+            default:
+                return null;
+        }
+    }
+
+    _statBreakdownXP() {
+        // Surface CURRENT XP-modifying conditions, not historical XP
+        // sources (we don't track per-XP-event provenance). Players
+        // get a clear picture of what bonuses they're earning right
+        // now and what's contributing to faster level-up.
+        const currentLevelXP = this.getTotalXPForLevel(this.level);
+        const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
+        const xpIntoLevel = this.xp - currentLevelXP;
+        const xpForLevel = nextLevelXP - currentLevelXP;
+
+        const rows = [
+            { label: 'Total XP earned', value: `${this.xp.toLocaleString()}`, accent: 'default' },
+            { label: 'Into current level', value: `${xpIntoLevel.toLocaleString()} / ${xpForLevel.toLocaleString()}`, accent: 'good' },
+            { label: 'To next level', value: `${(nextLevelXP - this.xp).toLocaleString()}`, accent: 'default' }
+        ];
+
+        // Active multipliers (only show if active so the row list stays
+        // tight on a fresh account).
+        if (this.isBeginnerBlessingActive && this.isBeginnerBlessingActive()) {
+            const days = this.getBlessingDaysRemaining ? this.getBlessingDaysRemaining() : '?';
+            rows.push({ label: "Beginner's Blessing", value: `2× (${days}d left)`, accent: 'legendary' });
+        }
+        const activeCompanion = this.getActiveCompanion ? this.getActiveCompanion() : null;
+        if (activeCompanion) {
+            const def = this.getCompanionDefinitions ? this.getCompanionDefinitions()[activeCompanion.type] : null;
+            const bonusText = def && def.xpBonus ? `+${Math.round(def.xpBonus * 100)}%` : 'active';
+            rows.push({ label: `Companion (${activeCompanion.name || (def && def.name) || 'pet'})`, value: bonusText, accent: 'rare' });
+        }
+        if (this.activeSpells && this.activeSpells.length > 0) {
+            rows.push({ label: 'Active spells', value: `${this.activeSpells.length} buff${this.activeSpells.length === 1 ? '' : 's'}`, accent: 'epic' });
+        }
+
+        return {
+            title: 'XP Breakdown',
+            rows,
+            footnote: 'Bonuses apply on quest completion'
+        };
+    }
+
+    _statBreakdownCompleted() {
+        // Per-quest-type breakdown of completed quests. Mirrors the
+        // counts the analytics view already shows, but compressed into
+        // a tooltip-sized summary.
+        const dailyDone = (this.dailyTasks || []).filter(t => t.completed).length;
+        const weeklyDone = (this.weeklyGoals || []).filter(g => g.completed).length;
+        const monthlyDone = (this.monthlyGoals || []).filter(g => g.completed).length;
+        const yearlyDone = (this.yearlyGoals || []).filter(g => g.completed).length;
+        const lifeDone = (this.lifeGoals || []).filter(g => g.completed).length;
+        const total = dailyDone + weeklyDone + monthlyDone + yearlyDone + lifeDone;
+
+        return {
+            title: 'Quests Completed',
+            rows: [
+                { label: 'Daily', value: dailyDone.toLocaleString(), accent: 'good' },
+                { label: 'Weekly', value: weeklyDone.toLocaleString(), accent: 'default' },
+                { label: 'Monthly', value: monthlyDone.toLocaleString(), accent: 'default' },
+                { label: 'Yearly', value: yearlyDone.toLocaleString(), accent: 'rare' },
+                { label: 'Life Goals', value: lifeDone.toLocaleString(), accent: 'legendary' }
+            ],
+            footnote: `${total.toLocaleString()} total across all tiers`
+        };
+    }
+
+    _statBreakdownRate() {
+        // Completion rate = completed / total, shown per-tier so the
+        // user sees where they're consistent vs lagging.
+        const fmt = (done, total) => total === 0 ? '—' : `${Math.round((done / total) * 100)}% (${done}/${total})`;
+        const dailyDone = (this.dailyTasks || []).filter(t => t.completed).length;
+        const dailyTotal = (this.dailyTasks || []).length;
+        const weeklyDone = (this.weeklyGoals || []).filter(g => g.completed).length;
+        const weeklyTotal = (this.weeklyGoals || []).length;
+        const monthlyDone = (this.monthlyGoals || []).filter(g => g.completed).length;
+        const monthlyTotal = (this.monthlyGoals || []).length;
+        const lifeDone = (this.lifeGoals || []).filter(g => g.completed).length;
+        const lifeTotal = (this.lifeGoals || []).length;
+
+        return {
+            title: 'Completion Rate',
+            rows: [
+                { label: 'Daily', value: fmt(dailyDone, dailyTotal), accent: 'good' },
+                { label: 'Weekly', value: fmt(weeklyDone, weeklyTotal), accent: 'default' },
+                { label: 'Monthly', value: fmt(monthlyDone, monthlyTotal), accent: 'default' },
+                { label: 'Life Goals', value: fmt(lifeDone, lifeTotal), accent: 'legendary' }
+            ],
+            footnote: 'Rate = completed ÷ total in tier'
+        };
+    }
+
+    _statBreakdownInventory(kind) {
+        // Inventory breakdown by rarity. For each kind we group the
+        // owned items by their rarity and surface the per-rarity count.
+        // The category-specific total acts as the headline.
+        if (kind === 'spells') {
+            const list = this.spellbook || [];
+            const byRarity = this._groupByRarity(list);
+            return {
+                title: `Spells (${list.length})`,
+                rows: this._rarityRows(byRarity),
+                footnote: list.length === 0 ? 'Open chests to discover spells' : 'Cast from the Spellbook'
+            };
+        }
+        if (kind === 'companions') {
+            const list = this.companions || [];
+            const active = this.getActiveCompanion ? this.getActiveCompanion() : null;
+            const byRarity = this._groupByRarity(list);
+            return {
+                title: `Companions (${list.length})`,
+                rows: this._rarityRows(byRarity),
+                footnote: active ? `Active: ${active.name || 'companion'}` : 'No active companion'
+            };
+        }
+        if (kind === 'titles') {
+            const list = this.unlockedTitles || [];
+            const byRarity = this._groupByRarity(list);
+            const active = list.find(t => t.id === this.currentTitle);
+            return {
+                title: `Titles (${list.length})`,
+                rows: this._rarityRows(byRarity),
+                footnote: active ? `Equipped: ${active.name}` : 'No title equipped'
+            };
+        }
+        return null;
+    }
+
+    _groupByRarity(list) {
+        // Returns a map of rarity → count. Items without a rarity
+        // field are bucketed under `common` so the breakdown never
+        // hides items.
+        const map = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0, mythic: 0 };
+        for (const item of list) {
+            const r = (item && item.rarity) ? String(item.rarity).toLowerCase() : 'common';
+            if (map[r] === undefined) map.common++;
+            else map[r]++;
+        }
+        return map;
+    }
+
+    _rarityRows(byRarity) {
+        // Convert a rarity→count map into tooltip rows, hiding zero
+        // counts so the tooltip stays compact for new accounts.
+        const order = ['mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common'];
+        const accent = {
+            mythic: 'legendary', legendary: 'legendary',
+            epic: 'epic', rare: 'rare',
+            uncommon: 'good', common: 'default'
+        };
+        const labels = {
+            mythic: 'Mythic', legendary: 'Legendary',
+            epic: 'Epic', rare: 'Rare',
+            uncommon: 'Uncommon', common: 'Common'
+        };
+        return order
+            .filter(r => byRarity[r] > 0)
+            .map(r => ({ label: labels[r], value: String(byRarity[r]), accent: accent[r] }));
+    }
+
+    // v2.7 — Rarity nameplate stamp pinned to the foot of any card that
+    // uses the `.rarity-frame` chrome (animations.css). Uses Remix Icon
+    // glyphs (already loaded for the rest of the UI) so the tier marks
+    // read crisp at small sizes instead of relying on emoji that vary
+    // across Android renderers. Items without a recognized rarity fall
+    // through to `common` so callers can pass spell/companion/loot/title
+    // rarities directly without having to normalize. Both the CSS
+    // rarity-frame border/glow and this nameplate are driven by the
+    // same `data-rarity` attribute, so the visual tier is always
+    // consistent between the two layers.
+    _rarityNameplate(rarity) {
+        const r = String(rarity || 'common').toLowerCase();
+        const glyphs = {
+            common:    'ri-shield-line',
+            uncommon:  'ri-shield-flash-line',
+            rare:      'ri-medal-line',
+            epic:      'ri-vip-crown-line',
+            legendary: 'ri-vip-diamond-line'
+        };
+        const labels = {
+            common: 'Common', uncommon: 'Uncommon', rare: 'Rare',
+            epic: 'Epic', legendary: 'Legendary'
+        };
+        const key = labels[r] ? r : 'common';
+        return `<span class="rarity-nameplate" data-rarity="${key}"><i class="${glyphs[key]}"></i>${labels[key]}</span>`;
     }
 
     getAchievementDefinitions() {
+        // v2.7 — `rarity` per badge drives the .rarity-frame chrome in the
+        // Achievement Gallery. Tiers are calibrated against actual effort:
+        //   common     onboarding action / one-shot setup (first quest,
+        //              30 future-task plan)
+        //   uncommon   a few days of casual play (10 tasks, 7-day streak,
+        //              20 spells cast, 5 bosses, 10 chests)
+        //   rare       a couple weeks of committed use (50 tasks, first
+        //              life goal)
+        //   epic       a couple months of dedicated play (30-day streak,
+        //              100 tasks, 50 chests, 25 focus sessions ≈ 10 h)
+        //   legendary  extreme commitment (500 tasks, 100-day streak,
+        //              5 life goals)
+        // Life-goal badges skew higher than their target counts suggest
+        // because completing a life goal is itself a major arc.
         return [
-            { id: 'first_quest', name: 'First Quest', description: 'Complete your first quest', icon: '🎖️', type: 'tasks', target: 1 },
-            { id: 'novice', name: 'Novice', description: 'Complete 10 quests', icon: '🥉', type: 'tasks', target: 10 },
-            { id: 'adept', name: 'Adept', description: 'Complete 50 quests', icon: '🥈', type: 'tasks', target: 50 },
-            { id: 'century', name: 'Century', description: 'Complete 100 quests', icon: '🥇', type: 'tasks', target: 100 },
-            { id: 'master', name: 'Master', description: 'Complete 500 quests', icon: '💎', type: 'tasks', target: 500 },
-            { id: 'week_warrior', name: 'Week Warrior', description: '7-day habit streak', icon: '🔥', type: 'streak', target: 7 },
-            { id: 'month_master', name: 'Month Master', description: '30-day habit streak', icon: '⚡', type: 'streak', target: 30 },
-            { id: 'centurion', name: 'Centurion', description: '100-day habit streak', icon: '👑', type: 'streak', target: 100 },
-            { id: 'legend', name: 'Legend', description: 'Complete a life goal', icon: '🌟', type: 'life_goals', target: 1 },
-            { id: 'mythic', name: 'Mythic', description: 'Complete 5 life goals', icon: '💫', type: 'life_goals', target: 5 },
-            { id: 'planner', name: 'Master Planner', description: 'Schedule 30+ future tasks', icon: '📅', type: 'future_tasks', target: 30 },
-            { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open 10 chests', icon: '🎁', type: 'chests', target: 10 },
-            { id: 'treasure_master', name: 'Treasure Master', description: 'Open 50 chests', icon: '👑', type: 'chests', target: 50 },
-            { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 5 bosses', icon: '💀', type: 'bosses', target: 5 },
-            { id: 'spell_caster', name: 'Spell Caster', description: 'Cast 20 spells', icon: '✨', type: 'spells', target: 20 },
-            { id: 'focus_master', name: 'Focus Master', description: 'Complete 25 focus sessions', icon: '🎯', type: 'focus', target: 25 }
+            { id: 'first_quest', name: 'First Quest', description: 'Complete your first quest', icon: '🎖️', type: 'tasks', target: 1, rarity: 'common' },
+            { id: 'novice', name: 'Novice', description: 'Complete 10 quests', icon: '🥉', type: 'tasks', target: 10, rarity: 'uncommon' },
+            { id: 'adept', name: 'Adept', description: 'Complete 50 quests', icon: '🥈', type: 'tasks', target: 50, rarity: 'rare' },
+            { id: 'century', name: 'Century', description: 'Complete 100 quests', icon: '🥇', type: 'tasks', target: 100, rarity: 'epic' },
+            { id: 'master', name: 'Master', description: 'Complete 500 quests', icon: '💎', type: 'tasks', target: 500, rarity: 'legendary' },
+            { id: 'week_warrior', name: 'Week Warrior', description: '7-day habit streak', icon: '🔥', type: 'streak', target: 7, rarity: 'uncommon' },
+            { id: 'month_master', name: 'Month Master', description: '30-day habit streak', icon: '⚡', type: 'streak', target: 30, rarity: 'epic' },
+            { id: 'centurion', name: 'Centurion', description: '100-day habit streak', icon: '👑', type: 'streak', target: 100, rarity: 'legendary' },
+            { id: 'legend', name: 'Legend', description: 'Complete a life goal', icon: '🌟', type: 'life_goals', target: 1, rarity: 'epic' },
+            { id: 'mythic', name: 'Mythic', description: 'Complete 5 life goals', icon: '💫', type: 'life_goals', target: 5, rarity: 'legendary' },
+            { id: 'planner', name: 'Master Planner', description: 'Schedule 30+ future tasks', icon: '📅', type: 'future_tasks', target: 30, rarity: 'common' },
+            { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open 10 chests', icon: '🎁', type: 'chests', target: 10, rarity: 'uncommon' },
+            { id: 'treasure_master', name: 'Treasure Master', description: 'Open 50 chests', icon: '👑', type: 'chests', target: 50, rarity: 'epic' },
+            { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 5 bosses', icon: '💀', type: 'bosses', target: 5, rarity: 'uncommon' },
+            { id: 'spell_caster', name: 'Spell Caster', description: 'Cast 20 spells', icon: '✨', type: 'spells', target: 20, rarity: 'uncommon' },
+            { id: 'focus_master', name: 'Focus Master', description: 'Complete 25 focus sessions', icon: '🎯', type: 'focus', target: 25, rarity: 'epic' }
         ];
     }
     
@@ -6965,11 +8187,11 @@ class GoalManager {
         
         // Unlocked badges section
         if (unlocked.length > 0) {
-            html += '<div class="col-span-2 md:col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">🏆 Unlocked</h4></div>';
+            html += '<div class="col-span-2 md:col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-trophy-line mr-1.5"></i>Unlocked</h4></div>';
             html += unlocked.map(achievement => {
                 const badge = this.badges.find(b => b.id === achievement.id);
                 return `
-                    <div class="quest-card bg-amber-950/60 p-5 rounded-lg border-2 border-amber-500 text-center">
+                    <div data-rarity="${achievement.rarity || 'common'}" class="quest-card rarity-frame bg-amber-950/60 p-5 rounded-lg border-2 border-amber-500 text-center">
                         <div class="text-4xl mb-2">${achievement.icon}</div>
                         <div class="text-amber-300 font-bold fancy-font text-sm">${achievement.name}</div>
                         <div class="text-amber-200 text-xs mt-1">${achievement.description}</div>
@@ -6981,7 +8203,7 @@ class GoalManager {
         
         // In-progress achievements section
         if (locked.length > 0) {
-            html += '<div class="col-span-2 md:col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm">📊 In Progress</h4></div>';
+            html += '<div class="col-span-2 md:col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-line-chart-line mr-1.5"></i>In Progress</h4></div>';
             html += locked.map(achievement => {
                 const current = progress[achievement.type] || 0;
                 const target = achievement.target;
@@ -7003,12 +8225,12 @@ class GoalManager {
                 }
                 
                 return `
-                    <div class="quest-card bg-gray-900/60 p-5 rounded-lg border-2 ${borderColor} text-center opacity-80 hover:opacity-100">
+                    <div data-rarity="${achievement.rarity || 'common'}" class="quest-card rarity-frame bg-gray-900/60 p-5 rounded-lg border-2 ${borderColor} text-center opacity-80 hover:opacity-100">
                         <div class="text-3xl mb-2 grayscale-[50%]">${achievement.icon}</div>
                         <div class="text-gray-300 font-bold fancy-font text-sm">${achievement.name}</div>
                         <div class="text-gray-400 text-xs mt-1">${achievement.description}</div>
                         <div class="mt-2">
-                            <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="progress-bar w-full bg-gray-700 rounded-full h-2">
                                 <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
                             </div>
                             <div class="text-xs mt-1 ${percent >= 75 ? 'text-green-400' : 'text-gray-400'}">
@@ -7110,22 +8332,19 @@ class GoalManager {
         if (!container) return;
         
         if (this.habits.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">🔥</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Build Your Rituals</h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        Daily rituals forge legendary habits. Start a streak and watch your power grow!
-                    </p>
-                    <button onclick="goalManager.addHabit()" 
-                        class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
-                        <i class="ri-fire-line mr-2"></i>Create Daily Ritual
-                    </button>
-                </div>
-            `;
+            container.innerHTML = this._renderEmptyState({
+                icon: '🔥',
+                title: 'Build Your Rituals',
+                body: 'Daily rituals forge legendary habits. Start a streak and watch your power grow!',
+                ctaLabel: 'Create Daily Ritual',
+                ctaIcon: 'ri-fire-line',
+                ctaOnclick: 'goalManager.addHabit()',
+                ctaColor: 'amber'
+            });
         } else {
             container.innerHTML = this.habits.map(habit => `
                 <div class="quest-card bg-gradient-to-br from-yellow-100 to-amber-50 p-5 rounded-lg shadow-lg border-3 border-yellow-600 hover:shadow-xl transition-all draggable-item"
+                    data-habit-id="${habit.id}"
                     draggable="true"
                     ondragstart="goalManager.handleDragStart('habit', ${habit.id}, event)"
                     ondragend="goalManager.handleDragEnd(event)"
@@ -7174,12 +8393,15 @@ class GoalManager {
         }
         
         if (this.archivedGoals.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-12 text-amber-200">
-                    <div class="text-8xl mb-4 opacity-30">📦</div>
-                    <p class="fancy-font text-lg">No archived quests yet. Archive completed goals to keep your lists clean!</p>
-                </div>
-            `;
+            // v2.7 — illustrated empty-state (parchment + medallion + rays).
+            // No CTA: archiving is a downstream action triggered from the
+            // active-goal lists, not from inside the archive itself, so a
+            // "Archive a quest" button here would have nowhere to point.
+            container.innerHTML = this._renderEmptyState({
+                icon: '📦',
+                title: 'The Archive Awaits',
+                body: 'Archive completed quests from your active lists to keep them tidy. Your hall of memories will fill as your journey grows.'
+            });
         } else {
             const sortedArchives = [...this.archivedGoals].sort((a, b) => 
                 new Date(b.archivedAt) - new Date(a.archivedAt)
@@ -7244,17 +8466,22 @@ class GoalManager {
         const container = document.getElementById('treasure-chests-container');
         if (!container) return;
 
+        // v2.7 — added `rarity` so chest cards can opt into the
+        // .rarity-frame chrome below. Map mirrors the in-game tier ramp:
+        // wooden=common, bronze=uncommon, silver=rare, gold=epic,
+        // royal=legendary. The legendary frame is the one that picks up
+        // the parallax tilt module on hover (epic+ trigger it).
         const chestTypes = [
-            { type: 'bronze', name: 'Bronze Chest', cost: 200, color: 'orange', icon: '🎁' },
-            { type: 'silver', name: 'Silver Chest', cost: 600, color: 'gray', icon: '💎' },
-            { type: 'gold', name: 'Gold Chest', cost: 1500, color: 'yellow', icon: '👑' },
-            { type: 'royal', name: 'Royal Chest', cost: 5000, color: 'purple', icon: '⭐' }
+            { type: 'bronze', name: 'Bronze Chest', cost: 200, color: 'orange', icon: '🎁', rarity: 'uncommon' },
+            { type: 'silver', name: 'Silver Chest', cost: 600, color: 'gray', icon: '💎', rarity: 'rare' },
+            { type: 'gold', name: 'Gold Chest', cost: 1500, color: 'yellow', icon: '👑', rarity: 'epic' },
+            { type: 'royal', name: 'Royal Chest', cost: 5000, color: 'purple', icon: '⭐', rarity: 'legendary' }
         ];
 
         // Daily Free Wooden Chest at the top
         const canClaimWooden = this.canClaimWoodenChest();
         const woodenChestHTML = `
-            <div class="quest-card bg-gradient-to-br from-yellow-900/80 to-amber-950/80 p-5 rounded-xl shadow-xl border-3 border-yellow-600 text-center relative overflow-hidden">
+            <div data-rarity="common" class="quest-card rarity-frame bg-gradient-to-br from-yellow-900/80 to-amber-950/80 p-5 rounded-xl shadow-xl border-3 border-yellow-600 text-center relative overflow-hidden">
                 ${canClaimWooden ? '<div class="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full fancy-font animate-pulse">FREE</div>' : ''}
                 <div class="text-6xl mb-3 ${canClaimWooden ? 'animate-bounce' : 'opacity-40'}">🪵</div>
                 <h4 class="text-xl font-bold text-yellow-300 medieval-title mb-2">Wooden Chest</h4>
@@ -7262,7 +8489,7 @@ class GoalManager {
                 <button onclick="goalManager.claimWoodenChest()" 
                     class="w-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105 ${!canClaimWooden ? 'opacity-50 cursor-not-allowed' : ''}"
                     ${!canClaimWooden ? 'disabled' : ''}>
-                    ${canClaimWooden ? '🪵 Open Chest!' : '✅ Claimed Today'}
+                    ${canClaimWooden ? '🪵 Open Chest!' : '<i class="ri-checkbox-circle-fill mr-1"></i>Claimed Today'}
                 </button>
             </div>
         `;
@@ -7272,7 +8499,7 @@ class GoalManager {
             const timesOpened = this.treasureChests.filter(c => c.type === chest.type).length;
             
             return `
-                <div class="quest-card bg-gradient-to-br from-${chest.color}-900 to-${chest.color}-950 p-5 rounded-xl shadow-xl border-3 border-${chest.color}-600 text-center">
+                <div data-rarity="${chest.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${chest.color}-900 to-${chest.color}-950 p-5 rounded-xl shadow-xl border-3 border-${chest.color}-600 text-center">
                     <div class="text-6xl mb-3">${chest.icon}</div>
                     <h4 class="text-xl font-bold text-amber-300 medieval-title mb-2">${chest.name}</h4>
                     <p class="text-${chest.color}-200 text-lg font-bold mb-2">${chest.cost} Gold</p>
@@ -7296,30 +8523,50 @@ class GoalManager {
         container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
             const isUnlocked = this.unlockedThemes.includes(id);
             const isSelected = this.currentTheme === id;
-            const lockReason = !isUnlocked ? 
+            const lockReason = !isUnlocked ?
                 (theme.special ? theme.special : `Level ${theme.unlockLevel}`) : '';
 
+            // Layered tile structure (z-stack):
+            //   .theme-tile-bg      z=0 — static gradient preview mirroring body.theme-X
+            //   .theme-tile-content z=2 — icon, name, status pill
+            // CSS for these classes lives in themes.css "THEME TILE LIVE
+            // PREVIEWS" section. (Previously had a `.theme-tile-video`
+            // layer at z=1 with autoplay WebM per hybrid tile — REMOVED
+            // Jun 6, 2026 evening after user feedback that 6 simultaneous
+            // WebMs on the Themes panel slowed initial load too much. The
+            // tile now shows only the static gradient identity; clicking
+            // the tile opens a preview modal via `previewTheme(id)` which
+            // renders the WebM ON DEMAND for one theme at a time. ROADMAP
+            // § 2.4 final v2.8 deliverable revision.)
+            //
+            // Tile click changed from `selectTheme(id)` to `previewTheme(id)`
+            // — selection now requires explicit Apply confirmation in the
+            // modal, which (a) reduces accidental theme switches and
+            // (b) lets locked themes display a preview as motivation
+            // before unlock.
             return `
-                <div onclick="goalManager.selectTheme('${id}')" 
-                    class="theme-option quest-card p-5 rounded-xl shadow-xl text-center cursor-pointer transition-all ${isSelected ? 'ring-4 ring-yellow-400' : ''} ${!isUnlocked ? 'opacity-60' : ''}"
-                    style="background: linear-gradient(135deg, ${theme.color}, ${this.darkenColor(theme.color, 40)}); border: 3px solid ${theme.color};"
-                    title="${isUnlocked ? 'Click to apply' : 'Locked: ' + lockReason}">
-                    <div class="text-5xl mb-2">${theme.icon}</div>
-                    <h4 class="text-lg font-bold text-white medieval-title mb-2">${theme.name}</h4>
-                    ${!isUnlocked ? `
-                        <p class="text-white/70 text-xs mb-2">
-                            🔒 ${lockReason}
-                        </p>
-                        <div class="text-white/50 text-sm italic">Locked</div>
-                    ` : isSelected ? `
-                        <div class="bg-yellow-500/30 border-2 border-yellow-400 rounded-lg px-3 py-2 text-yellow-300 text-sm font-bold">
-                            ✓ Active Theme
-                        </div>
-                    ` : `
-                        <div class="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 text-white text-sm font-bold transition-all">
-                            Click to Activate
-                        </div>
-                    `}
+                <div onclick="goalManager.previewTheme('${id}')"
+                    class="theme-option quest-card rounded-xl shadow-xl text-center cursor-pointer transition-all ${isSelected ? 'ring-4 ring-yellow-400' : ''} ${!isUnlocked ? 'theme-locked' : ''}"
+                    title="${isUnlocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview'}">
+                    <div class="theme-tile-bg theme-tile-bg-${id}"></div>
+                    <div class="theme-tile-content p-5">
+                        <div class="text-5xl mb-2">${theme.icon}</div>
+                        <h4 class="text-lg font-bold text-white medieval-title mb-2">${theme.name}</h4>
+                        ${!isUnlocked ? `
+                            <p class="text-white/80 text-xs mb-2">
+                                🔒 ${lockReason}
+                            </p>
+                            <div class="text-white/70 text-sm italic">Click to preview</div>
+                        ` : isSelected ? `
+                            <div class="bg-yellow-500/30 border-2 border-yellow-400 rounded-lg px-3 py-2 text-yellow-300 text-sm font-bold backdrop-blur-sm">
+                                ✓ Active Theme
+                            </div>
+                        ` : `
+                            <div class="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 text-white text-sm font-bold transition-all backdrop-blur-sm">
+                                👁 Preview
+                            </div>
+                        `}
+                    </div>
                 </div>
             `;
         }).join('');
@@ -7353,70 +8600,88 @@ class GoalManager {
         const lockedGrid = document.getElementById('titles-locked-grid');
         if (!container) return;
 
-        // Title categories with icons and color accents
+        // Title categories with icons and color accents.
+        //
+        // v2.7 rarity calibration pass — each title carries an explicit
+        // `rarity` calibrated to the actual effort required to earn it,
+        // not its position inside its category. (The earlier positional
+        // ramp had structural problems: categories with mixed metrics
+        // — e.g. Wealth interleaving gold and chest counts, Arcane
+        // interleaving focus sessions and spells — produced wrong
+        // tiers, and the 2-entry Login Streak category collapsed a
+        // 100-day login streak to "common". Explicit per-title rarity
+        // removes the algorithm entirely.) Anchor: common = onboarding
+        // one-shots; uncommon = a few days; rare = a couple weeks of
+        // committed play; epic = a couple months of dedication;
+        // legendary = extreme / multi-year commitment.
         const titleCategories = [
             { key: 'early', icon: '⚔️', label: 'Early Game', color: 'green', titles: [
-                { id: 'beginner', name: 'The Beginner', description: 'Complete your first task' },
-                { id: 'habit_starter', name: 'Habit Starter', description: 'Create your first habit' },
-                { id: 'apprentice', name: 'The Apprentice', description: 'Reach Level 5' },
+                { id: 'beginner', name: 'The Beginner', description: 'Complete your first task', rarity: 'common' },
+                { id: 'habit_starter', name: 'Habit Starter', description: 'Create your first habit', rarity: 'common' },
+                { id: 'apprentice', name: 'The Apprentice', description: 'Reach Level 5', rarity: 'common' },
             ]},
             { key: 'tasks', icon: '📜', label: 'Quest Milestones', color: 'amber', titles: [
-                { id: 'determined', name: 'The Determined', description: 'Complete 10 tasks' },
-                { id: 'dedicated', name: 'The Dedicated', description: 'Complete 50 tasks' },
-                { id: 'seasoned_adventurer', name: 'Seasoned Adventurer', description: 'Complete 100 tasks' },
-                { id: 'relentless', name: 'The Relentless', description: 'Complete 250 tasks' },
-                { id: 'quest_master', name: 'Quest Master', description: 'Complete 500 tasks' },
-                { id: 'grand_master', name: 'Grand Master', description: 'Complete 1000 tasks' },
+                { id: 'determined', name: 'The Determined', description: 'Complete 10 tasks', rarity: 'common' },
+                { id: 'dedicated', name: 'The Dedicated', description: 'Complete 50 tasks', rarity: 'uncommon' },
+                { id: 'seasoned_adventurer', name: 'Seasoned Adventurer', description: 'Complete 100 tasks', rarity: 'rare' },
+                { id: 'relentless', name: 'The Relentless', description: 'Complete 250 tasks', rarity: 'epic' },
+                { id: 'quest_master', name: 'Quest Master', description: 'Complete 500 tasks', rarity: 'epic' },
+                { id: 'grand_master', name: 'Grand Master', description: 'Complete 1000 tasks', rarity: 'legendary' },
             ]},
             { key: 'streaks', icon: '🔥', label: 'Habit Streaks', color: 'orange', titles: [
-                { id: 'consistent', name: 'The Consistent', description: 'Maintain a 3-day streak' },
-                { id: 'disciplined', name: 'The Disciplined', description: 'Maintain a 7-day streak' },
-                { id: 'devoted', name: 'The Devoted', description: 'Maintain a 14-day streak' },
-                { id: 'unstoppable', name: 'The Unstoppable', description: 'Maintain a 30-day streak' },
-                { id: 'iron_will', name: 'Iron Will', description: 'Maintain a 60-day streak' },
-                { id: 'the_ascended', name: 'The Ascended', description: 'Maintain a 100-day streak' },
-                { id: 'eternal', name: 'The Eternal', description: 'Maintain a 365-day streak' },
+                { id: 'consistent', name: 'The Consistent', description: 'Maintain a 3-day streak', rarity: 'common' },
+                { id: 'disciplined', name: 'The Disciplined', description: 'Maintain a 7-day streak', rarity: 'uncommon' },
+                { id: 'devoted', name: 'The Devoted', description: 'Maintain a 14-day streak', rarity: 'rare' },
+                { id: 'unstoppable', name: 'The Unstoppable', description: 'Maintain a 30-day streak', rarity: 'epic' },
+                { id: 'iron_will', name: 'Iron Will', description: 'Maintain a 60-day streak', rarity: 'epic' },
+                { id: 'the_ascended', name: 'The Ascended', description: 'Maintain a 100-day streak', rarity: 'legendary' },
+                { id: 'eternal', name: 'The Eternal', description: 'Maintain a 365-day streak', rarity: 'legendary' },
             ]},
             { key: 'levels', icon: '⬆️', label: 'Level Milestones', color: 'blue', titles: [
-                { id: 'journeyman', name: 'Journeyman', description: 'Reach Level 10' },
-                { id: 'veteran', name: 'Veteran', description: 'Reach Level 25' },
-                { id: 'elite', name: 'Elite', description: 'Reach Level 50' },
-                { id: 'legendary_hero', name: 'Legendary Hero', description: 'Reach Level 100' },
+                { id: 'journeyman', name: 'Journeyman', description: 'Reach Level 10', rarity: 'uncommon' },
+                { id: 'veteran', name: 'Veteran', description: 'Reach Level 25', rarity: 'rare' },
+                { id: 'elite', name: 'Elite', description: 'Reach Level 50', rarity: 'epic' },
+                { id: 'legendary_hero', name: 'Legendary Hero', description: 'Reach Level 100', rarity: 'legendary' },
             ]},
             { key: 'goals', icon: '🏰', label: 'Goal Conqueror', color: 'purple', titles: [
-                { id: 'legendary', name: 'The Legendary', description: 'Complete a life goal' },
-                { id: 'dream_chaser', name: 'Dream Chaser', description: 'Complete 5 life goals' },
-                { id: 'weekly_warrior', name: 'Weekly Warrior', description: 'Complete 10 weekly goals' },
-                { id: 'monthly_champion', name: 'Monthly Champion', description: 'Complete 6 monthly goals' },
-                { id: 'visionary', name: 'The Visionary', description: 'Complete a yearly goal' },
+                // Life goals are major arcs even at count=1, so they skew
+                // higher than raw count suggests. Yearly goal = legendary
+                // because it represents a full annual commitment.
+                { id: 'legendary', name: 'The Legendary', description: 'Complete a life goal', rarity: 'epic' },
+                { id: 'dream_chaser', name: 'Dream Chaser', description: 'Complete 5 life goals', rarity: 'legendary' },
+                { id: 'weekly_warrior', name: 'Weekly Warrior', description: 'Complete 10 weekly goals', rarity: 'epic' },
+                { id: 'monthly_champion', name: 'Monthly Champion', description: 'Complete 6 monthly goals', rarity: 'epic' },
+                { id: 'visionary', name: 'The Visionary', description: 'Complete a yearly goal', rarity: 'legendary' },
             ]},
             { key: 'wealth', icon: '💰', label: 'Wealth & Treasury', color: 'yellow', titles: [
-                { id: 'wealthy', name: 'The Wealthy', description: 'Accumulate 1,000 gold' },
-                { id: 'rich', name: 'The Rich', description: 'Accumulate 10,000 gold' },
-                { id: 'tycoon', name: 'Tycoon', description: 'Accumulate 100,000 gold' },
-                { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open your first chest' },
-                { id: 'loot_seeker', name: 'Loot Seeker', description: 'Open 25 chests' },
-                { id: 'chest_master', name: 'Chest Master', description: 'Open 100 chests' },
+                { id: 'wealthy', name: 'The Wealthy', description: 'Accumulate 1,000 gold', rarity: 'uncommon' },
+                { id: 'rich', name: 'The Rich', description: 'Accumulate 10,000 gold', rarity: 'epic' },
+                { id: 'tycoon', name: 'Tycoon', description: 'Accumulate 100,000 gold', rarity: 'legendary' },
+                { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open your first chest', rarity: 'common' },
+                { id: 'loot_seeker', name: 'Loot Seeker', description: 'Open 25 chests', rarity: 'rare' },
+                { id: 'chest_master', name: 'Chest Master', description: 'Open 100 chests', rarity: 'legendary' },
             ]},
             { key: 'arcane', icon: '✨', label: 'Arcane Mastery', color: 'indigo', titles: [
-                { id: 'focused', name: 'The Focused', description: 'Complete your first focus session' },
-                { id: 'zen_master', name: 'Zen Master', description: 'Complete 25 focus sessions' },
-                { id: 'meditation_guru', name: 'Meditation Guru', description: 'Complete 100 focus sessions' },
-                { id: 'spellcaster', name: 'Spellcaster', description: 'Cast your first spell' },
-                { id: 'mage', name: 'Mage', description: 'Cast 25 spells' },
-                { id: 'archmage', name: 'Archmage', description: 'Cast 50 spells' },
+                { id: 'focused', name: 'The Focused', description: 'Complete your first focus session', rarity: 'common' },
+                { id: 'zen_master', name: 'Zen Master', description: 'Complete 25 focus sessions', rarity: 'rare' },
+                { id: 'meditation_guru', name: 'Meditation Guru', description: 'Complete 100 focus sessions', rarity: 'legendary' },
+                { id: 'spellcaster', name: 'Spellcaster', description: 'Cast your first spell', rarity: 'common' },
+                { id: 'mage', name: 'Mage', description: 'Cast 25 spells', rarity: 'rare' },
+                { id: 'archmage', name: 'Archmage', description: 'Cast 50 spells', rarity: 'epic' },
             ]},
             { key: 'combat', icon: '🐉', label: 'Combat & Companions', color: 'red', titles: [
-                { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss' },
-                { id: 'champion', name: 'Champion', description: 'Defeat 10 bosses' },
-                { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 50 bosses' },
-                { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion' },
-                { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions' },
-                { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions' },
+                { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss', rarity: 'common' },
+                { id: 'champion', name: 'Champion', description: 'Defeat 10 bosses', rarity: 'rare' },
+                { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 50 bosses', rarity: 'legendary' },
+                // Companions drop from chests, so first companion is
+                // onboarding tier; collecting all 10 is the capstone.
+                { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion', rarity: 'common' },
+                { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions', rarity: 'rare' },
+                { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions', rarity: 'legendary' },
             ]},
             { key: 'login', icon: '👑', label: 'Login Streak Milestones', color: 'yellow', titles: [
-                { id: 'centurion', name: '🌟 Centurion', description: '100-day login streak' },
-                { id: 'mythic_warrior', name: '🏆 Mythic Warrior', description: '365-day login streak' },
+                { id: 'centurion', name: '🌟 Centurion', description: '100-day login streak', rarity: 'epic' },
+                { id: 'mythic_warrior', name: '🏆 Mythic Warrior', description: '365-day login streak', rarity: 'legendary' },
             ]},
         ];
 
@@ -7463,7 +8728,7 @@ class GoalManager {
                     <span class="text-amber-300 fancy-font text-sm font-bold">Title Collection</span>
                     <span class="text-amber-200/70 text-xs fancy-font">${totalUnlocked} / ${totalTitles} (${progressPct}%)</span>
                 </div>
-                <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div class="progress-bar w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                     <div class="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all" style="width:${progressPct}%"></div>
                 </div>
             </div>
@@ -7489,7 +8754,7 @@ class GoalManager {
                                 ${catComplete ? '<span class="text-xs px-1.5 py-0.5 rounded bg-green-700/50 text-green-300 font-bold">✓ COMPLETE</span>' : ''}
                             </div>
                             <div class="flex items-center gap-2 mt-1">
-                                <div class="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div class="progress-bar flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full bg-${cat.color}-500 rounded-full transition-all" style="width:${catPct}%"></div>
                                 </div>
                                 <span class="text-gray-400 text-xs">${earned.length}/${cat.titles.length}</span>
@@ -7504,8 +8769,9 @@ class GoalManager {
             earned.forEach(t => {
                 const titleData = unlockedMap[t.id] || t;
                 const active = this.currentTitle === t.id;
+                const rarity = t.rarity || 'common';
                 html += `
-                    <div class="bg-gradient-to-br from-purple-900/80 to-purple-950/80 p-4 rounded-xl shadow-lg border-2 ${active ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-purple-600/60'} text-center">
+                    <div data-rarity="${rarity}" class="rarity-frame bg-gradient-to-br from-purple-900/80 to-purple-950/80 p-4 rounded-xl shadow-lg border-2 ${active ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-purple-600/60'} text-center">
                         <div class="text-3xl mb-1">🎖️</div>
                         <h5 class="font-bold text-amber-300 text-sm medieval-title mb-1">"${titleData.name}"</h5>
                         <p class="text-purple-300 text-xs mb-2 italic">${t.description}</p>
@@ -7521,10 +8787,14 @@ class GoalManager {
                 `;
             });
 
-            // Locked titles in this category
+            // Locked titles in this category — same rarity chrome so the
+            // shape of the collection is visible even before unlock
+            // (player can see at a glance which slots are the rare/epic/
+            // legendary capstones in this category).
             locked.forEach(t => {
+                const rarity = t.rarity || 'common';
                 html += `
-                    <div class="bg-gradient-to-br from-stone-800/60 to-stone-900/60 p-4 rounded-xl border-2 border-stone-700/40 text-center opacity-50">
+                    <div data-rarity="${rarity}" class="rarity-frame bg-gradient-to-br from-stone-800/60 to-stone-900/60 p-4 rounded-xl border-2 border-stone-700/40 text-center opacity-50">
                         <div class="text-3xl mb-1">🔒</div>
                         <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
                         <p class="text-xs text-stone-500">${t.description}</p>
@@ -7605,12 +8875,12 @@ class GoalManager {
             const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
 
             activeDisplay.innerHTML = `
-                <div class="quest-card bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl border-4 border-${colors.border}-500">
+                <div data-rarity="${activeCompanion.rarity || 'rare'}" class="quest-card rarity-frame bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl">
                     <div class="flex items-center gap-6">
                         <div class="text-8xl">${icon}</div>
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="text-xs px-2 py-1 rounded bg-${colors.bg}-700 text-${colors.text}-200 uppercase font-bold">${activeCompanion.rarity || 'rare'}</span>
+                                ${this._rarityNameplate(activeCompanion.rarity || 'rare')}
                                 <span class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 font-bold">ACTIVE</span>
                             </div>
                             <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">${activeCompanion.name}</h4>
@@ -7625,15 +8895,12 @@ class GoalManager {
         // Companion Collection Grid
         if (collectionGrid) {
             if (this.companions.length === 0) {
-                collectionGrid.innerHTML = `
-                    <div class="col-span-full text-center py-12 px-8">
-                        <div class="text-6xl mb-4">🐾</div>
-                        <h3 class="text-xl font-bold text-green-300 medieval-title mb-2">No Companions Yet</h3>
-                        <p class="text-green-200/70 fancy-font text-sm max-w-sm mx-auto">
-                            Open treasure chests to discover loyal companions who will aid your journey!
-                        </p>
-                    </div>
-                `;
+                collectionGrid.innerHTML = this._renderEmptyState({
+                    icon: '🐾',
+                    title: 'No Companions Yet',
+                    body: 'Open treasure chests to discover loyal companions who will aid your journey!',
+                    wrapClass: 'col-span-full'
+                });
             } else {
                 const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
                 const sortedCompanions = [...this.companions].sort((a, b) => 
@@ -7650,11 +8917,11 @@ class GoalManager {
                             const compDesc = comp.description || companionDefs[comp.type]?.description || '';
                             
                             return `
-                                <div class="quest-card bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-5 rounded-lg border-2 ${isActive ? 'border-green-400 ring-2 ring-green-400' : `border-${cColors.border}-700`} text-center cursor-pointer hover:scale-105 transition-transform"
+                                <div data-rarity="${comp.rarity || 'rare'}" class="quest-card rarity-frame bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-5 rounded-lg ${isActive ? 'ring-2 ring-green-400' : ''} text-center cursor-pointer hover:scale-105 transition-transform"
                                      onclick="goalManager.setActiveCompanion('${comp.type}')">
                                     <div class="text-5xl mb-2">${compIcon}</div>
                                     <h5 class="font-bold text-amber-200 text-sm mb-1">${compName}</h5>
-                                    <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-700 text-${cColors.text}-200 uppercase">${comp.rarity || 'rare'}</span>
+                                    <div class="my-1">${this._rarityNameplate(comp.rarity || 'rare')}</div>
                                     <p class="text-xs text-${cColors.text}-300 mt-1">${compDesc}</p>
                                     ${isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>'}
                                 </div>
@@ -7734,12 +9001,15 @@ class GoalManager {
         if (!container) return;
 
         if (this.activeSpells.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-3 text-center py-12 text-purple-200">
-                    <div class="text-6xl mb-4">✨</div>
-                    <p class="fancy-font text-lg">No active spell effects. Cast a spell from your spellbook!</p>
-                </div>
-            `;
+            // v2.7 — illustrated empty-state. wrapClass: col-span-3 because
+            // the parent container is a 3-column grid and a bare card
+            // would otherwise occupy a single cell instead of the full row.
+            container.innerHTML = this._renderEmptyState({
+                icon: '✨',
+                title: 'No Spells Active',
+                body: 'Cast a spell from your Spellbook to weave its effect over your quests. Active spells will glow here while their power lasts.',
+                wrapClass: 'col-span-3'
+            });
         } else {
             // Filter out any invalid active spells
             const validActiveSpells = this.activeSpells.filter(activeSpell => {
@@ -7751,8 +9021,17 @@ class GoalManager {
                 this.saveData();
             }
             
+            // v2.7 — active-spell cards now mirror their actual rarity
+            // instead of always rendering purple. Same rarity→color map
+            // as renderSpellCollection so the chrome reads consistently
+            // between the "active" row and the spellbook below it.
+            const rarityColors = {
+                common: 'gray', uncommon: 'green', rare: 'blue',
+                epic: 'purple', legendary: 'yellow'
+            };
             container.innerHTML = validActiveSpells.map(activeSpell => {
                 const spell = this.spellDefinitions[activeSpell.spellId];
+                const color = rarityColors[spell.rarity] || 'purple';
                 let timeDisplay;
                 
                 if (activeSpell.expiresAt === -1) {
@@ -7766,12 +9045,13 @@ class GoalManager {
                 }
                 
                 return `
-                    <div class="quest-card bg-gradient-to-br from-purple-800 to-purple-900 p-5 rounded-xl shadow-2xl border-3 border-purple-500 active-spell">
+                    <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-800 to-${color}-900 p-5 rounded-xl shadow-2xl active-spell">
                         <div class="text-5xl mb-2 text-center rune-text">${spell.icon}</div>
-                        <h4 class="text-xl font-bold text-purple-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                        <p class="text-purple-300 text-sm mb-3 text-center">${spell.description}</p>
-                        <div class="bg-purple-950 rounded-lg px-3 py-2 text-center">
-                            <p class="text-purple-200 text-sm font-bold">${timeDisplay}</p>
+                        <h4 class="text-xl font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
+                        <div class="text-center mb-2">${this._rarityNameplate(spell.rarity)}</div>
+                        <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
+                        <div class="bg-${color}-950 rounded-lg px-3 py-2 text-center">
+                            <p class="text-${color}-200 text-sm font-bold">${timeDisplay}</p>
                         </div>
                     </div>
                 `;
@@ -7818,10 +9098,10 @@ class GoalManager {
             const isActive = this.activeSpells.some(s => s.spellId === spellId);
             
             return `
-                <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl border-3 border-${color}-600">
+                <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl">
                     <div class="text-5xl mb-2 text-center">${spell.icon}</div>
                     <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                    <p class="text-${color}-300 text-xs mb-2 text-center capitalize">${spell.rarity}</p>
+                    <div class="text-center mb-2">${this._rarityNameplate(spell.rarity)}</div>
                     <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
                     <div class="text-center mb-3">
                         <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${charges}</span>
@@ -7863,10 +9143,13 @@ class GoalManager {
             const isPremiumLocked = !this.isPremium;
             
             return `
-                <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl border-3 border-${color}-600 ${isPremiumLocked ? 'opacity-60' : ''}">
+                <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl ${isPremiumLocked ? 'opacity-60' : ''}">
                     <div class="text-5xl mb-2 text-center">${spell.icon}</div>
                     <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                    <p class="text-${color}-300 text-xs mb-2 text-center capitalize">${spell.rarity}${isPremiumLocked ? ' • 🔒' : ''}</p>
+                    <div class="text-center mb-2 flex items-center justify-center gap-2">
+                        ${this._rarityNameplate(spell.rarity)}
+                        ${isPremiumLocked ? '<i class="ri-lock-line text-yellow-500/80" aria-label="Premium locked"></i>' : ''}
+                    </div>
                     <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
                     <div class="text-center mb-3">
                         <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${charges}</span>
@@ -7977,7 +9260,18 @@ class GoalManager {
             // Instant Archive - bulk archive all completed tasks
             const archivedCount = this.bulkArchiveCompleted();
             if (archivedCount > 0) {
-                this.showAchievement(`📦 INSTANT ARCHIVE! ${archivedCount} completed tasks archived!`, 'weekly');
+                // Show per-category breakdown so users (and bug reports) can
+                // verify side quests / yearly / life are actually being picked up.
+                const c = this.lastBulkArchiveBreakdown || {};
+                const parts = [];
+                if (c.daily)   parts.push(`${c.daily} daily`);
+                if (c.weekly)  parts.push(`${c.weekly} weekly`);
+                if (c.monthly) parts.push(`${c.monthly} monthly`);
+                if (c.yearly)  parts.push(`${c.yearly} yearly`);
+                if (c.life)    parts.push(`${c.life} life`);
+                if (c.side)    parts.push(`${c.side} side`);
+                const breakdown = parts.length ? ` (${parts.join(', ')})` : '';
+                this.showAchievement(`📦 INSTANT ARCHIVE! ${archivedCount} archived${breakdown}`, 'weekly');
             } else {
                 this.showAchievement('📦 No completed tasks to archive!', 'daily');
             }
@@ -8015,6 +9309,10 @@ class GoalManager {
             this.activeSpells = this.activeSpells.filter(s => s.expiresAt === -1 || s.expiresAt > now);
             this.saveData();
             this.renderSpellbook();
+            // v2.6 Item 5 — sync the avatar orbit immediately so the
+            // expired sigils disappear without waiting for the next full
+            // render. (renderSpellbook only touches the spellbook tab.)
+            this.renderActiveSpellSigils();
         }
     }
 
@@ -8109,13 +9407,34 @@ class GoalManager {
 
     celebrateSpellUnlock(spell) {
         if (this._suppressRewardToasts) return;
-        this.createSparkles();
-        this.showAchievement(`📖 New spell learned: ${spell.name}!`, 'epic');
+        if (window.effectsManager) {
+            window.effectsManager.spellUnlocked(spell);
+        } else {
+            this.createSparkles();
+            this.showAchievement(`📖 New spell learned: ${spell.name}!`, 'epic');
+        }
+    }
+
+    // Resolve a mobile/intensity-aware particle count.
+    // Android-first: low-end devices struggle with 50 absolutely-positioned
+    // animated nodes. We cut the count when:
+    //   - in-app intensity is 'minimal' → 0 (caller does nothing)
+    //   - in-app intensity is 'reduced' → ~40%
+    //   - viewport is narrow (mobile) → ~60% on full, stacks with reduced
+    _particleBudget(baseCount) {
+        const fx = window.effectsManager;
+        const intensity = fx ? fx.intensity : 'full';
+        if (intensity === 'minimal') return 0;
+        let count = baseCount;
+        if (intensity === 'reduced') count = Math.ceil(count * 0.4);
+        if (window.innerWidth < 768) count = Math.ceil(count * 0.6);
+        return Math.max(1, count);
     }
 
     createConfetti() {
+        const confettiCount = this._particleBudget(50);
+        if (confettiCount === 0) return;
         const colors = ['#fbbf24', '#f59e0b', '#d97706', '#b45309', '#92400e'];
-        const confettiCount = 50;
         
         for (let i = 0; i < confettiCount; i++) {
             setTimeout(() => {
@@ -8132,7 +9451,8 @@ class GoalManager {
     }
 
     createSparkles() {
-        const sparkleCount = 20;
+        const sparkleCount = this._particleBudget(20);
+        if (sparkleCount === 0) return;
         
         for (let i = 0; i < sparkleCount; i++) {
             setTimeout(() => {
@@ -8254,9 +9574,13 @@ class GoalManager {
         const prompt = document.createElement('div');
         prompt.id = 'milestone-share-prompt';
         prompt.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;animation:fadeIn 0.3s ease-out;width:calc(100% - 32px);max-width:420px;';
+        // Escape: `text` interpolates user-controlled values (habit.title via
+        // the 7/30/100-day streak milestone path) into innerHTML. Without
+        // escaping, a habit named e.g. `<img src=x onerror=alert(1)>` would
+        // execute on every streak-milestone celebration.
         prompt.innerHTML = `
             <div class="bg-gradient-to-r from-amber-800/95 to-orange-900/95 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-2xl border-2 border-amber-500/60 flex items-center gap-3">
-                <span class="text-amber-200 fancy-font text-sm flex-1 min-w-0">${text}</span>
+                <span class="text-amber-200 fancy-font text-sm flex-1 min-w-0">${this.escapeHTML(text)}</span>
                 <button onclick="goalManager.showShareCardPreview(); document.getElementById('milestone-share-prompt')?.remove();"
                     class="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-lg text-xs font-bold fancy-font transition-all hover:scale-105 whitespace-nowrap flex items-center gap-1.5 shrink-0">
                     <i class="ri-share-line"></i> Share
@@ -8485,18 +9809,183 @@ class GoalManager {
         this.applyColorTheme();
     }
 
-    // Color Theme System
-    // Free themes: default, forest (2 free themes)
-    // Premium themes: all others require premium
+    // Color Theme System — Proposal B split (Jun 7, 2026)
+    // ========================================================
+    // Free (5): default, forest, ice, golden, shadow
+    //   - default + forest are level-gated free starters (lvl 0, 6)
+    //   - ice promoted from premium to free as a mid-game level
+    //     reward (lvl 15) — gives free users a real progression
+    //     journey beyond just unlocking forest at lvl 6
+    //   - golden + shadow are achievement-gated (effort-rewards):
+    //     promoted from premium to free Jun 7, 2026 to fix the
+    //     prior "double-gating" weirdness where free users could
+    //     hit the achievement criteria but still couldn't use the
+    //     reward. Achievement is now the only gate.
+    // Premium (9): desert, sunken, stormwatch, volcanic, verdant,
+    //   mystic, cathedral, crystal, aurora
+    //   - All 6 hybrid (WebM) themes stay premium since they carry
+    //     the highest production cost
+    //   - Plus 3 pure-CSS themes (desert, volcanic, mystic) kept
+    //     premium for revenue balance — these are the "prestige
+    //     palette" tier that distinguish premium users visually
+    // Achievement criteria (Jun 7, 2026):
+    //   - Golden Empire: 10,000 gold lifetime earned (NOT current
+    //     balance — see `totalGoldEarned` counter)
+    //   - Shadow Realm: 25 bosses defeated (lifetime)
+    // ========================================================
     themeDefinitions = {
         default: { name: 'Medieval Kingdom', icon: '🏰', color: '#b45309', unlockLevel: 0, premium: false },
         forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 6, premium: false, cardFrom: '#033026', cardTo: '#011812', border: '#059669' },
         desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10, premium: true, cardFrom: '#431407', cardTo: '#1f0a04', border: '#ea580c' },
-        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15, premium: true, cardFrom: '#082f49', cardTo: '#041726', border: '#0ea5e9' },
+        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15, premium: false, cardFrom: '#082f49', cardTo: '#041726', border: '#0ea5e9' },
         volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20, premium: true, cardFrom: '#450a0a', cardTo: '#1f0505', border: '#ef4444' },
         mystic: { name: 'Mystic Realm', icon: '✨', color: '#7c3aed', unlockLevel: 25, premium: true, cardFrom: '#2e1065', cardTo: '#140830', border: '#8b5cf6' },
-        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: '100 completed', premium: true, cardFrom: '#402804', cardTo: '#1f0f03', border: '#eab308' },
-        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: '5 life goals', premium: true, cardFrom: '#1f2937', cardTo: '#0f1623', border: '#374151' }
+        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: 'Earn 10,000 gold', premium: false, cardFrom: '#402804', cardTo: '#1f0f03', border: '#eab308' },
+        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: 'Defeat 25 bosses', premium: false, cardFrom: '#1f2937', cardTo: '#0f1623', border: '#374151' },
+        // v2.8 marquee theme — hybrid (WebM atmosphere + CSS rain particles).
+        // Slotted at level 18 to fit cleanly between ice (15) and volcanic
+        // (20) in the existing 5-level cadence; premium tier matches every
+        // other non-default theme. See ROADMAP § 2.4 for the full design
+        // narrative (strategy D, lightning iteration history, palette tune).
+        stormwatch: { name: 'Stormwatch', icon: '⛈️', color: '#475569', unlockLevel: 18, premium: true, cardFrom: '#1e293b', cardTo: '#0f172a', border: '#60a5fa' },
+        // v2.8 pure-CSS theme — Verdant Grove. Wedged at level 22 between
+        // volcanic (20) and mystic (25), mirroring Stormwatch's 3-level
+        // wedge above ice. Differentiated from the existing free Forest
+        // Kingdom (level 6) by going darker/mossier/ancient-druid: deeper
+        // jade-into-near-black palette + slower leaf drift in the particle
+        // config + `.particle-leaf` CSS class instead of forest's
+        // `icons/leaf.gif`. No WebM (strategy D pure-CSS lane). ROADMAP § 2.4.
+        verdant: { name: 'Verdant Grove', icon: '🌿', color: '#15803d', unlockLevel: 22, premium: true, cardFrom: '#0c3a1f', cardTo: '#04150c', border: '#16a34a' },
+        // v2.8 round 2 (Jun 5, 2026) — three additional pure-CSS themes
+        // built on the strategy D pattern (palette + radial gradients +
+        // pure-CSS particles, no GIF runtime dep, optionally promotable
+        // to hybrid later if the user supplies a WebM). Unlock levels
+        // chosen to extend the existing cadence:
+        //   Sunken Library 13 — between desert (10) and ice (15)
+        //   Dark Cathedral 28 — above mystic (25), prestige tier
+        //   Aurora Spires  35 — top of ladder, ultimate prestige theme
+        // Card from/to/border match the body palette in themes.css; the
+        // `color` field drives the theme-transition flash and selector
+        // chip. Each theme has a corresponding particle config below
+        // and a `body.theme-X` block in themes.css. ROADMAP § 2.4.
+        sunken: { name: 'Sunken Library', icon: '🌊', color: '#0e7490', unlockLevel: 13, premium: true, cardFrom: '#0e3a52', cardTo: '#07182a', border: '#06b6d4' },
+        // Dark Cathedral — v2.8 round 3 background upgrade (Jun 5, 2026
+        // afternoon). Was originally a pure-CSS violet+amber gradient
+        // theme (round 2 morning); upgraded to a STATIC IMAGE BACKGROUND
+        // (icons/cathedral-bg.webp, user-supplied) plus a 4-candle CSS
+        // flicker overlay (see #theme-cathedral-candles in index.html
+        // and the candle-flicker class in animations.css). Palette
+        // retuned violet→crimson + amber→cold-slate to match the
+        // image's black-and-red gothic interior. color/cardFrom/cardTo/
+        // border below all updated to crimson palette so the Themes
+        // selector preview card matches the in-game theme. Icon ⛪
+        // unchanged — still reads as cathedral. ROADMAP § 2.4 round 3.
+        cathedral: { name: 'Dark Cathedral', icon: '⛪', color: '#991b1b', unlockLevel: 28, premium: true, cardFrom: '#292524', cardTo: '#0c0a09', border: '#991b1b' },
+        // Aurora Spires — top-tier prestige theme. 🌌 icon (Milky Way)
+        // signals the cosmic-night aesthetic. Promoted to hybrid Jun 6,
+        // 2026 (round 4) when user supplied `icons/aurora-spires-bg.webm`,
+        // and palette retuned same evening from indigo-primary →
+        // cyan-primary to match the WebM's saturated cyan-teal aurora
+        // bands + ice-spire foreground (the original indigo palette
+        // was a poor match against the actual video — see themes.css
+        // body.theme-aurora block for the full retune narrative).
+        // `color` is now cyan-500 to drive the theme-transition flash
+        // and selector chip in the saturated aurora hue rather than
+        // muted indigo. cardFrom/To preserve the indigo-950→slate-900
+        // night-sky base; border shifts to cyan-400 to mirror the
+        // ice-spire foreground.
+        aurora: { name: 'Aurora Spires', icon: '🌌', color: '#06b6d4', unlockLevel: 35, premium: true, cardFrom: '#1e1b4b', cardTo: '#0f172a', border: '#22d3ee' },
+        // Crystal Caves — v2.8 round 3, 6th theme (Jun 5, 2026).
+        // Slotted at level 31 specifically to even out the unlock
+        // ladder (previously had a 7-level gap between Cathedral 28
+        // and Aurora 35; now 28→31→35 gives two clean 3-4 level
+        // jumps). 💎 icon (gem stone) reads as the theme at a
+        // glance — chosen over 🔮 (crystal ball, too mystical) and
+        // 🌟 (star, too aurora-adjacent). cardFrom/To match
+        // themes.css's indigo-950→slate-950 cave gradient; border
+        // is fuchsia-600 to suggest the magenta crystal edges
+        // around card chrome. Pure-CSS for now (per the new
+        // informal "prefer pure-CSS, allow hybrids only with
+        // user-supplied WebM" rule from § 2.4).
+        crystal: { name: 'Crystal Caves', icon: '💎', color: '#c026d3', unlockLevel: 31, premium: true, cardFrom: '#1e1b4b', cardTo: '#020617', border: '#c026d3' }
+    };
+
+    // ========================================================
+    // Theme video asset registry (v2.8 N1 hoist, Jun 7, 2026)
+    // ========================================================
+    // Single source of truth for which themes have backing WebM
+    // assets and where those assets live. Previously this map was
+    // duplicated as `videoBackgrounds` (inside `updateThemeVideoBackground()`)
+    // and `previewVideos` (inside `previewTheme()`) — the C1 audit fix
+    // earlier today flagged the duplication when the preview map was
+    // missing 7 themes vs the body map. Both sites now read from this
+    // shared property; any asset path change touches one line.
+    //
+    // Asset selection rule: themes WITHOUT an entry here render as
+    // pure CSS (gradient + particle layer only). Themes WITH an
+    // entry get the WebM as the primary background, with the body
+    // gradient + per-theme particle config as the no-decode fallback
+    // (handled by the `body.has-theme-bg.theme-X` transparency rules
+    // in themes.css and the `hideVideoKeepThemedGradients` graceful-
+    // failure path in `updateThemeVideoBackground()`).
+    //
+    // Per-theme history comments live next to each entry rather than
+    // in the consumer functions because those functions are now
+    // map-agnostic — they just read `this.themeVideoAssets[id]`.
+    //
+    // ROADMAP § 2.4 audit subsection (N1).
+    themeVideoAssets = {
+        forest:   { webm: 'icons/forest-bg.webm' },
+        desert:   { webm: 'icons/desert-bg.webm' },
+        ice:      { webm: 'icons/ice-bg.webm' },
+        volcanic: { webm: 'icons/volcanic-bg.webm' },
+        mystic:   { webm: 'icons/mystic-bg.webm' },
+        golden:   { webm: 'icons/golden-bg.webm' },
+        shadow:   { webm: 'icons/shadow-bg.webm' },
+        // v2.8 marquee theme — Stormwatch hybrid: WebM v2 atmospheric
+        // base layer (~992KB, with cloud-to-cloud lightning baked in)
+        // + `.particle-rain` CSS streaks layered on top. The CSS-side
+        // lightning overlay was dropped Jun 3 (see animations.css
+        // Stormwatch timeline) — lightning is now carried by the WebM
+        // alone, naturally constrained to the cloud region and below
+        // WCAG 2.3.1's three-flashes threshold by design.
+        stormwatch: { webm: 'icons/stormwatch-bg.webm' },
+        // Verdant Grove promoted from pure-CSS to hybrid (Jun 4, 2026).
+        // User supplied a grove ambient WebM after the moss-accent
+        // variety system + .particle-leaf shipped as the pure-CSS v1.
+        // The body-fallback gradient + moss SVGs + leaf particles all
+        // remain wired and act as the no-decode fallback.
+        verdant:  { webm: 'icons/verdant-bg.webm' },
+        // Crystal Caves promoted from pure-CSS to hybrid (Jun 5, 2026
+        // afternoon, round 3.5). User supplied `crystal-cave-bg.webm`
+        // after the pure-CSS v1 (slate base + 5 fuchsia/cyan radials
+        // + .particle-crystal diamond shards) shipped earlier the
+        // same day.
+        crystal:  { webm: 'icons/crystal-cave-bg.webm' },
+        // Sunken Library promoted from pure-CSS to hybrid (Jun 5, 2026
+        // evening, round 3.5 continuation). User supplied
+        // `sunken-library-bg.webm` (3.28MB — over the ~2MB per-asset
+        // informal rule, joining Verdant 4.83MB as a compression
+        // candidate, but shipped as-is because the drowned-archive
+        // WebM markedly elevates the underwater feel).
+        sunken:   { webm: 'icons/sunken-library-bg.webm' },
+        // Dark Cathedral promoted from static-image to full hybrid
+        // (Jun 5, 2026 evening, round 3.5). User supplied
+        // `dark-cathedral-bg.webm` (1.49MB) AFTER the static-image
+        // cathedral-bg.webp (885KB) had already shipped. The .webp
+        // now demotes to a pure no-decode fallback role via the
+        // `body.theme-cathedral` background stack in themes.css.
+        cathedral:{ webm: 'icons/dark-cathedral-bg.webm' },
+        // Aurora Spires promoted from pure-CSS to hybrid (Jun 6, 2026
+        // evening) — the LAST pure-CSS theme to fall. User supplied
+        // `aurora-spires-bg.webm` (3.08MB — over the ~2MB rule, third
+        // outstanding compression candidate). Body gradient (indigo-
+        // midnight + green/purple/magenta aurora-band radials) and
+        // `.particle-star` class remain wired as the no-decode
+        // fallback. Star particles continue rendering ON TOP of the
+        // WebM — video carries the aurora bands, particles carry the
+        // twinkle layer. ROADMAP § 2.4 round 4.
+        aurora:   { webm: 'icons/aurora-spires-bg.webm' }
     };
 
     applyColorTheme() {
@@ -8519,6 +10008,23 @@ class GoalManager {
         
         // Update theme video background
         this.updateThemeVideoBackground();
+        
+        // v2.7.1 (Jun 2, 2026): re-tint the Android system status bar to
+        // match the active theme. Without this, the status bar stays at
+        // the styles.xml default `#1c1917` (stone-dark) regardless of
+        // theme, which reads as a harsh dark band against the bright
+        // bokeh video of golden-empire (and would clash with any
+        // future light-toned theme). We push the theme's `cardTo`
+        // (darkest gradient stop, available on every premium theme via
+        // `themeDefinitions`) which blends seamlessly with the top of
+        // each theme's background gradient. Default theme falls back
+        // to the original stone-dark since it has no cardTo defined.
+        // No-op on web / non-native (the bridge guards on `isNative`).
+        if (window.CapBridge && window.CapBridge.isNative) {
+            const themeDef = this.themeDefinitions[this.currentTheme];
+            const statusBarColor = (themeDef && themeDef.cardTo) || '#1c1917';
+            window.CapBridge.styleStatusBar({ color: statusBarColor });
+        }
     }
 
     applyThemeToCards() {
@@ -8565,61 +10071,93 @@ class GoalManager {
                          || /webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
                          || window.innerWidth <= 768;
         
-        // Define which themes have video/gif backgrounds
-        const videoBackgrounds = {
-            forest: {
-                gif: 'icons/forest-bg.gif'
-            },
-            desert: {
-                gif: 'icons/desert-bg.gif'
-            },
-            ice: {
-                gif: 'icons/ice-bg.gif'
-            },
-            volcanic: {
-                video: 'icons/volcanic-bg.mp4',
-                gif: 'icons/volcanic-bg.gif'
-            },
-            mystic: {
-                gif: 'icons/mystic-bg.gif'
-            },
-            golden: {
-                gif: 'icons/golden-bg.gif'
-            },
-            shadow: {
-                gif: 'icons/shadow-bg.gif'
-            }
-        };
-        
-        const bgConfig = videoBackgrounds[this.currentTheme];
-        
-        if (bgConfig) {
-            // Use video if available and on desktop, otherwise use GIF
-            if (!isMobile && bgConfig.video) {
-                // Use video for desktop when available
-                document.body.classList.remove('has-theme-bg');
-                document.body.style.removeProperty('--theme-bg-image');
-                video.src = bgConfig.video;
-                video.load();
-                video.classList.remove('hidden');
-                video.classList.add('active');
-                video.play().catch(() => {});
-            } else {
-                // Use GIF for mobile OR when no video is available
-                video.style.display = 'none';
-                video.classList.add('hidden');
-                video.classList.remove('active');
-                video.pause();
-                video.src = '';
-                document.body.style.setProperty('--theme-bg-image', `url('${bgConfig.gif}')`);
-                document.body.classList.add('has-theme-bg');
-            }
-        } else {
-            // No background for this theme
+        // v2.8 N1 hoist (Jun 7, 2026 audit) — asset map moved to the
+        // shared `this.themeVideoAssets` class property so this site
+        // and `previewTheme()` read from a single source of truth
+        // (the C1 fix earlier today flagged the duplication when the
+        // preview map was missing 7 themes vs body). Pre-v2.7.1 GIF
+        // fallbacks (~95MB) and the unreachable volcanic mp4 (~3.4MB)
+        // were deleted in the GIF-removal pass; ROADMAP § 1.6 / § 2.3.1.
+        const bgConfig = this.themeVideoAssets[this.currentTheme];
+
+        // Graceful no-animated-bg fallback. Previously this swapped the
+        // failed video for a GIF via background-image; post-v2.7.1 it
+        // simply hides the video and keeps `has-theme-bg` on so the
+        // themed sidebar / quest-card gradients (animations.css §
+        // "FOREST / DESERT / … THEME ANIMATED BG" + themes.css
+        // transparency rules) still paint a coherent themed look.
+        const hideVideoKeepThemedGradients = () => {
+            video.style.display = 'none';
             video.classList.add('hidden');
             video.classList.remove('active');
-            video.pause();
-            video.src = '';
+            try { video.pause(); } catch (e) {}
+            try { video.removeAttribute('src'); video.load(); } catch (e) {}
+            // KEEP `has-theme-bg` on — themed gradients depend on it.
+            // The `--theme-bg-image` custom prop stays unset so the
+            // ::before pseudo (if still present in older CSS caches)
+            // resolves background-image to `none`.
+        };
+
+        if (bgConfig) {
+            const videoSrc = bgConfig.webm;
+            // Switch to video-element mode. Add `has-theme-bg` class —
+            // it's what makes the main content area transparent. Without
+            // it, the opaque .bg-stone-800 content sits on top of the video.
+            document.body.style.removeProperty('--theme-bg-image');
+            document.body.classList.add('has-theme-bg');
+            video.style.display = '';
+            video.classList.remove('hidden');
+            video.classList.add('active');
+
+            // Multi-signal detection of "video actually playing." Some
+            // WebView versions parse metadata (videoWidth > 0) but then
+            // silently fail to decode/render — no `error` event, no frames.
+            // The strongest single signal is the `playing` event firing
+            // and currentTime advancing past 0.
+            let fellBack = false;
+            let watchdog = null;
+            const cleanup = () => {
+                if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+                video.removeEventListener('error', onError);
+                video.removeEventListener('playing', onPlaying);
+            };
+            const fallback = (reason) => {
+                if (fellBack) return;
+                fellBack = true;
+                cleanup();
+                console.warn(`[theme-bg] ${videoSrc} fallback: ${reason} — degrading to static themed gradients (no animated bg)`);
+                hideVideoKeepThemedGradients();
+            };
+            const onError = () => fallback('video error event');
+            const onPlaying = () => {
+                // Confirmed playing — cancel watchdog only if we have a real frame.
+                if (video.videoWidth > 0 && video.readyState >= 3) {
+                    cleanup();
+                }
+            };
+            video.addEventListener('error', onError);
+            video.addEventListener('playing', onPlaying);
+            watchdog = setTimeout(() => {
+                // After 2s, the video must be: playing, with frames, advancing.
+                const ok = !video.paused
+                        && video.readyState >= 3
+                        && video.videoWidth > 0
+                        && video.currentTime > 0;
+                if (!ok) {
+                    const state = `paused=${video.paused} readyState=${video.readyState} vw=${video.videoWidth} ct=${video.currentTime.toFixed(2)}`;
+                    fallback(`watchdog: ${state}`);
+                } else {
+                    cleanup();
+                }
+            }, 2000);
+
+            video.src = videoSrc;
+            video.load();
+            video.play().catch(() => {});
+        } else {
+            video.classList.add('hidden');
+            video.classList.remove('active');
+            try { video.pause(); video.removeAttribute('src'); } catch (e) {}
             document.body.classList.remove('has-theme-bg');
             document.body.style.removeProperty('--theme-bg-image');
         }
@@ -8640,6 +10178,18 @@ class GoalManager {
         // Get particle config based on theme
         const particleConfig = this.getParticleConfig();
         
+        // v2.6 panel-unification: the default theme intentionally has NO
+        // ambient particles. Previously it spawned `icons/coin.gif` 40px
+        // spinning coins that fell from the top — they read as visual
+        // clutter rather than atmosphere (no thematic anchor like "leaves
+        // in a forest" or "snow in an ice realm"), and they fought the
+        // dashboard title + XP ring for attention. A `disabled: true`
+        // flag short-circuits both the interval AND the initial-burst
+        // loop so we don't pay any cost on the default theme. Themed
+        // states (forest/desert/ice/volcanic/mystic/golden/shadow) keep
+        // their particles intact — those DO establish atmosphere.
+        if (!particleConfig || particleConfig.disabled) return;
+        
         // Spawn particles at interval
         this.particleInterval = setInterval(() => {
             if (document.hidden) return; // Don't spawn when tab not visible
@@ -8654,14 +10204,64 @@ class GoalManager {
     
     getParticleConfig() {
         const configs = {
-            default: { class: 'particle-gif', gif: 'icons/coin.gif', duration: [8, 12], spawnRate: 3000, initialCount: 3, maxParticles: 15, size: 40 },
-            forest: { class: 'particle-gif', gif: 'icons/leaf.gif', duration: [10, 15], spawnRate: 2000, initialCount: 5, maxParticles: 20, size: 35 },
+            // v2.6: default theme intentionally has no ambient particles.
+            // See the disabled-guard rationale in `initThemeParticles()`
+            // above. Kept as an explicit entry (rather than falling
+            // through to `undefined`) so the intent is documented in
+            // place and future devs don't accidentally restore the
+            // coin.gif spam when adding new themes.
+            default: { disabled: true },
+            // v2.7.1 (Jun 2): forest leaves were too frequent on device.
+            // Tuned spawnRate 2000→3500, initialCount 5→3, maxParticles
+            // 20→12 for a sparser, more atmospheric drift.
+            forest: { class: 'particle-gif', gif: 'icons/leaf.gif', duration: [10, 15], spawnRate: 3500, initialCount: 3, maxParticles: 12, size: 35 },
             desert: { class: 'particle-sand', duration: [10, 15], spawnRate: 500, initialCount: 10, maxParticles: 40 },
             ice: { class: 'particle-gif', gif: 'icons/snow.gif', duration: [12, 18], spawnRate: 1000, initialCount: 8, maxParticles: 30, size: 30 },
             volcanic: { class: 'particle-ember', duration: [6, 10], spawnRate: 800, initialCount: 6, maxParticles: 25 },
             mystic: { class: 'particle-gif particle-gif-rise', gif: 'icons/shine.gif', duration: [8, 12], spawnRate: 1200, initialCount: 5, maxParticles: 20, size: 35 },
             golden: { class: 'particle-gold', duration: [8, 12], spawnRate: 1500, initialCount: 5, maxParticles: 20 },
-            shadow: { class: 'particle-shadow', duration: [12, 16], spawnRate: 1500, initialCount: 5, maxParticles: 18 }
+            shadow: { class: 'particle-shadow', duration: [12, 16], spawnRate: 1500, initialCount: 5, maxParticles: 18 },
+            // v2.8 marquee theme — rain streaks for the Stormwatch storm.
+            // spawnRate/maxParticles tuned for full-intensity mode; reduced/
+            // minimal animation modes scale these down via the existing
+            // intensity multiplier in the particle system.
+            stormwatch: { class: 'particle-rain', duration: [1.5, 2.5], spawnRate: 120, initialCount: 30, maxParticles: 80 },
+            // v2.8 Verdant Grove — CSS-only leaf particles. Slower than
+            // forest's leaf.gif (12-18s vs 10-15s) and lower density (10
+            // max vs forest's 12) so the grove feels older and more
+            // contemplative rather than busy. spawnRate 4000ms gives a
+            // very sparse drift — one new leaf every 4 seconds plus the
+            // initial burst of 3.
+            verdant: { class: 'particle-leaf', duration: [12, 18], spawnRate: 4000, initialCount: 3, maxParticles: 10 },
+            // v2.8 round 2 (Jun 5, 2026) — three new pure-CSS particle
+            // configs. All three rise from bottom (registered in
+            // `risingParticles` below). Tuning rationale:
+            //   sunken: bubbles want to feel sparse and contemplative, not
+            //     a fish-tank aerator. spawnRate 1800ms + maxParticles 18
+            //     gives a slow, deliberate ascent rate. Duration 8-14s
+            //     means each bubble takes its time, in-keeping with the
+            //     drowned-archive stillness.
+            //   cathedral: dust motes are AMBIENT — barely-there. The
+            //     slowest spawn rate (2500ms) and lowest max (12) of the
+            //     v2.8 themes. Duration 10-16s. Should read as "the
+            //     cathedral is quiet, dust hangs in the light shafts."
+            //   aurora: stars are subtle but more numerous to suggest a
+            //     starfield. spawnRate 1500ms + maxParticles 25, duration
+            //     14-20s (longest, since they rise very slowly). The
+            //     long duration also ensures the twinkle keyframe cycles
+            //     several times per particle lifecycle.
+            sunken:    { class: 'particle-bubble',  duration: [8, 14],  spawnRate: 1800, initialCount: 4, maxParticles: 18 },
+            cathedral: { class: 'particle-mote',    duration: [10, 16], spawnRate: 2500, initialCount: 3, maxParticles: 12 },
+            aurora:    { class: 'particle-star',    duration: [14, 20], spawnRate: 1500, initialCount: 6, maxParticles: 25 },
+            // Crystal Caves — tuned between cathedral (sparse) and
+            // aurora (busy). Crystals are the visual punch of the
+            // theme, so density slightly higher than cathedral but
+            // particles are larger (6px vs 3-4px) so initialCount
+            // stays moderate to avoid feeling crowded. Duration is
+            // shorter than aurora because the crystal-tumble +
+            // shimmer keep each particle visually active throughout
+            // its lifetime — no need for the long star-like drift.
+            crystal:   { class: 'particle-crystal', duration: [9, 14],  spawnRate: 2000, initialCount: 5, maxParticles: 16 }
         };
         
         return configs[this.currentTheme] || configs.default;
@@ -8689,7 +10289,16 @@ class GoalManager {
         particle.style.left = `${Math.random() * 100}%`;
         
         // Set starting vertical position based on animation direction
-        const risingParticles = ['particle-ember', 'particle-magic', 'particle-shadow', 'particle-gif-rise'];
+        // v2.8 round 2 additions (Jun 5, 2026): bubble (sunken), mote
+        // (cathedral), star (aurora) all rise from bottom of viewport
+        // (water bubbles up, dust drifts upward in light shafts, stars
+        // ascend in the aurora field). Their keyframes (`bubble-rise`,
+        // `mote-drift`, `star-rise` in animations.css) all translate
+        // from translateY(0) to translateY(-100vh-ish), so they need
+        // bottom:0 spawn anchoring — without this they'd start at
+        // top:0 (the default else-branch below) and animate off-screen
+        // upward immediately, never appearing.
+        const risingParticles = ['particle-ember', 'particle-magic', 'particle-shadow', 'particle-gif-rise', 'particle-bubble', 'particle-mote', 'particle-star', 'particle-crystal'];
         const isRising = risingParticles.some(p => config.class.includes(p));
         if (isRising) {
             particle.style.bottom = '0';
@@ -8709,6 +10318,216 @@ class GoalManager {
                 particle.remove();
             }
         }, (duration + 2) * 1000);
+    }
+
+    // Theme preview modal — opens a centered card showing what the theme
+    // looks like applied to a sample mock UI (icon, themed quest card,
+    // XP bar, sample button) backed by the theme's WebM if it has one.
+    // Only ONE WebM decodes at a time (the active preview), versus the
+    // earlier autoplay-per-tile approach which loaded all six hybrid
+    // WebMs into the Themes panel and slowed initial load. User-driven
+    // revision Jun 6, 2026 evening — see ROADMAP § 2.4 final deliverable
+    // for the full rationale + before/after.
+    //
+    // Locked themes still preview (motivational): the modal shows the
+    // theme's actual chrome, but the action row replaces "Apply Theme"
+    // with the lock-reason text + a Close button. Premium-gated themes
+    // get the same lock treatment with a 👑 prefix.
+    //
+    // No WebM hot-load tracking needed because each `previewTheme` call
+    // creates a fresh overlay with a fresh `<video>` element — when the
+    // overlay is removed (Close, backdrop click, or Esc), the video
+    // element is GC'd along with it and the network/decode load drops
+    // to zero.
+    previewTheme(themeId) {
+        const theme = this.themeDefinitions[themeId];
+        if (!theme) return;
+
+        const isUnlocked = this.unlockedThemes.includes(themeId);
+        const isPremiumLocked = theme.premium && !this.isPremium;
+        const isLocked = isPremiumLocked || !isUnlocked;
+        const lockReason = isPremiumLocked
+            ? '👑 Premium theme — upgrade to unlock'
+            : (!isUnlocked ? (theme.special ? `🔒 ${theme.special}` : `🔒 Reach Level ${theme.unlockLevel} to unlock`) : '');
+
+        // v2.8 N1 hoist (Jun 7, 2026 audit afternoon) — preview asset
+        // path now reads from the shared `this.themeVideoAssets` map
+        // (same source as `updateThemeVideoBackground()`). Original
+        // C1 morning fix mirrored body-map content inline; N1
+        // collapses both call sites onto the single class property.
+        // If a tile ever needs a shorter loop or lower-res variant,
+        // extend the asset registry shape (e.g. add `previewWebm`)
+        // rather than re-introducing a parallel map.
+        //
+        // N2 (Jun 7, 2026 audit afternoon) — `prefers-reduced-motion:
+        // reduce` users get the static gradient + mock card preview
+        // only, with no `<video>` element rendered. Skips the autoplay
+        // start, the decode pressure, AND any flashing/parallax that
+        // some hybrid WebMs carry (Stormwatch lightning especially).
+        // Body-video autoplay is governed by the existing media-query
+        // CSS rule that hides `#theme-video-bg` under reduced-motion;
+        // the preview modal needs an explicit JS gate because the
+        // element is conditionally created here, not always in DOM.
+        const reducedMotion = window.matchMedia
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const asset = this.themeVideoAssets[themeId];
+        const webmSrc = (!reducedMotion && asset) ? asset.webm : null;
+
+        const cardFrom = theme.cardFrom || '#78350f';
+        const cardTo = theme.cardTo || '#451a03';
+        const accent = theme.border || theme.color;
+
+        // S1 fix (Jun 7, 2026 audit) — pause the body <video> while the
+        // preview modal is open. Previously, when the user was on a
+        // hybrid theme and previewed another, both videos decoded
+        // simultaneously (body + modal). Pausing the body video
+        // eliminates the second decode stream and matches the
+        // ROADMAP's "only one WebM ever decodes at a time" claim. The
+        // body video resumes via `.play()` on close — wrapped in a
+        // try/catch because some browsers throw if the play promise
+        // overlaps with a queued pause.
+        const bodyVideoEl = document.getElementById('theme-video-bg');
+        const wasBodyVideoPlaying = bodyVideoEl && !bodyVideoEl.paused;
+        if (bodyVideoEl && wasBodyVideoPlaying) {
+            try { bodyVideoEl.pause(); } catch (e) { /* ignore */ }
+        }
+
+        // S4 fix (Jun 7, 2026 audit) — lock body scroll while the
+        // modal is open. Previously the backdrop blocked clicks but
+        // touch/wheel events still scrolled the page underneath,
+        // especially noticeable on mobile. Restored on close.
+        const prevBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        // S3 fix (Jun 7, 2026 audit) — capture the previously focused
+        // element so we can restore focus on close, satisfying the
+        // standard dialog focus-restoration a11y pattern.
+        const prevFocusedEl = document.activeElement;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'theme-preview-modal-overlay';
+        // S3 fix — `aria-modal="true"` declares this as an active
+        // modal dialog so screen readers shift the virtual cursor
+        // into it; `aria-hidden="true"` on the rest of the page
+        // (applied below) prevents AT navigation to background
+        // controls. Combined with the focus-trap keydown handler
+        // these give the modal proper dialog semantics.
+        overlay.setAttribute('aria-hidden', 'false');
+        overlay.innerHTML = `
+            <div class="theme-preview-modal" role="dialog" aria-modal="true" aria-label="${theme.name} theme preview">
+                <button class="theme-preview-close" aria-label="Close preview">✕</button>
+                <div class="theme-preview-stage">
+                    <div class="theme-tile-bg theme-tile-bg-${themeId}"></div>
+                    ${webmSrc ? `
+                        <video class="theme-preview-video" autoplay muted loop playsinline aria-hidden="true">
+                            <source src="${webmSrc}" type="video/webm">
+                        </video>
+                    ` : ''}
+                    <div class="theme-preview-stage-content">
+                        <div class="theme-preview-mock-card" style="background: linear-gradient(to bottom right, ${cardFrom}, ${cardTo}); border: 2px solid ${accent};">
+                            <div class="theme-preview-mock-icon">${theme.icon}</div>
+                            <h3 class="theme-preview-mock-title" style="color: ${theme.color};">${theme.name}</h3>
+                            <p class="theme-preview-mock-desc">A glimpse of your realm</p>
+                            <div class="theme-preview-mock-quest" style="border-left: 3px solid ${accent};">
+                                <div class="theme-preview-mock-quest-title">⚔️ Sample Quest</div>
+                                <div class="theme-preview-mock-xp-bar">
+                                    <div class="theme-preview-mock-xp-fill" style="background: linear-gradient(to right, ${theme.color}, ${accent});"></div>
+                                </div>
+                                <div class="theme-preview-mock-xp-label">1,250 / 2,000 XP</div>
+                            </div>
+                            <div class="theme-preview-mock-button" style="background: ${theme.color}; box-shadow: 0 4px 14px ${theme.color}55;">Sample Action</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="theme-preview-actions">
+                    ${isLocked ? `
+                        <div class="theme-preview-lock-msg">${lockReason}</div>
+                        <button class="theme-preview-btn-secondary" data-action="close">Close</button>
+                    ` : `
+                        <button class="theme-preview-btn-secondary" data-action="close">Close</button>
+                        <button class="theme-preview-btn-primary" data-action="apply" style="background: ${theme.color}; box-shadow: 0 4px 14px ${theme.color}88;">
+                            ${this.currentTheme === themeId ? '✓ Already Active' : '✓ Apply Theme'}
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // S3 fix — close handler restores body scroll, body video
+        // playback, page aria-hidden state, and focus to the element
+        // that was focused before the modal opened. Single source of
+        // truth for cleanup so all four close routes (X, Close button,
+        // backdrop, Esc) get identical teardown.
+        const closeModal = () => {
+            overlay.classList.add('theme-preview-modal-closing');
+            setTimeout(() => overlay.remove(), 180);
+            document.removeEventListener('keydown', keyHandler);
+            document.body.style.overflow = prevBodyOverflow;
+            if (bodyVideoEl && wasBodyVideoPlaying) {
+                try { bodyVideoEl.play().catch(() => {}); } catch (e) { /* ignore */ }
+            }
+            if (prevFocusedEl && typeof prevFocusedEl.focus === 'function') {
+                try { prevFocusedEl.focus(); } catch (e) { /* ignore */ }
+            }
+        };
+
+        // S3 fix — focus-trap handler. Cycles Tab focus among the
+        // modal's focusable descendants, preventing focus from
+        // escaping into the (now aria-hidden / scroll-locked)
+        // background. Esc still routes to closeModal as before.
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const focusables = overlay.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            if (focusables.length === 0) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeModal();
+        });
+        overlay.querySelector('.theme-preview-close').addEventListener('click', closeModal);
+        overlay.querySelectorAll('[data-action="close"]').forEach(btn =>
+            btn.addEventListener('click', closeModal)
+        );
+        const applyBtn = overlay.querySelector('[data-action="apply"]');
+        if (applyBtn) {
+            applyBtn.addEventListener('click', () => {
+                closeModal();
+                if (this.currentTheme !== themeId) {
+                    this.selectTheme(themeId);
+                }
+            });
+        }
+
+        // Trigger fade-in animation + initial focus.
+        // S3 fix — initial focus goes to the primary action (Apply)
+        // when available, falling back to the Close button when the
+        // theme is locked. This gives keyboard users a useful first
+        // target instead of leaving focus on the body.
+        requestAnimationFrame(() => {
+            overlay.classList.add('theme-preview-modal-open');
+            const initialFocusEl = applyBtn || overlay.querySelector('.theme-preview-close');
+            if (initialFocusEl) {
+                try { initialFocusEl.focus(); } catch (e) { /* ignore */ }
+            }
+        });
     }
 
     selectTheme(themeId) {
@@ -8817,11 +10636,24 @@ class GoalManager {
             
             const isLocked = isPremiumTheme || !isUnlocked;
 
+            // Compact selector tiles — unified Jun 6, 2026 late-evening
+            // with the full Themes view so BOTH surfaces open the
+            // preview modal on click (previously this compact selector
+            // was left at click=apply for "quick switching", but with
+            // no preview affordance the user couldn't see what locked
+            // / unlocked themes look like before switching). Now
+            // consistent: click any tile anywhere → preview modal →
+            // explicit Apply confirmation. Visual chrome of these
+            // compact tiles intentionally kept as the original flat
+            // 135°-gradient (not upgraded to the layered
+            // `.theme-tile-bg-X` structure used in the full view)
+            // because at p-3 / 3xl-icon size the simpler gradient
+            // reads cleaner — the modal carries the rich preview.
             return `
-                <div onclick="goalManager.selectTheme('${id}')" 
+                <div onclick="goalManager.previewTheme('${id}')"
                     class="theme-option p-3 rounded-lg text-center transition-all cursor-pointer ${isSelected ? 'selected ring-2 ring-yellow-400' : ''} ${isLocked ? 'opacity-70' : ''}"
                     style="background: linear-gradient(135deg, ${theme.color}, ${this.darkenColor(theme.color, 30)})"
-                    title="${!isLocked ? 'Click to apply' : 'Locked: ' + lockReason}">
+                    title="${!isLocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview'}">
                     <div class="text-3xl mb-1">${theme.icon}</div>
                     <div class="text-xs font-bold text-white truncate">${theme.name}</div>
                     ${isLocked ? `<div class="text-xs text-white/70 mt-1">🔒 ${lockReason}</div>` : ''}
@@ -8927,7 +10759,17 @@ class GoalManager {
         if (miniIcon) miniIcon.textContent = avatarIcon;
         if (miniLevel) miniLevel.textContent = this.level;
         if (miniRing) {
-            miniRing.className = `w-14 h-14 rounded-full bg-gradient-to-br ${ring.from} ${ring.to} p-0.5 shadow-2xl border-2 ${ring.border} transition-all group-hover:scale-110 group-hover:shadow-purple-500/30`;
+            // v2.6: removed `border-2 ${ring.border}` — the XP ring SVG
+            // overlay already renders a tier-colored ring at a larger
+            // radius. Keeping the avatar's own border created two
+            // concentric rings ~3.5px apart ("doesn't align" bug).
+            // v2.6 (further): also removed `bg-gradient-to-br ${ring.from} ${ring.to} p-0.5`
+            // because the gradient padding rendered a 2px tier-color
+            // band at the avatar's edge that read as an "inner ring"
+            // separate from the XP ring SVG. With both the solid
+            // border AND the gradient padding gone, only the XP ring
+            // is visible around the avatar.
+            miniRing.className = `w-14 h-14 rounded-full shadow-2xl transition-all group-hover:scale-110 group-hover:shadow-purple-500/30`;
         }
         
         // Update expanded avatar
@@ -8935,7 +10777,15 @@ class GoalManager {
         const panelRing = document.getElementById('panel-avatar-ring');
         if (panelIcon) panelIcon.textContent = avatarIcon;
         if (panelRing) {
-            panelRing.className = `w-24 h-24 mx-auto rounded-full bg-gradient-to-br ${ring.from} ${ring.to} p-1 shadow-2xl border-3 ${ring.border} mb-3`;
+            // v2.6: same `border-3` removal as the mini ring above —
+            // the XP ring SVG is the sole visible ring; the avatar's
+            // own tier border was duplicating it at a smaller radius.
+            // v2.6 (further): also removed `bg-gradient-to-br ${ring.from} ${ring.to} p-1`
+            // (the 4px gradient padding ring of tier color) — that was
+            // still rendering a tier-color band at the avatar's edge
+            // even after the solid border was removed, reading as the
+            // "second ring" inside the XP ring SVG.
+            panelRing.className = `w-24 h-24 mx-auto rounded-full shadow-2xl mb-3`;
         }
         
         // Update companion
@@ -8948,8 +10798,17 @@ class GoalManager {
                 const icon = active.icon || (def ? def.icon : '🐾');
                 const name = active.name || (def ? def.name : 'Companion');
                 const desc = def ? def.description : '';
+                // v2.6 Item 4: companion rendered in a circular bubble
+                // portrait with a gentle idle bob (`.companion-bubble` in
+                // styles.css). The bubble's animation, gradient, and glow
+                // all respect prefers-reduced-motion / fx-minimal via the
+                // CSS-side gates. Mirrors the no-companion fallback markup
+                // in `index.html` so the visual is identical regardless
+                // of whether the player has an active companion.
                 companionEl.innerHTML = `
-                    <span class="text-3xl">${icon}</span>
+                    <div class="companion-bubble">
+                        <span class="text-3xl">${icon}</span>
+                    </div>
                     <div>
                         <div class="text-green-200 fancy-font text-sm font-bold">${name}</div>
                         <div class="text-green-400 text-xs fancy-font">${desc}</div>
@@ -9108,60 +10967,45 @@ class GoalManager {
     }
 
     bulkArchiveCompleted() {
-        let archivedCount = 0;
         const now = new Date().toISOString();
-        
-        // Archive completed daily tasks
-        const completedDaily = this.dailyTasks.filter(t => t.completed);
-        completedDaily.forEach(task => {
-            task.archivedAt = now;
-            task.type = 'daily';
-            this.archivedGoals.push(task);
-            archivedCount++;
-        });
-        this.dailyTasks = this.dailyTasks.filter(t => !t.completed);
-        
-        // Archive completed weekly goals
-        const completedWeekly = this.weeklyGoals.filter(g => g.completed);
-        completedWeekly.forEach(goal => {
-            goal.archivedAt = now;
-            goal.type = 'weekly';
-            this.archivedGoals.push(goal);
-            archivedCount++;
-        });
-        this.weeklyGoals = this.weeklyGoals.filter(g => !g.completed);
-        
-        // Archive completed monthly goals
-        const completedMonthly = this.monthlyGoals.filter(g => g.completed);
-        completedMonthly.forEach(goal => {
-            goal.archivedAt = now;
-            goal.type = 'monthly';
-            this.archivedGoals.push(goal);
-            archivedCount++;
-        });
-        this.monthlyGoals = this.monthlyGoals.filter(g => !g.completed);
-        
-        // Archive completed yearly goals
-        const completedYearly = this.yearlyGoals.filter(g => g.completed);
-        completedYearly.forEach(goal => {
-            goal.archivedAt = now;
-            goal.type = 'yearly';
-            this.archivedGoals.push(goal);
-            archivedCount++;
-        });
-        this.yearlyGoals = this.yearlyGoals.filter(g => !g.completed);
-        
-        // Archive completed life goals
-        const completedLife = this.lifeGoals.filter(g => g.completed);
-        completedLife.forEach(goal => {
-            goal.archivedAt = now;
-            goal.type = 'life';
-            this.archivedGoals.push(goal);
-            archivedCount++;
-        });
-        this.lifeGoals = this.lifeGoals.filter(g => !g.completed);
-        
-        return archivedCount;
+
+        // Generic helper: pull all completed items out of `arr`, stamp them,
+        // push to archive, and return the array of remaining (uncompleted)
+        // items + the count archived. Avoids the per-type copy/paste that
+        // historically caused side quests to be silently skipped.
+        const archive = (arr, typeLabel) => {
+            if (!Array.isArray(arr)) return { remaining: arr, count: 0 };
+            const remaining = [];
+            let count = 0;
+            for (const item of arr) {
+                if (item && item.completed) {
+                    item.archivedAt = now;
+                    item.type = typeLabel;
+                    this.archivedGoals.push(item);
+                    count++;
+                } else {
+                    remaining.push(item);
+                }
+            }
+            return { remaining, count };
+        };
+
+        const counts = { daily: 0, weekly: 0, monthly: 0, yearly: 0, life: 0, side: 0 };
+
+        ({ remaining: this.dailyTasks,   count: counts.daily   } = archive(this.dailyTasks,   'daily'));
+        ({ remaining: this.weeklyGoals,  count: counts.weekly  } = archive(this.weeklyGoals,  'weekly'));
+        ({ remaining: this.monthlyGoals, count: counts.monthly } = archive(this.monthlyGoals, 'monthly'));
+        ({ remaining: this.yearlyGoals,  count: counts.yearly  } = archive(this.yearlyGoals,  'yearly'));
+        ({ remaining: this.lifeGoals,    count: counts.life    } = archive(this.lifeGoals,    'life'));
+        ({ remaining: this.sideQuests,   count: counts.side    } = archive(this.sideQuests,   'side'));
+
+        const total = counts.daily + counts.weekly + counts.monthly + counts.yearly + counts.life + counts.side;
+
+        // Stash last breakdown so the spell handler can surface it in the toast
+        // — useful for diagnosing which categories were actually archived.
+        this.lastBulkArchiveBreakdown = counts;
+
+        return total;
     }
 
     restoreGoal(id) {
@@ -9186,6 +11030,9 @@ class GoalManager {
                     break;
                 case 'daily':
                     this.dailyTasks.push(goal);
+                    break;
+                case 'side':
+                    this.sideQuests.push(goal);
                     break;
             }
             
@@ -9525,6 +11372,28 @@ class GoalManager {
         const completedToday = todaysTasks.filter(t => t.completed).length;
         document.getElementById('daily-completed-count').textContent = completedToday;
 
+        // v2.7.1 audit fix M3: hide the four-card stats grid for brand-new
+        // users who would otherwise see "0 / 0 / 0 / 0" above the fold on
+        // first launch — reads as "you've accomplished nothing" rather than
+        // "here's where your progress will track." Show the grid as soon as
+        // the user has level >= 2 OR has any quest activity at all
+        // (regardless of completion state) so the cards become meaningful
+        // before they un-hide. Note: replaced with a contextual welcome card
+        // in the same slot for the Day-1 user so the dashboard never has a
+        // visible empty band.
+        const statsGrid = document.getElementById('dashboard-stats-grid');
+        const welcomeCard = document.getElementById('dashboard-welcome-card');
+        if (statsGrid && welcomeCard) {
+            const hasAnyProgress =
+                this.level >= 2 ||
+                this.lifeGoals.length > 0 ||
+                this.monthlyGoals.length > 0 ||
+                this.weeklyGoals.length > 0 ||
+                this.dailyTasks.length > 0;
+            statsGrid.classList.toggle('hidden', !hasAnyProgress);
+            welcomeCard.classList.toggle('hidden', hasAnyProgress);
+        }
+
         // Show currently equipped title in dashboard header
         const titleBanner = document.getElementById('current-title-banner');
         const titleTextEl = document.getElementById('current-title-text');
@@ -9562,22 +11431,19 @@ class GoalManager {
         const todayTasksList = document.getElementById('today-tasks-list');
         
         if (todaysTasks.length === 0) {
-            todayTasksList.innerHTML = `
-                <div class="text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">🗡️</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Your Quest Awaits</h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        No quests scheduled for today. Begin your adventure and conquer new challenges!
-                    </p>
-                    <button onclick="addDailyTask()" 
-                        class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
-                        <i class="ri-sword-line mr-2"></i>Add Today's Quest
-                    </button>
-                </div>
-            `;
+            todayTasksList.innerHTML = this._renderEmptyState({
+                icon: '🗡️',
+                title: 'Your Quest Awaits',
+                body: 'No quests scheduled for today. Begin your adventure and conquer new challenges!',
+                ctaLabel: "Add Today's Quest",
+                ctaIcon: 'ri-sword-line',
+                ctaOnclick: 'addDailyTask()',
+                ctaColor: 'amber',
+                btnExtraClass: 'btn-ripple'
+            });
         } else {
             todayTasksList.innerHTML = todaysTasks.map(task => `
-                <div class="flex items-center p-4 quest-card bg-gradient-to-br from-stone-800 to-stone-900 rounded-lg hover:from-stone-700 hover:to-stone-800 transition-all border-2 border-amber-700/50 task-item">
+                <div class="flex items-center p-4 quest-card bg-gradient-to-br from-stone-800 to-stone-900 rounded-lg border-2 border-amber-700/50 task-item">
                     <input 
                         type="checkbox" 
                         ${task.completed ? 'checked' : ''} 
@@ -9597,22 +11463,67 @@ class GoalManager {
         this.renderWoodenChest();
     }
 
+    /**
+     * v2.7 Phase 3 — illustrated empty-state primitive.
+     * Returns the HTML for an `.empty-state-card` tile (parchment + corners +
+     * rotating ray-burst + medallion icon + drifting sparkles + heading/body/CTA).
+     * Used by every render*() that needs a "no items yet" state, keeping all
+     * 11 surfaces in sync via a single source of truth.
+     *
+     * @param {object} opts
+     * @param {string} opts.icon                Emoji shown in the medallion.
+     * @param {string} opts.title               Heading text (medieval-title styled).
+     * @param {string} opts.body                Body copy. May contain inline HTML.
+     * @param {string} [opts.ctaLabel]          Button label. Omit for message-only states.
+     * @param {string} [opts.ctaIcon]           Remix icon class. Default 'ri-add-line'.
+     * @param {string} [opts.ctaOnclick]        onclick handler string (e.g. "goalManager.addX()").
+     * @param {string} [opts.ctaColor]          Color tier: amber|red|purple|blue|green|cyan.
+     * @param {string} [opts.wrapClass]         Extra classes on the card (e.g. "col-span-2").
+     * @param {string} [opts.btnExtraClass]     Extra classes on the button (e.g. "btn-ripple").
+     */
+    _renderEmptyState({ icon, title, body, ctaLabel, ctaIcon = 'ri-add-line', ctaOnclick = '', ctaColor = 'amber', wrapClass = '', btnExtraClass = '' }) {
+        const colorMap = {
+            amber:  'from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400',
+            red:    'from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 border-red-400',
+            purple: 'from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 border-purple-400',
+            blue:   'from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 border-blue-400',
+            green:  'from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 border-green-400',
+            cyan:   'from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 border-cyan-400'
+        };
+        const btnClasses = colorMap[ctaColor] || colorMap.amber;
+        const ctaHtml = ctaLabel ? `
+            <button onclick="${ctaOnclick}"
+                class="${btnExtraClass} bg-gradient-to-r ${btnClasses} text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2">
+                <i class="${ctaIcon} mr-2"></i>${ctaLabel}
+            </button>
+        ` : '';
+        return `
+            <div class="empty-state-card text-center ${wrapClass}">
+                <div class="empty-state-corners"><span></span><span></span><span></span><span></span></div>
+                <div class="empty-state-rays"></div>
+                <div class="empty-state-particles"><span></span><span></span><span></span><span></span></div>
+                <div class="empty-state-medallion">
+                    <span class="empty-state-icon">${icon}</span>
+                </div>
+                <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">${title}</h3>
+                <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">${body}</p>
+                ${ctaHtml}
+            </div>
+        `;
+    }
+
     renderLifeGoals() {
         const container = document.getElementById('life-goals-container');
         if (this.lifeGoals.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-2 text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">🏰</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Your Kingdom Awaits</h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        Every great adventure begins with a dream. What legacy will you build?
-                    </p>
-                    <button onclick="goalManager.addLifeGoal()" 
-                        class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400">
-                        <i class="ri-add-line mr-2"></i>Create Your First Life Goal
-                    </button>
-                </div>
-            `;
+            container.innerHTML = this._renderEmptyState({
+                icon: '🏰',
+                title: 'Your Kingdom Awaits',
+                body: 'Every great adventure begins with a dream. What legacy will you build?',
+                ctaLabel: 'Create Your First Life Goal',
+                ctaOnclick: 'goalManager.addLifeGoal()',
+                ctaColor: 'red',
+                wrapClass: 'col-span-2'
+            });
         } else {
             container.innerHTML = this.lifeGoals.map(goal => {
                 const linkedYearly = this.yearlyGoals.filter(y => {
@@ -9635,7 +11546,7 @@ class GoalManager {
                             <p class="text-sm text-red-200 mb-3 fancy-font">Created: ${new Date(goal.created).toLocaleDateString()}</p>
                             
                             ${linkedYearly.length > 0 ? `
-                                <div class="w-full bg-red-950/60 rounded-full h-4 mt-3 border border-red-700">
+                                <div class="progress-bar w-full bg-red-950/60 rounded-full h-4 mt-3 border border-red-700">
                                     <div class="bg-gradient-to-r from-red-500 to-red-400 h-4 rounded-full shadow-lg transition-all duration-500" style="width: ${progress}%"></div>
                                 </div>
                                 <p class="text-xs text-red-200 mt-2 fancy-font">${progress}% complete (${linkedYearly.filter(y => y.completed).length}/${linkedYearly.length} yearly campaigns)</p>
@@ -9682,19 +11593,14 @@ class GoalManager {
     renderYearlyGoals() {
         const container = document.getElementById('yearly-goals-container');
         if (this.yearlyGoals.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">📜</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Write Your Legend</h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        Great campaigns are written in scrolls. What will this year's chapter hold?
-                    </p>
-                    <button onclick="goalManager.addYearlyGoal()" 
-                        class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-purple-400">
-                        <i class="ri-add-line mr-2"></i>Create Yearly Campaign
-                    </button>
-                </div>
-            `;
+            container.innerHTML = this._renderEmptyState({
+                icon: '📜',
+                title: 'Write Your Legend',
+                body: "Great campaigns are written in scrolls. What will this year's chapter hold?",
+                ctaLabel: 'Create Yearly Campaign',
+                ctaOnclick: 'goalManager.addYearlyGoal()',
+                ctaColor: 'purple'
+            });
         } else {
             container.innerHTML = this.yearlyGoals.map(goal => {
                 const linkedMonthly = this.monthlyGoals.filter(m => {
@@ -9731,7 +11637,7 @@ class GoalManager {
                             ` : ''}
                             
                             <p class="text-xs text-purple-200 mt-1 fancy-font">Campaign Progress: ${goal.progress}% (${linkedMonthly.filter(m => m.completed).length}/${linkedMonthly.length} monthly raids)</p>
-                            <div class="w-full bg-purple-950/60 rounded-full h-3 mt-2 border border-purple-700">
+                            <div class="progress-bar w-full bg-purple-950/60 rounded-full h-3 mt-2 border border-purple-700">
                                 <div class="bg-gradient-to-r from-purple-500 to-purple-400 h-3 rounded-full shadow-lg transition-all duration-500" style="width: ${goal.progress}%"></div>
                             </div>
                             
@@ -9784,19 +11690,15 @@ class GoalManager {
         );
         
         if (this.monthlyGoals.length === 0 && thisMonthsTasks.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-2 text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">📖</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Open Your Tome</h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        Each month is a new chapter in your tome. What raids will you record?
-                    </p>
-                    <button onclick="goalManager.addMonthlyGoal()" 
-                        class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-blue-400">
-                        <i class="ri-add-line mr-2"></i>Create Monthly Raid
-                    </button>
-                </div>
-            `;
+            container.innerHTML = this._renderEmptyState({
+                icon: '📖',
+                title: 'Open Your Tome',
+                body: 'Each month is a new chapter in your tome. What raids will you record?',
+                ctaLabel: 'Create Monthly Raid',
+                ctaOnclick: 'goalManager.addMonthlyGoal()',
+                ctaColor: 'blue',
+                wrapClass: 'col-span-2'
+            });
         } else {
             let html = '';
             
@@ -9819,7 +11721,7 @@ class GoalManager {
                 
                 html += `
                 <div class="col-span-2 quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-5 rounded-xl shadow-xl border-3 border-blue-700 goal-item mb-4">
-                    <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3">📅 This Month's Scheduled Tasks</h4>
+                    <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3"><i class="ri-calendar-line mr-2"></i>This Month's Scheduled Tasks</h4>
                     <p class="text-xs text-blue-200 mb-3 fancy-font">${thisMonthsTasks.filter(t => t.completed).length}/${thisMonthsTasks.length} tasks complete</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -9895,7 +11797,7 @@ class GoalManager {
                                 </div>
                             ` : ''}
                             
-                            <div class="w-full bg-blue-950/60 rounded-full h-3 mt-3 border border-blue-700">
+                            <div class="progress-bar w-full bg-blue-950/60 rounded-full h-3 mt-3 border border-blue-700">
                                 <div class="bg-gradient-to-r from-blue-500 to-blue-400 h-3 rounded-full shadow-lg transition-all duration-500" style="width: ${goal.progress}%"></div>
                             </div>
                             <p class="text-xs text-blue-200 mt-2 fancy-font">${goal.progress}% complete (${linkedWeekly.filter(w => w.completed).length}/${linkedWeekly.length} weekly goals)</p>
@@ -9951,19 +11853,14 @@ class GoalManager {
         );
         
         if (this.weeklyGoals.length === 0 && thisWeeksTasks.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">🛡️</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Plan Your Week</h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        A hero always has a plan. What battles will you fight this week?
-                    </p>
-                    <button onclick="goalManager.addWeeklyGoal()" 
-                        class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-green-400">
-                        <i class="ri-add-line mr-2"></i>Create Weekly Goal
-                    </button>
-                </div>
-            `;
+            container.innerHTML = this._renderEmptyState({
+                icon: '🛡️',
+                title: 'Plan Your Week',
+                body: 'A hero always has a plan. What battles will you fight this week?',
+                ctaLabel: 'Create Weekly Goal',
+                ctaOnclick: 'goalManager.addWeeklyGoal()',
+                ctaColor: 'green'
+            });
         } else {
             let html = '';
             
@@ -9973,7 +11870,7 @@ class GoalManager {
                 <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-5 rounded-lg shadow-xl border-3 border-green-700 goal-item mb-4">
                     <div class="flex items-start space-x-4">
                         <div class="flex-1">
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2">📅 This Week's Scheduled Tasks</h4>
+                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2"><i class="ri-calendar-line mr-2"></i>This Week's Scheduled Tasks</h4>
                             <p class="text-xs text-green-200 mb-3 fancy-font">${thisWeeksTasks.filter(t => t.completed).length}/${thisWeeksTasks.length} tasks complete</p>
                             
                             <div class="mt-3 pl-4 border-l-2 border-green-600/40 space-y-2">
@@ -10042,7 +11939,7 @@ class GoalManager {
                                 </div>
                             ` : ''}
                             
-                            <div class="w-full bg-green-950/60 rounded-full h-3 mt-2 border border-green-700">
+                            <div class="progress-bar w-full bg-green-950/60 rounded-full h-3 mt-2 border border-green-700">
                                 <div class="bg-gradient-to-r from-green-500 to-green-400 h-3 rounded-full shadow-lg transition-all duration-500" style="width: ${goal.progress}%"></div>
                             </div>
                             <p class="text-xs text-green-200 mt-1 fancy-font">${goal.progress}% complete (${linkedTasks.filter(t => t.completed).length}/${linkedTasks.length} tasks)</p>
@@ -10098,19 +11995,16 @@ class GoalManager {
         const todaysTasks = this.dailyTasks.filter(task => this.isToday(task.dueDate));
         
         if (todaysTasks.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">⚔️</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">Ready for Battle!</h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        Your battlefield is clear. What challenge will you conquer today?
-                    </p>
-                    <button onclick="addDailyTask()" 
-                        class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-amber-400">
-                        <i class="ri-sword-line mr-2"></i>Add Today's Quest
-                    </button>
-                </div>
-            `;
+            container.innerHTML = this._renderEmptyState({
+                icon: '⚔️',
+                title: 'Ready for Battle!',
+                body: 'Your battlefield is clear. What challenge will you conquer today?',
+                ctaLabel: "Add Today's Quest",
+                ctaIcon: 'ri-sword-line',
+                ctaOnclick: 'addDailyTask()',
+                ctaColor: 'amber',
+                btnExtraClass: 'btn-ripple'
+            });
         } else {
             container.innerHTML = todaysTasks.map(task => {
                 const parentNames = this.getParentNames(task, 'weeklyGoalIds', this.weeklyGoals);
@@ -10194,25 +12088,20 @@ class GoalManager {
         
         if (filteredQuests.length === 0) {
             const isFiltered = this.sideQuestFilter !== 'all';
-            container.innerHTML = `
-                <div class="text-center py-16 px-8">
-                    <div class="empty-state-icon text-8xl mb-6">🧭</div>
-                    <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-3">
-                        ${isFiltered ? 'No Matching Quests' : 'Discover Side Quests'}
-                    </h3>
-                    <p class="text-amber-200/80 fancy-font text-lg mb-6 max-w-md mx-auto">
-                        ${isFiltered 
-                            ? 'Try a different priority filter or create a new quest!' 
-                            : 'Side quests are optional adventures. Track ideas, errands, or things you want to explore!'}
-                    </p>
-                    ${!isFiltered ? `
-                        <button onclick="goalManager.addSideQuest()" 
-                            class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-cyan-400">
-                            <i class="ri-compass-3-line mr-2"></i>Add Side Quest
-                        </button>
-                    ` : ''}
-                </div>
-            `;
+            // Under an active filter, swap the CTA from "add a new quest"
+            // (unhelpful — user probably has quests, just not at this
+            // priority) to "clear the filter" so they can find them again.
+            container.innerHTML = this._renderEmptyState({
+                icon: '🧭',
+                title: isFiltered ? 'No Matching Quests' : 'Discover Side Quests',
+                body: isFiltered
+                    ? 'No quests match this priority filter. Try clearing it to see all side quests.'
+                    : 'Side quests are optional adventures. Track ideas, errands, or things you want to explore!',
+                ctaLabel: isFiltered ? 'Show All Side Quests' : 'Add Side Quest',
+                ctaIcon: isFiltered ? 'ri-filter-off-line' : 'ri-compass-3-line',
+                ctaOnclick: isFiltered ? "goalManager.filterSideQuests('all')" : 'goalManager.addSideQuest()',
+                ctaColor: 'cyan'
+            });
         } else {
             // Group by priority for display
             const grouped = {
@@ -10524,7 +12413,7 @@ class GoalManager {
                 }
                 
                 if (msg.includes('not found') && msg.includes('sku')) {
-                    this.showAchievement('❌ Product not available yet. Please try again later.', 'daily');
+                    this.showAchievement('Product not available yet. Please try again later.', 'daily');
                     return;
                 }
                 
@@ -10653,13 +12542,13 @@ class GoalManager {
                 const result = await Billing.restorePurchases();
                 if (result && result.found) {
                     this.onPremiumPurchaseSuccess(result.purchaseToken);
-                    this.showAchievement('✅ Premium restored successfully!', 'weekly');
+                    this.showAchievement('Premium restored successfully!', 'weekly');
                 } else {
-                    this.showAchievement('❌ No previous purchase found', 'daily');
+                    this.showAchievement('No previous purchase found', 'daily');
                 }
             } catch (error) {
                 console.error('[Billing] Restore error:', error);
-                this.showAchievement('❌ Could not restore purchases', 'daily');
+                this.showAchievement('Could not restore purchases', 'daily');
             }
             return;
         }
@@ -10673,20 +12562,20 @@ class GoalManager {
                 const premiumPurchase = purchases.find(p => p.itemId === 'quest_journal_premium');
                 if (premiumPurchase) {
                     this.onPremiumPurchaseSuccess(premiumPurchase.purchaseToken);
-                    this.showAchievement('✅ Premium restored successfully!', 'weekly');
+                    this.showAchievement('Premium restored successfully!', 'weekly');
                 } else {
-                    this.showAchievement('❌ No previous purchase found', 'daily');
+                    this.showAchievement('No previous purchase found', 'daily');
                 }
             } catch (error) {
                 console.error('Restore error:', error);
-                this.showAchievement('❌ Could not restore purchases', 'daily');
+                this.showAchievement('Could not restore purchases', 'daily');
             }
         } else {
             // Check localStorage for web purchases
             if (this.isPremium) {
-                this.showAchievement('✅ Premium is already active!', 'weekly');
+                this.showAchievement('Premium is already active!', 'weekly');
             } else {
-                this.showAchievement('❌ No previous purchase found', 'daily');
+                this.showAchievement('No previous purchase found', 'daily');
             }
         }
     }
@@ -10759,6 +12648,7 @@ class GoalManager {
                 bossesDefeated: this.bossesDefeated,
                 focusSessionsCompleted: this.focusSessionsCompleted,
                 spellsCast: this.spellsCast,
+                totalGoldEarned: this.totalGoldEarned,
                 dailyBoss: this.dailyBoss,
                 weeklyBoss: this.weeklyBoss,
                 monthlyBoss: this.monthlyBoss,
@@ -10784,13 +12674,27 @@ class GoalManager {
                 completedChallenges: this.completedChallenges,
                 accountCreatedDate: this.accountCreatedDate,
                 exportDate: new Date().toISOString(),
-                version: '2.4.0'
+                version: '2.7.1'
             };
             
             const dataStr = JSON.stringify(data, null, 2);
             const fileName = `quest-journal-backup-${this.getTodayDateString()}.json`;
 
-            // Try native/share export first (Android WebView can't do blob downloads)
+            // v2.7 — On native Android, the previous export flow only
+            // surfaced the system share sheet. Users reported there was
+            // "no option to save it into phone files" — share sheets vary
+            // by device and "Save to Files" isn't always discoverable.
+            // We now present an explicit two-way choice when running
+            // natively: write directly to the user-visible Documents
+            // folder (appears immediately in the Files app), OR open
+            // the share sheet to send the backup to another app /
+            // cloud destination. PWA / desktop paths are unchanged.
+            const isNative = window.CapBridge && window.CapBridge.isNative;
+            if (isNative) {
+                this._showExportChoiceModal(fileName, dataStr);
+                return;
+            }
+
             if (window.CapBridge) {
                 const result = await window.CapBridge.shareFile(fileName, dataStr, 'application/json');
                 if (result.shared) {
@@ -10820,6 +12724,87 @@ class GoalManager {
             console.error('Export error:', error);
             this.showErrorNotification('Failed to export data. Please try again.');
         }
+    }
+
+    // v2.7 — Native-only chooser between "Save to Phone" (writes to
+    // /Documents via Capacitor Filesystem; appears in the Android Files
+    // app) and "Share…" (opens the system share sheet so the user can
+    // send the backup to Drive, email, another device, etc.). The
+    // modal is built inline rather than reusing `showConfirm` so we can
+    // present a true 3-way action (Save / Share / Cancel) with
+    // descriptive labels — a generic Confirm/Cancel pair would be
+    // ambiguous for a non-destructive operation like this.
+    _showExportChoiceModal(fileName, dataStr) {
+        const existing = document.getElementById('export-choice-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'export-choice-modal';
+        modal.className = 'bg-black/70';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Export Quest Data');
+        modal.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;z-index:99999;';
+
+        modal.innerHTML = `
+            <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-4 border-amber-600 w-full p-6 text-center" style="max-width: min(420px, 100%);">
+                <div class="text-4xl mb-3" aria-hidden="true">📦</div>
+                <h3 class="text-xl text-amber-300 font-bold medieval-title mb-2">Export Quest Data</h3>
+                <p class="text-amber-100/80 fancy-font text-sm mb-5 leading-relaxed">Choose where to send your backup. Saving to your phone places the file in the Documents folder so you can find it later in the Files app.</p>
+                <div class="flex flex-col gap-3">
+                    <button id="export-save-btn" class="w-full px-4 py-3 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-lg font-bold fancy-font transition-all border-2 border-emerald-500 shadow-lg">
+                        <i class="ri-folder-download-line mr-2"></i>Save to Phone
+                    </button>
+                    <button id="export-share-btn" class="w-full px-4 py-3 bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg font-bold fancy-font transition-all border-2 border-amber-500 shadow-lg">
+                        <i class="ri-share-line mr-2"></i>Share &amp; Send…
+                    </button>
+                    <button id="export-cancel-btn" class="w-full px-4 py-2.5 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded-lg font-semibold fancy-font transition-all border-2 border-stone-500">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        const cleanup = () => modal.remove();
+
+        modal.querySelector('#export-save-btn').addEventListener('click', async () => {
+            cleanup();
+            try {
+                const result = await window.CapBridge.saveFileToDevice(fileName, dataStr);
+                if (result && result.saved) {
+                    this.showSuccessNotification(`Saved to ${result.displayPath || 'Documents/' + fileName}`);
+                    this.showAchievement('📦 Backup saved to phone!', 'daily');
+                } else {
+                    this.showErrorNotification('Could not save to phone. Try the Share option instead.');
+                }
+            } catch (e) {
+                console.error('Save to phone failed:', e);
+                this.showErrorNotification('Could not save to phone. Try the Share option instead.');
+            }
+        });
+
+        modal.querySelector('#export-share-btn').addEventListener('click', async () => {
+            cleanup();
+            try {
+                const result = await window.CapBridge.shareFile(fileName, dataStr, 'application/json');
+                if (result && result.shared) {
+                    this.showSuccessNotification('Your quest data has been exported successfully!');
+                    this.showAchievement('📦 Data Exported Successfully!', 'daily');
+                } else {
+                    this.showErrorNotification('Share was cancelled or unavailable.');
+                }
+            } catch (e) {
+                console.error('Share export failed:', e);
+                this.showErrorNotification('Could not share backup. Try Save to Phone instead.');
+            }
+        });
+
+        modal.querySelector('#export-cancel-btn').addEventListener('click', cleanup);
+        modal.addEventListener('click', (e) => { if (e.target === modal) cleanup(); });
+        modal.addEventListener('keydown', (e) => { if (e.key === 'Escape') cleanup(); });
+
+        setTimeout(() => modal.querySelector('#export-save-btn')?.focus(), 50);
     }
 
     importData(event) {
@@ -10904,6 +12889,16 @@ class GoalManager {
                     this.bossesDefeated = data.bossesDefeated ?? this.bossesDefeated;
                     this.focusSessionsCompleted = data.focusSessionsCompleted ?? this.focusSessionsCompleted;
                     this.spellsCast = data.spellsCast ?? this.spellsCast;
+                    // v2.8 N3 migration parity (Jun 7, 2026 audit) —
+                    // mirror the loadData seeding behavior for imports of
+                    // pre-v2.8 backups. If the imported file lacks the
+                    // counter, seed from the imported `data.goldCoins`
+                    // (lower bound on lifetime earned in that backup),
+                    // not the in-memory current value. Falls back to the
+                    // current in-memory counter only if BOTH fields are
+                    // absent in the import (defensive — shouldn't happen
+                    // for any real save shape).
+                    this.totalGoldEarned = data.totalGoldEarned ?? (data.goldCoins ?? this.totalGoldEarned);
                     this.dailyBoss = data.dailyBoss || this.dailyBoss;
                     this.weeklyBoss = data.weeklyBoss || this.weeklyBoss;
                     this.monthlyBoss = data.monthlyBoss || this.monthlyBoss;
@@ -10927,6 +12922,9 @@ class GoalManager {
                     this.activeChallenges = arr(data.activeChallenges, this.activeChallenges);
                     this.completedChallenges = arr(data.completedChallenges, this.completedChallenges);
                     if (data.accountCreatedDate) this.accountCreatedDate = data.accountCreatedDate;
+                    if (data.titleStyle === 'masculine' || data.titleStyle === 'feminine') {
+                        this.titleStyle = data.titleStyle;
+                    }
                     if (data.reminderSettings) {
                         this.reminderSettings = data.reminderSettings;
                         localStorage.setItem('reminderSettings', JSON.stringify(this.reminderSettings));
@@ -11002,7 +13000,7 @@ class GoalManager {
             // Reload the app fresh
             window.location.reload();
         }, () => {
-            this.showAchievement('❌ Data deletion cancelled.', 'daily');
+            this.showAchievement('Data deletion cancelled.', 'daily');
         });
     }
 
@@ -11014,7 +13012,8 @@ class GoalManager {
         };
         
         return `
-            <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700 hover:shadow-2xl transition-all draggable-item"
+            <div class="quest-card goal-item bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700 hover:shadow-2xl transition-all draggable-item"
+                data-side-quest-id="${quest.id}"
                 draggable="true"
                 ondragstart="goalManager.handleDragStart('side', ${quest.id}, event)"
                 ondragend="goalManager.handleDragEnd(event)"
@@ -11180,9 +13179,6 @@ class GoalManager {
                             <div class="text-xs ${isToday ? 'text-amber-100' : 'text-amber-300'} font-semibold">
                                 ${completedTasks}/${totalTasks} ⚔️
                             </div>
-                            <div class="w-full bg-amber-900/30 rounded-full h-1 mt-1">
-                                <div class="bg-green-500 h-1 rounded-full transition-all" style="width: ${totalTasks > 0 ? (completedTasks / totalTasks * 100) : 0}%"></div>
-                            </div>
                         </div>
                     ` : ''}
                 </div>
@@ -11214,15 +13210,19 @@ class GoalManager {
         const container = document.getElementById('selected-date-tasks');
         
         if (tasksForDay.length === 0) {
-            container.innerHTML = `
-                <div class="text-amber-200 text-center py-8 fancy-font">
-                    <p class="mb-4">No quests scheduled for this day</p>
-                    <button onclick="goalManager.addDailyTask(null, '${dateString}')" 
-                        class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all">
-                        <i class="ri-add-line mr-2"></i>Add Quest
-                    </button>
-                </div>
-            `;
+            // v2.7 — illustrated empty-state with date-bound CTA. The
+            // ctaOnclick threads the selected `dateString` through so the
+            // new quest lands on the day the user is viewing rather than
+            // defaulting to today.
+            container.innerHTML = this._renderEmptyState({
+                icon: '🗓️',
+                title: 'A Clear Day',
+                body: 'No quests scheduled for this date yet. Plan ahead and forge your path.',
+                ctaLabel: 'Add Quest',
+                ctaIcon: 'ri-add-line',
+                ctaOnclick: `addDailyTask(null, '${dateString}')`,
+                btnExtraClass: 'btn-ripple'
+            });
         } else {
             container.innerHTML = tasksForDay.map(task => `
                 <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg shadow-lg border-2 border-amber-700/50 task-item hover:shadow-xl transition-all">
@@ -11251,7 +13251,7 @@ class GoalManager {
             `).join('') + `
                 <div class="text-center mt-4">
                     <button onclick="goalManager.addDailyTask(null, '${dateString}')" 
-                        class="bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all fancy-font">
+                        class="btn-ripple bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all fancy-font">
                         <i class="ri-add-line mr-2"></i>Add Another Quest
                     </button>
                 </div>
@@ -11629,7 +13629,7 @@ class GoalManager {
         modal.className = 'bg-black/80';
         modal.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:16px;';
         modal.innerHTML = `
-            <div class="bg-gradient-to-br ${config.bg} rounded-2xl shadow-2xl border-4 ${config.border} overflow-hidden" style="width: 100%; max-width: min(512px, calc(100vw - 32px));">
+            <div class="bg-gradient-to-br ${config.bg} rounded-2xl shadow-2xl border-4 ${config.border} overflow-y-auto" style="width: 100%; max-width: min(512px, calc(100vw - 32px)); max-height: 90vh;">
                 <!-- Header with icon -->
                 <div class="bg-black/30 p-4 text-center border-b-2 ${config.border}">
                     <i class="${config.icon} text-4xl ${config.color}"></i>
@@ -11791,7 +13791,7 @@ class GoalManager {
                         
                         ${summary.tasks.incomplete.length > 0 || summary.goals.incomplete.length > 0 ? `
                             <div class="bg-orange-900/40 p-4 rounded-lg border-2 border-orange-600 mb-6">
-                                <h3 class="text-xl font-bold text-orange-300 medieval-title mb-3">📋 Incomplete Items</h3>
+                                <h3 class="text-xl font-bold text-orange-300 medieval-title mb-3"><i class="ri-clipboard-line mr-2"></i>Incomplete Items</h3>
                                 ${summary.tasks.incomplete.length > 0 ? `
                                     <p class="text-orange-200 mb-2">${summary.tasks.incomplete.length} daily task${summary.tasks.incomplete.length !== 1 ? 's' : ''}</p>
                                 ` : ''}
@@ -11927,7 +13927,7 @@ class GoalManager {
         modal.innerHTML = `
             <div class="bg-gradient-to-br from-amber-900 via-amber-950 to-stone-950 rounded-xl shadow-2xl border-4 border-amber-600 animate-slide-down" style="width:100%;max-width:min(512px, calc(100vw - 48px));max-height:calc(90vh - 48px);overflow-y:auto;" onclick="event.stopPropagation()">
                 <div class="p-6">
-                    <h2 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center">🔗 Manage ${parentType} Connections</h2>
+                    <h2 class="text-2xl font-bold text-amber-300 medieval-title mb-4 text-center"><i class="ri-links-line mr-2"></i>Manage ${parentType} Connections</h2>
                     <p class="text-amber-200 text-center mb-4 fancy-font text-sm">Select which ${parentType.toLowerCase()} goals this connects to</p>
                     
                     <div class="space-y-2 mb-6">
@@ -12011,6 +14011,13 @@ class GoalManager {
     }
 
     // Analytics Dashboard
+    // v2.5.4: the v2.5.x deferred-skeleton flow (`_showAnalyticsSkeletons` +
+    // `_renderAnalyticsImpl` split with a 200ms setTimeout) was reverted —
+    // the skeleton effect wasn't reading on device and the artificial
+    // 200ms delay before chart paint wasn't earning its cost. The initial-
+    // HTML skeletons in `index.html` still serve their purpose on the very
+    // first page load (before this method runs), which is the only moment
+    // a user actually waits for analytics to appear.
     renderAnalytics() {
         // Premium gate for advanced analytics (keep basic stats free)
         if (!this.isPremium) {
@@ -12055,30 +14062,49 @@ class GoalManager {
     }
 
     renderQuickStats() {
-        // Total Completed
-        const totalCompleted = this.dailyTasks.filter(t => t.completed).length +
-                              this.weeklyGoals.filter(g => g.completed).length +
-                              this.monthlyGoals.filter(g => g.completed).length +
-                              this.yearlyGoals.filter(g => g.completed).length +
-                              this.lifeGoals.filter(g => g.completed).length +
-                              this.sideQuests.filter(q => q.completed).length;
-        
+        // v2.6.x analytics audit fix —
+        // (a) Completion-rate denominator was missing yearlyGoals + lifeGoals
+        //     even though the numerator counted them, which produced rates
+        //     that could exceed 100% once those high-tier goals started
+        //     completing. Denominator now spans every collection the
+        //     numerator inspects.
+        // (b) The "Day Streak" tile was sourcing `Math.max(habits.streak)`,
+        //     but the label + flame icon read as a login streak to users.
+        //     Switched to `this.loginStreak`, which is the metric the rest
+        //     of the app surfaces in login-bonus / challenge / share-card
+        //     flows.
+        const completedCounts = {
+            daily: this.dailyTasks.filter(t => t.completed).length,
+            weekly: this.weeklyGoals.filter(g => g.completed).length,
+            monthly: this.monthlyGoals.filter(g => g.completed).length,
+            yearly: this.yearlyGoals.filter(g => g.completed).length,
+            life: this.lifeGoals.filter(g => g.completed).length,
+            side: this.sideQuests.filter(q => q.completed).length
+        };
+        const totalCompleted = Object.values(completedCounts).reduce((a, b) => a + b, 0);
+
         const statEl = document.getElementById('stat-total-completed');
         if (statEl) statEl.textContent = totalCompleted.toLocaleString();
-        
-        // Current Streak
-        const maxStreak = Math.max(...this.habits.map(h => h.streak || 0), 0);
+
+        // Current Streak — use the canonical login streak the rest of the app exposes
         const streakEl = document.getElementById('stat-current-streak');
-        if (streakEl) streakEl.textContent = maxStreak;
-        
+        if (streakEl) streakEl.textContent = (this.loginStreak || 0).toLocaleString();
+
         // Total XP
         const xpEl = document.getElementById('stat-total-xp');
         if (xpEl) xpEl.textContent = this.xp.toLocaleString();
-        
-        // Completion Rate
-        const totalTasks = this.dailyTasks.length + this.weeklyGoals.length + 
-                          this.monthlyGoals.length + this.sideQuests.length;
-        const completionRate = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+
+        // Completion Rate — denominator now matches numerator scope
+        const totalTasks =
+            this.dailyTasks.length +
+            this.weeklyGoals.length +
+            this.monthlyGoals.length +
+            this.yearlyGoals.length +
+            this.lifeGoals.length +
+            this.sideQuests.length;
+        const completionRate = totalTasks > 0
+            ? Math.min(100, Math.round((totalCompleted / totalTasks) * 100))
+            : 0;
         const rateEl = document.getElementById('stat-completion-rate');
         if (rateEl) rateEl.textContent = completionRate + '%';
     }
@@ -12141,42 +14167,97 @@ class GoalManager {
     }
 
     renderXPTimeline() {
+        // v2.6.x analytics audit fix — the chart previously multiplied each
+        // completed task by a hardcoded +10 and labelled the axis "XP".
+        // That number doesn't reflect the real XP a task awards (real awards
+        // vary with task tier, Beginner's Blessing multiplier, prestige
+        // perks, etc.) and there's no persisted per-task XP-earned field to
+        // reconstruct true daily XP from history. Two options were to
+        // (a) start persisting a per-task `xpAwarded` value going forward,
+        // or (b) report the data we actually have. (a) only fixes the chart
+        // for future activity — history would still read as synthetic — so
+        // the chart now plots completed-task counts and the label below
+        // reflects that. The XP tile in Quick Stats still surfaces lifetime
+        // XP via `this.xp`, so the user doesn't lose the XP signal overall.
         const container = document.getElementById('xp-timeline-chart');
         if (!container) return;
-        
+
         const days = 30;
         const today = new Date();
-        
-        // Calculate XP per day from completion history
-        const dailyXP = {};
+
+        // v2.7 bucket-key fix — previously `dailyCount` was keyed by the
+        // raw `task.dueDate` string and looked up via
+        // `dailyCount[this.dateToLocalString(date)]`. That only matches
+        // if the stored `dueDate` is byte-identical to the canonical
+        // `YYYY-MM-DD` shape `dateToLocalString` emits. Any legacy task
+        // with a different format (ISO timestamp, different timezone
+        // normalization, etc.) silently failed the lookup, so every
+        // bar resolved to 0% height — which is exactly what the user
+        // was seeing even though Productivity Pattern (which parses
+        // `dueDate` via `new Date()` and never compares strings) was
+        // happily counting the same task. Now both sides of the
+        // comparison go through the same parse → `dateToLocalString`
+        // pipeline, so the keys are guaranteed to match.
+        const dailyCount = {};
         this.dailyTasks.filter(t => t.completed).forEach(task => {
-            dailyXP[task.dueDate] = (dailyXP[task.dueDate] || 0) + 10;
+            if (!task.dueDate) return;
+            const parsed = new Date(task.dueDate + 'T12:00:00');
+            if (isNaN(parsed.getTime())) {
+                // Fallback: trust the raw string in case it's already a
+                // bare YYYY-MM-DD that just doesn't append cleanly.
+                dailyCount[task.dueDate] = (dailyCount[task.dueDate] || 0) + 1;
+                return;
+            }
+            const key = this.dateToLocalString(parsed);
+            dailyCount[key] = (dailyCount[key] || 0) + 1;
         });
-        
-        // Find max for scaling
-        const maxXP = Math.max(...Object.values(dailyXP), 1);
-        
-        // Generate bar chart
-        let html = '<div class="flex items-end justify-between h-full gap-1">';
-        
+
+        const totalInWindow = Object.keys(dailyCount).reduce((sum, key) => {
+            // Only count keys that fall inside the visible 30-day window
+            // so the empty-state below is honest about *visible* data.
+            const cutoff = new Date(today);
+            cutoff.setDate(cutoff.getDate() - (days - 1));
+            const cutoffStr = this.dateToLocalString(cutoff);
+            return key >= cutoffStr ? sum + dailyCount[key] : sum;
+        }, 0);
+
+        if (totalInWindow === 0) {
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-amber-300 fancy-font text-sm text-center px-4">Complete daily quests to see your XP timeline fill in over the last 30 days.</div>';
+            return;
+        }
+
+        const maxCount = Math.max(...Object.values(dailyCount), 1);
+
+        // v2.7 layout fix — same auto-height-parent bug as the Productivity
+        // Pattern chart had: the bar's `height: X%` was resolving against
+        // a parent flex column whose height was determined by its content
+        // (`flex flex-col items-center` with no `h-full`), so the
+        // percentage collapsed to 0px and no bars rendered. Each column
+        // now declares `h-full` and the bar lives inside a `flex-1`
+        // wrapper that consumes the remaining vertical space, giving
+        // the bar a concrete pixel basis for its percentage height.
+        let html = '<div class="flex items-stretch justify-between h-full gap-1">';
+
         for (let i = days - 1; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
             const dateStr = this.dateToLocalString(date);
-            const xp = dailyXP[dateStr] || 0;
-            const height = maxXP > 0 ? (xp / maxXP) * 100 : 0;
+            const count = dailyCount[dateStr] || 0;
+            const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
             const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
-            
+
             html += `
-                <div class="flex-1 flex flex-col items-center group">
-                    <div class="w-full bg-gradient-to-t from-purple-600 to-purple-400 rounded-t transition-all hover:from-purple-500 hover:to-purple-300" 
-                         style="height: ${height}%"
-                         title="${dateStr}: ${xp} XP"></div>
-                    <div class="text-xs text-amber-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">${dayName[0]}</div>
+                <div class="flex-1 flex flex-col items-center h-full group">
+                    <div class="flex-1 w-full flex items-end min-h-0">
+                        <div class="w-full bg-gradient-to-t from-purple-600 to-purple-400 rounded-t transition-all hover:from-purple-500 hover:to-purple-300"
+                             style="height: ${height}%"
+                             title="${dateStr}: ${count} task${count === 1 ? '' : 's'} completed"></div>
+                    </div>
+                    <div class="text-xs text-amber-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">${dayName[0]}</div>
                 </div>
             `;
         }
-        
+
         html += '</div>';
         container.innerHTML = html;
     }
@@ -12210,25 +14291,32 @@ class GoalManager {
             side: { bg: 'bg-cyan-500', text: 'Side' }
         };
         
+        // v2.7 layout fix — previously the "count (percent%)" label sat
+        // INSIDE the colored fill (`justify-end px-3` + `overflow-hidden`
+        // on the track). At low percentages on a narrow viewport (e.g.,
+        // three categories each at 33.3% on a phone), the fill was too
+        // short to contain "1 (33.3%)" and the leading characters got
+        // clipped, leaving "3.3%)" jutting out the right edge. Moved the
+        // label OUT of the bar into its own fixed-width column so it
+        // never overflows regardless of bar width.
         let html = '<div class="w-full flex flex-col gap-3">';
-        
+
         Object.entries(breakdown).forEach(([type, count]) => {
             if (count > 0) {
                 const percent = ((count / total) * 100).toFixed(1);
                 html += `
                     <div class="flex items-center gap-3">
-                        <div class="w-24 text-right text-amber-200 text-sm fancy-font">${colors[type].text}</div>
-                        <div class="flex-1 bg-stone-800 rounded-full h-8 overflow-hidden border border-amber-700/30">
-                            <div class="${colors[type].bg} h-full flex items-center justify-end px-3 text-white font-bold text-sm transition-all duration-500"
-                                 style="width: ${percent}%">
-                                ${count} (${percent}%)
-                            </div>
+                        <div class="w-16 text-right text-amber-200 text-sm fancy-font shrink-0">${colors[type].text}</div>
+                        <div class="progress-bar flex-1 min-w-0 bg-stone-800 rounded-full h-6 overflow-hidden border border-amber-700/30">
+                            <div class="${colors[type].bg} h-full rounded-full transition-all duration-500"
+                                 style="width: ${percent}%"></div>
                         </div>
+                        <div class="w-20 text-left text-amber-100 text-xs font-bold fancy-font shrink-0">${count} <span class="text-amber-300/70">(${percent}%)</span></div>
                     </div>
                 `;
             }
         });
-        
+
         html += '</div>';
         container.innerHTML = html;
     }
@@ -12236,35 +14324,55 @@ class GoalManager {
     renderProductivityPattern() {
         const container = document.getElementById('productivity-pattern-chart');
         if (!container) return;
-        
-        // Count completions by day of week
+
+        // v2.6.x analytics audit fix — `new Date('YYYY-MM-DD')` parses the
+        // string as UTC midnight per the ECMAScript spec. In negative-UTC
+        // timezones (e.g., PST/PDT, the user's locale) that renders as the
+        // previous calendar day in local time, so a task with
+        // `dueDate: '2025-01-15'` (a Wednesday) was incrementing Tuesday's
+        // bucket. Appending an explicit local-noon component pins parsing
+        // to the local day. This matches the pattern used in
+        // `generateRecurringTasksForToday()`.
         const dayCount = [0, 0, 0, 0, 0, 0, 0];
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
+
         this.dailyTasks.filter(t => t.completed).forEach(task => {
-            const date = new Date(task.dueDate);
+            if (!task.dueDate) return;
+            const date = new Date(task.dueDate + 'T12:00:00');
+            if (isNaN(date.getTime())) return;
             dayCount[date.getDay()]++;
         });
         
         const maxCount = Math.max(...dayCount, 1);
         
-        let html = '<div class="flex items-end justify-between h-full gap-2">';
-        
+        // v2.7 layout fix — previous markup put the count label, bar, and
+        // day label as siblings inside an auto-height flex column, so
+        // `height: X%` on the bar resolved against an auto-height parent
+        // and collapsed to 0px in every browser. The bars never rendered
+        // even when there was real data (e.g., Saturday=1, others=0 still
+        // showed an empty chart). Now the column itself is `h-full`, the
+        // count + label rows are fixed-height, and the bar lives inside a
+        // `flex-1` wrapper that consumes the remaining vertical space —
+        // giving `height: X%` a concrete pixel basis to resolve against.
+        let html = '<div class="flex items-stretch justify-between h-full gap-2">';
+
         dayCount.forEach((count, index) => {
             const height = (count / maxCount) * 100;
             const color = index === 0 || index === 6 ? 'from-blue-600 to-blue-400' : 'from-green-600 to-green-400';
-            
+
             html += `
-                <div class="flex-1 flex flex-col items-center group">
-                    <div class="text-sm text-amber-300 mb-2 font-bold">${count}</div>
-                    <div class="w-full bg-gradient-to-t ${color} rounded-t transition-all hover:scale-105" 
-                         style="height: ${height}%"
-                         title="${dayNames[index]}: ${count} tasks"></div>
-                    <div class="text-xs text-amber-400 mt-2">${dayNames[index].slice(0, 3)}</div>
+                <div class="flex-1 flex flex-col items-center h-full group">
+                    <div class="text-sm text-amber-300 mb-2 font-bold shrink-0">${count}</div>
+                    <div class="flex-1 w-full flex items-end min-h-0">
+                        <div class="w-full bg-gradient-to-t ${color} rounded-t transition-all hover:scale-105"
+                             style="height: ${height}%"
+                             title="${dayNames[index]}: ${count} tasks"></div>
+                    </div>
+                    <div class="text-xs text-amber-400 mt-2 shrink-0">${dayNames[index].slice(0, 3)}</div>
                 </div>
             `;
         });
-        
+
         html += '</div>';
         container.innerHTML = html;
     }
@@ -12272,73 +14380,103 @@ class GoalManager {
     renderPersonalRecords() {
         const container = document.getElementById('personal-records');
         if (!container) return;
-        
-        // Calculate records
+
+        // v2.6.x analytics audit fix — the previous renderer built Tailwind
+        // class names by string interpolation (e.g.
+        // `from-${record.color}-900`). Even though the Play CDN's
+        // MutationObserver does re-scan injected markup, dynamic class
+        // strings are fragile against any future build-time PostCSS pass
+        // and surprise the next dev reading the file ("why is the orange
+        // card sometimes unstyled after a hot reload?"). Switched to a
+        // static lookup table so every concrete class string
+        // (`from-orange-900`, `text-orange-300`, etc.) appears as a literal
+        // somewhere in source. Same fix applied in
+        // `renderGoalsProgressOverview`.
+        const palette = {
+            orange: { gradient: 'from-orange-900 to-orange-950', border: 'border-orange-600', title: 'text-orange-300', sub: 'text-orange-200' },
+            purple: { gradient: 'from-purple-900 to-purple-950', border: 'border-purple-600', title: 'text-purple-300', sub: 'text-purple-200' },
+            blue: { gradient: 'from-blue-900 to-blue-950', border: 'border-blue-600', title: 'text-blue-300', sub: 'text-blue-200' },
+            green: { gradient: 'from-green-900 to-green-950', border: 'border-green-600', title: 'text-green-300', sub: 'text-green-200' },
+            yellow: { gradient: 'from-yellow-900 to-yellow-950', border: 'border-yellow-600', title: 'text-yellow-300', sub: 'text-yellow-200' },
+            red: { gradient: 'from-red-900 to-red-950', border: 'border-red-600', title: 'text-red-300', sub: 'text-red-200' }
+        };
+
         const longestStreak = Math.max(...this.habits.map(h => h.longestStreak || h.streak || 0), 0);
-        const mostTasksInDay = Object.entries(
-            this.dailyTasks.filter(t => t.completed).reduce((acc, task) => {
-                acc[task.dueDate] = (acc[task.dueDate] || 0) + 1;
-                return acc;
-            }, {})
-        ).reduce((max, [date, count]) => Math.max(max, count), 0);
-        
-        const totalDaysActive = new Set(this.dailyTasks.filter(t => t.completed).map(t => t.dueDate)).size;
-        
+        const completedDates = this.dailyTasks.filter(t => t.completed).map(t => t.dueDate).filter(Boolean);
+        const tasksPerDay = completedDates.reduce((acc, d) => { acc[d] = (acc[d] || 0) + 1; return acc; }, {});
+        const mostTasksInDay = Object.values(tasksPerDay).reduce((max, c) => Math.max(max, c), 0);
+        const totalDaysActive = new Set(completedDates).size;
+
         const records = [
-            { icon: '🔥', label: 'Longest Streak', value: `${longestStreak} days`, color: 'orange' },
+            { icon: '🔥', label: 'Longest Streak', value: `${longestStreak} day${longestStreak === 1 ? '' : 's'}`, color: 'orange' },
             { icon: '⚡', label: 'Current Level', value: this.level, color: 'purple' },
             { icon: '📋', label: 'Most Tasks in a Day', value: mostTasksInDay, color: 'blue' },
             { icon: '📅', label: 'Total Active Days', value: totalDaysActive, color: 'green' },
             { icon: '💰', label: 'Total Gold Earned', value: this.goldCoins.toLocaleString(), color: 'yellow' },
             { icon: '🎁', label: 'Chests Opened', value: this.treasureChests.length, color: 'red' }
         ];
-        
-        const html = records.map(record => `
-            <div class="bg-gradient-to-br from-${record.color}-900 to-${record.color}-950 p-4 rounded-lg border-2 border-${record.color}-600 text-center">
+
+        const html = records.map(record => {
+            const p = palette[record.color] || palette.orange;
+            return `
+            <div class="bg-gradient-to-br ${p.gradient} p-4 rounded-lg border-2 ${p.border} text-center">
                 <div class="text-3xl mb-2">${record.icon}</div>
-                <div class="text-2xl font-bold text-${record.color}-300 medieval-title">${record.value}</div>
-                <div class="text-xs text-${record.color}-200 fancy-font mt-1">${record.label}</div>
+                <div class="text-2xl font-bold ${p.title} medieval-title">${record.value}</div>
+                <div class="text-xs ${p.sub} fancy-font mt-1">${record.label}</div>
             </div>
-        `).join('');
-        
+        `;
+        }).join('');
+
         container.innerHTML = html;
     }
 
     renderGoalsProgressOverview() {
         const container = document.getElementById('goals-progress-overview');
         if (!container) return;
-        
+
+        // v2.6.x analytics audit fix — static class lookup table per goal
+        // tier (see `renderPersonalRecords` for the full rationale on why
+        // dynamic Tailwind class interpolation was replaced with literal
+        // class strings).
+        const palette = {
+            Life:    { card: 'bg-red-900/30 border-red-700/50',       chip: 'bg-red-700/50 text-red-200',       pct: 'text-red-300',       track: 'bg-red-950 border-red-700',       fill: 'from-red-600 to-red-400' },
+            Yearly:  { card: 'bg-purple-900/30 border-purple-700/50', chip: 'bg-purple-700/50 text-purple-200', pct: 'text-purple-300', track: 'bg-purple-950 border-purple-700', fill: 'from-purple-600 to-purple-400' },
+            Monthly: { card: 'bg-blue-900/30 border-blue-700/50',     chip: 'bg-blue-700/50 text-blue-200',     pct: 'text-blue-300',     track: 'bg-blue-950 border-blue-700',     fill: 'from-blue-600 to-blue-400' },
+            Weekly:  { card: 'bg-green-900/30 border-green-700/50',   chip: 'bg-green-700/50 text-green-200',   pct: 'text-green-300',   track: 'bg-green-950 border-green-700',   fill: 'from-green-600 to-green-400' }
+        };
+
         const allGoals = [
-            ...this.lifeGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Life', color: 'red' })),
-            ...this.yearlyGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Yearly', color: 'purple' })),
-            ...this.monthlyGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Monthly', color: 'blue' })),
-            ...this.weeklyGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Weekly', color: 'green' }))
+            ...this.lifeGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Life' })),
+            ...this.yearlyGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Yearly' })),
+            ...this.monthlyGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Monthly' })),
+            ...this.weeklyGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Weekly' }))
         ];
-        
+
         if (allGoals.length === 0) {
             container.innerHTML = '<div class="text-center text-amber-300 py-8 fancy-font">All goals completed! Time to set new ones! 🎉</div>';
             return;
         }
-        
+
         const html = allGoals.map(goal => {
-            const progress = goal.progress || 0;
+            const progress = Math.max(0, Math.min(100, goal.progress || 0));
+            const p = palette[goal.type] || palette.Weekly;
             return `
-                <div class="bg-${goal.color}-900/30 border-2 border-${goal.color}-700/50 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs bg-${goal.color}-700/50 text-${goal.color}-200 px-2 py-1 rounded fancy-font">${goal.type}</span>
-                            <h4 class="text-lg font-bold text-amber-300 medieval-title">${this.escapeHTML(goal.title)}</h4>
+                <div class="${p.card} border-2 rounded-lg p-4">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <span class="text-xs ${p.chip} px-2 py-1 rounded fancy-font shrink-0">${goal.type}</span>
+                            <h4 class="text-lg font-bold text-amber-300 medieval-title break-words min-w-0">${this.escapeHTML(goal.title)}</h4>
                         </div>
-                        <span class="text-${goal.color}-300 font-bold">${progress}%</span>
+                        <span class="${p.pct} font-bold shrink-0">${progress}%</span>
                     </div>
-                    <div class="w-full bg-${goal.color}-950 rounded-full h-3 border border-${goal.color}-700">
-                        <div class="bg-gradient-to-r from-${goal.color}-600 to-${goal.color}-400 h-3 rounded-full transition-all duration-500" 
+                    <div class="w-full ${p.track} rounded-full h-3 border">
+                        <div class="bg-gradient-to-r ${p.fill} h-3 rounded-full transition-all duration-500"
                              style="width: ${progress}%"></div>
                     </div>
                 </div>
             `;
         }).join('');
-        
+
         container.innerHTML = html;
     }
 
@@ -12448,7 +14586,7 @@ class GoalManager {
                         ? `Defeat ${remaining} more boss${remaining !== 1 ? 'es' : ''} this month to unlock the challenge!` 
                         : 'Challenge available!'}
                 </p>
-                <div class="w-full bg-stone-800 rounded-full h-4 border border-stone-600/50 mb-2">
+                <div class="progress-bar w-full bg-stone-800 rounded-full h-4 border border-stone-600/50 mb-2">
                     <div class="bg-gradient-to-r from-red-600 to-purple-600 h-4 rounded-full transition-all duration-500" 
                          style="width: ${progress}%"></div>
                 </div>
@@ -12529,7 +14667,7 @@ class GoalManager {
                     ${!isDefeated ? `
                         <div class="flex gap-3 mt-4">
                             <button onclick="goalManager.attackBoss('${type}')" 
-                                class="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400/50 text-lg"
+                                class="btn-ripple flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400/50 text-lg"
                                 ${this.attackCharges <= 0 ? 'disabled' : ''}>
                                 <i class="ri-sword-fill mr-2"></i>ATTACK!${this.attackCharges > 0 ? ` (${this.attackCharges})` : ''}
                             </button>
@@ -12569,7 +14707,13 @@ class GoalManager {
         
         container.innerHTML = this.bossLog.map(entry => {
             const timeAgo = this.getTimeAgo(entry.time);
-            return `<div class="text-sm text-amber-200/80 fancy-font flex justify-between"><span>${entry.message}</span><span class="text-amber-400/40 text-xs ml-2 shrink-0">${timeAgo}</span></div>`;
+            // Sanitize at render time so imported / legacy entries can
+            // never inject script even though they're displayed via
+            // innerHTML to preserve the embedded `<i class="ri-...">`
+            // icon chrome. See `_sanitizeBossLogMessage` for the
+            // allowlist details.
+            const safeMessage = this._sanitizeBossLogMessage(entry.message);
+            return `<div class="text-sm text-amber-200/80 fancy-font flex justify-between"><span>${safeMessage}</span><span class="text-amber-400/40 text-xs ml-2 shrink-0">${this.escapeHTML(timeAgo)}</span></div>`;
         }).join('');
     }
     
@@ -12879,7 +15023,7 @@ class GoalManager {
 
                     <!-- Current Chapter -->
                     <div class="bg-stone-900/60 rounded-lg p-4 border border-cyan-700/50">
-                        <h4 class="text-lg font-bold text-cyan-300 mb-2">📖 ${currentChapter.title}</h4>
+                        <h4 class="text-lg font-bold text-cyan-300 mb-2"><i class="ri-book-open-line mr-2"></i>${currentChapter.title}</h4>
                         <p class="text-sm text-cyan-200 mb-3">${currentChapter.description}</p>
                         
                         <!-- Chapter Tasks -->
@@ -12993,7 +15137,7 @@ class GoalManager {
                         <span class="bg-green-700/50 px-2 py-1 rounded">${template.category}</span>
                     </div>
                     <div class="text-xs text-amber-300 fancy-font text-center">
-                        ✅ Completed: ${completedDate}
+                        <i class="ri-checkbox-circle-fill text-green-400 mr-1"></i>Completed: ${completedDate}
                     </div>
                     <div class="text-xs text-cyan-300 mt-1 text-center">
                         ${template.chapters.length} Chapters Conquered
@@ -13075,7 +15219,7 @@ class GoalManager {
             const stopLabel = this.pomodoroChain ? 'Stop Chain' : 'Stop';
             container.className = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
             container.innerHTML = `
-                <button onclick="goalManager.resumeFocusTimer()" class="bg-blue-600 hover:bg-blue-500 text-white ${btnBase}">
+                <button onclick="goalManager.resumeFocusTimer()" class="btn-themed-primary ${btnBase}">
                     <i class="ri-play-fill text-xl" aria-hidden="true"></i> Resume
                 </button>
                 <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
@@ -14972,7 +17116,7 @@ class GoalManager {
                         </button>
                     </div>
                     <div class="flex flex-wrap gap-2 mt-3">
-                        <button onclick="goalManager.filterSearchResults('all')" class="search-filter-btn active px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-600 text-white" data-filter="all">All</button>
+                        <button onclick="goalManager.filterSearchResults('all')" class="search-filter-btn active btn-themed-primary px-3 py-1 rounded-lg text-sm fancy-font" data-filter="all">All</button>
                         <button onclick="goalManager.filterSearchResults('tasks')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="tasks">Tasks</button>
                         <button onclick="goalManager.filterSearchResults('goals')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="goals">Goals</button>
                         <button onclick="goalManager.filterSearchResults('habits')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="habits">Habits</button>
@@ -15011,7 +17155,7 @@ class GoalManager {
         // Update button styles
         document.querySelectorAll('.search-filter-btn').forEach(btn => {
             if (btn.dataset.filter === filter) {
-                btn.className = 'search-filter-btn active px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-600 text-white';
+                btn.className = 'search-filter-btn active btn-themed-primary px-3 py-1 rounded-lg text-sm fancy-font';
             } else {
                 btn.className = 'search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700';
             }
@@ -15183,12 +17327,14 @@ class GoalManager {
         
         // Render results
         if (results.length === 0) {
-            resultsContainer.innerHTML = `
-                <div class="text-indigo-300 text-center fancy-font py-8">
-                    <i class="ri-emotion-sad-line text-4xl mb-2 block opacity-50"></i>
-                    No quests found for "${query}"
-                </div>
-            `;
+            // v2.7.1 audit fix M7: route through `_renderEmptyState` so the
+            // search no-results state matches the parchment-medallion visual
+            // language used by every other empty surface in the app.
+            resultsContainer.innerHTML = this._renderEmptyState({
+                icon: '🔍',
+                title: 'No Matches Found',
+                body: `No quests matched "${query}". Try different keywords or check your spelling.`
+            });
             return;
         }
         
@@ -15280,6 +17426,10 @@ class GoalManager {
                 // Determine task type based on current view
                 const currentView = this.currentView;
                 
+                // Quick-add routes to `quickAddX(title)` helpers which push
+                // the record directly with defaults — no modal chain. Avoids
+                // the parentId-corruption bug that existed when the typed
+                // text was passed to the regular `addX(parentId)` overloads.
                 if (currentView === 'daily' && this.activeDailyTab === 'rituals') {
                     this.addHabit(text);
                 } else if (currentView === 'daily' && this.activeDailyTab === 'recurring') {
@@ -15287,18 +17437,18 @@ class GoalManager {
                 } else if (currentView === 'habits-view') {
                     this.addHabit(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'sidequests') {
-                    this.addSideQuest(text);
+                    this.quickAddSideQuest(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'weekly') {
-                    this.addWeeklyGoal(text);
+                    this.quickAddWeeklyGoal(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'monthly') {
-                    this.addMonthlyGoal(text);
+                    this.quickAddMonthlyGoal(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'yearly') {
-                    this.addYearlyGoal(text);
+                    this.quickAddYearlyGoal(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'life-goals') {
-                    this.addLifeGoal(text);
+                    this.quickAddLifeGoal(text);
                 } else {
-                    // Default to daily task
-                    this.addDailyTask(text);
+                    // Default to daily task quick-add
+                    this.quickAddDailyTask(text);
                 }
                 
                 this.closeQuickAdd();
@@ -15378,7 +17528,7 @@ class GoalManager {
         });
         
         this.selectedItems.clear();
-        this.showAchievement(`✅ Completed ${completed} item${completed > 1 ? 's' : ''}!`, 'daily');
+        this.showAchievement(`Completed ${completed} item${completed > 1 ? 's' : ''}!`, 'daily');
         this.render();
     }
 
@@ -15405,10 +17555,15 @@ class GoalManager {
             } else if (type === 'life') {
                 item = this.lifeGoals.find(g => g.id === itemId);
                 if (item) this.lifeGoals = this.lifeGoals.filter(g => g.id !== itemId);
+            } else if (type === 'side') {
+                item = this.sideQuests.find(q => q.id === itemId);
+                if (item) this.sideQuests = this.sideQuests.filter(q => q.id !== itemId);
             }
             
             if (item) {
                 item.archivedAt = new Date().toISOString();
+                // Record type so restoreGoal can route it back to the right list.
+                if (!item.type) item.type = type;
                 this.archivedGoals.push(item);
                 archived++;
             }
@@ -15436,6 +17591,18 @@ class GoalManager {
                     deleted++;
                 } else if (type === 'monthly') {
                     this.monthlyGoals = this.monthlyGoals.filter(g => g.id !== itemId);
+                    deleted++;
+                } else if (type === 'yearly') {
+                    this.yearlyGoals = this.yearlyGoals.filter(g => g.id !== itemId);
+                    deleted++;
+                } else if (type === 'life') {
+                    this.lifeGoals = this.lifeGoals.filter(g => g.id !== itemId);
+                    deleted++;
+                } else if (type === 'side') {
+                    this.sideQuests = this.sideQuests.filter(q => q.id !== itemId);
+                    deleted++;
+                } else if (type === 'habit') {
+                    this.habits = this.habits.filter(h => h.id !== itemId);
                     deleted++;
                 }
             });
@@ -15474,12 +17641,21 @@ class GoalManager {
             {
                 title: "Welcome to Life Quest Journal! ⚔️",
                 content: "Welcome, brave adventurer! This is your Dashboard — your command center for tracking XP, gold, and daily progress at a glance.",
-                element: "a[href='#dashboard'].nav-link",
+                // v2.7.1 audit fix M1: no spotlight on this step — the user is
+                // already on the dashboard, so spotlighting the dashboard nav
+                // link would point them at a tab they don't need to navigate
+                // to. Centered welcome tooltip with no spotlight reads cleaner.
+                element: null,
                 action: () => this.switchView('dashboard')
             },
             {
                 title: "Level Up & Unlock 📊",
-                content: "Complete tasks to earn XP and gold! As you level up, you'll unlock the Treasury, Spellbook, Focus Timer, Boss Battles, and more. Tap the avatar in the top-right to view your character sheet!",
+                // v2.7.1 audit fix M2: changed from imperative "Tap the
+                // avatar..." to descriptive copy. The previous wording asked
+                // the user to tap, but tapping didn't advance the tutorial,
+                // so it read as a broken instruction. The spotlight still
+                // shows them WHERE the avatar is.
+                content: "Complete tasks to earn XP and gold! As you level up, you'll unlock the Treasury, Spellbook, Focus Timer, Boss Battles, and more. The avatar in the top-right opens your character sheet whenever you want to see your full stats.",
                 element: "#player-panel-toggle",
                 action: null
             },
@@ -15566,10 +17742,21 @@ class GoalManager {
                         } else {
                             targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
                         }
-                        
-                        // Wait for scroll/layout to settle, then position spotlight
-                        const delay = isInBottomNav ? 100 : 600;
-                        setTimeout(() => {
+
+                        // v2.6 layout-audit fix #3 — measure AFTER layout
+                        // has actually settled. The old code used a flat
+                        // 100ms setTimeout for the bottom-nav case, which
+                        // on slower devices fired BEFORE Chromium had
+                        // realized the `scrollTo({behavior:'instant'})`
+                        // and the subsequent style recalc. Result: the
+                        // spotlight landed on the OLD tab position
+                        // (still mid-scroll). Chaining two rAFs
+                        // guarantees we measure on a frame where the
+                        // scroll + reflow have both committed, even on
+                        // low-end Android. Desktop still uses the 600ms
+                        // wait because `scrollIntoView({behavior:'smooth'})`
+                        // genuinely takes that long to animate.
+                        const measureAndPosition = () => {
                             const rect = targetElement.getBoundingClientRect();
                             spotlight.style.display = 'block';
                             spotlight.style.top = `${rect.top - 20}px`;
@@ -15579,7 +17766,12 @@ class GoalManager {
                             
                             // Position tooltip to not cover the highlighted element
                             this.positionTooltip(rect, tooltip, isInBottomNav);
-                        }, delay);
+                        };
+                        if (isInBottomNav) {
+                            requestAnimationFrame(() => requestAnimationFrame(measureAndPosition));
+                        } else {
+                            setTimeout(measureAndPosition, 600);
+                        }
                     } else {
                         spotlight.style.display = 'none';
                         this.centerTooltip(tooltip);
@@ -15661,30 +17853,96 @@ class GoalManager {
             overlay.classList.add('hidden');
         }
         
-        // Grant starter gold to help new users reach their first treasure chest
-        this.goldCoins += 150;
-        
-        // Set account creation date for Beginner's Blessing
+        // Set account creation date FIRST — Beginner's Blessing checks this
+        // when computing the multiplier inside addXP/addGold below, so it
+        // must be set before we credit the day-1 login rewards.
         if (!this.accountCreatedDate) {
             this.accountCreatedDate = this.getTodayDateString();
         }
+
+        // Grant starter gold to help new users reach their first treasure
+        // chest. Direct grant (no Blessing multiplier) — matches v2.5 behavior.
+        this.goldCoins += 150;
+
+        // ──────────────────────────────────────────────────────────────
+        // Onboarding-audit fix #3 — merge Day-1 login bonus into the
+        // tutorial completion toast.
+        //
+        // Old flow: endTutorial fired a deferred `checkDailyLoginBonus()`
+        // 2s later, which spawned its own Day-1 modal with another
+        // celebration screen. For brand-new users that's a redundant
+        // celebration on top of the tutorial-complete toast — the user
+        // hasn't BEEN here before, "Day 1" is meaningless as a streak
+        // milestone, and the modal just adds another dismiss step.
+        //
+        // New flow: credit the day-1 streak rewards inline (with the
+        // Beginner's Blessing multiplier applied via the standard
+        // addXP/addGold path), mark today's bonus claimed so the
+        // periodic check is a no-op, and fold the totals into the
+        // single completion toast below.
+        // ──────────────────────────────────────────────────────────────
+        const today = this.getTodayDateString();
+        // Guard against tutorial restart: only credit the day-1 streak
+        // rewards if today's bonus hasn't already been claimed (e.g. user
+        // hit "Restart Tutorial" from Settings after already getting it).
+        const alreadyClaimedToday = this.lastLoginBonusDate === today;
+        let xpFromLogin = 0;
+        let goldFromLogin = 0;
+        if (!alreadyClaimedToday) {
+            const xpBefore = this.xp;
+            const goldBefore = this.goldCoins;
+            // Suppress the standard reward sound + toast/sprite — we're
+            // composing our own unified toast that covers everything.
+            this._suppressRewardSounds = true;
+            this._suppressRewardToasts = true;
+            this.addXP(10, 'login');     // base day-1 XP (Blessing doubles inside addXP)
+            this.addGold(15, 'login');   // base day-1 gold (Blessing doubles inside addGold)
+            this._suppressRewardSounds = false;
+            this._suppressRewardToasts = false;
+            this.loginStreak = 1;
+            this.lastLoginBonusDate = today;
+            xpFromLogin = this.xp - xpBefore;
+            goldFromLogin = this.goldCoins - goldBefore;
+        }
+        const totalGold = 150 + goldFromLogin;
         
         this.saveData();
-        this.showAchievement('🎓 Tutorial completed! +150 Gold starter bonus! You\'re ready to conquer your quests!', 'weekly');
         
-        // Announce Beginner's Blessing
-        setTimeout(() => {
-            this.showFeatureUnlockPopup(
-                '✨ Beginner\'s Blessing!',
-                `The gods smile upon new adventurers! You have been granted <b>2x XP & Gold</b> for your first <b>${this.BEGINNER_BLESSING_DAYS} days</b>. Complete quests to level up fast and unlock powerful features!`
-            );
-        }, 4000);
-        
-        // Show starter tasks modal after tutorial
-        setTimeout(() => this.showStarterTasksModal(), 500);
-        
-        // Trigger deferred daily login bonus now that tutorial is done
-        setTimeout(() => this.checkDailyLoginBonus(), 2000);
+        // Single unified completion toast covering: tutorial done, starter
+        // gold, day-1 login bonus, AND a heads-up about the Blessing being
+        // active. Replaces three separate UI surfaces in the v2.5 flow.
+        // The XP fragment is omitted on restart-tutorial runs where the
+        // login bonus was already claimed earlier today.
+        const xpFragment = xpFromLogin > 0 ? `, +${xpFromLogin} XP` : '';
+        const blessingFragment = this.isBeginnerBlessingActive()
+            ? ` — ✨ Beginner's Blessing active (2x XP & Gold for ${this.getBlessingDaysRemaining()} day${this.getBlessingDaysRemaining() === 1 ? '' : 's'})!`
+            : '!';
+        this.showAchievement(
+            `🎓 Tutorial complete! +${totalGold} Gold${xpFragment}${blessingFragment}`,
+            'weekly'
+        );
+
+        // ──────────────────────────────────────────────────────────────
+        // Onboarding-audit fix #1 — serialize the post-tutorial modals.
+        //
+        // Old flow: 3 setTimeouts (500ms / 2000ms / 4000ms) fired the
+        // Starter Tasks modal, the Login Bonus modal, and the Blessing
+        // popup IN PARALLEL. Without a queue they could (and did) stack
+        // on top of each other while the user was mid-selection. The
+        // Login Bonus modal was already removed by fix #3 above; here
+        // we further chain the remaining two surfaces so only one is
+        // ever on screen at a time.
+        //
+        // The chain is: Starter Tasks  →  (on close)  →  Blessing popup.
+        // `closeStarterTasksModal` reads `_postTutorialPending` and,
+        // when true, advances to the Blessing popup before clearing
+        // the flag. All three exit paths from the Starter Tasks modal
+        // (pack pick / selected tasks / Start Fresh) funnel through
+        // `closeStarterTasksModal`, so the chain runs regardless of
+        // which path the user takes.
+        // ──────────────────────────────────────────────────────────────
+        this._postTutorialPending = true;
+        setTimeout(() => this.showStarterTasksModal(), 600);
     }
 
     restartTutorial() {
@@ -15801,14 +18059,14 @@ class GoalManager {
         modal.innerHTML = `
             <div class="bg-gradient-to-b from-amber-900 to-stone-900 rounded-xl border-2 border-amber-600 max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
                 <div class="p-6 border-b border-amber-700">
-                    <h2 class="text-2xl font-bold text-amber-300 medieval-title text-center">⚔️ Choose Your Starting Quests</h2>
+                    <h2 class="text-2xl font-bold text-amber-300 medieval-title text-center"><i class="ri-sword-line mr-2"></i>Choose Your Starting Quests</h2>
                     <p class="text-amber-100/80 text-center mt-2 text-sm">Select preset tasks to jumpstart your adventure, or start fresh!</p>
                 </div>
                 
                 <div class="p-6 overflow-y-auto max-h-[60vh]">
                     <!-- Quick Start Options -->
                     <div class="mb-6">
-                        <h3 class="text-lg font-bold text-yellow-300 mb-3">🚀 Quick Start Packs</h3>
+                        <h3 class="text-lg font-bold text-yellow-300 mb-3"><i class="ri-rocket-2-line mr-2"></i>Quick Start Packs</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             ${packsHTML}
                         </div>
@@ -15816,14 +18074,14 @@ class GoalManager {
                     
                     <!-- Custom Selection -->
                     <div class="border-t border-amber-700/50 pt-6">
-                        <h3 class="text-lg font-bold text-yellow-300 mb-3">📋 Or Pick Individual Tasks</h3>
+                        <h3 class="text-lg font-bold text-yellow-300 mb-3"><i class="ri-clipboard-line mr-2"></i>Or Pick Individual Tasks</h3>
                         ${individualHTML}
                     </div>
                 </div>
                 
                 <div class="p-4 border-t border-amber-700 flex flex-wrap gap-3 justify-center bg-stone-900/50">
                     <button onclick="goalManager.addSelectedStarterTasks()" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
-                        ✅ Add Selected Tasks
+                        <i class="ri-add-circle-line mr-1"></i>Add Selected Tasks
                     </button>
                     <button onclick="goalManager.closeStarterTasksModal()" class="bg-gradient-to-r from-stone-600 to-stone-700 hover:from-stone-500 hover:to-stone-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
                         🚀 Start Fresh
@@ -15838,13 +18096,33 @@ class GoalManager {
         const modal = document.getElementById('starter-tasks-modal');
         if (modal) modal.remove();
         
-        // If user has no tasks yet, nudge them toward adding their first one
+        // Onboarding-audit fix #1 — second link in the post-tutorial chain.
+        // If we're still in the post-tutorial flow, advance to the
+        // Beginner's Blessing celebration popup. We capture + clear the
+        // flag BEFORE showing the popup so re-entries (e.g., user closes
+        // and re-opens the starter tasks modal somehow) don't loop.
+        const wasPostTutorial = this._postTutorialPending === true;
+        if (wasPostTutorial) {
+            this._postTutorialPending = false;
+            setTimeout(() => {
+                this.showFeatureUnlockPopup(
+                    '✨ Beginner\'s Blessing!',
+                    `The gods smile upon new adventurers! You have <b>2x XP & Gold</b> for your first <b>${this.BEGINNER_BLESSING_DAYS} days</b>. Complete quests to level up fast and unlock powerful features!`
+                );
+            }, 350);
+        }
+
+        // If user has no tasks yet, nudge them toward adding their first one.
+        // When this fires as part of the post-tutorial chain we delay the
+        // nudge until after the Blessing popup is up so the toast doesn't
+        // collide with the popup's slide-in animation.
         const todaysTasks = this.dailyTasks.filter(task => this.isToday(task.dueDate));
         if (todaysTasks.length === 0) {
             this.switchView('daily');
+            const nudgeDelay = wasPostTutorial ? 4500 : 500;
             setTimeout(() => {
                 this.showAchievement('💡 Tap the + button below to add your first daily quest!', 'daily');
-            }, 500);
+            }, nudgeDelay);
         }
     }
 
@@ -16019,7 +18297,7 @@ class GoalManager {
         } else {
             // Check
             chain.completedTasks.push(taskIndex);
-            this.showAchievement('✅ Task completed!', 'daily');
+            this.showAchievement('Task completed!', 'daily');
 
             // Check if all tasks in chapter are done
             if (chain.completedTasks.length === currentChapter.tasks.length) {
@@ -16354,7 +18632,7 @@ class GoalManager {
         modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn 0.3s ease-out;';
         modal.innerHTML = `
             <div style="max-width:340px;width:100%;" class="relative" onclick="event.stopPropagation()">
-                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-amber-600 relative">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-amber-600 relative max-h-[90vh] overflow-y-auto">
                     <button onclick="document.getElementById('share-card-modal')?.remove()" 
                         class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
                         <i class="ri-close-line"></i>
@@ -16505,7 +18783,11 @@ class GoalManager {
         }
 
         if (targetUrl) {
-            window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+            if (window.CapBridge) {
+                window.CapBridge.openUrl(targetUrl);
+            } else {
+                window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+            }
         }
     }
 
@@ -16757,7 +19039,7 @@ class GoalManager {
         modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn 0.3s ease-out;';
         modal.innerHTML = `
             <div style="max-width:340px;width:100%;" class="relative" onclick="event.stopPropagation()">
-                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-green-600 relative">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-green-600 relative max-h-[90vh] overflow-y-auto">
                     <button onclick="document.getElementById('weekly-recap-modal')?.remove()" 
                         class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
                         <i class="ri-close-line"></i>
@@ -16906,7 +19188,11 @@ class GoalManager {
         }
 
         if (targetUrl) {
-            window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+            if (window.CapBridge) {
+                window.CapBridge.openUrl(targetUrl);
+            } else {
+                window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+            }
         }
     }
 
@@ -17174,6 +19460,9 @@ class GoalManager {
 
         this._pendingChallengeCode = code;
         this._pendingChallenge = challenge;
+        if (window.effectsManager) {
+            window.effectsManager.challengeSent();
+        }
         const rewards = challenge.r;
         const diffColors = { easy: 'green', medium: 'orange', hard: 'red', epic: 'purple' };
         const diffColor = diffColors[challenge.d] || 'orange';
@@ -17186,7 +19475,7 @@ class GoalManager {
         modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;';
         modal.innerHTML = `
             <div style="max-width:360px;width:100%;" class="relative" onclick="event.stopPropagation()">
-                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-orange-600 relative">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-5 rounded-2xl shadow-2xl border-2 border-orange-600 relative max-h-[90vh] overflow-y-auto">
                     <button onclick="document.getElementById('challenge-share-modal')?.remove()"
                         class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
                         <i class="ri-close-line"></i>
@@ -17320,7 +19609,11 @@ class GoalManager {
         }
 
         if (targetUrl) {
-            window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+            if (window.CapBridge) {
+                window.CapBridge.openUrl(targetUrl);
+            } else {
+                window.open(targetUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
+            }
         }
     }
 
@@ -17351,10 +19644,20 @@ class GoalManager {
         const existing = document.getElementById('accept-challenge-modal');
         if (existing) existing.remove();
 
-        const rewards = data.r || this.getChallengeRewards(data.d);
+        // Sanitize ALL attacker-controlled fields (challenge code is decoded from URL param)
         const diffColors = { easy: 'green', medium: 'orange', hard: 'red', epic: 'purple' };
-        const diffColor = diffColors[data.d] || 'orange';
         const diffEmoji = { easy: '🌱', medium: '⚔️', hard: '🔥', epic: '💀' };
+        const safeDiff = diffColors.hasOwnProperty(data.d) ? data.d : 'medium';
+        const diffColor = diffColors[safeDiff];
+        const rewards = data.r || this.getChallengeRewards(safeDiff);
+        const safeXp = Math.max(0, Math.min(99999, parseInt(rewards.xp, 10) || 0));
+        const safeGold = Math.max(0, Math.min(99999, parseInt(rewards.gold, 10) || 0));
+        const safeDl = Math.max(1, Math.min(365, parseInt(data.dl, 10) || 3));
+        const safeIcon = (typeof data.i === 'string' && data.i.length <= 4) ? this.escapeHTML(data.i) : '⚔️';
+        const safeTitle = this.escapeHTML(String(data.t || '').slice(0, 120));
+        const safeChallenger = this.escapeHTML(String(data.c?.t || 'Unknown').slice(0, 40));
+        const safeChallengerLvl = Math.max(1, Math.min(999, parseInt(data.c?.l, 10) || 1));
+        const safeType = data.ty === 'preset' ? 'preset' : 'custom';
 
         const modal = document.createElement('div');
         modal.id = 'accept-challenge-modal';
@@ -17362,25 +19665,25 @@ class GoalManager {
         modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;';
         modal.innerHTML = `
             <div style="max-width:380px;width:100%;" class="relative" onclick="event.stopPropagation()">
-                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-6 rounded-2xl shadow-2xl border-2 border-orange-600 relative">
+                <div class="bg-gradient-to-br from-gray-800/95 to-gray-900/95 p-6 rounded-2xl shadow-2xl border-2 border-orange-600 relative max-h-[90vh] overflow-y-auto">
                     <div class="text-center mb-4">
-                        <div class="text-5xl mb-3 animate-bounce">${data.i || '⚔️'}</div>
+                        <div class="text-5xl mb-3 animate-bounce">${safeIcon}</div>
                         <div class="text-xl text-orange-300 medieval-title">Incoming Challenge!</div>
-                        <div class="text-orange-200/50 text-xs fancy-font mt-1">From ${this.escapeHTML(data.c?.t || 'Unknown')} (Lv.${data.c?.l || '?'})</div>
+                        <div class="text-orange-200/50 text-xs fancy-font mt-1">From ${safeChallenger} (Lv.${safeChallengerLvl})</div>
                     </div>
                     <div class="bg-gradient-to-br from-${diffColor}-900/50 to-black/50 p-4 rounded-xl border-2 border-${diffColor}-600/50 mb-4">
-                        <div class="text-white font-bold text-base mb-2">${this.escapeHTML(data.t)}</div>
+                        <div class="text-white font-bold text-base mb-2">${safeTitle}</div>
                         <div class="flex items-center gap-2 text-xs fancy-font mb-3">
-                            <span class="text-${diffColor}-400 font-bold uppercase">${diffEmoji[data.d] || ''} ${data.d}</span>
+                            <span class="text-${diffColor}-400 font-bold uppercase">${diffEmoji[safeDiff]} ${safeDiff}</span>
                             <span class="text-gray-500">|</span>
-                            <span class="text-gray-400">${data.dl} day${data.dl > 1 ? 's' : ''} to complete</span>
+                            <span class="text-gray-400">${safeDl} day${safeDl > 1 ? 's' : ''} to complete</span>
                         </div>
                         <div class="flex gap-3 text-sm font-bold">
-                            <span class="text-yellow-300">+${rewards.xp} XP</span>
-                            <span class="text-amber-400">+${rewards.gold} Gold</span>
-                            ${data.d === 'epic' ? '<span class="text-purple-300">+Chest</span>' : ''}
+                            <span class="text-yellow-300">+${safeXp} XP</span>
+                            <span class="text-amber-400">+${safeGold} Gold</span>
+                            ${safeDiff === 'epic' ? '<span class="text-purple-300">+Chest</span>' : ''}
                         </div>
-                        <div class="text-xs text-gray-500 mt-2 fancy-font">${data.ty === 'preset' ? 'Auto-tracked — progress updates automatically' : 'Honor system — mark complete when done'}</div>
+                        <div class="text-xs text-gray-500 mt-2 fancy-font">${safeType === 'preset' ? 'Auto-tracked — progress updates automatically' : 'Honor system — mark complete when done'}</div>
                     </div>
                     <div class="flex gap-3">
                         <button onclick="document.getElementById('accept-challenge-modal')?.remove()"
@@ -17440,7 +19743,11 @@ class GoalManager {
         this.activeChallenges.push(challenge);
         this._pendingAcceptChallenge = null;
         this.saveData();
-        this.showAchievement(`⚔️ Challenge accepted: "${challenge.title}"`, 'achievement');
+        if (window.effectsManager) {
+            window.effectsManager.challengeAccepted(challenge.title);
+        } else {
+            this.showAchievement(`⚔️ Challenge accepted: "${challenge.title}"`, 'achievement');
+        }
         this.render();
     }
 
@@ -17650,24 +19957,33 @@ class GoalManager {
 // Global functions for onclick handlers
 let goalManager;
 
-function addLifeGoal() {
-    if (window.goalManager) goalManager.addLifeGoal();
+// v2.7 — These global wrappers previously took no parameters and
+// passed none through to the underlying method. That silently broke
+// any inline `onclick` handler that tried to forward arguments
+// (e.g., the calendar empty-state CTA `addDailyTask(null, dateString)`
+// — `scheduledDate` arrived as `undefined`, so the date picker
+// modal opened defaulted to today instead of skipping straight to
+// the clicked calendar day). Spreading `...args` lets every caller
+// transparently route arguments to the method, matching the
+// behavior they'd get if they called `goalManager.addX(...)` directly.
+function addLifeGoal(...args) {
+    if (window.goalManager) goalManager.addLifeGoal(...args);
 }
 
-function addYearlyGoal() {
-    if (window.goalManager) goalManager.addYearlyGoal();
+function addYearlyGoal(...args) {
+    if (window.goalManager) goalManager.addYearlyGoal(...args);
 }
 
-function addMonthlyGoal() {
-    if (window.goalManager) goalManager.addMonthlyGoal();
+function addMonthlyGoal(...args) {
+    if (window.goalManager) goalManager.addMonthlyGoal(...args);
 }
 
-function addWeeklyGoal() {
-    if (window.goalManager) goalManager.addWeeklyGoal();
+function addWeeklyGoal(...args) {
+    if (window.goalManager) goalManager.addWeeklyGoal(...args);
 }
 
-function addDailyTask() {
-    if (window.goalManager) goalManager.addDailyTask();
+function addDailyTask(...args) {
+    if (window.goalManager) goalManager.addDailyTask(...args);
 }
 
 // Global Error Handler - catches uncaught errors (log only, no notification)
