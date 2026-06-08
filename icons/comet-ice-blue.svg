@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <radialGradient id="head" cx="35%" cy="35%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"></stop>
+      <stop offset="45%" stop-color="#7dd3fc" stop-opacity="1"></stop>
+      <stop offset="100%" stop-color="#7dd3fc" stop-opacity="0"></stop>
+    </radialGradient>
+    <radialGradient id="trail" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7dd3fc" stop-opacity="1"></stop>
+      <stop offset="70%" stop-color="#7dd3fc" stop-opacity="0"></stop>
+    </radialGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2.5" result="b"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="b"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+  </defs>
+  <g>
+    
+    <circle cx="120.00" cy="208.00" r="2.10" fill="url(#trail)" opacity="0.000"></circle>
+    <circle cx="110.15" cy="207.45" r="2.26" fill="url(#trail)" opacity="0.006"></circle>
+    <circle cx="100.42" cy="205.79" r="2.49" fill="url(#trail)" opacity="0.017"></circle>
+    <circle cx="90.94" cy="203.06" r="2.75" fill="url(#trail)" opacity="0.032"></circle>
+    <circle cx="81.82" cy="199.29" r="3.05" fill="url(#trail)" opacity="0.049"></circle>
+    <circle cx="73.18" cy="194.51" r="3.37" fill="url(#trail)" opacity="0.068"></circle>
+    <circle cx="65.13" cy="188.80" r="3.71" fill="url(#trail)" opacity="0.089"></circle>
+    <circle cx="57.77" cy="182.23" r="4.06" fill="url(#trail)" opacity="0.113"></circle>
+    <circle cx="51.20" cy="174.87" r="4.43" fill="url(#trail)" opacity="0.137"></circle>
+    <circle cx="45.49" cy="166.82" r="4.82" fill="url(#trail)" opacity="0.164"></circle>
+    <circle cx="40.71" cy="158.18" r="5.22" fill="url(#trail)" opacity="0.192"></circle>
+    <circle cx="36.94" cy="149.06" r="5.63" fill="url(#trail)" opacity="0.222"></circle>
+    <circle cx="34.21" cy="139.58" r="6.06" fill="url(#trail)" opacity="0.253"></circle>
+    <circle cx="32.55" cy="129.85" r="6.49" fill="url(#trail)" opacity="0.285"></circle>
+    <circle cx="32.00" cy="120.00" r="6.93" fill="url(#trail)" opacity="0.318"></circle>
+    <circle cx="32.55" cy="110.15" r="7.39" fill="url(#trail)" opacity="0.353"></circle>
+    <circle cx="34.21" cy="100.42" r="7.85" fill="url(#trail)" opacity="0.389"></circle>
+    <circle cx="36.94" cy="90.94" r="8.32" fill="url(#trail)" opacity="0.426"></circle>
+    <circle cx="40.71" cy="81.82" r="8.80" fill="url(#trail)" opacity="0.464"></circle>
+    <circle cx="45.49" cy="73.18" r="9.29" fill="url(#trail)" opacity="0.503"></circle>
+    <circle cx="51.20" cy="65.13" r="9.78" fill="url(#trail)" opacity="0.543"></circle>
+    <circle cx="57.77" cy="57.77" r="10.29" fill="url(#trail)" opacity="0.585"></circle>
+    <circle cx="65.13" cy="51.20" r="10.80" fill="url(#trail)" opacity="0.627"></circle>
+    <circle cx="73.18" cy="45.49" r="11.31" fill="url(#trail)" opacity="0.670"></circle>
+    <circle cx="81.82" cy="40.71" r="11.84" fill="url(#trail)" opacity="0.714"></circle>
+    <circle cx="90.94" cy="36.94" r="12.37" fill="url(#trail)" opacity="0.759"></circle>
+    <circle cx="100.42" cy="34.21" r="12.91" fill="url(#trail)" opacity="0.805"></circle>
+    <circle cx="110.15" cy="32.55" r="13.45" fill="url(#trail)" opacity="0.852"></circle>
+    <circle cx="120" cy="32" r="14" fill="url(#head)" filter="url(#glow)"></circle>
+  </g>
+</svg>

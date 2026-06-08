@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    v2.5.0 splash drawable — replaces the 11 default Capacitor-logo PNGs
+    that previously occupied this name across `drawable/` and all 10
+    density-specific `drawable-{port,land}-*` directories.
+
+    A density-agnostic XML drawable resolves for every screen DPI/orientation,
+    so all the legacy PNGs were deleted in the same change. Background is
+    `colorPrimaryDark` (#1c1917) which already matches the WebView body
+    background, eliminating the white → Capacitor-X → dark flash sequence
+    reported by testers on Android <12.
+
+    `@mipmap/ic_launcher_foreground` is centered without scaling so the
+    splash matches the user's launcher-icon mental model rather than
+    introducing a separate splash artwork. We reference the *foreground*
+    layer (a guaranteed PNG bitmap at every density) rather than the
+    composite `ic_launcher` resource, because on API 26+ the latter
+    resolves to the adaptive-icon XML at `mipmap-anydpi-v26/ic_launcher.xml`,
+    which isn't a valid `<bitmap android:src>` target — AAPT/lint flag
+    it as a type mismatch. The foreground PNG renders identically to what
+    users see in the home-screen launcher (sans the adaptive bg layer),
+    so the visual outcome is the same. Pairs with `capacitor.config.ts` →
+    SplashScreen plugin (launchShowDuration 1500ms, backgroundColor #1c1917).
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/colorPrimaryDark" />
+    <item>
+        <bitmap
+            android:src="@mipmap/ic_launcher_foreground"
+            android:gravity="center" />
+    </item>
+</layer-list>

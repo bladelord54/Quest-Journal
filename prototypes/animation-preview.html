@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 1.4 — Animation Preview</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body {
+    background: radial-gradient(ellipse at top, #3a2a1a 0%, #1a120a 50%, #0a0604 100%);
+    font-family: 'Cinzel', 'Georgia', serif;
+    color: #fde9b8;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .fancy { font-family: 'Cinzel', 'Georgia', serif; letter-spacing: 0.02em; }
+  .panel {
+    background: linear-gradient(135deg, rgba(60,40,20,0.85), rgba(30,20,10,0.85));
+    border: 2px solid rgba(218,165,32,0.4);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,200,100,0.15);
+  }
+  .demo-target {
+    background: linear-gradient(135deg, #4a3320, #2a1e10);
+    border: 2px solid rgba(218,165,32,0.5);
+    border-radius: 10px;
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s;
+  }
+  .demo-target:hover { transform: scale(1.05); }
+  .btn-trigger {
+    background: linear-gradient(135deg, #b8860b, #8b6508);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border: 1px solid #d4a022;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-trigger:hover { background: linear-gradient(135deg, #d4a022, #b8860b); transform: translateY(-1px); }
+  .btn-trigger:active { transform: translateY(1px); }
+
+  /* === Animation primitives === */
+
+  /* Flying reward sprite */
+  .reward-sprite {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9000;
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-shadow: 0 0 8px rgba(255,200,80,0.9), 0 2px 4px rgba(0,0,0,0.8);
+    color: #ffe585;
+    font-weight: bold;
+    will-change: transform;
+  }
+  @keyframes target-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,200,80,0.7); }
+    50% { transform: scale(1.15); box-shadow: 0 0 20px 10px rgba(255,200,80,0.5); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,200,80,0); }
+  }
+  .target-pulse { animation: target-pulse 0.5s ease-out; }
+
+  /* Burst particles */
+  .burst-particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 8500;
+    font-size: 1.2rem;
+    will-change: transform, opacity;
+  }
+  @keyframes burst-fly {
+    0% { transform: translate(-50%, -50%) scale(0.4) rotate(0deg); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--bx)), calc(-50% + var(--by))) scale(1.2) rotate(var(--br)); opacity: 0; }
+  }
+
+  /* Expanding ring */
+  .expand-ring {
+    position: fixed;
+    pointer-events: none;
+    z-index: 8400;
+    border: 3px solid;
+    border-radius: 50%;
+    will-change: transform, opacity;
+    transform: translate(-50%, -50%);
+  }
+  @keyframes ring-expand {
+    0% { width: 20px; height: 20px; opacity: 1; }
+    100% { width: 220px; height: 220px; opacity: 0; }
+  }
+
+  /* Celebration banner */
+  .celebration-banner {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-150%);
+    z-index: 9500;
+    min-width: 320px;
+    max-width: 92vw;
+    padding: 16px 22px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(80,55,20,0.97), rgba(40,25,10,0.97));
+    border: 2px solid #d4a022;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(218,165,32,0.4), inset 0 1px 0 rgba(255,220,150,0.3);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .celebration-banner.show { transform: translateX(-50%) translateY(0); }
+  .celebration-banner .cb-icon { font-size: 2.4rem; flex-shrink: 0; }
+  .celebration-banner .cb-title { font-size: 1.1rem; font-weight: bold; color: #ffe585; }
+  .celebration-banner .cb-subtitle { font-size: 0.85rem; color: rgba(255,229,133,0.7); margin-top: 2px; }
+
+  /* Themed banner variants */
+  .celebration-banner.theme-arcane { border-color: #9966ff; box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(153,102,255,0.5); }
+  .celebration-banner.theme-arcane .cb-title { color: #cdb4ff; }
+  .celebration-banner.theme-nature { border-color: #66cc66; box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(102,204,102,0.4); }
+  .celebration-banner.theme-nature .cb-title { color: #bbeebb; }
+  .celebration-banner.theme-fire { border-color: #ff8844; box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(255,136,68,0.5); }
+
+  /* Level-up float text */
+  .floating-text {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9100;
+    font-weight: bold;
+    font-size: 1.4rem;
+    text-shadow: 0 0 10px rgba(255,200,80,0.8), 0 2px 4px rgba(0,0,0,0.8);
+    will-change: transform, opacity;
+  }
+  @keyframes float-up {
+    0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+    20% { transform: translate(-50%, -10px) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+  }
+
+  /* Companion bounce */
+  @keyframes companion-bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    30% { transform: translateY(-25px) scale(1.18); }
+    60% { transform: translateY(-5px) scale(0.95); }
+  }
+  .companion-bounce { animation: companion-bounce 0.7s ease-out; }
+
+  /* Card glow */
+  @keyframes card-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,200,80,0); }
+    50% { box-shadow: 0 0 30px 8px rgba(255,200,80,0.7); }
+  }
+  .card-glow { animation: card-glow 1.5s ease-in-out infinite; }
+
+  /* Reduced motion */
+  body.reduced-motion .burst-particle,
+  body.reduced-motion .expand-ring,
+  body.reduced-motion .reward-sprite { display: none !important; }
+  body.reduced-motion .celebration-banner { transition: opacity 0.2s; }
+  body.minimal-motion * { animation: none !important; transition: none !important; }
+</style>
+</head>
+<body class="p-6 md:p-10">
+
+<!-- Counter display in top-right (target for flying rewards) -->
+<div class="fixed top-4 right-4 panel px-4 py-2 flex gap-4 text-sm" style="z-index: 100;">
+  <div><span id="xp-counter" class="text-amber-300 font-bold">0</span> <span class="text-amber-500/70">XP</span></div>
+  <div><span id="gold-counter" class="text-yellow-300 font-bold">0</span> <span class="text-amber-500/70">⚜</span></div>
+  <div><span id="crystal-counter" class="text-cyan-300 font-bold">0</span> <span class="text-amber-500/70">💎</span></div>
+</div>
+
+<header class="text-center mb-8 mt-12">
+  <h1 class="text-3xl md:text-4xl font-bold text-amber-300 fancy">⚔️ Phase 1.4 — Animation Preview</h1>
+  <p class="text-amber-200/70 mt-2 text-sm">Click any trigger to see the animation</p>
+</header>
+
+<!-- Animation intensity setting -->
+<div class="max-w-3xl mx-auto panel p-4 mb-8 flex items-center justify-between flex-wrap gap-3">
+  <span class="text-amber-200 text-sm">🎚️ Animation Intensity</span>
+  <div class="flex gap-2">
+    <button onclick="setIntensity('full')" class="btn-trigger" id="int-full">Full</button>
+    <button onclick="setIntensity('reduced')" class="btn-trigger" id="int-reduced">Reduced</button>
+    <button onclick="setIntensity('minimal')" class="btn-trigger" id="int-minimal">Minimal</button>
+  </div>
+</div>
+
+<!-- Section 1: Primitives -->
+<section class="max-w-5xl mx-auto mb-10">
+  <h2 class="text-2xl text-amber-300 fancy mb-4">🧱 Primitives</h2>
+  <div class="grid md:grid-cols-3 gap-4">
+
+    <!-- flyingReward -->
+    <div class="panel p-5">
+      <h3 class="text-amber-300 font-bold mb-2">flyingReward()</h3>
+      <p class="text-amber-100/60 text-xs mb-4">Sprite arcs from source → counter, target pulses on arrival.</p>
+      <div class="flex flex-col items-center gap-3">
+        <div class="demo-target" id="prim-fly-source">📜</div>
+        <button class="btn-trigger" onclick="demoFlyingReward()">+25 XP</button>
+        <button class="btn-trigger" onclick="demoFlyingGold()">+10 Gold</button>
+        <button class="btn-trigger" onclick="demoFlyingCrystal()">+1 💎</button>
+      </div>
+    </div>
+
+    <!-- burstAt -->
+    <div class="panel p-5">
+      <h3 class="text-amber-300 font-bold mb-2">burstAt()</h3>
+      <p class="text-amber-100/60 text-xs mb-4">Themed particle burst from an element.</p>
+      <div class="flex flex-col items-center gap-3">
+        <div class="demo-target" id="prim-burst-source">🎯</div>
+        <button class="btn-trigger" onclick="burstAt(document.getElementById('prim-burst-source'), {type: 'sparkle'})">✨ Sparkles</button>
+        <button class="btn-trigger" onclick="burstAt(document.getElementById('prim-burst-source'), {type: 'rune'})">🔮 Runes</button>
+        <button class="btn-trigger" onclick="burstAt(document.getElementById('prim-burst-source'), {type: 'leaf'})">🍃 Leaves</button>
+        <button class="btn-trigger" onclick="burstAt(document.getElementById('prim-burst-source'), {type: 'star'})">⭐ Stars</button>
+      </div>
+    </div>
+
+    <!-- celebrationBanner -->
+    <div class="panel p-5">
+      <h3 class="text-amber-300 font-bold mb-2">celebrationBanner()</h3>
+      <p class="text-amber-100/60 text-xs mb-4">Premium slide-in banner — replaces toast for mid-tier wins.</p>
+      <div class="flex flex-col gap-3">
+        <button class="btn-trigger" onclick="celebrationBanner({icon: '🏆', title: 'Achievement Unlocked', subtitle: 'Complete 10 daily quests in a row', theme: 'gold'})">Default</button>
+        <button class="btn-trigger" onclick="celebrationBanner({icon: '🔮', title: 'Spell Unlocked', subtitle: 'Arcane Insight is now in your spellbook', theme: 'arcane'})">Arcane</button>
+        <button class="btn-trigger" onclick="celebrationBanner({icon: '🌿', title: 'Companion Bonded', subtitle: 'Forest Sprite joined your party', theme: 'nature'})">Nature</button>
+        <button class="btn-trigger" onclick="celebrationBanner({icon: '🔥', title: '7-Day Streak!', subtitle: 'A week of quests conquered', theme: 'fire'})">Fire</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2: Composite Events -->
+<section class="max-w-5xl mx-auto mb-10">
+  <h2 class="text-2xl text-amber-300 fancy mb-4">🎬 Composite Events (Phase 1.4 launch set)</h2>
+  <div class="grid md:grid-cols-3 gap-4">
+
+    <!-- Enchantment cast -->
+    <div class="panel p-5">
+      <h3 class="text-amber-300 font-bold mb-2">Enchantment Cast</h3>
+      <p class="text-amber-100/60 text-xs mb-4">Expanding rune ring + spiral particles from the tile.</p>
+      <div class="flex flex-col items-center gap-3">
+        <div class="demo-target" id="ev-enchant-tile">📖</div>
+        <button class="btn-trigger" onclick="event_enchantmentCast(document.getElementById('ev-enchant-tile'))">Cast Enchantment</button>
+      </div>
+    </div>
+
+    <!-- Companion level up -->
+    <div class="panel p-5">
+      <h3 class="text-amber-300 font-bold mb-2">Companion Level Up</h3>
+      <p class="text-amber-100/60 text-xs mb-4">Bounce + golden ring pulse + "Lv X→Y" float.</p>
+      <div class="flex flex-col items-center gap-3">
+        <div class="demo-target" id="ev-companion">🐉</div>
+        <button class="btn-trigger" onclick="event_companionLevelUp(document.getElementById('ev-companion'))">Level Up Companion</button>
+      </div>
+    </div>
+
+    <!-- Spell unlocked -->
+    <div class="panel p-5">
+      <h3 class="text-amber-300 font-bold mb-2">Spell Unlocked</h3>
+      <p class="text-amber-100/60 text-xs mb-4">Stamp-in card + 3s glow + banner.</p>
+      <div class="flex flex-col items-center gap-3">
+        <div class="demo-target" id="ev-spell">✨</div>
+        <button class="btn-trigger" onclick="event_spellUnlocked(document.getElementById('ev-spell'))">Unlock Spell</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="text-center text-amber-200/40 text-xs mt-8 pb-12">
+  Prototype only — no audio. Final integration will hook into <code class="text-amber-300/70">audioManager</code>.
+</footer>
+
+<script>
+// ============================================================================
+// effects-manager.js (PROTOTYPE) — primitives for Phase 1.4 animation system
+// ============================================================================
+
+const EffectsManager = {
+  intensity: 'full',  // 'full' | 'reduced' | 'minimal'
+  _activeEffects: 0,
+  MAX_CONCURRENT: 8,
+
+  setIntensity(level) {
+    this.intensity = level;
+    document.body.classList.remove('reduced-motion', 'minimal-motion');
+    if (level === 'reduced') document.body.classList.add('reduced-motion');
+    else if (level === 'minimal') document.body.classList.add('minimal-motion');
+  },
+
+  _canSpawn() {
+    if (this.intensity === 'minimal') return false;
+    return this._activeEffects < this.MAX_CONCURRENT;
+  },
+
+  // ── flyingReward ─────────────────────────────────────────────────────
+  flyingReward(fromEl, toEl, icon, amount, onArrive) {
+    if (!fromEl || !toEl) return;
+    if (this.intensity === 'minimal') { if (onArrive) onArrive(); return; }
+
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect = toEl.getBoundingClientRect();
+    const startX = fromRect.left + fromRect.width / 2;
+    const startY = fromRect.top + fromRect.height / 2;
+    const endX = toRect.left + toRect.width / 2;
+    const endY = toRect.top + toRect.height / 2;
+
+    const sprite = document.createElement('div');
+    sprite.className = 'reward-sprite';
+    sprite.innerHTML = `<span>${icon}</span><span>+${amount}</span>`;
+    sprite.style.left = startX + 'px';
+    sprite.style.top = startY + 'px';
+    sprite.style.transform = 'translate(-50%, -50%) scale(0.6)';
+    document.body.appendChild(sprite);
+
+    this._activeEffects++;
+
+    // Arc via two-stage animate with control point
+    const duration = 700;
+    const peakY = Math.min(startY, endY) - 60;
+    const start = performance.now();
+
+    function tick(now) {
+      const t = Math.min(1, (now - start) / duration);
+      // Quadratic bezier through (startX,startY) → (midX,peakY) → (endX,endY)
+      const midX = (startX + endX) / 2;
+      const x = (1-t)*(1-t)*startX + 2*(1-t)*t*midX + t*t*endX;
+      const y = (1-t)*(1-t)*startY + 2*(1-t)*t*peakY + t*t*endY;
+      const scale = t < 0.3 ? 0.6 + t*2 : (1.2 - (t-0.3)*0.3);
+      sprite.style.left = x + 'px';
+      sprite.style.top = y + 'px';
+      sprite.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      sprite.style.opacity = t > 0.85 ? (1 - (t - 0.85) / 0.15) : 1;
+      if (t < 1) requestAnimationFrame(tick);
+      else {
+        sprite.remove();
+        toEl.classList.remove('target-pulse');
+        void toEl.offsetWidth;
+        toEl.classList.add('target-pulse');
+        EffectsManager._activeEffects--;
+        if (onArrive) onArrive();
+      }
+    }
+    requestAnimationFrame(tick);
+  },
+
+  // ── burstAt ──────────────────────────────────────────────────────────
+  burstAt(el, options = {}) {
+    if (!el || !this._canSpawn()) return;
+    if (this.intensity === 'reduced') options.count = Math.min(options.count || 6, 4);
+
+    const themes = {
+      sparkle: { glyphs: ['✨', '⭐', '✦', '·'], colors: ['#ffe585', '#fff'] },
+      rune:    { glyphs: ['ᚠ', 'ᚱ', 'ᚺ', '◈', '✦'], colors: ['#c8a0ff', '#9966ff'] },
+      leaf:    { glyphs: ['🍃', '🌿', '✿'], colors: ['#9fdc7a'] },
+      star:    { glyphs: ['⭐', '✨', '★'], colors: ['#ffe585'] },
+      fire:    { glyphs: ['🔥', '✨', '·'], colors: ['#ff8844'] }
+    };
+    const theme = themes[options.type || 'sparkle'] || themes.sparkle;
+    const count = options.count || 8;
+
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    this._activeEffects++;
+    let remaining = count;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'burst-particle';
+      p.textContent = theme.glyphs[Math.floor(Math.random() * theme.glyphs.length)];
+      p.style.color = theme.colors[Math.floor(Math.random() * theme.colors.length)];
+      p.style.left = cx + 'px';
+      p.style.top = cy + 'px';
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+      const dist = 60 + Math.random() * 50;
+      p.style.setProperty('--bx', Math.cos(angle) * dist + 'px');
+      p.style.setProperty('--by', Math.sin(angle) * dist + 'px');
+      p.style.setProperty('--br', (Math.random() * 360 - 180) + 'deg');
+      p.style.animation = `burst-fly ${600 + Math.random() * 300}ms ease-out forwards`;
+      document.body.appendChild(p);
+      p.addEventListener('animationend', () => {
+        p.remove();
+        if (--remaining === 0) EffectsManager._activeEffects--;
+      });
+    }
+  },
+
+  // ── celebrationBanner ────────────────────────────────────────────────
+  celebrationBanner({ icon, title, subtitle, theme, duration = 2500 }) {
+    if (this.intensity === 'minimal') return; // Could fallback to toast here
+
+    // Remove any existing banner first
+    const existing = document.querySelector('.celebration-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.className = `celebration-banner ${theme ? 'theme-' + theme : ''}`;
+    banner.innerHTML = `
+      <div class="cb-icon">${icon}</div>
+      <div>
+        <div class="cb-title">${title}</div>
+        ${subtitle ? `<div class="cb-subtitle">${subtitle}</div>` : ''}
+      </div>
+    `;
+    document.body.appendChild(banner);
+    void banner.offsetWidth; // reflow
+    banner.classList.add('show');
+
+    setTimeout(() => {
+      banner.classList.remove('show');
+      setTimeout(() => banner.remove(), 500);
+    }, duration);
+  },
+
+  // ── Expanding ring (helper) ──────────────────────────────────────────
+  expandingRing(el, { color = '#d4a022', count = 1 } = {}) {
+    if (!el || !this._canSpawn()) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const ring = document.createElement('div');
+        ring.className = 'expand-ring';
+        ring.style.borderColor = color;
+        ring.style.left = cx + 'px';
+        ring.style.top = cy + 'px';
+        ring.style.animation = 'ring-expand 800ms ease-out forwards';
+        document.body.appendChild(ring);
+        ring.addEventListener('animationend', () => ring.remove());
+      }, i * 200);
+    }
+  },
+
+  // ── Floating text (helper, used by composites) ───────────────────────
+  floatingText(el, text, color = '#ffe585') {
+    if (!el || this.intensity === 'minimal') return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top;
+    const ft = document.createElement('div');
+    ft.className = 'floating-text';
+    ft.textContent = text;
+    ft.style.color = color;
+    ft.style.left = cx + 'px';
+    ft.style.top = cy + 'px';
+    ft.style.animation = 'float-up 1.4s ease-out forwards';
+    document.body.appendChild(ft);
+    ft.addEventListener('animationend', () => ft.remove());
+  }
+};
+
+// ============================================================================
+// Demo wiring
+// ============================================================================
+
+let xp = 0, gold = 0, crystals = 0;
+function setIntensity(level) {
+  EffectsManager.setIntensity(level);
+  ['full', 'reduced', 'minimal'].forEach(l => {
+    const btn = document.getElementById('int-' + l);
+    btn.style.outline = l === level ? '2px solid #ffe585' : 'none';
+  });
+}
+setIntensity('full');
+
+function demoFlyingReward() {
+  const src = document.getElementById('prim-fly-source');
+  const dst = document.getElementById('xp-counter').parentElement;
+  EffectsManager.flyingReward(src, dst, '⭐', 25, () => {
+    xp += 25; document.getElementById('xp-counter').textContent = xp;
+  });
+}
+function demoFlyingGold() {
+  const src = document.getElementById('prim-fly-source');
+  const dst = document.getElementById('gold-counter').parentElement;
+  EffectsManager.flyingReward(src, dst, '⚜', 10, () => {
+    gold += 10; document.getElementById('gold-counter').textContent = gold;
+  });
+}
+function demoFlyingCrystal() {
+  const src = document.getElementById('prim-fly-source');
+  const dst = document.getElementById('crystal-counter').parentElement;
+  EffectsManager.flyingReward(src, dst, '💎', 1, () => {
+    crystals += 1; document.getElementById('crystal-counter').textContent = crystals;
+  });
+}
+
+function celebrationBanner(opts) { EffectsManager.celebrationBanner(opts); }
+function burstAt(el, opts) { EffectsManager.burstAt(el, opts); }
+
+// ── Composite events ────────────────────────────────────────────────────────
+function event_enchantmentCast(el) {
+  EffectsManager.expandingRing(el, { color: '#9966ff', count: 2 });
+  EffectsManager.burstAt(el, { type: 'rune', count: 10 });
+  setTimeout(() => EffectsManager.celebrationBanner({
+    icon: '🔮', title: 'Enchantment Cast', subtitle: 'Time Warden — +35min focus sessions for 2 hours', theme: 'arcane', duration: 2200
+  }), 300);
+}
+
+function event_companionLevelUp(el) {
+  el.classList.remove('companion-bounce'); void el.offsetWidth;
+  el.classList.add('companion-bounce');
+  EffectsManager.expandingRing(el, { color: '#d4a022', count: 3 });
+  EffectsManager.burstAt(el, { type: 'sparkle', count: 8 });
+  EffectsManager.floatingText(el, 'Lv 4 → Lv 5', '#ffe585');
+}
+
+function event_spellUnlocked(el) {
+  // Stamp-in: quick scale punch
+  el.animate([
+    { transform: 'scale(0.3)', opacity: 0 },
+    { transform: 'scale(1.3)', opacity: 1, offset: 0.6 },
+    { transform: 'scale(1)', opacity: 1 }
+  ], { duration: 500, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
+
+  el.classList.add('card-glow');
+  setTimeout(() => el.classList.remove('card-glow'), 3000);
+
+  EffectsManager.burstAt(el, { type: 'star', count: 12 });
+  setTimeout(() => EffectsManager.celebrationBanner({
+    icon: '📖', title: 'Spell Unlocked!', subtitle: 'Arcane Insight is now in your spellbook', theme: 'arcane', duration: 2500
+  }), 200);
+}
+</script>
+</body>
+</html>

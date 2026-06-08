@@ -15,6 +15,16 @@ class AudioManager {
         this._soundPlaying = false;
         this._lastPlayedId = null;
         this._lastPlayedTime = 0;
+
+        // Per-sound-id last-played map for fine-grained throttling (Fix E)
+        this._lastPlayedById = {};
+        // Per-sound minimum interval in ms; defaults to 150ms (Fix E)
+        this._minIntervalById = {
+            'sword-slice': 200,
+            'boss-damage': 180
+        };
+        // Max age before a queued sound is considered stale and dropped (Fix A)
+        this._maxQueueAgeMs = 1500;
         
         // Load saved settings
         const savedVolume = localStorage.getItem('audioVolume');
@@ -108,11 +118,13 @@ class AudioManager {
 
         const now = Date.now();
         
-        // Debounce: skip if same sound played within 150ms
-        if (soundId === this._lastPlayedId && now - this._lastPlayedTime < 150) return;
+        // Per-sound throttle: skip if same sound played too recently (Fix E)
+        const minInterval = this._minIntervalById[soundId] || 150;
+        const lastForId = this._lastPlayedById[soundId] || 0;
+        if (now - lastForId < minInterval) return;
         
-        // Auto-recover if queue has been stuck for more than 5 seconds
-        if (this._soundPlaying && now - this._lastPlayedTime > 5000) {
+        // Auto-recover if queue has been stuck for more than 2 seconds (Fix C)
+        if (this._soundPlaying && now - this._lastPlayedTime > 2000) {
             this._soundPlaying = false;
             this._soundQueue = [];
         }
@@ -120,7 +132,7 @@ class AudioManager {
         // Cap queue to prevent runaway accumulation
         if (this._soundQueue.length >= 6) this._soundQueue.shift();
         
-        this._soundQueue.push({ soundId, volumeOverride });
+        this._soundQueue.push({ soundId, volumeOverride, enqueuedAt: now });
         
         if (!this._soundPlaying) {
             this._processSoundQueue();
@@ -128,6 +140,12 @@ class AudioManager {
     }
     
     async _processSoundQueue() {
+        // Drop stale entries from the head of the queue (Fix A)
+        const now = Date.now();
+        while (this._soundQueue.length > 0 &&
+               now - this._soundQueue[0].enqueuedAt > this._maxQueueAgeMs) {
+            this._soundQueue.shift();
+        }
         if (this._soundQueue.length === 0) {
             this._soundPlaying = false;
             return;
@@ -138,6 +156,7 @@ class AudioManager {
         
         this._lastPlayedId = soundId;
         this._lastPlayedTime = Date.now();
+        this._lastPlayedById[soundId] = this._lastPlayedTime;
         
         const vol = volumeOverride !== null ? volumeOverride : this.volume;
         const advance = () => setTimeout(() => this._processSoundQueue(), 100);

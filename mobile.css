@@ -14,7 +14,7 @@
 /* Mobile Navigation - Bottom Tab Bar */
 @media (max-width: 768px) {
     /* Hide desktop sidebar */
-    body > .flex > div:first-child {
+    #main-sidebar {
         position: fixed;
         bottom: 0;
         left: 0;
@@ -29,7 +29,7 @@
     }
 
     /* Collapsed state for mobile nav */
-    body > .flex > div:first-child.nav-collapsed {
+    #main-sidebar.nav-collapsed {
         transform: translateY(calc(100% - 40px));
     }
 
@@ -48,7 +48,7 @@
         margin-top: 0 !important;
     }
 
-    body > .flex > div:first-child > nav {
+    #main-sidebar > nav {
         display: flex;
         flex-direction: row;
         overflow-x: auto;
@@ -61,7 +61,7 @@
         padding-right: 8px;
     }
 
-    body > .flex > div:first-child > nav::-webkit-scrollbar {
+    #main-sidebar > nav::-webkit-scrollbar {
         display: none; /* Chrome/Safari */
     }
 
@@ -101,7 +101,7 @@
     }
 
     /* Mobile Nav Items - Icons Only */
-    body > .flex > div:first-child > nav > a {
+    #main-sidebar > nav > a {
         flex: 0 0 auto;
         min-width: 48px;
         min-height: 48px;
@@ -118,24 +118,32 @@
     }
 
     /* Hide ALL text labels on mobile */
-    body > .flex > div:first-child > nav > a span {
+    #main-sidebar > nav > a span {
         display: none !important;
     }
 
     /* Mobile Nav Icons - Bigger and Centered */
-    body > .flex > div:first-child > nav > a i {
+    #main-sidebar > nav > a i {
         font-size: 1.75rem !important;
         margin: 0 !important;
     }
 
-    /* Active indicator */
-    body > .flex > div:first-child > nav > a.active {
-        background: rgba(251, 191, 36, 0.2);
+    /* Active indicator — v2.6.x patch: bumped the tint from 0.2 to 0.32 and
+       added a soft inset glow so the active tab reads at a glance against
+       the now-darker `bg-stone-950` body. The previous 20% wash on top of
+       the amber-900 nav background produced only a mild brightness lift;
+       the border-bottom and icon color were carrying the indicator alone.
+       Inset glow uses amber-400 at low opacity so it doesn't compete with
+       the nav's amber gradient under any theme. */
+    #main-sidebar > nav > a.active {
+        background: rgba(251, 191, 36, 0.32);
         border-bottom: 3px solid #fbbf24;
+        box-shadow: inset 0 0 16px rgba(251, 191, 36, 0.25);
     }
 
-    body > .flex > div:first-child > nav > a.active i {
+    #main-sidebar > nav > a.active i {
         color: #fbbf24 !important;
+        filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5));
     }
 
     /* Nav Toggle Button - Pull Tab */
@@ -446,11 +454,25 @@
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: none;
     }
+
+    /* Bottom-pinned overlays must clear the ~80px bottom tab nav on mobile.
+       Inline styles use `bottom:24px` which is fine on desktop but collides
+       with the Android/PWA bottom nav. Lift them above it + respect the
+       safe-area inset for notch/gesture phones. */
+    #milestone-share-prompt,
+    #onboarding-share-hook {
+        bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    }
+    .xp-toast {
+        bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    }
+    /* The hiding-state transform is composed of translateX + translateY(120px);
+       no change needed there — only the `bottom` anchor shifts on mobile. */
 }
 
 /* Tablet adjustments (768px - 1024px) */
 @media (min-width: 769px) and (max-width: 1024px) {
-    body > .flex > div:first-child {
+    #main-sidebar {
         width: 200px !important;
     }
 
@@ -465,11 +487,11 @@
 
 /* Landscape mobile adjustments */
 @media (max-width: 768px) and (orientation: landscape) {
-    body > .flex > div:first-child {
+    #main-sidebar {
         height: 60px;
     }
 
-    body > .flex > div:first-child > nav > a {
+    #main-sidebar > nav > a {
         padding: 0.5rem 0.25rem;
     }
 
@@ -491,7 +513,7 @@
     }
 
     @media (max-width: 768px) {
-        body > .flex > div:first-child {
+        #main-sidebar {
             padding-bottom: env(safe-area-inset-bottom);
         }
     }
@@ -555,11 +577,10 @@
         overflow: hidden;
     }
     
-    /* Tap press effect */
-    .quest-card:active {
-        transform: scale(0.97);
-        transition: transform 0.1s ease;
-    }
+    /* Tap press effect — superseded in v2.5 by the universal
+       `.quest-card:active` rule in animations.css (works on desktop +
+       touch with a matching shadow change). Block left empty here so
+       any prior cache hit still parses cleanly. */
     
     /* Glow flash on tap */
     .quest-card.touch-active {
