@@ -1347,6 +1347,460 @@ clean separation between the two cool prestige themes.
   the Week' rotation card on the Dashboard." That bullet has been
   removed from §2.4 alongside this deferral note.
 
+#### v2.9 Implementation Plan (drafted Jun 8, 2026)
+
+Code-surface audit complete across all seven tracks. Per-track
+breakdown below with current state, file targets, function signatures,
+asset needs, effort estimate, and risk profile. Suggested ordering at
+the bottom.
+
+##### Track 1 — Per-tier chest-open sequences
+
+- **Current state:** Tier-tinted chest celebration **already
+  exists** at `goal-manager.js:5739` (`celebrateChestOpen(type,
+  rewards)`) with CSS at `animations.css:987-1085`. All four tiers
+  (bronze/silver/gold/royal) share the same six-layer animation
+  skeleton — full-screen flash, chest icon shake-then-burst, aura
+  ring, light beam, coin particle burst, confetti — and differ only
+  in color tint via `chest-tier-${type}` classes (`--chest-color` +
+  `--chest-glow` CSS variables). The v2.9 deliverable is to
+  differentiate the **sequences themselves**, not just the colors.
+- **What changes:**
+  - Replace the single shared `chest-open-icon` shake-then-burst
+    keyframe with per-tier lid-opening behavior: bronze =
+    simple latch pop with brown sparks; silver = side-hinged lid
+    with starfield twinkle; gold = dual-side lid opening with
+    sun-ray god-light; royal = floating lid that rotates upward
+    with prismatic refraction.
+  - Replace the simultaneous coin-particle burst with a
+    sequential item-by-item reveal in the loot panel. Each loot
+    item from the `rewards` array gets a staggered reveal
+    animation keyed off its `rarity` (common: simple drop-in;
+    legendary: prismatic burst with rotating glow). Hooks into
+    the existing `showLootPanel(type, rewards)` call already
+    fired at `:5733`.
+  - Tier-specific sound variants — coordinate with §2.6 R2
+    (`chest-open-bronze/silver/gold/royal`) so audio + visual
+    tier differentiation lands in the same release where
+    possible.
+- **Files:**
+  - `goal-manager.js:5739` — `celebrateChestOpen()` split into
+    `celebrateChestOpenBronze/Silver/Gold/Royal()` sub-routines
+    or extend with a `tier` switch on the lid layer
+  - `goal-manager.js:5728` — `showChestRewards()` adjust the
+    2200ms delay to accommodate longer tier sequences
+    (probably 2400ms bronze, 2700ms silver, 3000ms gold, 3500ms
+    royal)
+  - `goal-manager.js` `showLootPanel()` — add staggered reveal
+    via `animation-delay` on each item card (existing function;
+    location TBD via grep when implementation begins)
+  - `animations.css` — new `@keyframes chest-lid-bronze/silver/
+    gold/royal` plus `@keyframes loot-reveal-{rarity}` family
+- **Assets needed:** Four lid SVG sprites (one per tier); single
+  reusable light-shaft sprite with `hue-rotate` per tier (cheaper
+  than four separate sprites, GPU-friendly); optional per-rarity
+  reveal-sparkle SVGs (or reuse existing comet SVGs already
+  shipped in v2.4.10 — `icons/comet-*.svg`).
+- **Effort:** Medium-large (3-5 days). Mostly visual + asset
+  work; no logic refactor needed beyond the sequencing rewrite.
+- **Risk:** Low — fully additive, tier system already in place,
+  fallback to existing animation if a per-tier keyframe is
+  missing keeps partial asset drops safe.
+
+##### Track 2 — Boss portraits / illustrated art
+
+- **Current state:** Boss `icon` field is a single emoji
+  (`🐲`, `💀`, `👹`, etc.), rendered at `renderBossCard()` line
+  14636 as `<div class="text-5xl ${animate-bounce}">${boss.icon}</
+  div>`. No portrait/illustration field on the boss data
+  structure. `bossThemes.daily/weekly/monthly` arrays in
+  `goal-manager.js` (location: search for `bossThemes`)
+  define name/icon/flavor only.
+- **What changes:**
+  - Add optional `portraitUrl` field to boss theme definitions.
+    Fall back to emoji icon if not provided (graceful
+    degradation for partial asset rollout — add monthly bosses
+    first, weekly next, daily last).
+  - Render `<img>` portrait when `portraitUrl` exists, swapped
+    in for the emoji `<div>`. Same visual slot but at larger
+    scale (~80-120px square) inside a theme-toned border frame.
+  - Damaged-state visual treatment via CSS filter ramp on the
+    portrait based on HP percentage:
+    - 100-75% HP — no filter (full color)
+    - 75-50% HP — `saturate(0.85)` + slight `brightness(0.95)`
+    - 50-25% HP — `saturate(0.7)` + red tint overlay (mix-blend)
+    - 25-0% HP — `saturate(0.5)` + bloodied vignette + slight
+      shake on the portrait element
+- **Files:**
+  - `goal-manager.js` boss theme definitions block (search
+    `bossThemes:` to locate; expect ~30-50 themes total across
+    daily/weekly/monthly arrays)
+  - `goal-manager.js:14636` — `renderBossCard()` portrait/icon
+    block, plus `renderMonthlyBossChallenge()` line 14548
+  - `themes.css` or new `boss-portraits.css` — portrait frame
+    styling, damaged-state filters
+- **Assets needed:** Illustrated portraits for each boss in
+  `bossThemes.{daily,weekly,monthly}`. Need to count current
+  rosters — quick audit during implementation. Recommended phased
+  rollout: monthly bosses first (highest visual prominence,
+  smallest count, ~5-10 images), then weekly (~10-15), then
+  daily (~15-25). AI-generation source vs. commissioned art is
+  a budget call to make before this track starts.
+- **Effort:** Small code (1 day) + variable asset effort
+  (depends on roster size and source). Likely the highest asset
+  cost of the v2.9 list.
+- **Risk:** Asset generation/sourcing pipeline. Code changes
+  are trivial. **Decision needed before track starts:** AI
+  generation (cheap, fast, style-consistent if seeded well) vs.
+  commissioned art (expensive, slow, premium feel). Defer this
+  call until ordering is decided.
+
+##### Track 3 — Boss HP bar with animated damage chunks
+
+- **Current state:** HP bar at `renderBossCard()` lines
+  14649-14660 is a single flat gradient div (`bg-gradient-to-r
+  from-${phaseColor}-600 to-${phaseColor}-400`) with width set
+  via inline `style="width: ${hpPercent}%"` and a 500ms CSS
+  transition. `updateBossHPBar(bossType, boss)` at
+  `goal-manager.js:1356` updates fill width directly without
+  full re-render to preserve the slash overlay animation.
+  Phase-color thresholds (red → yellow → orange → purple →
+  green) shift palette at HP buckets but don't add chunk drain
+  or per-hit red flash.
+- **What changes:**
+  - Refactor HP bar from single fill div into a **segmented bar
+    of N chunks** (N = `Math.min(boss.maxHP, 20)` to keep chunk
+    count bounded on high-HP bosses). Each chunk is its own
+    div, sequentially numbered.
+  - On hit, animate the specific chunks being drained: red
+    flash on the chunk(s) that are about to disappear, then
+    those chunks fade out / scale-y down in sequence with a
+    slight stagger (50-80ms per chunk for multi-damage hits).
+  - Preserve the existing phase-color palette swap as a smooth
+    cross-fade on the remaining chunks rather than the current
+    instant swap.
+  - Existing 500ms transition on the percentage-fill becomes
+    obsolete; replace with chunk-level transitions.
+- **Files:**
+  - `goal-manager.js:14649` — HP bar markup in `renderBossCard()`
+  - `goal-manager.js:1356` — `updateBossHPBar(bossType, boss)`
+    rewritten to operate on chunks; takes `damage` parameter so
+    it knows which chunks to flash-and-drain
+  - `goal-manager.js:1287` — pass `damage` from `attackBoss()`
+    into `updateBossHPBar()` (currently only passes `boss`)
+  - `animations.css` — new `@keyframes hp-chunk-drain` and
+    `@keyframes hp-chunk-flash`
+- **Assets needed:** None (CSS-only).
+- **Effort:** Small-medium (2 days). Foundational — sets the
+  visual language for chunk-based feedback that other tracks
+  can build on.
+- **Risk:** Low. The chunk count cap (max 20) keeps DOM cost
+  bounded; existing `updateBossHPBar()` already runs without
+  full re-render so the chunk approach fits the existing
+  architecture cleanly.
+
+##### Track 4 — Crit / weakpoint visual indicators
+
+- **Current state:** Crits exist on the `attackBoss()` path at
+  `goal-manager.js:1274-1284` (Critical Strike spell, 50% chance
+  for +50% damage). On crit:
+  - `isCrit = true` flag set
+  - `effectsManager.bossCrit(bossEl)` fires → 14-particle fire
+    burst (`effects-manager.js:631`)
+  - `playSlash(isCrit)` plays louder slash sound
+  - `boss-slash-mark` element gets `.crit` class for amped
+    visual
+  - `boss-damage-float` shows `💥 ${damage}` in red
+  - Battle log entry shows `💥 CRIT! ${damage} DMG`
+- **What changes:** Layer additional crit-specific feedback on
+  top of the existing burst:
+  - **Weakpoint reticle** — brief crosshair/reticle appears on
+    the boss portrait/icon at the moment of impact (~150ms
+    before slash lands), fades out over 400ms. Suggests a
+    targeted strike rather than a generic harder hit.
+  - **Crit shockwave** — radial ring expanding outward from the
+    impact point, 0% → 200% scale over 350ms with opacity 0.8 →
+    0. Reads as the visceral force of the strike.
+  - **Crit time-dilation** — brief 60ms freeze-frame on the
+    boss element (`animation-play-state: paused` on the
+    `animate-bounce` icon) right at impact, restored
+    immediately after. Subtle but adds weight without committing
+    to full slow-motion (which is reserved for the Track 6
+    monthly killing strike).
+  - **Chunk drain enhancement** (depends on Track 3) — crit
+    drains chunks with a yellow-orange flash instead of red,
+    visually distinguishing crit damage on the HP bar.
+- **Files:**
+  - `effects-manager.js:624` — extend `bossCrit(bossEl)` with
+    the reticle + shockwave + time-dilation layers
+  - `goal-manager.js:1280-1284` — pass impact-point coordinates
+    into `bossCrit()` if anchoring the reticle precisely (or
+    just center it on the boss element)
+  - `animations.css` — new `@keyframes crit-reticle`,
+    `@keyframes crit-shockwave`, possibly tier-specific
+    crit-tint variables
+- **Assets needed:** Crosshair/reticle SVG (single asset,
+  reused via CSS color-tint).
+- **Effort:** Small (1 day). Track 3 should land first so the
+  chunk-flash enhancement can layer on cleanly.
+- **Risk:** Very low. Fully additive on top of the existing
+  crit path.
+
+##### Track 5 — Defeat sequence (themed particle dissolve + loot fountain)
+
+- **Current state:** `onBossDefeated(bossType)` at
+  `goal-manager.js:1396-1509` handles the full defeat flow:
+  streak update, XP/gold/crystal awards, loot generation,
+  audio (`playBossDefeated()`), `celebrateBossDefeat()` call,
+  confetti burst, deferred level-up celebration, loot panel
+  shown after 3500ms (or 6000ms if level-up pending). The
+  visual celebration today is generic — confetti + the existing
+  `celebrateBossDefeat()` (need to inspect; likely a flash +
+  toast). No particle dissolve of the boss itself, no loot
+  fountain.
+- **What changes:**
+  - **Dissolve sequence** — at defeat moment, boss portrait/
+    icon dissolves into themed particles tied to the boss's
+    "type" (boss themes have an implicit element from their
+    `flavor` text — e.g., fire bosses → ember particles; ice
+    bosses → frost particles; shadow → smoke). Add a
+    `particleType` field to boss theme definitions to make
+    this explicit rather than inferring from flavor text. Use
+    existing particle classes from the v2.8 theme system as a
+    base palette (`.particle-ember`, `.particle-bubble`,
+    `.particle-smoke` if reintroduced, etc.) — or define
+    boss-specific dissolve particles in a new `boss-particles.
+    css` if existing classes don't cover all elemental types.
+  - **Loot fountain** — after the dissolve completes, loot
+    items rise from the boss's defeated location and arc into
+    the inventory icon in the navbar (suggesting they're being
+    "collected"). Each item flies on its own arc with a slight
+    delay so the fountain reads as a stream rather than a
+    single pop. Lands on the inventory icon with a small
+    pulse.
+  - **Background screen tone** — slight desaturation pulse on
+    the rest of the UI during dissolve (250ms in, 250ms out)
+    to focus attention on the boss being defeated.
+- **Files:**
+  - `goal-manager.js:1396` — `onBossDefeated(bossType)` —
+    insert dissolve sequence before existing
+    `celebrateBossDefeat()` call at line 1480; insert loot
+    fountain before existing `showLootPanel` call at line 1499
+  - `goal-manager.js` `bossThemes` definitions — add
+    `particleType` field per boss theme
+  - `effects-manager.js` — new `bossDefeatDissolve(bossEl,
+    particleType)` and `lootFountain(fromEl, toEl, items)`
+    helpers
+  - `animations.css` — new `@keyframes boss-dissolve-pixelate`,
+    `@keyframes loot-arc-{n}` family (or use JS-driven
+    animation via `requestAnimationFrame` for arbitrary arc
+    paths)
+- **Assets needed:** None (reuse existing particle classes); a
+  small inventory-pulse SVG might be nice but optional.
+- **Effort:** Medium-large (3-4 days). Most complex single
+  track; the loot fountain in particular needs careful arc
+  math + element-position tracking that survives scroll/resize.
+- **Risk:** Medium. Position-tracking the inventory icon as
+  the fountain target needs to be robust to nav state changes.
+  Fallback: if the inventory icon isn't visible (e.g., user is
+  in fullscreen modal), fountain converges to screen center
+  instead.
+
+##### Track 6 — Monthly boss final blow (slow-motion frame)
+
+- **Current state:** Monthly boss flow goes through the same
+  `attackBoss('monthly')` path as daily/weekly. Only
+  differentiation today is the unlock threshold
+  (`canChallengeMonthlyBoss()` requires `bossKillsThisMonth >=
+  monthlyBossUnlockThreshold`), the larger HP/rewards, and the
+  separate `monthly-boss-arena` container. The killing strike
+  on a monthly boss is visually identical to a regular kill.
+- **What changes:**
+  - When `attackBoss('monthly')` reduces `currentHP <= 0`,
+    instead of jumping straight to the existing 600ms
+    `setTimeout` that calls `onBossDefeated`, run a
+    **slow-motion sequence**:
+    1. Extend the slash animation to 2x duration (1000ms
+       instead of 500ms)
+    2. Pause all background animations on the page
+       (`document.body.classList.add('slow-motion')` which CSS
+       targets to set `animation-duration` multipliers via
+       `* { animation-duration: 2s !important; }` scoped to
+       safe selectors — needs careful curation to avoid
+       breaking the dissolve/fountain that follows)
+    3. Brief screen flash (white, 80ms) at the moment of
+       impact
+    4. Camera shake (heavier than regular crit shake) on the
+       page-level shell
+    5. Audio: drop background music volume to 30% during
+       slow-motion (calls a new `audioManager.dipMusic(ratio,
+       durationMs)`)
+    6. After ~1500ms total slow-motion duration, release back
+       to normal speed and trigger the Track 5 dissolve +
+       fountain at full pace
+- **Files:**
+  - `goal-manager.js:1305-1308` — boss defeat detection
+    (existing `boss.currentHP <= 0` branch) — add monthly
+    branch that routes through new `monthlyKillingStrike()`
+    sequence
+  - `goal-manager.js` — new `monthlyKillingStrike(bossType)`
+    helper
+  - `audio-manager.js` — new `dipMusic(ratio, durationMs)`
+    method (independent of v2.10 R-pass)
+  - `animations.css` — `body.slow-motion` selector with
+    animation-duration multipliers
+- **Assets needed:** None.
+- **Effort:** Small-medium (1-2 days). Lands AFTER Track 5
+  (dissolve/fountain) since slow-motion sequences into the
+  dissolve.
+- **Risk:** Low-medium. The `body.slow-motion` global
+  animation-duration override needs careful testing to avoid
+  breaking critical UI animations (e.g., toast slide-in,
+  modal open). Scope the override to a curated allowlist
+  rather than universal `*`.
+
+##### Track 7 — Theme of the Week rotation card
+
+Implementation depends on resolving the seven design questions
+captured in the deferral note above. Recommended answers below
+(propose, then user-confirm before implementation begins):
+
+- **Q1 — Rotation cadence + determinism:** ISO week number
+  modulo a curated rotation order. Add `weeklyRotationIndex:
+  N` field to each premium theme in `themeDefinitions`, hand-
+  ordered to alternate visual tones (cool → warm → cool → ...)
+  so consecutive weeks don't feel monotonous. Expose
+  `getWeeklyFeaturedThemeId()` getter that returns the same
+  id for all users in the same ISO week. Implementation:
+  ```js
+  getWeeklyFeaturedThemeId() {
+      const week = this.getISOWeekNumber(new Date());
+      const ordered = Object.entries(this.themeDefinitions)
+          .filter(([_, t]) => t.premium && t.weeklyRotationIndex != null)
+          .sort((a, b) => a[1].weeklyRotationIndex - b[1].weeklyRotationIndex);
+      return ordered[week % ordered.length]?.[0];
+  }
+  ```
+- **Q2 — Premium-bypass mechanism:** **Recommend Option 1**
+  (getter approach). State stays normalized; `unlockedThemes`
+  continues to mean "permanently unlocked"; the rotation grants
+  temporary access without polluting the unlock list. Two gate
+  sites need updating: `previewTheme()` (already allows preview
+  regardless, no change) and `applyTheme()` / theme-tile click
+  handler (consult `getWeeklyFeaturedThemeId()` alongside
+  `unlockedThemes` membership).
+- **Q3 — End-of-week revoke behavior:** **Recommend (b) with
+  capping** — keep theme active visually past Sunday midnight;
+  on first launch of the new week, show a one-shot "trial
+  ended — subscribe to keep [Theme Name]" upsell modal; revert
+  to default theme on dismiss. Cap at one prompt per
+  featured-theme cycle via `weeklyTrialPromptShown: { themeId:
+  weekNumber }` flag in user data.
+- **Q4 — Selection persistence:** Fall-out of Q3. If user
+  previewed but didn't apply: theme just locks again, no UX
+  change. If user applied: Q3's option (b) flow kicks in.
+  User-facing card copy must make the contract clear: "Free
+  this week — try [Theme Name]. Subscribe to keep it after
+  Sunday."
+- **Q5 — Dashboard card surface:** **Recommend hybrid** — a
+  dismissible toast on Monday morning (first launch of the new
+  week) for awareness, plus a persistent dashboard card slot
+  positioned **between the daily summary tiles and the habits
+  section** for ongoing-week presence. Card uses the featured
+  theme's `cardFrom`/`cardTo` gradient as a teaser. Reduced-
+  motion: no parallax, no auto-cycling preview, just static
+  gradient + text.
+- **Q6 — Premium upsell wiring:** **Audit needed before
+  implementation starts.** The codebase has
+  `@capacitor-community/in-app-review` wired for store reviews
+  but the actual premium-purchase flow location is unclear from
+  the v2.8 audit. Two possibilities: (a) it lives in an
+  existing `purchasePremium()` method I haven't found yet
+  (search for it during implementation), or (b) it's stubbed
+  out / placeholder. **If (b), Track 7 may need to defer to a
+  v2.9.x point release** until the purchase flow ships.
+- **Q7 — Analytics:** Add three new events via
+  `analytics-methods.js`:
+  - `weekly_theme_featured` — fired on rotation change with
+    `{ themeId, weekNumber }`
+  - `weekly_theme_applied` — fired when user applies the
+    featured theme during its trial week, with
+    `{ themeId, isFreeUser }`
+  - `weekly_theme_subscribe` — fired on subscription within
+    N=14 days of `weekly_theme_applied`, with
+    `{ themeId, daysFromApply }` (validates the funnel
+    hypothesis)
+
+- **Files (assuming Q2 = Option 1):**
+  - `goal-manager.js` — `themeDefinitions`: add
+    `weeklyRotationIndex` to each premium theme
+  - `goal-manager.js` — new methods `getWeeklyFeaturedThemeId()`,
+    `getISOWeekNumber(date)`, `renderWeeklyThemeCard()`,
+    `maybeShowWeeklyThemePrompt()`
+  - `goal-manager.js` `applyTheme()` / theme-tile click —
+    add featured-theme bypass check
+  - `goal-manager.js` `previewTheme()` modal — already covers
+    locked themes, no change needed
+  - `index.html` dashboard view — add `<div id="weekly-theme-
+    card-slot">` between daily summary and habits sections
+  - `analytics-methods.js` — register three new events
+  - `themes.css` — new `.weekly-theme-card` styling
+- **Assets needed:** None (uses existing theme gradients +
+  particle classes).
+- **Effort:** Medium (3-5 days) + audit time for Q6.
+- **Risk:** Medium. The end-of-week revoke modal is the
+  trickiest UX piece — easy to feel nag-y if the cap isn't
+  enforced correctly. The Q6 premium-purchase audit is the
+  blocker; if the flow doesn't exist, this track defers.
+
+##### Suggested ordering
+
+Optimized for foundational-first + perceived-value-per-week +
+asset pipeline parallelism:
+
+1. **Track 3 — Boss HP chunks** (2 days) — foundational; sets
+   the chunk-flash visual language for Track 4.
+2. **Track 4 — Crit indicators** (1 day) — extends Track 3's
+   chunk system + the existing `bossCrit()` fire burst.
+3. **Track 5 — Defeat dissolve + loot fountain** (3-4 days) —
+   the biggest single visual moment in v2.9. Lands before
+   Track 6 since slow-motion sequences INTO the dissolve.
+4. **Track 6 — Monthly killing strike slow-mo** (1-2 days) —
+   layers on top of Tracks 3-5, monthly only.
+5. **Track 2 — Boss portraits** (1 day code + asset pipeline) —
+   can run **in parallel** with Tracks 3-6 since the code
+   change is trivial; gating factor is asset generation
+   throughput. Start the asset pipeline at the same time as
+   Track 3 begins so portraits land alongside the boss-combat
+   visual upgrade.
+6. **Track 1 — Per-tier chest-open sequences** (3-5 days) —
+   independent of all boss work; can ship as a v2.8.1 polish
+   release if you want an interim ship before the bigger v2.9
+   surfaces, OR slot it after the boss tracks for a single
+   v2.9 release.
+7. **Track 7 — Theme of the Week** (3-5 days + Q6 audit) —
+   last because of the Q6 dependency on the premium-purchase
+   audit. If audit reveals the purchase flow doesn't exist,
+   defer to v2.9.x.
+
+**Total estimate:** ~14-21 days of focused development +
+variable asset pipeline (boss portraits + chest lid sprites
+are the two non-zero asset asks). Realistic v2.9 release
+window: ~4-6 weeks from start.
+
+##### Open dependencies / decisions before starting
+
+- **D1:** Boss portrait art source (AI-generated vs.
+  commissioned) — needed before Track 2 begins.
+- **D2:** Chest lid sprite source (DIY in `prototypes/animation-
+  preview.html` vs. commissioned) — needed before Track 1
+  begins.
+- **D3:** Q6 premium-purchase flow location — audit needed
+  before Track 7 begins.
+- **D4:** v2.8.1 polish release vs. single v2.9 release — a
+  strategic call about whether to ship Track 1 standalone for
+  faster cadence or hold for a single combined release.
+
 ### 2.6 — Sound Design Expansion (v2.10)
 
 Deliberately sequenced *after* §2.5 so the audio pass can cover the v2.9 visual additions (chest-open sequences per tier, boss crit indicators, defeat dissolves, slow-mo killing strikes) at the same time as it fixes the existing sound system's repetition and coverage gaps. Pairs with §2.4–§2.5 the same way `effects-manager.js` (v2.4.9) paired with the §2.2/§2.3 visual work — sound is the audio companion to the "feel" arc, not its own gameplay system.
