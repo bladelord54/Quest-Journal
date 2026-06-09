@@ -1633,14 +1633,24 @@ class GoalManager {
         const streakText = streak > 1 ? ` (x${streak} streak!)` : '';
         this.addBossLog(`<i class="ri-trophy-line mr-1"></i>${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold, +${crystalReward} 💎${streakText}`);
         
-        // Clear any queued sounds so boss defeated sound plays immediately
+        // v2.9 Track 5 — Defer the full-screen celebration overlay so the
+        // boss-portrait dissolve animation has a clear window to play.
+        // celebrateBossDefeat() mounts a red radial-gradient flash at
+        // z-index 9996 that hits full opacity at ~120ms, which would
+        // completely obscure the dissolve underneath. ~650ms is long
+        // enough to read the portrait fade + most of the particle burst,
+        // and short enough that the celebration still feels immediate.
+        // The boss-defeated audio cue stays on the dissolve so the
+        // "kill" beat lands on the visual it's pairing with.
         if (window.audioManager) {
             window.audioManager._soundQueue = [];
             window.audioManager._soundPlaying = false;
             window.audioManager.playBossDefeated();
         }
-        this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward);
-        this.createConfetti();
+        setTimeout(() => {
+            this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward);
+            this.createConfetti();
+        }, 650);
         
         // Show deferred level-up celebration after boss celebration finishes
         const hadPendingLevelUp = !!this._pendingLevelUp;
