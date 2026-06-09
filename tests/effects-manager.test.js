@@ -455,3 +455,105 @@ describe('EffectsManager — v2.9 Track 5 (lootFountain)', () => {
         expect(sprites).toContain('✨');
     });
 });
+
+// ── v2.9 Track 6 — Monthly killing-blow slow-motion ───────────────────────
+
+describe('EffectsManager — v2.9 Track 6 (monthlyKillingBlow)', () => {
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        document.body.className = '';
+        effectsManager.setIntensity('full', false);
+        jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+        document.body.innerHTML = '';
+        document.body.className = '';
+    });
+
+    test('mounts the vignette + FINAL BLOW! text on full intensity', () => {
+        effectsManager.monthlyKillingBlow();
+        expect(document.querySelector('.killing-blow-vignette')).not.toBeNull();
+        const text = document.querySelector('.killing-blow-text');
+        expect(text).not.toBeNull();
+        expect(text.textContent).toBe('FINAL BLOW!');
+        expect(document.body.classList.contains('boss-slowmo')).toBe(true);
+    });
+
+    test('skips the vignette on reduced intensity but keeps the text', () => {
+        effectsManager.setIntensity('reduced', false);
+        effectsManager.monthlyKillingBlow();
+        expect(document.querySelector('.killing-blow-vignette')).toBeNull();
+        expect(document.querySelector('.killing-blow-text')).not.toBeNull();
+        expect(document.body.classList.contains('boss-slowmo')).toBe(true);
+    });
+
+    test('mounts nothing on minimal intensity (full short-circuit)', () => {
+        effectsManager.setIntensity('minimal', false);
+        effectsManager.monthlyKillingBlow();
+        expect(document.querySelector('.killing-blow-vignette')).toBeNull();
+        expect(document.querySelector('.killing-blow-text')).toBeNull();
+        expect(document.body.classList.contains('boss-slowmo')).toBe(false);
+    });
+
+    test('fires onComplete synchronously on minimal intensity', () => {
+        effectsManager.setIntensity('minimal', false);
+        const onComplete = jest.fn();
+        effectsManager.monthlyKillingBlow(onComplete);
+        // No timer advance — minimal must call back immediately.
+        expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    test('fires onComplete after 1200ms on full intensity', () => {
+        const onComplete = jest.fn();
+        effectsManager.monthlyKillingBlow(onComplete);
+        expect(onComplete).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(1199);
+        expect(onComplete).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(2);
+        expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    test('fires onComplete after 800ms on reduced intensity', () => {
+        effectsManager.setIntensity('reduced', false);
+        const onComplete = jest.fn();
+        effectsManager.monthlyKillingBlow(onComplete);
+
+        jest.advanceTimersByTime(799);
+        expect(onComplete).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(2);
+        expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    test('removes vignette + text + body class when the effect completes', () => {
+        effectsManager.monthlyKillingBlow();
+        expect(document.querySelectorAll('.killing-blow-vignette').length).toBe(1);
+        expect(document.querySelectorAll('.killing-blow-text').length).toBe(1);
+
+        jest.advanceTimersByTime(1300);
+
+        expect(document.querySelectorAll('.killing-blow-vignette').length).toBe(0);
+        expect(document.querySelectorAll('.killing-blow-text').length).toBe(0);
+        expect(document.body.classList.contains('boss-slowmo')).toBe(false);
+    });
+
+    test('does not throw when onComplete is omitted', () => {
+        expect(() => {
+            effectsManager.monthlyKillingBlow();
+            jest.advanceTimersByTime(1300);
+        }).not.toThrow();
+    });
+
+    test('vignette + text both carry aria-hidden so screen readers ignore them', () => {
+        effectsManager.monthlyKillingBlow();
+        const vignette = document.querySelector('.killing-blow-vignette');
+        const text = document.querySelector('.killing-blow-text');
+        expect(vignette.getAttribute('aria-hidden')).toBe('true');
+        expect(text.getAttribute('aria-hidden')).toBe('true');
+    });
+});

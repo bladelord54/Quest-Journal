@@ -1558,6 +1558,15 @@ class GoalManager {
         if (window.effectsManager && portraitEl) {
             window.effectsManager.bossDefeatDissolve(portraitEl, particleType);
         }
+        // v2.9 Track 6 — Monthly killing-blow slow-motion. Fires ONLY for
+        // monthly bosses (rarest tier, deserves the biggest moment). The
+        // FINAL BLOW! overlay + vignette runs in parallel with the
+        // dissolve for the first ~1.2s, then releases. Celebration is
+        // deferred to 1300ms (vs 650ms for daily/weekly) below to give
+        // this its full window before the red flash takes over.
+        if (bossType === 'monthly' && window.effectsManager) {
+            window.effectsManager.monthlyKillingBlow();
+        }
         
         // Update streaks
         if (bossType === 'daily') {
@@ -1647,10 +1656,15 @@ class GoalManager {
             window.audioManager._soundPlaying = false;
             window.audioManager.playBossDefeated();
         }
+        // Monthly bosses get an extended delay so the Track 6 FINAL BLOW!
+        // slow-mo (1200ms) finishes before the red celebration flash
+        // overlay covers everything. Daily/weekly use the standard 650ms
+        // dissolve window since they don't get the killing-blow effect.
+        const celebrationDelay = bossType === 'monthly' ? 1300 : 650;
         setTimeout(() => {
             this.celebrateBossDefeat(boss, boss.icon, xpReward, goldReward);
             this.createConfetti();
-        }, 650);
+        }, celebrationDelay);
         
         // Show deferred level-up celebration after boss celebration finishes
         const hadPendingLevelUp = !!this._pendingLevelUp;

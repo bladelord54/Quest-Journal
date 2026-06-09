@@ -916,6 +916,69 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             }
         },
 
+        // ── v2.9 Track 6 — Monthly killing-blow slow-motion ──────────
+        //
+        // Fires when the player lands the killing blow on a MONTHLY boss
+        // (the rarest, longest-lived boss tier in the game — appears once
+        // a month, takes weeks to grind down). Adds a dramatic ~1.2s pause
+        // before the normal defeat celebration kicks in, giving the
+        // moment the weight it deserves.
+        //
+        // Visual stack:
+        //   1) `body.boss-slowmo` — global gate so other systems can
+        //      hold/duck during the pause if they want to. The dissolve
+        //      keeps animating underneath; we don't pause it, we just
+        //      compose dramatic overlays on top.
+        //   2) `.killing-blow-vignette` — full-screen radial gradient
+        //      that darkens the edges, drawing the eye to the center.
+        //   3) `.killing-blow-text` — giant red "FINAL BLOW!" that scales
+        //      in fast, holds, then fades out with a slight upward drift.
+        //
+        // Caller passes onComplete; effect fires it after the full
+        // duration (or immediately on minimal intensity). goal-manager
+        // doesn't actually need to wait — it just defers the celebration
+        // overlay by 1300ms for monthlies independently. The callback is
+        // there for future composition (e.g., chaining a screenshake at
+        // the end of the slow-mo) and gives tests a clean assertion hook.
+        //
+        // Intensity:
+        //   • minimal — skip entirely; onComplete fires synchronously.
+        //   • reduced — 800ms total, no vignette (just the text).
+        //   • full    — 1200ms total, full vignette + text.
+        monthlyKillingBlow(onComplete) {
+            const safeComplete = () => { if (typeof onComplete === 'function') onComplete(); };
+            if (this.intensity === 'minimal') {
+                safeComplete();
+                return;
+            }
+
+            const duration = this.intensity === 'reduced' ? 800 : 1200;
+            const withVignette = this.intensity !== 'reduced';
+
+            document.body.classList.add('boss-slowmo');
+
+            let vignette = null;
+            if (withVignette) {
+                vignette = document.createElement('div');
+                vignette.className = 'killing-blow-vignette';
+                vignette.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(vignette);
+            }
+
+            const text = document.createElement('div');
+            text.className = 'killing-blow-text';
+            text.setAttribute('aria-hidden', 'true');
+            text.textContent = 'FINAL BLOW!';
+            document.body.appendChild(text);
+
+            setTimeout(() => {
+                if (vignette) vignette.remove();
+                text.remove();
+                document.body.classList.remove('boss-slowmo');
+                safeComplete();
+            }, duration);
+        },
+
         spellUnlocked(spell, sourceEl) {
             const el = sourceEl || document.querySelector(`[data-spell-id="${spell.id || spell.spellId}"]`) || null;
             if (el && el.animate) {

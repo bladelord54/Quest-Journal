@@ -1135,6 +1135,119 @@ body.fx-minimal .boss-dissolve-portrait { animation: none; opacity: 0; }
 body.fx-minimal .boss-dissolve-particle,
 body.fx-minimal .loot-fountain-sprite { display: none; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.9 Track 6 — Monthly killing-blow slow-motion
+   ═══════════════════════════════════════════════════════════════════════════
+   Fires only when a MONTHLY boss is reduced to 0 HP. Adds a ~1.2s dramatic
+   pause before the normal defeat celebration kicks in, since monthly bosses
+   are the rarest tier and the moment deserves the extra weight.
+
+   • `body.boss-slowmo` — JS-managed gate class for the duration of the effect.
+   • `.killing-blow-vignette` — full-screen radial gradient darkening the
+     edges of the screen and drawing the eye to the center where the boss
+     dissolve is playing.
+   • `.killing-blow-text` — giant red "FINAL BLOW!" text that scales in
+     fast, holds at full size, then fades + drifts upward.
+
+   Z-index map for this band:
+     killing-blow-vignette = 9995  (below dissolve particles 9997)
+     boss-defeat-flash      = 9996  (existing Track 5)
+     boss-dissolve-particle = 9997  (existing Track 5)
+     killing-blow-text      = 9998  (above particles, below shatter icon)
+     boss-defeat-icon       = 10000 (existing Track 5)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Vignette ──
+   Sits BELOW the dissolve particles so they pop bright against the dim
+   edges; transparent center keeps the boss portrait fully visible. */
+.killing-blow-vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9995;
+    background: radial-gradient(
+        ellipse at 50% 45%,
+        transparent 18%,
+        rgba(0, 0, 0, 0.35) 45%,
+        rgba(0, 0, 0, 0.75) 75%,
+        rgba(0, 0, 0, 0.92) 100%
+    );
+    animation: killing-blow-vignette 1200ms ease-out forwards;
+    will-change: opacity;
+}
+
+@keyframes killing-blow-vignette {
+    0%   { opacity: 0; }
+    12%  { opacity: 1; }
+    75%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* ── FINAL BLOW! text ──
+   Stacked above the dissolve particles so it reads cleanly. Drops in
+   from the top with a punchy scale-up, holds at center, then drifts up
+   and fades. text-shadow stack gives the cinematic red+gold rim. */
+.killing-blow-text {
+    position: fixed;
+    left: 50%;
+    top: 38%;
+    transform: translate(-50%, -50%) scale(0.3);
+    pointer-events: none;
+    z-index: 9998;
+    font-size: clamp(2.8rem, 9vw, 5.5rem);
+    font-weight: 900;
+    color: #fef2f2;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    text-shadow:
+        0 0 6px rgba(255, 60, 60, 1),
+        0 0 14px rgba(220, 38, 38, 0.95),
+        0 0 28px rgba(127, 29, 29, 0.85),
+        0 0 50px rgba(220, 38, 38, 0.6),
+        0 4px 0 rgba(0, 0, 0, 0.6);
+    animation: killing-blow-text 1200ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    will-change: transform, opacity, filter;
+}
+
+@keyframes killing-blow-text {
+    0%   { transform: translate(-50%, -120%) scale(0.4) rotate(-4deg); opacity: 0; filter: brightness(2); }
+    18%  { transform: translate(-50%, -50%)  scale(1.25) rotate(2deg); opacity: 1; filter: brightness(1.8); }
+    28%  { transform: translate(-50%, -50%)  scale(1)    rotate(0deg); opacity: 1; filter: brightness(1.4); }
+    65%  { transform: translate(-50%, -50%)  scale(1.02) rotate(0deg); opacity: 1; filter: brightness(1.2); }
+    100% { transform: translate(-50%, -85%)  scale(0.9)  rotate(0deg); opacity: 0; filter: brightness(0.9); }
+}
+
+/* ── Reduced intensity (JS-controlled): 800ms duration, no vignette ──
+   The shorter window keeps the text + dissolve from feeling sluggish on
+   players who opted into the lighter visual mode. */
+body.fx-reduced .killing-blow-text {
+    animation-duration: 800ms;
+}
+
+/* ── Reduced motion (system-level): replace the dramatic entrance with
+       a simple opacity fade so users who can't tolerate motion still get
+       the cinematic moment without vestibular triggers. ── */
+@media (prefers-reduced-motion: reduce) {
+    .killing-blow-vignette {
+        animation: none;
+        opacity: 0.7;
+    }
+    .killing-blow-text {
+        animation: killing-blow-text-static 1200ms ease-in-out forwards;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    @keyframes killing-blow-text-static {
+        0%   { opacity: 0; }
+        15%  { opacity: 1; }
+        80%  { opacity: 1; }
+        100% { opacity: 0; }
+    }
+}
+
+/* ── Intensity gates: minimal hides everything (JS also early-returns). ── */
+body.fx-minimal .killing-blow-vignette,
+body.fx-minimal .killing-blow-text { display: none; }
+
 /* ===== ENHANCED LEVEL UP ANIMATIONS ===== */
 
 /* Full-screen golden flash */
