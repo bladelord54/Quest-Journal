@@ -114,6 +114,27 @@ const CapBridge = {
         return { scheduled: false, native: false };
     },
 
+    /**
+     * Cancel a previously scheduled native notification by id. Used to
+     * call off a pre-scheduled streak-risk reminder once the user opens
+     * the app (which auto-claims the day's login bonus, making the streak
+     * safe). No-op on web — the web path relies on the service worker,
+     * which re-evaluates the streak state at fire time.
+     */
+    async cancelNotification(id) {
+        if (!this.isNative || id == null) return { cancelled: false };
+        try {
+            const ln = this._p('LocalNotifications');
+            if (ln) {
+                await ln.cancel({ notifications: [{ id }] });
+                return { cancelled: true, native: true };
+            }
+        } catch (e) {
+            console.warn('[CapBridge] cancelNotification failed:', e);
+        }
+        return { cancelled: false };
+    },
+
     // ── File Save (to user-visible storage) ──────────────────────────
     /**
      * v2.7 — Write a text file directly into the device's Documents
@@ -236,6 +257,45 @@ const CapBridge = {
             console.warn('[CapBridge] window.open failed:', e);
             return { opened: false, native: false };
         }
+    },
+
+    // ── Hardware Back Button ─────────────────────────────────────────
+    /**
+     * v2.9.x UX audit fix — register an Android hardware back button
+     * handler. `handler` should return true when it consumed the press
+     * (closed a modal, navigated in-app). When unhandled, the app is
+     * minimized (standard Android root-screen behavior) rather than
+     * killed, so the WebView and in-memory state survive resume.
+     *
+     * No-op on web — the browser back button manages history itself.
+     */
+    registerBackButton(handler) {
+        if (!this.isNative) return { registered: false };
+        try {
+            const app = this._p('App');
+            if (app && app.addListener) {
+                // Capacitor passes { canGoBack } reflecting WebView hash
+                // history; deliberately ignored — this app's hash entries
+                // are navigation dead weight (no popstate/hashchange
+                // listeners), so in-app state is the only source of truth.
+                app.addListener('backButton', () => {
+                    let handled = false;
+                    try {
+                        handled = !!handler();
+                    } catch (e) {
+                        console.warn('[CapBridge] backButton handler threw:', e);
+                    }
+                    if (!handled) {
+                        if (app.minimizeApp) app.minimizeApp();
+                        else if (app.exitApp) app.exitApp();
+                    }
+                });
+                return { registered: true };
+            }
+        } catch (e) {
+            console.warn('[CapBridge] backButton registration failed:', e);
+        }
+        return { registered: false };
     },
 
     // ── Splash Screen ────────────────────────────────────────────────

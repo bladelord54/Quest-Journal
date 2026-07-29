@@ -1,10 +1,15 @@
-// PWA Installation and Service Worker Handler
+// @ts-check
+// Native shell handler: Google Play in-app updates + legacy PWA/SW cleanup.
+// The PWA service worker + install prompt were removed when the web target was
+// retired (Capacitor/Android is the only shell).
 
-let deferredPrompt;
-let installButton;
+// `window.Capacitor` + a couple of app globals are injected at runtime by the
+// native shell / other scripts; cast window to `any` once so checkJs doesn't
+// flag those dynamic properties.
+const _win = /** @type {any} */ (window);
 
 // Skip PWA handling entirely inside Capacitor native shell
-const _isCapacitorNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+const _isCapacitorNative = _win.Capacitor && _win.Capacitor.isNativePlatform && _win.Capacitor.isNativePlatform();
 
 // === Native: clean up any legacy service workers + caches from PWA installs ===
 // If a user installed as a PWA before switching to the native app, an old SW can
@@ -57,6 +62,7 @@ if (_isCapacitorNative) {
   const UPDATE_CHECK_KEY = 'lqj_lastUpdateCheck';
   const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
 
+  /** @param {() => void} onInstall */
   const showUpdateReadyToast = (onInstall) => {
     // Idempotent — bail if a toast is already up.
     if (document.getElementById('lqj-update-toast')) return;
@@ -104,7 +110,7 @@ if (_isCapacitorNative) {
   };
 
   const tryFlexibleUpdate = async () => {
-    const AppUpdate = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppUpdate;
+    const AppUpdate = _win.Capacitor && _win.Capacitor.Plugins && _win.Capacitor.Plugins.AppUpdate;
     if (!AppUpdate) {
       console.log('[AppUpdate] Plugin not registered (likely a non-Android build)');
       return;
@@ -122,7 +128,7 @@ if (_isCapacitorNative) {
       info = await AppUpdate.getAppUpdateInfo();
     } catch (e) {
       // NOT_AVAILABLE is expected for sideloaded / internal builds — silent skip.
-      console.log('[AppUpdate] getAppUpdateInfo unavailable:', e && e.message);
+      console.log('[AppUpdate] getAppUpdateInfo unavailable:', /** @type {any} */ (e)?.message);
       return;
     }
 
@@ -144,7 +150,7 @@ if (_isCapacitorNative) {
     // Listen for download completion BEFORE starting the update.
     // FlexibleUpdateInstallStatus.DOWNLOADED === 11
     try {
-      await AppUpdate.addListener('onFlexibleUpdateStateChange', (state) => {
+      await AppUpdate.addListener('onFlexibleUpdateStateChange', (/** @type {any} */ state) => {
         if (state && state.installStatus === 11) {
           showUpdateReadyToast(() => AppUpdate.completeFlexibleUpdate());
         }
@@ -176,105 +182,9 @@ if (_isCapacitorNative) {
   });
 }
 
-// Register Service Worker (not needed in native — assets load from APK)
-if ('serviceWorker' in navigator && !_isCapacitorNative) {
-  let refreshing = false;
-
-  // Auto-reload when a new SW takes control (ensures users see latest version)
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    // Flush any pending debounced save before reloading to prevent data loss
-    if (typeof goalManager !== 'undefined' && goalManager.saveTimeout) {
-      clearTimeout(goalManager.saveTimeout);
-      goalManager._doSave();
-    }
-    window.location.reload();
-  });
-
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(registration => {
-        
-        // Check for updates periodically (30 min) and on foreground
-        setInterval(() => {
-          registration.update();
-        }, 30 * 60 * 1000);
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') {
-            registration.update();
-          }
-        });
-      })
-      .catch(error => {
-        console.error('Service Worker registration failed:', error);
-      });
-  });
-}
-
-// Handle install prompt (not applicable in native app)
-if (_isCapacitorNative) {
-  // No install prompt or appinstalled events in native — skip all PWA install logic
-  window.installPWA = function() {};
-} else {
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  // Prevent the default mini-infobar
-  e.preventDefault();
-  
-  // Store the event for later use
-  deferredPrompt = e;
-  
-  // Show static FAB as fallback
-  showInstallButton();
-});
-
-// Show install button in UI
-function showInstallButton() {
-  installButton = document.getElementById('pwa-install-button');
-  if (installButton) {
-    installButton.classList.remove('hidden');
-  }
-}
-
-// Handle install button click
-function installPWA() {
-  if (!deferredPrompt) {
-    return;
-  }
-
-  // Show the install prompt
-  deferredPrompt.prompt();
-
-  // Wait for the user to respond
-  deferredPrompt.userChoice.then(() => {
-    // Clear the deferred prompt
-    deferredPrompt = null;
-    
-    // Hide install button
-    if (installButton) {
-      installButton.classList.add('hidden');
-    }
-  });
-}
-
-// Check if app is already installed
-window.addEventListener('appinstalled', () => {
-  // Hide install button
-  if (installButton) {
-    installButton.classList.add('hidden');
-  }
-  
-  // Show success message
-  if (typeof goalManager !== 'undefined' && goalManager.showAchievement) {
-    goalManager.showAchievement('📱 Life Quest Journal installed! Welcome, hero!', 'yearly');
-  }
-
-  // Track the install
-  if (typeof trackEvent === 'function') trackEvent('app_installed');
-});
-
-// Export functions for use in HTML and goal-manager.js
-window.installPWA = installPWA;
-
-} // end else (!_isCapacitorNative)
+// PWA service-worker registration + the beforeinstallprompt install flow were
+// removed when the PWA/web target was retired. Update delivery now runs through
+// the Google Play in-app update flow above, and the native legacy-SW cleanup
+// near the top still purges any worker left behind by an old PWA install. Keep
+// a no-op installPWA so any stray reference degrades gracefully.
+_win.installPWA = function() {};

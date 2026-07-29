@@ -1,6 +1,6 @@
-# Life Organize - Windows Desktop Application
+# Life Quest Journal — Android App
 
-A beautiful Windows desktop application for managing your life goals with gamification features!
+A gamified life-goals Android app (built with Capacitor) that turns your goals, habits, and tasks into an RPG.
 
 ## Features
 
@@ -40,27 +40,27 @@ You need to have Node.js installed on your system. Download it from [nodejs.org]
    npm install
    ```
 
-2. **Start the Application**
+2. **Build the Android App**
+   Sync the web assets into the Android project and open it in Android Studio:
    ```bash
-   npm start
+   npm run cap:build
    ```
+   From Android Studio you can run on an emulator/device or build a signed AAB
+   for the Play Store. `npm run release -- x.y.z` bumps every version string and
+   runs the sync in one step.
 
-### Building for Windows
+## Local Preview (development)
 
-To create a standalone Windows executable:
+To iterate on the web layer before syncing to Android, compile Tailwind and
+serve the project folder:
 
 ```bash
-npm run build
+npm run build:css     # compile tailwind.css
+start-server.bat      # or any static file server on the project root
 ```
 
-The installer will be created in the `dist` folder.
-
-## Alternative: Run in Browser
-
-If you don't want to install Node.js, you can run the app directly in a web browser:
-
-1. Simply open `index.html` in any modern web browser (Chrome, Edge, Firefox)
-2. All features will work except the native window controls
+Note: notifications, in-app updates, and other native features only run inside
+the Android (Capacitor) shell, not in a plain browser preview.
 
 ## How to Use
 
@@ -111,7 +111,7 @@ If you don't want to install Node.js, you can run the app directly in a web brow
 
 ## Technology Stack
 
-- **Electron**: Desktop application framework
+- **Capacitor**: Native Android app shell
 - **Tailwind CSS**: Modern styling
 - **Vanilla JavaScript**: Lightweight and fast
 - **LocalStorage**: Data persistence

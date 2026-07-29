@@ -1,3 +1,4 @@
+// @ts-check
 /* ===================================================================
    StatTooltip — v2.6 Item 6
    ===================================================================
@@ -85,10 +86,15 @@
     // it's a scroll/swipe gesture and we should NOT treat it as a tap.
     const TAP_MOVE_TOLERANCE = 10;
 
+    /** @type {HTMLElement | null} */
     let tooltipEl = null;
+    /** @type {HTMLElement | null} */
     let activeTrigger = null;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let pendingTimer = null;       // hover-delay timer (desktop only)
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let autohideTimer = null;      // auto-hide timer after a touch tap
+    /** @type {{ x: number, y: number, trigger: HTMLElement } | null} */
     let touchStart = null;         // { x, y, trigger } captured on touchstart
 
     function ensureTooltipEl() {
@@ -109,10 +115,12 @@
      * Render the tooltip content from a breakdown array.
      * Returns false if the breakdown is empty (caller should not show).
      */
+    /** @param {string} key @param {HTMLElement} trigger */
     function renderContent(key, trigger) {
-        const gm = window.goalManager;
+        const gm = /** @type {any} */ (window).goalManager;
         if (!gm || typeof gm.getStatBreakdown !== 'function') return false;
 
+        /** @type {any} */
         let breakdown;
         try {
             breakdown = gm.getStatBreakdown(key, trigger);
@@ -129,7 +137,7 @@
         const titleHtml = breakdown.title
             ? `<div class="stat-tooltip__title">${escapeHtml(breakdown.title)}</div>`
             : '';
-        const rowsHtml = breakdown.rows.map(row => {
+        const rowsHtml = breakdown.rows.map((/** @type {any} */ row) => {
             const accent = row.accent ? ` stat-tooltip__row--${escapeHtml(row.accent)}` : '';
             return `
                 <div class="stat-tooltip__row${accent}">
@@ -152,6 +160,7 @@
      * Prefers above the trigger; falls back to below if no room above.
      * Always clamps to the viewport with an 8px margin.
      */
+    /** @param {HTMLElement} trigger */
     function positionTooltip(trigger) {
         const el = ensureTooltipEl();
         const triggerRect = trigger.getBoundingClientRect();
@@ -182,6 +191,7 @@
         el.style.top = `${top}px`;
     }
 
+    /** @param {HTMLElement | null} trigger */
     function show(trigger) {
         if (!trigger || activeTrigger === trigger) return;
         const key = trigger.getAttribute('data-stat-tooltip');
@@ -214,20 +224,21 @@
             clearTimeout(pendingTimer);
             pendingTimer = null;
         }
-        pendingTouchStart = null;
     }
 
+    /** @param {EventTarget | null} target @returns {HTMLElement | null} */
     function findTrigger(target) {
         // Walk up the DOM looking for an element with the data attr.
         // Cap at 6 levels so we don't traverse the whole tree.
-        let el = target;
+        let el = /** @type {Element | null} */ (target);
         for (let i = 0; i < 6 && el; i++) {
-            if (el.hasAttribute && el.hasAttribute('data-stat-tooltip')) return el;
+            if (el.hasAttribute && el.hasAttribute('data-stat-tooltip')) return /** @type {HTMLElement} */ (el);
             el = el.parentElement;
         }
         return null;
     }
 
+    /** @param {*} s */
     function escapeHtml(s) {
         if (s == null) return '';
         return String(s)
@@ -252,7 +263,7 @@
         // Only hide if the relatedTarget (where the mouse moved to)
         // is outside the trigger AND outside the tooltip itself —
         // moving from trigger into the tooltip shouldn't dismiss.
-        const movedTo = e.relatedTarget;
+        const movedTo = /** @type {Node | null} */ (e.relatedTarget);
         if (movedTo && (trigger.contains(movedTo) || (tooltipEl && tooltipEl.contains(movedTo)))) {
             return;
         }
@@ -336,8 +347,8 @@
     document.addEventListener('pointerdown', (e) => {
         if (!activeTrigger) return;
         if (e.pointerType !== 'touch') return;
-        if (activeTrigger.contains(e.target)) return;
-        if (tooltipEl && tooltipEl.contains(e.target)) return;
+        if (activeTrigger.contains(/** @type {Node} */ (e.target))) return;
+        if (tooltipEl && tooltipEl.contains(/** @type {Node} */ (e.target))) return;
         hide();
     });
 
@@ -357,11 +368,12 @@
 
     // Expose a tiny API for goal-manager.js to call if it wants to
     // force-hide (e.g., when closing the player panel).
-    window.statTooltip = {
+    /** @type {any} */ (window).statTooltip = {
         hide,
+        /** @param {string | HTMLElement} triggerOrSelector */
         show: (triggerOrSelector) => {
             const trigger = typeof triggerOrSelector === 'string'
-                ? document.querySelector(triggerOrSelector)
+                ? /** @type {HTMLElement | null} */ (document.querySelector(triggerOrSelector))
                 : triggerOrSelector;
             if (trigger) show(trigger);
         }

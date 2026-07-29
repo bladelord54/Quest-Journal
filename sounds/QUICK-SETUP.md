@@ -20,7 +20,6 @@ notification.wav (or .mp3)
 spell.wav (or .mp3)
 level-up.wav (or .mp3)
 quest-complete.wav (or .mp3)
-boss-damage.wav (or .mp3)
 boss-defeated.wav (or .mp3)
 crystal-earn.wav (or .mp3)
 ```
@@ -60,7 +59,6 @@ crystal-earn.wav (or .mp3)
 | `spell.wav` | Casting spells from spellbook |
 | `level-up.wav` | Gaining a new level |
 | `quest-complete.wav` | Completing quests |
-| `boss-damage.wav` | Attacking boss battles |
 | `boss-defeated.wav` | Defeating a boss |
 | `crystal-earn.wav` | Earning focus crystals |
 

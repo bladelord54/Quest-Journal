@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================================
 // Effects Manager — Phase 1.4 Animation & Effects System
 // Provides reusable animation primitives + composite event helpers.
@@ -184,6 +185,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         _activeEffects: 0,
         _maxConcurrent: 8,
         _initialized: false,
+        _rippleInited: false,
 
         init() {
             if (this._initialized) return;
@@ -235,7 +237,9 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             this._rippleInited = true;
             document.addEventListener('pointerdown', (e) => {
                 if (this.intensity === 'minimal') return;
-                const btn = e.target.closest('.btn-ripple');
+                const btn = /** @type {HTMLButtonElement | null} */ (
+                    /** @type {Element | null} */ (e.target)?.closest('.btn-ripple')
+                );
                 if (!btn || btn.disabled) return;
                 const rect = btn.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -261,6 +265,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             }, { passive: true });
         },
 
+        /** @param {string} level @param {boolean} [persist] */
         setIntensity(level, persist = true) {
             if (!['full', 'reduced', 'minimal'].includes(level)) return;
             this.intensity = level;
@@ -279,6 +284,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             return this._activeEffects < this._maxConcurrent;
         },
 
+        /** @param {any} elOrCoords @returns {{ x: number, y: number }} */
         _resolveCenter(elOrCoords) {
             if (!elOrCoords) {
                 return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
@@ -299,6 +305,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         },
 
         // ── flyingReward ──────────────────────────────────────────────
+        /** @param {any} fromEl @param {any} toEl @param {string} icon @param {number|string} amount @param {Function} [onArrive] */
         flyingReward(fromEl, toEl, icon, amount, onArrive) {
             if (this.intensity === 'minimal' || !this._canSpawn()) {
                 if (onArrive) onArrive();
@@ -323,6 +330,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             const start = performance.now();
             const self = this;
 
+            /** @param {number} now */
             function tick(now) {
                 const t = Math.min(1, (now - start) / duration);
                 const midX = (from.x + to.x) / 2;
@@ -334,7 +342,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
                 sprite.style.left = x + 'px';
                 sprite.style.top = y + 'px';
                 sprite.style.transform = `translate(-50%, -50%) scale(${scale})`;
-                sprite.style.opacity = t > 0.85 ? (1 - (t - 0.85) / 0.15) : 1;
+                sprite.style.opacity = String(t > 0.85 ? (1 - (t - 0.85) / 0.15) : 1);
                 if (t < 1) requestAnimationFrame(tick);
                 else {
                     sprite.remove();
@@ -351,8 +359,10 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         },
 
         // ── burstAt ──────────────────────────────────────────────────
+        /** @param {any} elOrCoords @param {{ type?: string, count?: number }} [options] */
         burstAt(elOrCoords, options = {}) {
             if (!this._canSpawn()) return;
+            /** @type {Record<string, { glyphs: string[], colors: string[] }>} */
             const themes = {
                 sparkle: { glyphs: ['✨', '⭐', '✦', '·'], colors: ['#ffe585', '#fff'] },
                 rune:    { glyphs: ['ᚠ', 'ᚱ', 'ᚺ', '◈', '✦'], colors: ['#c8a0ff', '#9966ff'] },
@@ -391,6 +401,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         },
 
         // ── celebrationBanner ────────────────────────────────────────
+        /** @param {{ icon?: string, title?: string, subtitle?: string, theme?: string, duration?: number }} [opts] */
         celebrationBanner({ icon, title, subtitle, theme, duration = 2500 } = {}) {
             if (this.intensity === 'minimal') return;
             const existing = document.querySelector('.fx-celebration-banner');
@@ -428,6 +439,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         },
 
         // ── expandingRing ────────────────────────────────────────────
+        /** @param {any} elOrCoords @param {{ color?: string, count?: number, stagger?: number }} [opts] */
         expandingRing(elOrCoords, { color = '#d4a022', count = 1, stagger = 200 } = {}) {
             if (!this._canSpawn()) return;
             const c = this._resolveCenter(elOrCoords);
@@ -446,6 +458,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         },
 
         // ── floatingText ─────────────────────────────────────────────
+        /** @param {any} elOrCoords @param {string} text @param {string} [color] */
         floatingText(elOrCoords, text, color = '#ffe585') {
             if (this.intensity === 'minimal') return;
             const c = this._resolveCenter(elOrCoords);
@@ -464,6 +477,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         // Composite event helpers (used by goal-manager.js)
         // ────────────────────────────────────────────────────────────
 
+        /** @param {any} enchantment @param {any} [sourceEl] */
         enchantmentCast(enchantment, sourceEl) {
             const el = sourceEl || document.querySelector(`[data-enchantment-id="${enchantment.id}"]`) || null;
             this.expandingRing(el, { color: '#9966ff', count: 2 });
@@ -478,6 +492,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             // Audio handled by caller (preserves existing playSpell call)
         },
 
+        /** @param {any} companion @param {any} [sourceEl] */
         companionLevelUp(companion, sourceEl) {
             const el = sourceEl || document.querySelector('[data-companion-display]') || null;
             if (el && el.classList) {
@@ -505,6 +520,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         // Shakes a specific element (NOT <body>, which would break position:fixed
         // overlays like the top nav, modals, banners, and toasts).
         // Pass an element; if omitted/null, this is a no-op.
+        /** @param {any} target */
         screenShake(target) {
             if (this.intensity === 'minimal' || !target || !target.classList) return;
             target.classList.remove('fx-screen-shake');
@@ -519,6 +535,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         // `.fx-success-flash` lives in animations.css; this helper just
         // handles the reflow-restart pattern + auto-cleanup so callers
         // don't have to. Safe to call repeatedly on the same element.
+        /** @param {any} target */
         successFlash(target) {
             if (this.intensity === 'minimal' || !target || !target.classList) return;
             target.classList.remove('fx-success-flash');
@@ -531,6 +548,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         // More composite event helpers
         // ────────────────────────────────────────────────────────────
 
+        /** @param {number} amount @param {any} [sourceEl] */
         crystalEarned(amount, sourceEl) {
             // Prefer the always-visible top-right avatar badge so the sprite
             // reads as "going into your inventory." The in-panel #focus-crystals
@@ -551,6 +569,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         // non-quiet source (focus session bonuses, chest loot, boss rewards, etc.).
         // Daily/habit/weekly/monthly gold continues to use dailyQuestCompleted's
         // float-up so we don't double up on visuals.
+        /** @param {number} amount @param {any} [sourceEl] */
         goldEarned(amount, sourceEl) {
             const target = document.getElementById('player-panel-toggle')
                 || document.getElementById('gold-coins');
@@ -560,13 +579,14 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             }
         },
 
+        /** @param {number} streak @param {string} [label] */
         streakMilestone(streak, label) {
             if (this.intensity === 'minimal') return;
             // Big day-number zoom in center of screen
             if (this.intensity !== 'reduced') {
                 const num = document.createElement('div');
                 num.className = 'fx-milestone-number';
-                num.textContent = streak;
+                num.textContent = String(streak);
                 num.style.animation = 'fx-milestone-zoom 1.6s ease-out forwards';
                 document.body.appendChild(num);
                 num.addEventListener('animationend', () => num.remove());
@@ -582,6 +602,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             }), 600);
         },
 
+        /** @param {any} sourceEl @param {number} [xp] @param {number} [gold] */
         dailyQuestCompleted(sourceEl, xp, gold) {
             // Pre-resolve coords NOW because the caller (claimDailyQuest) calls
             // this.render() immediately after, which destroys sourceEl before
@@ -598,6 +619,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         // the most-triggered completion action, so the visual feedback matches
         // the daily quest pattern: pre-resolved coords (caller re-renders the
         // list which destroys sourceEl), sparkle burst, and floating XP/gold.
+        /** @param {any} sourceEl @param {number} [xp] @param {number} [gold] */
         habitCompleted(sourceEl, xp, gold) {
             const coords = this._resolveCenter(sourceEl);
             this.burstAt(coords, { type: 'sparkle', count: 6 });
@@ -607,6 +629,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             }
         },
 
+        /** @param {any} sourceEl @param {number} [xp] */
         sideQuestCompleted(sourceEl, xp) {
             this.burstAt(sourceEl, { type: 'star', count: 8 });
             this.expandingRing(sourceEl, { color: '#9fdc7a', count: 1 });
@@ -624,6 +647,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             this.burstAt(null, { type: 'star', count: 10 });
         },
 
+        /** @param {string} [title] */
         challengeAccepted(title) {
             this.celebrationBanner({
                 icon: '⚔️',
@@ -635,6 +659,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             this.burstAt(null, { type: 'fire', count: 12 });
         },
 
+        /** @param {any} bossEl */
         bossCrit(bossEl) {
             // NOTE: We deliberately do NOT call screenShake here. The boss card
             // already gets `boss-hit-shake` (transform animation) applied by
@@ -743,11 +768,13 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         //               celebration handles its own visuals).
         //   • reduced — 8 particles instead of 16.
         //   • full    — 16 particles + portrait dissolve.
+        /** @param {any} portraitEl @param {string} [particleType] */
         bossDefeatDissolve(portraitEl, particleType) {
             if (!portraitEl) return;
             if (this.intensity === 'minimal') return;
-            const palette = BOSS_DISSOLVE_GLYPHS[particleType] || BOSS_DISSOLVE_GLYPHS.shadow;
-            const typeClass = `boss-dissolve-particle--${BOSS_DISSOLVE_GLYPHS[particleType] ? particleType : 'shadow'}`;
+            const dissolveGlyphs = /** @type {Record<string, { glyphs: string[] }>} */ (BOSS_DISSOLVE_GLYPHS);
+            const palette = dissolveGlyphs[particleType || 'shadow'] || dissolveGlyphs.shadow;
+            const typeClass = `boss-dissolve-particle--${(particleType && dissolveGlyphs[particleType]) ? particleType : 'shadow'}`;
 
             // 1) Capture portrait center BEFORE applying the dissolve
             //    class — the class triggers a transform that would skew
@@ -816,6 +843,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         //   • intensity === 'minimal' → onArrive fires immediately.
         //   • items array empty → onArrive fires immediately.
         //   • intensity === 'reduced' → cap at 4 sprites.
+        /** @param {any} fromEl @param {any} toEl @param {any[]} items @param {Function} [onArrive] */
         lootFountain(fromEl, toEl, items, onArrive) {
             const safeArrive = () => { if (typeof onArrive === 'function') onArrive(); };
             if (!fromEl || !toEl || !Array.isArray(items) || items.length === 0) {
@@ -865,6 +893,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
                     const peakY = Math.min(from.y, to.y) - 120 - Math.random() * 50;
                     const startTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
+                    /** @param {number} now */
                     function step(now) {
                         const t = Math.min(1, (now - startTime) / arcDuration);
                         const midX = (startX + to.x) / 2;
@@ -945,6 +974,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
         //   • minimal — skip entirely; onComplete fires synchronously.
         //   • reduced — 800ms total, no vignette (just the text).
         //   • full    — 1200ms total, full vignette + text.
+        /** @param {Function} [onComplete] */
         monthlyKillingBlow(onComplete) {
             const safeComplete = () => { if (typeof onComplete === 'function') onComplete(); };
             if (this.intensity === 'minimal') {
@@ -979,6 +1009,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
             }, duration);
         },
 
+        /** @param {any} spell @param {any} [sourceEl] */
         spellUnlocked(spell, sourceEl) {
             const el = sourceEl || document.querySelector(`[data-spell-id="${spell.id || spell.spellId}"]`) || null;
             if (el && el.animate) {
@@ -1018,7 +1049,7 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
     }
 
     // Global setter exposed to onclick handlers in the Tools UI
-    window.setAnimationIntensity = function(level) {
+    /** @type {any} */ (window).setAnimationIntensity = function(/** @type {string} */ level) {
         EffectsManager.setIntensity(level);
         refreshIntensityButtons();
     };
@@ -1036,5 +1067,5 @@ body.fx-minimal .fx-screen-shake { animation: none !important; }
     // Also refresh buttons after Tools view renders (lazy DOM)
     window.addEventListener('load', refreshIntensityButtons);
 
-    window.effectsManager = EffectsManager;
+    /** @type {any} */ (window).effectsManager = EffectsManager;
 })();

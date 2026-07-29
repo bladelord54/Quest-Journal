@@ -4,7 +4,6 @@ dist/
 *.bak
 .DS_Store
 Thumbs.db
-package-lock.json
 
 # Signing keys
 *.keystore
@@ -15,3 +14,7 @@ package-lock.json
 # Capacitor build artifacts
 www/
 assets/
+
+# Test run artifacts
+jest_out.txt
+tests/__*baseline*.json

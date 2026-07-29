@@ -32,7 +32,6 @@
     <meta name="description" content="Transform your life goals into epic quests. Track habits, earn rewards, and level up your life!">
     <meta name="theme-color" content="#1c1917">
     <meta name="color-scheme" content="dark">
-    <link rel="manifest" href="manifest.json">
     
     <!-- Open Graph / Social Sharing -->
     <meta property="og:type" content="website">
@@ -52,9 +51,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Life Quest Journal">
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;700&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+    <!-- v2.9 deferred audit fix — Tailwind/icons/fonts bundled locally.
+         tailwind.css is built by `npm run build:css` (tailwind.config.js
+         has the dynamic-class safelist); vendor/ is populated once by
+         `npm run fetch:vendor`. Replaces the Play CDN runtime compiler +
+         jsdelivr Remix Icons + Google Fonts, so offline first launch is
+         fully styled and cold starts skip CDN latency + in-WebView
+         compilation. -->
+    <link rel="stylesheet" href="tailwind.css">
+    <link href="vendor/remixicon/remixicon.css" rel="stylesheet">
+    <link href="vendor/fonts/fonts.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="animations.css">
     <link rel="stylesheet" href="mobile.css">
@@ -74,13 +80,22 @@
         })();
     </script>
     <!-- App Splash Screen -->
-    <div id="splash-screen" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1c1917 0%,#292524 50%,#1c1917 100%);transition:opacity 0.5s ease-out;">
+    <!-- v2.7.1 audit L2 — role/aria-live so screen readers announce the
+         loading state instead of presenting a silent empty screen. -->
+    <div id="splash-screen" role="status" aria-live="polite" aria-label="Loading Life Quest Journal" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1c1917 0%,#292524 50%,#1c1917 100%);transition:opacity 0.5s ease-out;">
         <div style="text-align:center;animation:splashFadeIn 0.4s ease-out;">
             <div style="font-size:4rem;margin-bottom:0.5rem;">⚔️</div>
             <h1 style="font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:#fbbf24;margin:0 0 0.25rem 0;">Life Quest Journal</h1>
             <p style="font-family:'Cinzel',serif;font-size:0.75rem;color:#d97706;margin:0 0 1.5rem 0;">Your Adventure Awaits</p>
             <div style="width:40px;height:40px;border:3px solid #d97706;border-top-color:transparent;border-radius:50%;margin:0 auto;animation:splashSpin 0.8s linear infinite;"></div>
         </div>
+    </div>
+    <!-- Offline indicator pill (v2.7.1 audit L11) — shown by GoalManager
+         when navigator.onLine is false, so sync-dependent actions
+         (referrals, challenges, shares) failing offline have visible
+         context instead of cryptic errors. Display toggled via JS. -->
+    <div id="offline-indicator" role="status" aria-live="polite" style="display:none;position:fixed;top:calc(8px + env(safe-area-inset-top, 0px));left:50%;transform:translateX(-50%);z-index:9980;background:#7f1d1d;color:#fecaca;border:1px solid #b91c1c;border-radius:9999px;padding:4px 14px;font-size:0.8rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.5);align-items:center;gap:6px;">
+        <i class="ri-wifi-off-line" aria-hidden="true"></i> Offline — progress saved on device
     </div>
     <style>
         @keyframes splashSpin { to { transform: rotate(360deg); } }
@@ -135,38 +150,12 @@
         </div>
     </div>
 
-    <!-- Global Search Modal -->
-    <div id="search-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Search quests">
-        <div class="flex items-start justify-center min-h-screen pt-20">
-            <div class="bg-gradient-to-br from-gray-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
-                <!-- Search Header -->
-                <div class="p-6 border-b-2 border-amber-700/50">
-                    <div class="flex items-center gap-4">
-                        <i class="ri-search-line text-3xl text-amber-400"></i>
-                        <input 
-                            type="text" 
-                            id="global-search-input" 
-                            placeholder="Search all quests, habits, and goals..."
-                            class="flex-1 bg-stone-800 text-amber-100 px-4 py-3 rounded-lg border-2 border-amber-700 focus:border-amber-500 focus:outline-none fancy-font text-lg"
-                            onkeyup="goalManager.performSearch(this.value)"
-                        >
-                        <button onclick="goalManager.closeSearch()" class="text-amber-400 hover:text-amber-300 text-3xl" aria-label="Close search">
-                            <i class="ri-close-line" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                    <div class="text-xs text-amber-400 mt-2 fancy-font">Press Ctrl+K or / to open search • Esc to close</div>
-                </div>
-                
-                <!-- Search Results -->
-                <div id="search-results" class="p-6 max-h-96 overflow-y-auto">
-                    <div class="text-center text-amber-300 fancy-font py-8">
-                        <i class="ri-search-2-line text-5xl mb-3 opacity-50"></i>
-                        <p>Start typing to search...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Global Search Modal is created dynamically by
+         goalManager.openSearchModal(). The static modal that previously
+         lived here was removed in the v2.9.x UX audit: it duplicated the
+         `search-modal`/`search-results` element ids, so the dynamic
+         modal's results rendered into THIS hidden container and search
+         appeared broken. -->
 
     <!-- Quick Add Modal -->
     <div id="quick-add-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Quick add task">
@@ -208,7 +197,7 @@
       installs (heuristic: level <= 1, 0 XP, no badges, no daily tasks).
       State tracked via the `lastSeenChangelogVersion` localStorage key,
       compared against `CHANGELOG_VERSION` in goal-manager.js (currently
-      '2.7.1'). Bumping `CHANGELOG_VERSION` re-arms the modal for returning
+      '2.10.0'). Bumping `CHANGELOG_VERSION` re-arms the modal for returning
       users after each release. Trigger lives in `goal-manager.js`'s
       constructor (deferred via setTimeout ~3500ms so it lands after
       login-bonus / referral / period-transition checks).
@@ -235,52 +224,44 @@
             <div class="bg-gradient-to-br from-amber-900/95 via-stone-900/95 to-amber-950/95 rounded-2xl shadow-2xl border-4 border-amber-500 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain" style="animation: fadeIn 0.4s ease-out;">
                 <div class="p-6 md:p-8">
                     <div class="flex items-center gap-3 mb-2">
-                        <div class="text-4xl">🌌</div>
+                        <div class="text-4xl">⚔️</div>
                         <div>
-                            <h3 id="whats-new-title" class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title">What's New in v2.8.0</h3>
-                            <p class="text-amber-200/70 text-xs fancy-font">Theme Expansion</p>
+                            <h3 id="whats-new-title" class="text-2xl md:text-3xl font-bold text-amber-300 medieval-title">What's New in v2.10</h3>
+                            <p class="text-amber-200/70 text-xs fancy-font">Immersive Sound & Treasure Animations</p>
                         </div>
                     </div>
 
                     <div class="border-t-2 border-amber-700/40 my-4"></div>
 
-                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">🌌 <strong class="text-amber-300">Six new realms to explore</strong></p>
+                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">🔊 <strong class="text-amber-300">Richer Sound &amp; Effects</strong></p>
                     <ul class="space-y-2.5 text-amber-100 fancy-font text-sm md:text-base mb-5">
                         <li class="flex items-start gap-3">
                             <span class="text-amber-400 text-lg leading-tight">•</span>
-                            <span><strong>Stormwatch</strong> ⛈️, <strong>Sunken Library</strong> 🌊, <strong>Verdant Grove</strong> 🌿, <strong>Dark Cathedral</strong> ⛪, <strong>Crystal Caves</strong> 💎, and <strong>Aurora Spires</strong> 🌌 — every new theme ships with real animated backgrounds and themed particles</span>
+                            <span>A <strong>big audio refresh</strong> — completing quests, casting spells, striking bosses, earning badges, and finishing focus sessions all have <strong>satisfying new sounds</strong></span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-amber-400 text-lg leading-tight">•</span>
+                            <span>Boss hits now pull from a <strong>pool of attack sounds</strong> so battles feel varied instead of repetitive</span>
                         </li>
                     </ul>
 
-                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">🎁 <strong class="text-amber-300">More themes free for everyone</strong></p>
+                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">🎁 <strong class="text-amber-300">Animated Treasure Chests</strong></p>
                     <ul class="space-y-2.5 text-amber-100 fancy-font text-sm md:text-base mb-5">
                         <li class="flex items-start gap-3">
                             <span class="text-amber-400 text-lg leading-tight">•</span>
-                            <span><strong>Ice Citadel</strong> is now a free level-15 reward — no premium needed</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <span class="text-amber-400 text-lg leading-tight">•</span>
-                            <span><strong>Golden Empire</strong> unlocks when you earn 10,000 gold lifetime (was 100 quests) — your existing gold counts</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <span class="text-amber-400 text-lg leading-tight">•</span>
-                            <span><strong>Shadow Realm</strong> unlocks at 25 bosses defeated (was 5 life goals)</span>
+                            <span>Chests now burst open with a <strong>cinematic animation</strong>, and your loot reveals <strong>rarest-last</strong> for a satisfying build-up</span>
                         </li>
                     </ul>
 
-                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">👁️ <strong class="text-amber-300">Preview before you commit</strong></p>
+                    <p class="text-amber-200 fancy-font text-sm md:text-base mb-3">⚡ <strong class="text-amber-300">Double XP Weekends</strong></p>
                     <ul class="space-y-2.5 text-amber-100 fancy-font text-sm md:text-base mb-4">
                         <li class="flex items-start gap-3">
                             <span class="text-amber-400 text-lg leading-tight">•</span>
-                            <span>Tap any theme tile to see a full live preview — animated background, themed quest card mockup, and unlock requirements at a glance</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <span class="text-amber-400 text-lg leading-tight">•</span>
-                            <span>Toasts and primary buttons now subtly tint to your active theme for a more cohesive look</span>
+                            <span>The <strong>first full weekend of every month</strong> now grants <strong>2× XP</strong> on every quest — stacking with your blessings, spells, and companions</span>
                         </li>
                     </ul>
 
-                    <p class="text-amber-200/90 fancy-font text-sm md:text-base text-center italic">Boss visuals and richer chest sequences brewing for v2.9. Quest on.</p>
+                    <p class="text-amber-200/90 fancy-font text-sm md:text-base text-center italic">More adventures on the way. Quest on.</p>
 
                     <div class="border-t-2 border-amber-700/40 my-5"></div>
 
@@ -342,7 +323,10 @@
         <div id="tutorial-spotlight" class="pointer-events-none border-4 border-yellow-300 rounded-lg" style="display: none; position: fixed; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 30px 8px rgba(250, 204, 21, 0.9), 0 0 60px 20px rgba(250, 204, 21, 0.4); z-index: 9991; animation: spotlight-pulse 1.5s ease-in-out infinite;"></div>
         
         <!-- Tutorial Tooltip -->
-        <div id="tutorial-tooltip" class="bg-gradient-to-br from-amber-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 p-6 md:p-8" style="z-index: 9992; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(100% - 32px); max-width: 42rem;">
+        <!-- v2.7.1 audit L7 — max-height + overflow-y guard against the
+             modal-sizing bug class (content growing past the viewport with
+             no scroll), same fix the What's New modal needed. -->
+        <div id="tutorial-tooltip" class="bg-gradient-to-br from-amber-900 to-stone-900 rounded-2xl shadow-2xl border-4 border-amber-600 p-6 md:p-8" style="z-index: 9992; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(100% - 32px); max-width: 42rem; max-height: 90vh; overflow-y: auto;">
             <div class="text-center mb-6">
                 <h2 id="tutorial-title" class="text-4xl font-bold text-amber-300 medieval-title mb-3">Welcome!</h2>
                 <div id="tutorial-content" class="text-amber-100 fancy-font text-lg leading-relaxed">
@@ -391,43 +375,47 @@
             </div>
             
             <nav class="mt-6 space-y-1 relative z-10" aria-label="Main navigation">
-                <a href="#dashboard" class="nav-link active flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="dashboard">
+                <!-- aria-label on each link: mobile CSS hides the <span>
+                     labels with display:none, which removes them from the
+                     accessible-name computation — without these labels the
+                     bottom tab bar is ten unnamed buttons for TalkBack. -->
+                <a href="#dashboard" aria-label="Your Castle (Dashboard)" class="nav-link active flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="dashboard">
                     <i class="ri-dashboard-line mr-3 text-2xl text-amber-400"></i>
                     <span class="fancy-font text-lg">Your Castle</span>
                 </a>
-                <a href="#goals" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="goals">
+                <a href="#goals" aria-label="Quest Log (Goals)" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="goals">
                     <i class="ri-flag-line mr-3 text-2xl text-red-400"></i>
                     <span class="fancy-font text-lg">Quest Log</span>
                 </a>
-                <a href="#daily" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="daily">
+                <a href="#daily" aria-label="Daily Quests" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="daily">
                     <i class="ri-sword-line mr-3 text-2xl text-orange-400"></i>
                     <span class="fancy-font text-lg">Daily Quests</span>
                 </a>
-                <a href="#calendar" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="calendar">
+                <a href="#calendar" aria-label="Quest Calendar" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="calendar">
                     <i class="ri-calendar-event-line mr-3 text-2xl text-yellow-400"></i>
                     <span class="fancy-font text-lg">Quest Calendar</span>
                 </a>
-                <a href="#rewards" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="rewards">
+                <a href="#rewards" aria-label="Treasury and Rewards" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="rewards">
                     <i class="ri-trophy-line mr-3 text-2xl text-yellow-400"></i>
                     <span class="fancy-font text-lg">Treasury & Rewards</span>
                 </a>
-                <a href="#arcane" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="arcane">
+                <a href="#arcane" aria-label="Arcane Powers (Spells and Enchantments)" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="arcane">
                     <i class="ri-magic-line mr-3 text-2xl text-purple-400"></i>
                     <span class="fancy-font text-lg">Arcane Powers</span>
                 </a>
-                <a href="#bossbattles" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="bossbattles">
+                <a href="#bossbattles" aria-label="Boss Battles" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="bossbattles">
                     <i class="ri-skull-2-line mr-3 text-2xl text-red-400"></i>
                     <span class="fancy-font text-lg">Boss Battles</span>
                 </a>
-                <a href="#questchains" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="questchains">
-                    <i class="ri-route-line mr-3 text-2xl text-cyan-400"></i>
-                    <span class="fancy-font text-lg">Quest Chains</span>
-                </a>
-                <a href="#focus" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="focus">
+                <a href="#focus" aria-label="Focus Timer" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="focus">
                     <i class="ri-time-line mr-3 text-2xl text-blue-400"></i>
                     <span class="fancy-font text-lg">Focus Timer</span>
                 </a>
-                <a href="#tools" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="tools">
+                <a href="#questchains" aria-label="Quest Chains" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="questchains">
+                    <i class="ri-route-line mr-3 text-2xl text-cyan-400"></i>
+                    <span class="fancy-font text-lg">Quest Chains</span>
+                </a>
+                <a href="#tools" aria-label="Tools and Settings" class="nav-link flex items-center px-6 py-4 hover:bg-amber-800/30 transition-all border-l-4 border-transparent" data-view="tools">
                     <i class="ri-tools-line mr-3 text-2xl text-gray-400"></i>
                     <span class="fancy-font text-lg">Tools & Settings</span>
                 </a>
@@ -435,8 +423,9 @@
             
         </div>
 
-        <!-- Main Content Area -->
-        <div class="flex-1 overflow-y-auto bg-stone-800 relative">
+        <!-- Main Content Area (id used by mobile.css — v2.7.1 audit L10
+             replaced the fragile `body > .flex > div:last-child` selector) -->
+        <div id="main-content" class="flex-1 overflow-y-auto bg-stone-800 relative">
             <!-- Player Panel - Collapsed Avatar Button -->
             <!-- v2.6: wrapper added around the avatar ring so the XP ring SVG can
                  absolute-position around the existing rarity-color band without
@@ -577,7 +566,7 @@
                                  right ~25%, so we add extra right padding to
                                  keep multi-line titles clear of it). -->
                             <div class="title-scroll mx-auto">
-                                <div id="player-title" class="title-scroll__name medieval-title">Peasant</div>
+                                <div id="player-title" class="title-scroll__name medieval-title">Wanderer</div>
                                 <div id="current-prefix" class="title-scroll__prefix fancy-font"></div>
                             </div>
                             <div class="text-xs text-amber-500 fancy-font mt-2"><i class="ri-medal-line mr-1"></i>Tap to manage titles</div>
@@ -637,6 +626,15 @@
                             <span><span id="total-count">0</span> total</span>
                         </div>
                     </div>
+
+                    <!-- Class / Skill Tree (v3.0 §3.1) -->
+                    <!-- Populated by `goalManager.renderClassPanel()` on every
+                         panel render. Stays `hidden` (empty) until the player
+                         reaches CLASS_SELECT_LEVEL; then shows either the
+                         class-selection cards (no class yet) or the active
+                         class + linear skill tree with unlock / respec
+                         controls. -->
+                    <div id="panel-class-section" class="hidden mb-4"></div>
 
                     <!-- Active Companion -->
                     <!-- v2.6 panel-unification: chrome neutralized to stone +
@@ -771,10 +769,14 @@
                          dashboard header. Repainted to amber/stone so the
                          dashboard header reads as a single visual unit. -->
                     <div class="mt-6 quest-card bg-gradient-to-br from-amber-900/30 to-stone-950/40 p-4 rounded-lg border-2 border-amber-700/30 max-w-2xl mx-auto">
+                        <!-- v2.7.1 audit L3 — quote selection is synchronous in JS,
+                             so the old "Loading wisdom..." placeholder was a dishonest
+                             FOUC. Inline a real quote as the initial state; render()
+                             swaps in a random one immediately on boot. -->
                         <div class="text-amber-200 fancy-font italic text-lg" id="motivational-quote">
-                            "Loading wisdom..."
+                            "The journey of a thousand miles begins with a single step."
                         </div>
-                        <div class="text-amber-400 text-sm mt-2" id="quote-author">- Ancient Sage</div>
+                        <div class="text-amber-400 text-sm mt-2" id="quote-author">- Lao Tzu</div>
                         <button onclick="goalManager.render()" class="text-xs text-amber-300 hover:text-amber-100 mt-2 underline">
                             <i class="ri-refresh-line mr-1"></i>New Quote
                         </button>
@@ -843,6 +845,14 @@
                     </p>
                 </div>
 
+                <!-- v2.9 Track 7 — passive Theme-of-the-Week discovery card.
+                     Populated by `goalManager.renderWeeklyThemeCard()` each
+                     dashboard render; stays `hidden` (empty) when there's no
+                     rotation theme, the user already wears it, or they
+                     dismissed it this ISO week. Surfaces the weekly free-trial
+                     theme for users who never open the Themes panel. -->
+                <div id="dashboard-weekly-theme" class="hidden mb-8"></div>
+
                 <!-- Stats Grid -->
                 <!-- v2.7.1 audit fix M3: `id="dashboard-stats-grid"` added so
                      `renderDashboard()` can hide this entire grid for brand-
@@ -895,6 +905,39 @@
                         <div class="text-sm text-orange-200 fancy-font">Keep conquering!</div>
                     </div>
                 </div>
+
+                <!-- ===== Double XP Weekend banner ===================
+                     Limited-time events — a 2x XP event on the first weekend
+                     of each month (see getActiveXPEvent). Populated by
+                     `renderXPEvent()`; stays `hidden` outside the window.
+                     Sits at the very top of the dashboard cards since it's
+                     a time-limited hype moment. ======================== -->
+                <div id="dashboard-xp-event" class="hidden mb-8"></div>
+
+                <!-- ===== Theme of the Week card ======================
+                     v2.9 Track 7 — passive, non-modal discovery surface
+                     for the weekly featured premium theme. Populated by
+                     `renderWeeklyThemeCard()`; stays empty (and the wrapper
+                     hidden) when there's no rotation theme or the user has
+                     dismissed it for the current ISO week. Sits below the
+                     stats grid so it's visible above the fold without
+                     pushing today's quests off-screen. ================= -->
+                <div id="dashboard-weekly-theme" class="mb-8 hidden"></div>
+
+                <!-- ===== Streak Repair card ==========================
+                     §1.7 — when a 2+ day login/habit streak breaks, a premium
+                     player gets 48h to restore it by spending Focus Crystals.
+                     Populated by `renderStreakRepair()`; stays `hidden` until
+                     a repairable streak exists (free users see an upsell).
+                     Sits above bounties since the window is time-sensitive. -->
+                <div id="dashboard-streak-repair" class="hidden mb-8"></div>
+
+                <!-- ===== Royal Bounty card ===========================
+                     v2.9.1 §1.8 — spotlights one weekly + one monthly quest
+                     each period with a free chest on completion. Populated by
+                     `renderRoyalBounty()`; stays `hidden` (empty) until a
+                     bounty is assigned for the current period. ============ -->
+                <div id="dashboard-royal-bounty" class="hidden mb-8 grid grid-cols-1 md:grid-cols-2 gap-6"></div>
 
                 <!-- ===== Dashboard secondary actions =================
                      v2.6 button-consolidation: this block previously held SIX
@@ -1929,7 +1972,7 @@
 
                 <!-- App Version -->
                 <div class="mt-8 text-center">
-                    <p class="text-sm text-gray-500 fancy-font">Life Quest Journal v2.8.0</p>
+                    <p class="text-sm text-gray-500 fancy-font">Life Quest Journal v3.0.0</p>
                 </div>
             </div>
 
@@ -2139,16 +2182,171 @@
         </div>
     </div>
 
-    <!-- PWA Install Button (hidden by default, shown when installable) -->
-    <button id="pwa-install-button" onclick="installPWA()" class="hidden fixed bottom-6 right-6 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-6 py-4 rounded-full shadow-2xl font-bold fancy-font transition-all hover:scale-110 z-50 border-2 border-green-400">
-        <i class="ri-smartphone-line mr-1"></i>Install App
-    </button>
 
     <script src="analytics-methods.js"></script>
     <script src="capacitor-bridge.js"></script>
     <script src="pwa-handler.js"></script>
     <script src="audio-manager.js"></script>
     <script src="effects-manager.js"></script>
+    <!-- Centralized economy/balance table (Engineering Roadmap #6). MUST load
+         BEFORE goal-manager.js, which captures window.BALANCE at startup. -->
+    <script src="balance.js"></script>
+    <!-- Player level-title chain (Engineering Roadmap #1 incremental split). MUST
+         load BEFORE goal-manager.js, which captures window.LEVEL_TITLES at startup. -->
+    <script src="level-titles.js"></script>
+    <!-- Companion catalog (Engineering Roadmap #1 incremental split). MUST load
+         BEFORE goal-manager.js, which captures window.COMPANION_DEFINITIONS. -->
+    <script src="companion-definitions.js"></script>
+    <!-- Spellbook catalog (Engineering Roadmap #1 incremental split). MUST load
+         BEFORE goal-manager.js, which captures window.SPELL_DEFINITIONS. -->
+    <script src="spell-definitions.js"></script>
+    <!-- Color-palette theme catalog (Engineering Roadmap #1 incremental split).
+         MUST load BEFORE goal-manager.js, which captures window.THEME_DEFINITIONS. -->
+    <script src="theme-definitions.js"></script>
+    <!-- Achievement/badge catalog (Engineering Roadmap #1 incremental split). MUST
+         load BEFORE goal-manager.js, which captures window.ACHIEVEMENT_DEFINITIONS. -->
+    <script src="achievement-definitions.js"></script>
+    <!-- Boss theme catalog (Engineering Roadmap #1 incremental split). MUST load
+         BEFORE goal-manager.js, which captures window.BOSS_THEMES. -->
+    <script src="boss-themes.js"></script>
+    <!-- Raw class/subclass skill-tree catalog (Engineering Roadmap #1 incremental
+         split). MUST load BEFORE goal-manager.js, which captures window.CLASS_DEFINITIONS. -->
+    <script src="class-definitions.js"></script>
+    <!-- Enchantment shop catalog (Engineering Roadmap #1 incremental split). MUST
+         load BEFORE goal-manager.js, which captures window.ENCHANTMENT_DEFINITIONS. -->
+    <script src="enchantment-definitions.js"></script>
+    <!-- Onboarding starter-task catalog (Engineering Roadmap #1 incremental split).
+         MUST load BEFORE goal-manager.js, which captures window.STARTER_TASK_PRESETS. -->
+    <script src="starter-task-presets.js"></script>
+    <!-- Multi-chapter quest-chain catalog (Engineering Roadmap #1 incremental split).
+         MUST load BEFORE goal-manager.js, which captures window.QUEST_CHAIN_TEMPLATES. -->
+    <script src="quest-chain-templates.js"></script>
+    <!-- Pure loot roll ENGINE (Engineering Roadmap #1 incremental split — first LOGIC
+         slice). MUST load BEFORE goal-manager.js, which captures window.LOOT_ENGINE. -->
+    <script src="loot-engine.js"></script>
+    <!-- Master loot pool catalog (Engineering Roadmap #1 incremental split). MUST
+         load BEFORE goal-manager.js, which captures window.MASTER_LOOT_POOL. -->
+    <script src="loot-pool.js"></script>
+    <!-- Pure boss spawn ENGINE (Engineering Roadmap #1 incremental split — 2nd LOGIC
+         slice). MUST load BEFORE goal-manager.js, which captures window.BOSS_GENERATOR. -->
+    <script src="boss-generator.js"></script>
+    <!-- Pure save-data migrations (Engineering Roadmap #1 incremental split). MUST load
+         BEFORE goal-manager.js, which captures window.PERSISTENCE_MIGRATIONS for loadData. -->
+    <script src="persistence-migrations.js"></script>
+    <!-- Pure daily-login-streak + streak-repair math (Engineering Roadmap #1 — 56th slice, first
+         non-render LOGIC module). MUST load BEFORE goal-manager.js (captures window.STREAK_LOGIC). -->
+    <script src="streak-logic.js"></script>
+    <!-- Pure XP / leveling-curve math (Engineering Roadmap #1 — 57th slice, second non-render
+         LOGIC module). MUST load BEFORE goal-manager.js (captures window.LEVELING_LOGIC). -->
+    <script src="leveling-logic.js"></script>
+    <!-- Pure effort-based-XP priority scaling (Engineering Roadmap #1 — 58th slice). MUST load
+         BEFORE goal-manager.js (captures window.EFFORT_XP_LOGIC). -->
+    <script src="effort-xp-logic.js"></script>
+    <!-- Pure active-buff → reward-multiplier resolution (Engineering Roadmap #1 — 59th slice).
+         MUST load BEFORE goal-manager.js (captures window.BUFF_MULTIPLIERS). -->
+    <script src="buff-multipliers.js"></script>
+    <!-- Pure companion slot + bonus resolution (Engineering Roadmap #1 — 60th slice). MUST load
+         BEFORE goal-manager.js (captures window.COMPANION_LOGIC). -->
+    <script src="companion-logic.js"></script>
+    <!-- Pure class/subclass perk-value resolution (Engineering Roadmap #1 — 61st slice). MUST
+         load BEFORE goal-manager.js (captures window.CLASS_PERKS). -->
+    <script src="class-perks.js"></script>
+    <!-- Pure class/subclass tree progression-state predicates (Engineering Roadmap #1 — 62nd
+         slice). MUST load BEFORE goal-manager.js (captures window.CLASS_PROGRESSION). -->
+    <script src="class-progression.js"></script>
+    <!-- Pure class skill-point economy math (Engineering Roadmap #1 — 63rd slice). MUST load
+         BEFORE goal-manager.js (captures window.SKILL_POINTS). -->
+    <script src="skill-points.js"></script>
+    <!-- Pure Focus Crystal supply math (Engineering Roadmap #1 — 64th slice). MUST load BEFORE
+         goal-manager.js (captures window.CRYSTAL_ECONOMY). -->
+    <script src="crystal-economy.js"></script>
+    <!-- Pure attack-charge earn + spend rules (Engineering Roadmap #1 — 65th slice). MUST load
+         BEFORE goal-manager.js (captures window.CHARGE_RULES). -->
+    <script src="charge-rules.js"></script>
+    <!-- Pure boss-damage math (Engineering Roadmap #1 — 66th slice). MUST load BEFORE
+         goal-manager.js (captures window.COMBAT_DAMAGE). -->
+    <script src="combat-damage.js"></script>
+    <!-- Pure XP/gold reward-stack math (Engineering Roadmap #1 — 67th slice). MUST load
+         BEFORE goal-manager.js (captures window.REWARD_ECONOMY). -->
+    <script src="reward-economy.js"></script>
+    <!-- Pure focus-timer + Pomodoro-chain math (Engineering Roadmap #1 — 68th slice). MUST load
+         BEFORE goal-manager.js (captures window.FOCUS_SESSION_LOGIC). -->
+    <script src="focus-session-logic.js"></script>
+    <!-- Pure active-spell state math (Engineering Roadmap #1 — 69th slice). MUST load
+         BEFORE goal-manager.js (captures window.SPELL_LIFECYCLE). -->
+    <script src="spell-lifecycle.js"></script>
+    <!-- Pure previous-period recap math (Engineering Roadmap #1 — 70th slice). MUST load
+         BEFORE goal-manager.js (captures window.PERIOD_SUMMARY_LOGIC). -->
+    <script src="period-summary-logic.js"></script>
+    <!-- Pure reminder scheduling + notification-copy math (Engineering Roadmap #1 — 72nd slice).
+         MUST load BEFORE goal-manager.js (captures window.REMINDER_SCHEDULE_LOGIC). -->
+    <script src="reminder-schedule-logic.js"></script>
+    <!-- Pure boss-card presentation helpers (Engineering Roadmap #1 — first render slice).
+         MUST load BEFORE goal-manager.js, which captures window.BOSS_RENDER. -->
+    <script src="boss-render.js"></script>
+    <!-- Pure task/goal presentation builders (Engineering Roadmap #1 — 2nd render module).
+         MUST load BEFORE goal-manager.js, which captures window.TASK_RENDER. -->
+    <script src="task-render.js"></script>
+    <!-- Pure companion-den presentation builders (Engineering Roadmap #1 — 3rd render module).
+         MUST load BEFORE goal-manager.js, which captures window.COMPANION_RENDER. -->
+    <script src="companion-render.js"></script>
+    <!-- Pure spellbook presentation builders (Engineering Roadmap #1 — 4th render module).
+         MUST load BEFORE goal-manager.js, which captures window.SPELL_RENDER. -->
+    <script src="spell-render.js"></script>
+    <!-- Pure Class / Skill-Tree presentation builders (Engineering Roadmap #1 — 5th render module).
+         MUST load BEFORE goal-manager.js, which captures window.CLASS_RENDER. -->
+    <script src="class-render.js"></script>
+    <!-- Pure Analytics presentation builders (Engineering Roadmap #1 — 6th render module).
+         MUST load BEFORE goal-manager.js, which captures window.ANALYTICS_RENDER. -->
+    <script src="analytics-render.js"></script>
+    <!-- Pure Quest Chains presentation builders (Engineering Roadmap #1 — 7th render module).
+         MUST load BEFORE goal-manager.js, which captures window.QUEST_CHAIN_RENDER. -->
+    <script src="quest-chain-render.js"></script>
+    <!-- Pure Enchantments presentation builders (Engineering Roadmap #1 — 8th render module).
+         MUST load BEFORE goal-manager.js, which captures window.ENCHANTMENT_RENDER. -->
+    <script src="enchantment-render.js"></script>
+    <!-- Pure Dashboard-card presentation builders (Engineering Roadmap #1 — 9th render module).
+         MUST load BEFORE goal-manager.js, which captures window.DASHBOARD_RENDER. -->
+    <script src="dashboard-render.js"></script>
+    <!-- Pure Player-HUD presentation builders (Engineering Roadmap #1 — 10th render module).
+         MUST load BEFORE goal-manager.js, which captures window.PLAYER_HUD_RENDER. -->
+    <script src="player-hud-render.js"></script>
+    <!-- Pure Title Hall presentation builders (Engineering Roadmap #1 — 11th render module).
+         MUST load BEFORE goal-manager.js, which captures window.TITLE_RENDER. -->
+    <script src="title-render.js"></script>
+    <!-- Pure Treasury / rewards presentation builders (Engineering Roadmap #1 — 12th render module).
+         MUST load BEFORE goal-manager.js, which captures window.REWARD_RENDER. -->
+    <script src="reward-render.js"></script>
+    <!-- Pure Themes-panel presentation builders (Engineering Roadmap #1 — 13th render module).
+         MUST load BEFORE goal-manager.js, which captures window.THEME_RENDER. -->
+    <script src="theme-render.js"></script>
+    <!-- Pure Badges/Achievements presentation builder (Engineering Roadmap #1 — 14th render module).
+         MUST load BEFORE goal-manager.js, which captures window.BADGE_RENDER. -->
+    <script src="badge-render.js"></script>
+    <!-- Pure Rituals/Habits presentation builder (Engineering Roadmap #1 — 15th render module).
+         MUST load BEFORE goal-manager.js, which captures window.HABIT_RENDER. -->
+    <script src="habit-render.js"></script>
+    <!-- Pure Archive-panel presentation builder (Engineering Roadmap #1 — 16th render module).
+         MUST load BEFORE goal-manager.js, which captures window.ARCHIVE_RENDER. -->
+    <script src="archive-render.js"></script>
+    <!-- Pure Daily-board presentation builders (Engineering Roadmap #1 — 17th render module).
+         MUST load BEFORE goal-manager.js, which captures window.DAILY_BOARD_RENDER. -->
+    <script src="daily-board-render.js"></script>
+    <!-- Pure Recurring-tasks presentation builder (Engineering Roadmap #1 — 18th render module).
+         MUST load BEFORE goal-manager.js, which captures window.RECURRING_RENDER. -->
+    <script src="recurring-render.js"></script>
+    <!-- Pure Calendar-tab presentation builders (Engineering Roadmap #1 — 19th render module).
+         MUST load BEFORE goal-manager.js, which captures window.CALENDAR_RENDER. -->
+    <script src="calendar-render.js"></script>
+    <!-- Pure Focus-timer presentation builders (Engineering Roadmap #1 — 20th render module).
+         MUST load BEFORE goal-manager.js, which captures window.FOCUS_TIMER_RENDER. -->
+    <script src="focus-timer-render.js"></script>
+    <!-- Pure Premium-surface presentation builders (Engineering Roadmap #1 — 21st render module).
+         MUST load BEFORE goal-manager.js, which captures window.PREMIUM_RENDER. -->
+    <script src="premium-render.js"></script>
+    <!-- Pure Reminder-settings presentation builder (Engineering Roadmap #1 — 22nd render module).
+         MUST load BEFORE goal-manager.js, which captures window.REMINDER_RENDER. -->
+    <script src="reminder-render.js"></script>
     <script src="goal-manager.js"></script>
     <script src="mobile-touch.js"></script>
     <!-- v2.7 Phase 4: pointer-tracked 3D parallax tilt for epic+ rarity

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "checkJs": false,
+    "strict": true,
+    "noEmit": true
+  },
+  "exclude": [
+    "node_modules",
+    "www",
+    "android",
+    "dist",
+    "vendor",
+    "prototypes",
+    "push-worker",
+    "capacitor.config.ts"
+  ]
+}

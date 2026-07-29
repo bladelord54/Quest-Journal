@@ -7,8 +7,8 @@ android {
         applicationId "com.lifequestjournal.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 26
-        versionName "2.8.0"
+        versionCode 31
+        versionName "3.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -36,7 +36,10 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
-    implementation "com.android.billingclient:billing:7.1.1"
+    // Google Play Billing Library. PBL 7's new-app/update deadline was 2026-08-31, so Play
+    // Console flags builds still on it; 9.x is supported until 2026-08-31 + two years.
+    // Migration notes for 7 -> 9 live in BillingPlugin.java.
+    implementation "com.android.billingclient:billing:$playBillingVersion"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

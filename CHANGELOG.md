@@ -8,7 +8,7 @@ with an `Android versionCode` bump on every release.
 
 > **Note:** This file begins with v2.5. v2.4.10 (shipped May 22, 2026, Build 20) is
 > recorded below as the baseline that v2.5 builds on, but earlier history lives only
-> in `ROADMAP.md` § Phase 1.
+> in `docs/HISTORY.md` § Phase 1.
 
 ## Sections we use
 
@@ -22,6 +22,430 @@ with an `Android versionCode` bump on every release.
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **January visitors lost their "new month" recap** — `loadData` read
+  `this.lastMonth = data.lastMonth || null`, but `lastMonth` is **0-indexed**,
+  so a stored **January (0)** was coerced to `null` on load. The period-transition
+  check skips any tracking field that is `null`, so the month boundary was never
+  detected: anyone whose last visit was in January got no month recap when they
+  came back in February. `saveData` and `importData` had always stored the value
+  correctly (`importData` already used `??`) — only the load path dropped it. All
+  four period-tracking fields now use `??`, and a regression test asserts the
+  `|| null` form appears for none of them. (Same `??` vs `||` trap as the v2.8
+  `totalGoldEarned` migration below — second occurrence of this bug class.)
+
+### Internal
+
+- **Period-transition detection extracted (Roadmap #1, 71st slice)** —
+  `checkPeriodTransitions` / `updatePeriodTracking` / `getWeekNumber` were inline
+  on the God class with **zero** test coverage. Their pure parts moved into
+  `period-summary-logic.js` (which already held the recap math from the 70th
+  slice) as `isoWeekNumber`, `periodStamp`, `detectTransitions` and
+  `mainTransition`; the class keeps only the impure work — the first-time-user
+  guard, the clock read, the slideshow call and the save. **29 new tests** (suite
+  1220 → 1249), including a lock on the reason the detector compares the calendar
+  year: ISO week *numbers* collide across a New Year (`2025-12-29` and
+  `2026-01-01` are both week 1), so week number alone cannot detect the boundary.
+
+---
+
+## [3.0.0] — 2026-06-29 (Build 30)
+
+> **Theme:** The Class System & Subclass Specialization — the largest gameplay
+> update since launch. A full skill-tree progression layer for every player.
+
+### Added
+
+- **Class System (§3.1)** — at **Level 8** you choose one of four classes —
+  **Scholar**, **Warrior**, **Wizard**, or **Ranger** — each with its own
+  **5-node linear perk tree** (node costs `[2,3,4,5,6]`) plus a **choice of two
+  capstones** (10 pts each), 30 points total. Skill points are **derived from
+  level** (1 per level past 10), so a class maxes at **exactly Level 40**. Every
+  perk is **free** (earned through play, no premium gating) and hooks into the
+  live systems — focus XP, enchantment discounts, crystal yield, boss damage,
+  attack/crit chance, spell duration & preservation, companion XP, and loot
+  weighting.
+
+- **Eight class capstones** — each class picks 1 of 2 build-defining endgame
+  payoffs: Scholar **Deep Work / Insight**, Warrior **Executioner / Overflow**,
+  Wizard **Overcharge / Archmage**, Ranger **Second Companion Slot / Forage**.
+
+- **Subclass Specialization (§9)** — once you **master a base class** and reach
+  **Level 40**, you unlock one of **two subclasses per class** (eight total),
+  each a multi-tier mini-tree that **stacks on top** of your base perks rather
+  than replacing them, with its own separate (costlier) re-specialize action.
+
+- **Player Panel class UI** — `renderClassPanel()` drives the whole flow:
+  class-selection cards (locked until L8), the active skill tree with per-node
+  unlock buttons, the capstone choice at full mastery, subclass cards at L40,
+  and Focus-Crystal respec / re-specialize confirmations.
+
+### Changed
+
+- **Class selection unlocks at Level 8 (was 10)** — the class system is a
+  flagship feature, so it now surfaces earlier with its own "Choose Your Class!"
+  tutorial at L8, filling the previously empty L7–L9 stretch. Selection is
+  **decoupled** from skill points: you choose a class at L8, but skill points
+  still begin accruing at L10 (so a class still maxes at *exactly* Level 40 and
+  the L40 subclass/prestige math is unchanged). Re-picking a class is now **free
+  before Level 10** (no points are committed yet), then reverts to the normal
+  5 Focus Crystal fee.
+
+### Internal
+
+- **Version bumps** — Android `versionCode 29 → 30`, `versionName 2.10.0 →
+  3.0.0`; `package.json` + the in-app version string + data-export version to
+  `3.0.0`; `CHANGELOG_VERSION` to `3.0.0` (re-arms the What's New modal);
+  `CACHE_NAME` to `v631`. Full suite green (**599 tests**).
+
+- **Deferred to §3.2 (Crafting System)** — the four class `[large]` crafting
+  subsystems (Warrior weapon forging, Ranger arrow crafting, Wizard spell
+  crafting, Scholar enchantment crafting) were intentionally scoped out of this
+  release.
+
+---
+
+## [2.10.0] — 2026-06-23 (Build 29)
+
+> **Theme:** Sound Design Expansion + chest open animations.
+
+### Added
+
+- **Streak Repair (premium, §1.7)** — a broken **login or habit streak**
+  of 2+ days is now snapshotted for **48 hours** so a premium player can
+  **spend Focus Crystals to restore it** (cost scales ~1 crystal per 10
+  lost days, min 1, capped at 5). A dashboard card lists every repairable
+  streak with its exact cost and a one-tap restore; free users get a
+  single contextual upsell instead. Snapshots de-dupe per target,
+  auto-prune once the 48h window closes, and a repair never charges
+  unless the restore lands (display-only until you spend). Persisted
+  across both save objects + loaders. Service-worker cache `v620 → v621`.
+  Covered by 21 unit tests.
+
+- **Double XP Weekend (Limited-time events)** — the **first full weekend**
+  (Sat 00:00 → Sun 23:59:59, UTC) of **each month** now grants **2× XP**
+  on every quest, stacking multiplicatively with Beginner's Blessing,
+  spells, enchantments, and companion bonuses. A dashboard banner
+  announces the live event with a countdown. The window is computed
+  purely from the clock — no scheduling or sync, so every client agrees —
+  and the whole system sits behind a `limitedTimeEventsEnabled`
+  kill-switch. A lightweight precursor to §3.3 Seasonal Events. Ships in
+  the `v621` cache bump above. Covered by 10 unit tests.
+
+- **Royal Bounty "ready" reminder (§1.9)** — a loss-aversion nudge that
+  reminds you to finish an active Royal Bounty for its free chest before
+  the window closes. Mirrors the v2.9.1 Streak Saver: native
+  pre-schedules a notification (re-armed on app open, claim, assignment,
+  and settings change), and the web/PWA service worker evaluates it at
+  fire time. Fires once per day while there's an **active, unclaimed**
+  bounty whose target quest is still **incomplete**. New Settings → 👑
+  **Bounty Reminder** toggle + time (default `18:00`); respects the
+  master reminders switch. Service-worker cache `v618 → v619`.
+
+- **Sequential loot reveal by rarity (Track 1)** — the chest loot panel
+  (`showLootPanel`) now reveals its reward rows in **ascending rarity**
+  order, so the staggered top-to-bottom reveal builds to the rarest drop
+  for a satisfying crescendo (best lands last) instead of appearing in
+  random generation order. A new shared `_rarityRank()` helper drives a
+  stable sort (ties keep generation order). **Display-only** — rewards are
+  granted before the panel opens, so the reorder can never change what you
+  actually receive. Service-worker cache `v619 → v620`.
+
+- **Desktop sidebar "More" disclosure (UX audit L6)** — a brand-new player
+  no longer faces a 10-item sidebar full of locked, far-off destinations.
+  The desktop/tablet sidebar now shows your unlocked items plus the
+  immediate next unlock, tucking anything that unlocks **two or more levels
+  out** behind a **"More (N)"** toggle (default collapsed each launch;
+  expand/collapse is session-only). Focus Timer was reordered before Quest
+  Chains so the level-gated entries ascend cleanly. **Desktop-only** — the
+  mobile bottom bar still shows every destination via horizontal scroll,
+  and the toggle is hidden there (the per-link collapse is scoped to
+  `≥769px`). Ships in the `v620` cache bump above.
+
+### Changed
+
+- **Level-1 rank renamed `Peasant` → `Wanderer`** — the default starting
+  title was mildly demoralizing as a first impression (L1 of the
+  pre-v2.7.1 UX audit). Renamed across both the masculine and feminine
+  `LEVEL_TITLES` chains; **entry 1 only — levels 2–50 are unchanged**.
+  This **retitles existing level-1 users** on update (a one-time,
+  expected change). `'Novice'` was rejected because it already exists as
+  a badge/achievement, and `'Adventurer'` because it's already the game's
+  generic word for the player.
+
+### Fixed
+
+- **Silent daily-quest-board claim & side-quest completion** — claiming a
+  daily quest board reward and completing a side quest played **no sound**.
+  Both route their feedback through `effectsManager` (visual-only) and grant
+  rewards via "quiet" sources (`addGold('daily')` / `addXP('side')`), and the
+  completion sound lived **only** in the no-`effectsManager` fallback branch —
+  which never runs in production. They now play the dedicated `task-complete`
+  sound in the `effectsManager` branch too (matching the routine-task and
+  ritual-completion sounds). Service-worker cache `v628 → v629`. Covered by 2
+  new regression tests.
+- **Analytics: heatmaps now show today and align to the calendar (§5.0)** —
+  both the Activity Heatmap and the GitHub-style Habit Heatmap computed
+  their start date as `today − (weeksToShow*7 − 1) − weekday`, which always
+  landed on a **Monday** (mislabeled under the Sunday column) and ended the
+  grid on **last** week's Sunday. The result: today's square was missing 6
+  days out of 7, and every column was shifted one day off its label. Fixed
+  the offset to `(weeksToShow − 1) * 7` via a single shared
+  `_heatmapStartSunday()` helper used by both heatmaps, so the newest column
+  is always the current Sun–Sat week with today in the last row.
+- **Analytics: XP Timeline scales to the visible 30-day window** — the bar
+  heights were scaled against the tallest day in *all* history, so a busy
+  day from last quarter flattened every recent bar. The chart now scales to
+  the tallest day **within the 30-day window**.
+- **Analytics: "Longest Streak" personal record no longer decreases** — it
+  read a `longestStreak` field that was never persisted and fell back to the
+  live `habit.streak`, which resets to 0 when a streak breaks. It now derives
+  the true record from each habit's append-only `completionHistory` (longest
+  run of consecutive days), so a broken streak can't erase your record.
+- **Analytics (internal): Activity Heatmap completion bucketing** now routes
+  through the same `new Date(…'T12:00:00') → dateToLocalString` pipeline as
+  the XP Timeline (plus a missing-`dueDate` guard), keeping the two
+  date-bucketing widgets consistent.
+
+---
+
+## [2.9.1] — 2026-06-16 (Build 28)
+
+> **Theme:** Engagement & Retention. Ships the §1.8 **Royal Bounty**
+> (spotlight quests + free bonus chest) and the §1.9 **proactive
+> streak-risk login reminder** ("Streak Saver"), the highest-value gap
+> from the Jun 16 retention audit. Both features reuse existing systems
+> (Theme-of-the-Week period rotation, the Track 1 chest pipeline, and the
+> existing notification stack), so net new surface area is small.
+>
+> Cache series: `life-quest-journal-v616` (v2.9.0) → `v617` (Royal
+> Bounty) → **`v618`** (streak-risk reminder). Lazy cache stays at
+> `lazy-v280` (no lazy-asset payload change).
+>
+> Tests: **329 passing** (unchanged).
+
+### Added
+
+- **Royal Bounty (§1.8)** — each period spotlights one higher-tier quest
+  with a tight sub-deadline and a free bonus chest on completion. A
+  **Weekly Bounty** (assigned Monday, targets a `weeklyGoals` item,
+  window = rest of the ISO week) and a **Monthly Bounty** (assigned the
+  1st, targets a `monthlyGoals`/`yearlyGoals`/`lifeGoals` item, ~10-day
+  window) run concurrently. Reward tiers scale with the quest tier
+  (weekly → Silver, monthly → Gold, yearly/epic → Royal), reusing the
+  existing chest pipeline's free-open path + loot fountain. Surfaced via
+  a dashboard card (`#dashboard-royal-bounty`) plus a `👑 Royal Bounty`
+  badge on the targeted quest in the Quest Log. Pure upside — no penalty
+  for ignoring it.
+  - **Anti-gaming:** the target is **assigned, never chosen**; the
+    eligible pool excludes quests created after the period opened (via
+    the existing `created` stamp); one claimable bonus chest per cadence
+    per period (`lastBountyClaim` guard).
+  - **Anti-frustration:** **one reroll per period** (premium-only; free
+    users are routed to the upsell). Empty pool shows an "add a quest"
+    nudge card instead of nothing.
+- **Streak Saver — proactive streak-risk reminder (§1.9)** — a heads-up
+  **before** your daily-login streak breaks, rather than the old
+  after-the-fact shield prompt. Fires only on days you haven't yet opened
+  the app (`lastLoginBonusDate !== today`) and only when the streak is
+  worth protecting (`loginStreak >= 3`). Native builds pre-schedule the
+  notification (canceled/re-armed the moment the daily login bonus is
+  claimed); web/PWA evaluates streak state at fire time in the service
+  worker (both periodic and push paths). New **🔥 Streak Saver** toggle +
+  time picker under Settings → Reminders (default `20:00`).
+
+### Internal
+
+- **Retention Gap Audit (§1.9, Jun 16)** — recorded in `ROADMAP.md`:
+  shipped the streak-risk reminder; tracked remaining gaps (chest/bounty
+  "ready" nudge, habit-specific streak freeze, streak repair, limited-time
+  events, weekly recap, leaderboards/guilds) with cross-links.
+- **Version bumps** — Android `versionCode 27 → 28`,
+  `versionName 2.9.0 → 2.9.1`; `package.json` and the in-app version
+  string to `2.9.1`; `CHANGELOG_VERSION` to `2.9.1` (re-arms the What's
+  New modal); `CACHE_NAME` to `v618`.
+
+---
+
+## [2.9.0] — 2026-06-15 (Build 27)
+
+> **Theme:** Loot, Chest & Boss Battle Visuals + Theme of the Week. Ships
+> the v2.9 cycle's boss-combat visual overhaul (Tracks 3–6: damage-trail
+> HP bar, crit reticle + shockwave, per-theme defeat dissolve, loot
+> fountain into the avatar ring, monthly FINAL BLOW overlay), Theme of
+> the Week (Track 7: 9-week deterministic rotation, Monday spotlight,
+> end-of-trial revert + upsell, analytics funnel), and the Track 1 chest
+> visual pipeline (asset-gated WebM/PNG chest art + the chest loot
+> fountain). Also folds in the Jun 10–11 features/balance audit fixes
+> (round 1: Precision toggle exploit, lucky_loot weight shift; round 2:
+> charge cap, Early Bird rebalance), the Android UX pass (hardware back
+> button, search modal consolidation, confirm-dialog safety), and the
+> Jun 15 reward/theme polish (round 3: chest loot fountain + theme text
+> legibility). **Boss portraits (Track 2) are deferred to a later v2.9.x**
+> pending the art-source decision (ROADMAP D1) — the code falls back to
+> the existing emoji boss icons until then.
+>
+> Cache series: `life-quest-journal-v613` (v2.8.0) → `v614` (CDN removal)
+> → `v615` (chest-art pipeline) → **`v616`** (this release cut). Lazy
+> cache stays at `lazy-v280` (no lazy-asset payload change).
+>
+> Tests: 129 → **329 passing** across the cycle.
+
+### Added
+
+- **Delete UNDO button** — deleting a quest/habit now shows a
+  `🗑️ "<name>" deleted` toast with a tappable ↩️ UNDO button that
+  restores the item at its original position. Previously the only undo
+  path was Ctrl+Z — unreachable on Android, i.e. for the entire user
+  base. One-shot with a duplicate-id guard; the toast system gained
+  generic `action: { label, callback }` support for future use.
+- **Toast tap-to-dismiss** — the whole achievement toast is now a tap
+  target that dismisses immediately and advances the queue, so bulk
+  completions no longer trap users behind a wall of queued toasts.
+  Action toasts stay up 6s (vs. 3s default) so the button is tappable.
+- **Extended level titles (L11–L50)** — `LEVEL_TITLES` grew from 10 to
+  50 entries per style. Users past level 10 were stuck on 'Legend'
+  forever (reachable in ~2 months of active play); titles now progress
+  through heroic, mythic, and celestial tiers (Hero → Mythic → Demigod
+  → … → Paragon), clamping at 'Paragon' for level 50+. Levels 1–10 are
+  unchanged, so no existing user is retitled on update. Feminine chain
+  carries gendered counterparts at the same indices (Heroine, Warlady,
+  Dragonqueen, Demigoddess, …).
+- **"While you were away" recap** — returning after a missed day (or
+  several) used to fire one toast per protected streak and *silently*
+  zero broken streaks. The daily reset now collects all streak events:
+  a single event keeps the familiar toast; 2+ events surface one
+  consolidated recap modal with "Streaks Protected" and "Streaks Lost"
+  sections plus a days-away header. Genuinely lost streaks (2+ days)
+  are now reported instead of vanishing without explanation. The modal
+  is dismissible via the Android hardware back button.
+- **Offline indicator (audit L11)** — a small "📶 Offline" pill at the
+  top of the viewport appears when `navigator.onLine === false`. The
+  app works fully offline, but sync actions (referrals, challenges,
+  shares) used to fail with cryptic errors and no context.
+- **Locked-nav teasers (audit L5)** — locked sidebar entries now sell
+  what's coming (`🔒 Boss Battles unlocks at Level 4 — slay epic bosses
+  for legendary loot!`) instead of just stating the gate.
+- **Chest art pipeline (Track 1)** — `goal-manager.js` is wired for
+  real chest visuals: per-tier static art
+  (`images/chests/chest-<tier>.webp|png`) replaces the emoji in
+  treasury tiles + the celebration icon, and an opaque
+  `chest-open-<tier>.webm` cinematic (framed as a rounded card over a
+  dimmed backdrop, ~2 s, no audio, VP9/CRF 34) replaces the CSS
+  celebration when present. Assets discovered via HEAD probes at startup
+  — missing files keep today's emoji + CSS behavior exactly; playback
+  errors, `prefers-reduced-motion`, and fx-minimal all fall back to
+  the CSS path. Naming contract + encode specs in
+  `images/chests/README.md`; resolves ROADMAP decision D2 toward
+  video. SW cache → v615; `images/` added to `scripts/copy-web.js`.
+- **Chest loot fountain** — opening any chest now sends the reward icons
+  arcing out of the chest and up into the player's avatar ring before the
+  loot panel opens, reusing the boss-defeat `effectsManager.lootFountain()`
+  collection effect. The panel opens on the fountain's arrival callback
+  instead of a fixed 2.2 s timer, so the beat reads as "loot flows from
+  the chest into you, then you open it." Inherits the effect's
+  accessibility gating (minimal-fx → loot appears instantly,
+  `prefers-reduced-motion` → sprites hidden, off-screen avatar ring →
+  viewport-center fallback) and falls back to the legacy fixed-delay
+  panel open when the effect isn't available.
+
+### Changed
+
+- **Chest coin burst trimmed (20 → 12 particles)** — the outward CSS
+  coin explosion in the chest celebration was thinned so it reads as the
+  chest bursting open without competing with the new inward loot fountain
+  — the burst is the explosion, the fountain is the collection payoff.
+- **Attack charge soft cap (25)** — attack charges were uncapped, so
+  heavy task days could bank 20–30 charges that trivialized the next
+  week of bosses (the daily boss is only 8–18 HP). Charges now cap at
+  25; overflow converts to gold at 5 gold/charge (routed through
+  `addGold` so multipliers and lifetime counters apply) with a toast
+  explaining the conversion. Battle Fury's charge doubling still
+  applies before the cap.
+- **Early Bird rebalance** — cost 4 → 2 crystals, boost window first
+  3 → first 5 daily tasks. At 4 crystals for a max of +90 bonus XP it
+  had the worst crystal-per-XP rate in the enchantment shop; the new
+  rate (+150 XP max for 2 crystals) puts it in line with its peers.
+- **Zero runtime CDN dependencies** — Tailwind is now compiled at build
+  time (`npm run build:css` → minified `tailwind.css` with a
+  dynamic-class safelist in `tailwind.config.js`); Remix Icons and all
+  fonts (MedievalSharp, Cinzel, Uncial Antiqua, Inter) are bundled
+  under `vendor/` via `npm run fetch:vendor`. First launch with no
+  network now renders fully styled, cold starts skip CDN latency and
+  the in-WebView Tailwind compilation, and no third party sees app
+  opens (privacy-policy.html's third-party section updated to match).
+  `index.html`, `landing.html`, `privacy-policy.html` and the service
+  worker (CACHE_NAME → v614) all switched to the local assets.
+
+### Fixed
+
+- **Loot fountain rendered behind the chest** — the loot-fountain sprites
+  sat at z-index 9100, below the chest cinematic/icon layers (9999), so
+  the chest loot looked like it fell from nowhere instead of erupting out
+  of the chest. Bumped to 10001 (above the chest band and the 10000
+  boss-defeat band, which always finishes before the fountain fires) so
+  the loot is now the topmost layer as it streams into the avatar ring.
+- **Themed text matching the theme background** — text sitting directly on
+  a theme background (the transparent view headers + title banner) could
+  blend into same-hue radial highlight glows (golden's yellow title over
+  the yellow top-glow, desert's orange-on-orange sun-ray) and into the
+  bright regions of the WebM/image hybrid themes. A WCAG contrast audit
+  confirmed every theme's text already clears AA against its solid card
+  surface (min 4.87:1), so this was a layering issue, not a palette one;
+  added a subtle dark text-shadow legibility halo to themed text —
+  negligible on the opaque `.quest-card` panels (text there is already
+  high-contrast) and decisive over the bright backgrounds. The default
+  (unthemed) theme is untouched.
+- **Pre-v2.7.1 UX audit deferred batch (L2/L3/L7/L8/L10)** — splash
+  screen a11y attributes (`role="status"`, `aria-live`); dishonest
+  "Loading wisdom..." quote placeholder replaced with a real inlined
+  quote (kills the per-render FOUC); tutorial tooltip gained
+  `max-height: 90vh` + scroll; PWA install button now respects
+  `env(safe-area-inset-bottom)`; main content area got
+  `id="main-content"` and `mobile.css` dropped the last fragile
+  `div:last-child` positional selector.
+
+### Internal
+
+- **§2.6 sound expansion, code side (ahead of the v2.10 asset drop)** —
+  `audio-manager.js` gained: a central `_eventVolumes` table replacing
+  scattered per-call-site volume magic numbers (mix preserved
+  verbatim); an anti-habituation variant picker (`<id>-1/2/3.mp3`
+  probed at warm-up, random pick per play, throttling keyed on base
+  id); and 10 optional event ids (`task-complete`, `boss-enrage`,
+  `focus-start`, …) that are silently skipped until their files exist
+  — `task-complete` falls back to `daily-achievement` per R6. Naming
+  contract documented in `sounds/SOUNDS-README.md`. New
+  `tests/audio-manager.test.js` suite (17 tests).
+- 32 new regression tests covering the charge cap (incl. Battle Fury
+  interaction and toast suppression), title chain integrity (length
+  parity, L1–10 immutability, clamping), Early Bird boost window,
+  recap consolidation (queue/flush paths, modal a11y attributes,
+  back-button reachability), the delete UNDO flow (all 7 type keys,
+  one-shot semantics, duplicate-id guard), and toast tap-to-dismiss
+  (queue advance, action-button lifecycle, durations).
+- 3 regression tests for the chest loot fountain — `showChestRewards`
+  schedules `lootFountain` into the avatar ring and opens the panel on
+  arrival, falls back to the fixed-delay panel open when no avatar ring
+  is present, and `_lootFountainIcon` resolves per-reward-type icons with
+  fallbacks.
+- `_processToastQueue` now degrades gracefully (drops the toast) when
+  the toast DOM isn't mounted instead of throwing; `deleteGoal`
+  refactored onto a shared `DELETE_LIST_KEYS` map (was a 7-case
+  switch).
+- Verified (no change needed): daily quest pool `minLevel`s align with
+  `featureUnlockLevels` / `goalTabUnlockLevels`; login-shield prompt
+  and login-streak modal already route through the hardware back
+  handler.
+- Deferred to `ROADMAP.md` backlog (design-level): duplicate
+  companions → evolution shards, task XP scaling by effort, XP curve
+  review past level 20, boss streak freeze item.
+
+---
+
 ## [2.8.0] — 2026-06-07 (Build 26)
 
 > **Theme:** Theme Expansion release. Six new hybrid themes (Stormwatch,
@@ -31,7 +455,7 @@ with an `Android versionCode` bump on every release.
 > gold, Shadow Realm by bosses defeated), live theme preview modal with
 > a full focus-trap + scroll-lock a11y baseline, per-theme accent
 > micro-styling, and a `totalGoldEarned` lifetime counter with generous
-> existing-user migration. Closes ROADMAP § 2.4.
+> existing-user migration. Closes docs/HISTORY.md \u00A7 2.4.
 >
 > Cache series: `life-quest-journal-v612` (v2.7.1 build 25) → `v613`
 > (this release). Lazy cache stays at `lazy-v280` (no lazy-asset payload
@@ -249,7 +673,7 @@ with an `Android versionCode` bump on every release.
 
 > **Theme:** v2.7.x patch-window release. Modal scroll-clipping fix flagged
 > by the maintainer + same-day preventive audit of every modal in the
-> codebase + the long-deferred GIF fallback removal (ROADMAP § 1.6) bundled
+> codebase + the long-deferred GIF fallback removal (docs/HISTORY.md \u00A7 1.6) bundled
 > in as a piggyback because the SW cache bump was already happening.
 >
 > Cache series: `life-quest-journal-v608` (v2.7.0) → `v611` (this release).
@@ -275,12 +699,12 @@ with an `Android versionCode` bump on every release.
   each, matching the existing containment pattern already used by
   `period-summary`, `connection-modal`, `select-modal`,
   `create-challenge-modal`, `active-challenges-modal`, `premium-purchase`,
-  `quest-search`, and `starter-quests`. ROADMAP § 2.3.1 documents the
+  `quest-search`, and `starter-quests`. docs/HISTORY.md \u00A7 2.3.1 documents the
   three valid containment strategies as the going-forward standard.
 
 ### Removed
 
-- **Animated-theme GIF fallbacks (ROADMAP § 1.6 resolved)** — the seven
+- **Animated-theme GIF fallbacks (docs/HISTORY.md \u00A7 1.6 resolved)** — the seven
   `icons/*-bg.gif` files (forest 1.7, desert 0.3, ice 2.4, volcanic 3.6,
   mystic 63, golden 7.5, shadow 16.7 — total ~95 MB) plus the unreachable
   `icons/volcanic-bg.mp4` (3.4 MB) deleted from the bundle. The `webm ||
@@ -309,7 +733,7 @@ with an `Android versionCode` bump on every release.
   fork in the fetch handler is now effectively a no-op since no asset
   matches, but the infrastructure remains available without further SW
   refactor.
-- **Telemetry plumbing skipped** — the original ROADMAP § 1.6 spec also
+- **Telemetry plumbing skipped** — the original docs/HISTORY.md \u00A7 1.6 spec also
   outlined a codec probe + `localStorage.lqj_webmFails` breadcrumb. Both
   skipped because no user reports of broken backgrounds came in during
   the v2.5–v2.7 window. If reports start coming in against v2.7.1+ now
@@ -320,7 +744,7 @@ with an `Android versionCode` bump on every release.
 ## [2.7.0] — 2026-05-31 (Build 23)
 
 > **Theme:** Character Sheet & Player Panel Overhaul + Quest Card & Component Redesign
-> (ROADMAP § 2.2 + § 2.3, consolidated)
+> (docs/HISTORY.md \u00A7 2.2 + § 2.3, consolidated)
 >
 > This release fuses what was originally planned as two minor versions
 > (v2.6 Character Sheet & Panel work + v2.7 Quest Card & Component
@@ -540,7 +964,7 @@ Phase 5 features can build on a known-good foundation.
 
 ## [2.5.0] — 2026-05-24 (Build 21)
 
-> **Theme:** View Transitions & Navigation Polish (ROADMAP § 2.1)
+> **Theme:** View Transitions & Navigation Polish (docs/HISTORY.md \u00A7 2.1)
 
 ### Added
 - **View transitions between top-level views** — switching between Dashboard,
@@ -744,7 +1168,7 @@ Phase 5 features can build on a known-good foundation.
 - **Diagnostic logging** added to `updateThemeVideoBackground()` during the
   WebM rollout, then stripped after confirmation. A single `console.warn` is
   retained inside the fallback path for future device-specific failure reports.
-- **ROADMAP § 1.6** tracks the eventual GIF removal (deferred 1–2 releases for
+- **docs/HISTORY.md \u00A7 1.6** tracks the eventual GIF removal (deferred 1–2 releases for
   safety telemetry).
 
 ---

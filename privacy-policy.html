@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - Life Quest Journal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- v2.9 deferred audit fix — Tailwind/fonts bundled locally (see
+         index.html head note). -->
+    <link rel="stylesheet" href="tailwind.css">
+    <link href="vendor/fonts/fonts.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="bg-stone-900 text-amber-100">
@@ -88,15 +90,15 @@
             <section class="bg-stone-800 p-6 rounded-lg border-2 border-amber-600">
                 <h3 class="text-2xl font-bold text-amber-300 mb-4">Third-Party Services</h3>
                 <p class="mb-4">
-                    Life Quest Journal uses the following third-party services that may collect anonymous usage data:
+                    Life Quest Journal serves all styling, icons, and fonts from its own domain — no third-party CDN requests are made when you use the app:
                 </p>
                 <ul class="list-disc list-inside space-y-2 ml-4">
-                    <li><strong>Tailwind CSS CDN:</strong> For styling (hosted by cdn.tailwindcss.com)</li>
-                    <li><strong>Remix Icon CDN:</strong> For icons (hosted by cdn.jsdelivr.net)</li>
-                    <li><strong>Google Fonts:</strong> For custom fonts (hosted by fonts.googleapis.com)</li>
+                    <li><strong>Tailwind CSS:</strong> Compiled at build time and served locally</li>
+                    <li><strong>Remix Icon:</strong> Bundled and served locally</li>
+                    <li><strong>Fonts</strong> (Cinzel, MedievalSharp, Uncial Antiqua, Inter): Bundled and served locally</li>
                 </ul>
                 <p class="mt-4">
-                    These services may collect basic analytics like page loads, but they do not have access to your Life Quest Journal data. Please refer to their respective privacy policies for more information.
+                    This means no external service receives any signal that you opened the app — not even anonymous page-load analytics.
                 </p>
             </section>
 

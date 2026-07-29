@@ -1,6 +1,292 @@
 // Goal Management System
+
+// Centralized economy/balance numbers (Engineering Roadmap #6) live in
+// balance.js, loaded as a plain <script> BEFORE this file in the browser and
+// required by the jest harness (which sets window.BALANCE before eval). Captured
+// once here so every method reads a single source of truth. If this is ever the
+// empty object, balance.js failed to load — check the <script> order in
+// index.html. See docs/ENGINEERING_ROADMAP.md.
+const BALANCE = (typeof window !== 'undefined' && window.BALANCE) ? window.BALANCE : {};
+
+// Player level-title chain (Engineering Roadmap #1 incremental split) lives in
+// level-titles.js, loaded as a plain <script> BEFORE this file in the browser and
+// required by the jest harness (which sets window.LEVEL_TITLES before eval).
+// Captured once here and assigned to the this.LEVEL_TITLES class field below so
+// every call site is unchanged. If this is ever the empty object, level-titles.js
+// failed to load — check the <script> order in index.html. See
+// docs/ENGINEERING_ROADMAP.md.
+const LEVEL_TITLE_CHAINS = (typeof window !== 'undefined' && window.LEVEL_TITLES) ? window.LEVEL_TITLES : {};
+
+// Companion catalog (Engineering Roadmap #1 incremental split) lives in
+// companion-definitions.js, loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Captured once here and returned from
+// getCompanionDefinitions() below so every call site is unchanged. Empty object
+// means the module failed to load — check the <script> order in index.html.
+const COMPANION_DEFINITIONS = (typeof window !== 'undefined' && window.COMPANION_DEFINITIONS) ? window.COMPANION_DEFINITIONS : {};
+
+// Spellbook catalog (Engineering Roadmap #1 incremental split) lives in
+// spell-definitions.js, loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Captured once here and returned from
+// initializeSpells() below so every this.spellDefinitions call site is unchanged.
+// Empty object means the module failed to load — check the <script> order in
+// index.html.
+const SPELL_DEFINITIONS = (typeof window !== 'undefined' && window.SPELL_DEFINITIONS) ? window.SPELL_DEFINITIONS : {};
+
+// Color-palette theme catalog (Engineering Roadmap #1 incremental split) lives in
+// theme-definitions.js, loaded as a plain <script> BEFORE this file in the browser
+// and required by the jest harness. Captured once here and assigned to the
+// `themeDefinitions` class field below so this.themeDefinitions and every call site
+// is unchanged. Empty object means the module failed to load — check the <script>
+// order in index.html.
+const THEME_DEFINITIONS = (typeof window !== 'undefined' && window.THEME_DEFINITIONS) ? window.THEME_DEFINITIONS : {};
+
+// Achievement/badge catalog (Engineering Roadmap #1 incremental split) lives in
+// achievement-definitions.js, loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Captured once here and returned from
+// getAchievementDefinitions() below so every call site is unchanged. Empty array
+// means the module failed to load — check the <script> order in index.html.
+const ACHIEVEMENT_DEFINITIONS = (typeof window !== 'undefined' && window.ACHIEVEMENT_DEFINITIONS) ? window.ACHIEVEMENT_DEFINITIONS : [];
+
+// Boss theme catalog (Engineering Roadmap #1 incremental split) lives in
+// boss-themes.js, loaded as a plain <script> BEFORE this file in the browser and
+// required by the jest harness. Captured once here and returned from
+// initializeBossThemes() below so this.bossThemes and every consumer are unchanged.
+// Empty object means the module failed to load — check <script> order in index.html.
+const BOSS_THEMES = (typeof window !== 'undefined' && window.BOSS_THEMES) ? window.BOSS_THEMES : {};
+
+// Raw class/subclass skill-tree catalog (Engineering Roadmap #1 incremental split)
+// lives in class-definitions.js. initializeClasses() below applies the BALANCE-driven
+// cost/tier schedule to this raw data, so this.classDefinitions is unchanged. Empty
+// object means the module failed to load — check <script> order in index.html.
+const CLASS_DEFINITIONS = (typeof window !== 'undefined' && window.CLASS_DEFINITIONS) ? window.CLASS_DEFINITIONS : {};
+
+// Enchantment shop catalog (Engineering Roadmap #1 incremental split) lives in
+// enchantment-definitions.js, loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Captured once here and returned from
+// initializeEnchantments() below so this.enchantmentDefinitions and every consumer
+// are unchanged. Empty object means the module failed to load — check <script> order.
+const ENCHANTMENT_DEFINITIONS = (typeof window !== 'undefined' && window.ENCHANTMENT_DEFINITIONS) ? window.ENCHANTMENT_DEFINITIONS : {};
+
+// Onboarding starter-task catalog (Engineering Roadmap #1 incremental split) lives
+// in starter-task-presets.js, loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Captured once here and assigned to the
+// starterTaskPresets class field below so every consumer is unchanged. Empty object
+// means the module failed to load — check <script> order in index.html.
+const STARTER_TASK_PRESETS = (typeof window !== 'undefined' && window.STARTER_TASK_PRESETS) ? window.STARTER_TASK_PRESETS : {};
+
+// Multi-chapter quest-chain catalog (Engineering Roadmap #1 incremental split)
+// lives in quest-chain-templates.js, loaded as a plain <script> BEFORE this file
+// in the browser and required by the jest harness. Captured once here and returned
+// from initializeQuestChainTemplates() below so this.questChainTemplates and every
+// consumer are unchanged. Deep-frozen: startQuestChain() stores a live reference to
+// a template's chapters on the active chain, but every consumer only READS it (see
+// the module header + the chain-progression regression test). Empty object means
+// the module failed to load — check <script> order in index.html.
+const QUEST_CHAIN_TEMPLATES = (typeof window !== 'undefined' && window.QUEST_CHAIN_TEMPLATES) ? window.QUEST_CHAIN_TEMPLATES : {};
+
+// Loot roll ENGINE (Engineering Roadmap #1 incremental split — first LOGIC slice)
+// lives in loot-engine.js: pure functions (weightedRandomSelect / buildLootReward /
+// rollLootTable) with the RNG seam (#4) and instance state injected. Loaded as a
+// plain <script> BEFORE this file in the browser and required by the jest harness;
+// captured here so the delegating weightedRandomSelect / buildLootReward methods and
+// generateChestRewards / generateBossLoot below use it. Empty-object fallback means
+// the module failed to load — check <script> order in index.html.
+const LOOT_ENGINE = (typeof window !== 'undefined' && window.LOOT_ENGINE) ? window.LOOT_ENGINE : {};
+
+// Master loot pool catalog (Engineering Roadmap #1 incremental split) lives in
+// loot-pool.js: the base rarity-keyed loot table. Loaded as a plain <script> BEFORE
+// this file in the browser and required by the jest harness; captured here so
+// getMasterLootPool() returns it. Empty-object fallback means the module failed to
+// load — check <script> order in index.html.
+const MASTER_LOOT_POOL = (typeof window !== 'undefined' && window.MASTER_LOOT_POOL) ? window.MASTER_LOOT_POOL : {};
+
+// Pure boss spawn ENGINE (Engineering Roadmap #1 incremental split — 2nd LOGIC
+// slice) lives in boss-generator.js: hashDateString (date→seed) + buildBoss (the
+// shared boss factory). Loaded as a plain <script> BEFORE this file in the browser
+// and required by the jest harness; captured here so the boss generators + the
+// monthly-challenge preview + hashDateString() delegate to it. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+const BOSS_GENERATOR = (typeof window !== 'undefined' && window.BOSS_GENERATOR) ? window.BOSS_GENERATOR : {};
+
+// Pure save-data normalizers (Engineering Roadmap #1 incremental split) live in
+// persistence-migrations.js: the legacy-save migrations loadData() delegates to
+// (companion type/rarity, class-id rename, task title/dueDate backfill, priority
+// normalization). Loaded as a plain <script> BEFORE this file in the browser and
+// required by the jest harness. Empty-object fallback means the module failed to
+// load — check <script> order in index.html.
+const PERSISTENCE_MIGRATIONS = (typeof window !== 'undefined' && window.PERSISTENCE_MIGRATIONS) ? window.PERSISTENCE_MIGRATIONS : {};
+
+// Pure daily-login-streak + streak-repair math (Engineering Roadmap #1 incremental split — 56th
+// slice, and the FIRST non-render LOGIC module after the render burn-down) lives in
+// streak-logic.js: classifyLoginBonus, computeLoginRewards, streakRepairCost,
+// computeRepairableStreakInsert, pruneRepairableStreaks, canRepairStreakEntry. Loaded as a plain
+// <script> BEFORE this file in the browser and required by the jest harness; captured here so the
+// login-bonus + streak-repair methods delegate to it. Empty-object fallback means the module
+// failed to load — check <script> order in index.html.
+const STREAK_LOGIC = (typeof window !== 'undefined' && window.STREAK_LOGIC) ? window.STREAK_LOGIC : {};
+
+// Pure XP / leveling-curve math (Engineering Roadmap #1 incremental split — 57th slice, the
+// SECOND non-render LOGIC module) lives in leveling-logic.js: xpForLevel, totalXpForLevel,
+// levelProgress. Loaded as a plain <script> BEFORE this file in the browser and required by
+// the jest harness; captured here so the XP curve + the four XP-progress sites delegate to it.
+// Empty-object fallback means the module failed to load — check <script> order in index.html.
+const LEVELING_LOGIC = (typeof window !== 'undefined' && window.LEVELING_LOGIC) ? window.LEVELING_LOGIC : {};
+
+// Pure effort-based-XP priority scaling (Engineering Roadmap #1 incremental split — 58th slice,
+// the SIXTH LOGIC module) lives in effort-xp-logic.js: normalizePriority, priorityXPMultiplier,
+// scaledXP (the base × multiplier, rounded formula shared by the five reward sites). Loaded as a
+// plain <script> BEFORE this file in the browser and required by the jest harness; captured here
+// so the two priority helpers + the five XP-reward sites delegate to it. Empty-object fallback
+// means the module failed to load — check <script> order in index.html.
+const EFFORT_XP_LOGIC = (typeof window !== 'undefined' && window.EFFORT_XP_LOGIC) ? window.EFFORT_XP_LOGIC : {};
+
+// Pure active-buff → reward-multiplier resolution (Engineering Roadmap #1 incremental split —
+// 59th slice, the SEVENTH LOGIC module) lives in buff-multipliers.js: spellMultiplier (the
+// active-spell walk + Empowered-Magic × Overcharge bonus scaling) and enchantmentMultiplier (the
+// reward-type → multiplier lookup). Loaded as a plain <script> BEFORE this file in the browser
+// and required by the jest harness; captured here so getActiveSpellMultiplier /
+// getEnchantmentMultiplier delegate to it. Empty-object fallback means the module failed to
+// load — check <script> order in index.html.
+const BUFF_MULTIPLIERS = (typeof window !== 'undefined' && window.BUFF_MULTIPLIERS) ? window.BUFF_MULTIPLIERS : {};
+
+// Pure companion slot + bonus resolution (Engineering Roadmap #1 incremental split — 60th slice,
+// the EIGHTH LOGIC module) lives in companion-logic.js: activeCompanion / secondCompanion (the
+// primary + Ranger Twin Bond slots) and companionBonus (the matching-type bonus sum). Loaded as a
+// plain <script> BEFORE this file in the browser and required by the jest harness; captured here
+// so getActiveCompanion / getSecondCompanion / getCompanionBonus delegate to it. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+const COMPANION_LOGIC = (typeof window !== 'undefined' && window.COMPANION_LOGIC) ? window.COMPANION_LOGIC : {};
+
+// Pure class/subclass perk-value resolution (Engineering Roadmap #1 incremental split — 61st
+// slice, the NINTH LOGIC module) lives in class-perks.js: classPerkValue (unlocked-node scan →
+// capstone fallback → highest-of-subclass merge), subclassPerkValue (top unlocked tier), and
+// chosenCapstone (the capstone-by-id lookup). This is the shared upstream buff-multipliers.js
+// (spell_power_mult) and companion-logic.js (second_companion) read. Loaded as a plain <script>
+// BEFORE this file in the browser and required by the jest harness; captured here so
+// getClassPerkValue / getSubclassPerkValue / getChosenCapstone delegate to it. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+const CLASS_PERKS = (typeof window !== 'undefined' && window.CLASS_PERKS) ? window.CLASS_PERKS : {};
+
+// Pure class/subclass tree PROGRESSION-STATE predicates (Engineering Roadmap #1 incremental split
+// — 62nd slice, the TENTH LOGIC module) live in class-progression.js: the node/tier counts, the
+// next unlockable node/tier, the capstone-ready / mastered predicates, and the subclass points-sunk
+// sum. Sibling of class-perks.js (VALUE resolution); this is the WHERE-in-the-tree state. Loaded as
+// a plain <script> BEFORE this file in the browser and required by the jest harness; captured here
+// so the eight progression methods delegate to it. Empty-object fallback means the module failed to
+// load — check <script> order in index.html.
+const CLASS_PROGRESSION = (typeof window !== 'undefined' && window.CLASS_PROGRESSION) ? window.CLASS_PROGRESSION : {};
+
+// Pure class skill-point ECONOMY math (Engineering Roadmap #1 incremental split — 63rd slice, the
+// ELEVENTH LOGIC module) lives in skill-points.js: the derived point supply, the unspent balance, the
+// class-selection + subclass level gates, and the respec fee / refund rules. Completes the class-tree
+// trio with class-perks.js (perk VALUES) and class-progression.js (tree STATE). The state-mutating
+// spenders (unlockNextClassNode / chooseCapstone / unlockNextSubclassTier / respecClass /
+// respecSubclass) keep their side effects HERE and only borrow the arithmetic. Loaded as a plain
+// <script> BEFORE this file in the browser and required by the jest harness. Empty-object fallback
+// means the module failed to load — check <script> order in index.html.
+const SKILL_POINTS = (typeof window !== 'undefined' && window.SKILL_POINTS) ? window.SKILL_POINTS : {};
+
+// Pure Focus Crystal SUPPLY math (Engineering Roadmap #1 incremental split — 64th slice, the
+// TWELFTH LOGIC module) lives in crystal-economy.js: the shard auto-conversion (and its
+// SHARDS_PER_CRYSTAL threshold, previously duplicated in the shard display string), the
+// order-and-rounding-sensitive focus-session yield pipeline, and the boss-kill reward tiers. The
+// mutating callers keep every side effect (effectsManager, toasts, saveData, trackDaily) and the
+// soul_harvest top-up; only the arithmetic moved. Loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Empty-object fallback means the module failed to load —
+// check <script> order in index.html.
+const CRYSTAL_ECONOMY = (typeof window !== 'undefined' && window.CRYSTAL_ECONOMY) ? window.CRYSTAL_ECONOMY : {};
+
+// Pure attack-charge EARN + SPEND rules (Engineering Roadmap #1 incremental split — 65th slice, the
+// THIRTEENTH LOGIC module) live in charge-rules.js: the Forage-eligible source set, the Warrior
+// bonus + Battle Fury doubling (order matters), the soft-cap split, the overflow-to-gold conversion,
+// and the boss-attack spend guard. grantAttackCharge keeps the impure rng roll and every side effect
+// (applyForage, trackDaily, addGold, the suppressed toast, saveData, the DOM pulse). Loaded as a plain
+// <script> BEFORE this file in the browser and required by the jest harness. Empty-object fallback
+// means the module failed to load — check <script> order in index.html.
+const CHARGE_RULES = (typeof window !== 'undefined' && window.CHARGE_RULES) ? window.CHARGE_RULES : {};
+
+// Pure boss-damage math (Engineering Roadmap #1 incremental split — 66th slice, the FOURTEENTH LOGIC
+// module) lives in combat-damage.js: the base level curve, the ceil-rounded stage step shared by all
+// twelve damage stages, the low-HP predicates (single-sourcing the 0.25 execute threshold that used to
+// be written twice), the §9.8-capped Berserker ramp, the Rage Combo counter advance, Hunter targeting
+// and the Cleave splash. attackBoss keeps the rng rolls, spell consumption, counter write, messages,
+// crit effects and HP mutation. Loaded as a plain <script> BEFORE this file in the browser and required
+// by the jest harness. Empty-object fallback means the module failed to load — check <script> order.
+const COMBAT_DAMAGE = (typeof window !== 'undefined' && window.COMBAT_DAMAGE) ? window.COMBAT_DAMAGE : {};
+
+// Pure XP/gold reward-stack math (Engineering Roadmap #1 incremental split — 67th slice, the
+// FIFTEENTH LOGIC module) lives in reward-economy.js: the left-to-right multiplier fold shared by
+// addXP and addGold, the Beginner's Blessing and Quest Doubler multipliers (each previously written
+// twice, in different methods), the Early Bird and Momentum pre-multiplier bonuses, and the
+// quest-doubler / quiet-gold source sets. Both choke points keep their enchantment lookups, counter
+// writes, the pending-gold flag, spell consumption, toasts, sounds and sprites. Loaded as a plain
+// <script> BEFORE this file in the browser and required by the jest harness. Empty-object fallback
+// means the module failed to load — check <script> order in index.html.
+const REWARD_ECONOMY = (typeof window !== 'undefined' && window.REWARD_ECONOMY) ? window.REWARD_ECONOMY : {};
+
+// Pure focus-timer + Pomodoro-chain math (Engineering Roadmap #1 incremental split — 68th slice, the
+// SIXTEENTH LOGIC module) lives in focus-session-logic.js: the session-length and chain-settings
+// defaults (previously written five and three times respectively), the shared remaining-seconds
+// clock read, the Deep Work window/stack math, the separately-rounded focus XP pipeline, and the
+// chain-finished predicate + break plan. crystal-economy.js still owns the crystal payout. Timers,
+// DOM, audio, toasts and every instance write stay on the class. Loaded as a plain <script> BEFORE
+// this file in the browser and required by the jest harness. Empty-object fallback means the module
+// failed to load — check <script> order in index.html.
+const FOCUS_SESSION_LOGIC = (typeof window !== 'undefined' && window.FOCUS_SESSION_LOGIC) ? window.FOCUS_SESSION_LOGIC : {};
+
+// Pure active-spell state math (Engineering Roadmap #1 incremental split — 69th slice, the
+// SEVENTEENTH LOGIC module) lives in spell-lifecycle.js: the canonical is-active predicate (the
+// activeSpells array was previously read through THREE inconsistent phrasings across thirteen
+// sites), the trigger-consumption helper (six hand-written copies), the expiry sweep, the
+// duration-multiplier rule and the cast-entry builder. Date.now(), the activeSpells writes, toasts,
+// saveData and every instant-effect dispatch stay on the class. Loaded as a plain <script> BEFORE
+// this file in the browser and required by the jest harness. Empty-object fallback means the module
+// failed to load — check <script> order in index.html.
+const SPELL_LIFECYCLE = (typeof window !== 'undefined' && window.SPELL_LIFECYCLE) ? window.SPELL_LIFECYCLE : {};
+
+// Pure previous-period recap math (Engineering Roadmap #1 incremental split — 70th slice, the
+// EIGHTEENTH LOGIC module) lives in period-summary-logic.js: the previous week/month/year date
+// ranges, the shared task/goal stat block, the habit-completion count, the estimated-XP figure and
+// the weekly-recap share sentence (previously hand-written at THREE call sites). getTodayDateString,
+// the timezone-aware dateToLocalString, the instance arrays and every DOM/canvas/share side effect
+// stay on the class. Loaded as a plain <script> BEFORE this file in the browser and required by the
+// jest harness. Empty-object fallback means the module failed to load — check <script> order in
+// index.html.
+const PERIOD_SUMMARY_LOGIC = (typeof window !== 'undefined' && window.PERIOD_SUMMARY_LOGIC) ? window.PERIOD_SUMMARY_LOGIC : {};
+
+// Pure reminder scheduling + notification-copy math (Engineering Roadmap #1 incremental split — 72nd
+// slice, the NINETEENTH LOGIC module) lives in reminder-schedule-logic.js: the settings defaults +
+// post-launch backfill, the "HH:MM" parse that used to be hand-inlined at SIX call sites, the 2-hour
+// catch-up window, the next-daily-slot walk, the remindersSentToday day-rollover that used to be
+// duplicated byte-for-byte, and every reminder body. All I/O — localStorage, setTimeout/clearTimeout,
+// the CapBridge cancel/schedule pair and showNotification delivery — stays on the class. Loaded as a
+// plain <script> BEFORE this file in the browser and required by the jest harness. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+const REMINDER_SCHEDULE_LOGIC = (typeof window !== 'undefined' && window.REMINDER_SCHEDULE_LOGIC) ? window.REMINDER_SCHEDULE_LOGIC : {};
+
+// Pure boss-card presentation helpers (Engineering Roadmap #1 incremental split —
+// first rendering slice) live in boss-render.js: getBossPhase, renderBossHPBar, and
+// getBossParticleType. Loaded as a plain <script> BEFORE this file in the browser
+// and required by the jest harness. Empty-object fallback means the module failed to
+// load — check <script> order in index.html.
+const BOSS_RENDER = (typeof window !== 'undefined' && window.BOSS_RENDER) ? window.BOSS_RENDER : {};
+
 class GoalManager {
-    constructor() {
+    // Engineering Roadmap #5 — testability seam. Production boots via
+    // `new GoalManager()`, which runs initState() then _boot() (all the
+    // DOM/audio/timer/localStorage side effects). Tests build a REAL instance
+    // with `new GoalManager({ testMode: true })`: the class-field initializers
+    // + initState() populate every field, but _boot() is skipped — so the jest
+    // harness no longer hand-mirrors ~230 lines of constructor state.
+    constructor(options = {}) {
+        this.initState();
+        if (options.testMode) return;
+        this._boot();
+    }
+
+    // Pure, synchronous state initialization: no DOM, audio, timers,
+    // localStorage, or render scheduling. Safe to call on a bare instance.
+    initState() {
         this.lifeGoals = [];
         this.yearlyGoals = [];
         this.monthlyGoals = [];
@@ -26,6 +312,55 @@ class GoalManager {
         this.goldCoins = 0;
         this.unlockedThemes = ['default'];
         this.currentTheme = 'default';
+        // v2.9 Track 7 — Theme of the Week.
+        //
+        // Two separate idempotency maps drive the two distinct prompts:
+        //
+        //   `weeklyTrialPromptShown` — `{ 'YYYY-Wnn': true }` keyed by
+        //   ISO year+week. Records that the START-of-week spotlight
+        //   ("✨ Theme of the Week — try it now") has been shown for
+        //   that week, so navigating back to the Themes panel later in
+        //   the same week is a no-op.
+        //
+        //   `weeklyTrialEndPromptShown` — `{ themeId: true }` keyed by
+        //   theme id. Records that the END-of-trial upsell ("Your trial
+        //   of {Name} ended — subscribe to keep it") has been shown for
+        //   a given premium theme. Tracked PER THEME (not per week) so
+        //   a user who got a Sunken Library trial last June and a
+        //   Mystic Realm trial this June each see one prompt; we don't
+        //   double-prompt if Sunken Library cycles back into the
+        //   rotation a year later.
+        //
+        // Both are cleared back to {} only via Reset Data.
+        this.weeklyTrialPromptShown = {};
+        this.weeklyTrialEndPromptShown = {};
+        //   `weeklyThemeCardDismissed` — `{ 'YYYY-Wnn': true }` keyed by
+        //   ISO year+week. Records that the user dismissed the PASSIVE
+        //   dashboard Theme-of-the-Week card for that week (distinct from
+        //   the interruptive spotlight modal above). The card re-appears
+        //   automatically when the rotation advances to a new week.
+        //   Cleared only via Reset Data.
+        this.weeklyThemeCardDismissed = {};
+
+        // v2.9 Track 7 Q7 — Analytics funnel state.
+        //
+        //   `lastFeaturedWeekTracked` — last ISO-week-key (`YYYY-Wnn`)
+        //   for which we've emitted `weekly_theme_featured`. Compared
+        //   against the current week in `maybeTrackWeeklyThemeFeatured()`
+        //   so the event fires exactly once per rotation regardless of
+        //   how many times the app launches that week.
+        //
+        //   `weeklyTrialApplyDates` — `{ themeId: ISOdate }` recording
+        //   when a free user APPLIED a featured-week trial. Powers the
+        //   conversion event: when `unlockPremium()` fires, any entry
+        //   here within 14 days emits `weekly_theme_subscribe` with the
+        //   day-delta so we can validate the funnel hypothesis ("free
+        //   user trials Stormwatch → subscribes within 2 weeks").
+        //   Entries are kept indefinitely (never cleared) — a trial
+        //   from 6 months ago that finally converts is still a valid
+        //   signal, just one with a large `daysFromApply`.
+        this.lastFeaturedWeekTracked = null;
+        this.weeklyTrialApplyDates = {};
         this.unlockedTitles = [];
         this.currentTitle = null;
         this.treasureChests = [];
@@ -38,6 +373,36 @@ class GoalManager {
         this.spellbook = [];
         this.activeSpells = [];
         this.spellDefinitions = this.initializeSpells();
+
+        // v3.1 §3.1 — Skill Trees / Class System (multi-perk redesign). The
+        // player PICKS a class at CLASS_SELECT_LEVEL (an early identity beat,
+        // surfaced with its own tutorial), but skill points only begin accruing
+        // at CLASS_UNLOCK_LEVEL — they are DERIVED from level (1 per level past
+        // CLASS_UNLOCK_LEVEL) rather than stored, so retroactive grants and
+        // level-ups need no explicit hook — only spent points are tracked. A
+        // class fully maxes (30 points) at EXACTLY Level 40 (the prestige
+        // unlock), which is why the skill-point start stays at 10 even though
+        // selection moved earlier. "Respec" = combined change-class / re-pick
+        // action for a Focus Crystal fee (FREE before any points are earned);
+        // CLASS_SCHEMA_VERSION gates a hard reset of class state when node
+        // meanings change (see loadData).
+        this.CLASS_SELECT_LEVEL = 8;  // level to CHOOSE a class (identity unlock)
+        this.CLASS_UNLOCK_LEVEL = 10; // level skill points START (keeps L40 max)
+        this.CLASS_RESPEC_COST = 5; // Focus Crystals to change class
+        this.CLASS_SCHEMA_VERSION = 2; // bump to force a class-state reset
+        this.classDefinitions = this.initializeClasses();
+        this.playerClass = null;        // 'scholar' | 'warrior' | 'wizard' | 'ranger'
+        this.classNodesUnlocked = 0;    // count of linear nodes unlocked (0-5)
+        this.classCapstone = null;      // chosen capstone id, or null
+        this.skillPointsSpent = 0;      // points sunk into unlocked nodes + capstone
+        this.classSelectedAtLevel = null;
+        // v3.1 §9 Subclass Specialization — unlocks once the base class is
+        // mastered AND the player hits L40 (where the 30-point base tree maxes),
+        // so subclass tiers become the natural post-L40 skill-point sink.
+        this.SUBCLASS_UNLOCK_LEVEL = 40;
+        this.SUBCLASS_RESPEC_COST = 8;  // Focus Crystals (> base respec's 5 — weightier)
+        this.subclass = null;           // chosen subclass id (scoped to playerClass)
+        this.subclassNodesUnlocked = 0; // count of subclass tiers unlocked (0-3)
         
         // Quest Chains System
         this.activeQuestChains = [];
@@ -110,33 +475,64 @@ class GoalManager {
         
         // Daily Free Wooden Chest
         this.lastWoodenChestDate = null;
+
+        // v2.9.1 §1.8 — Royal Bounty (spotlight quests + bonus chest).
+        // One active bounty per cadence. Each value is either null, an
+        // assigned bounty object, or { periodKey, cadence, empty:true }
+        // when there was no eligible quest that period. `lastBountyClaim`
+        // is the per-cadence period guard ({ weekly:'YYYY-Wnn',
+        // monthly:'YYYY-MM' }) capping one claimed bonus chest per period.
+        this.activeBounties = { weekly: null, monthly: null };
+        this.lastBountyClaim = {};
         
         // Focus Timer & Enchantments
         this.focusCrystals = 0;
         this.focusCrystalShards = 0;
+        // §1.7 Streak Repair: snapshots of recently-broken streaks the player
+        // can restore within 48h. P2b — the first repair is free; further
+        // repairs are a premium action costing Focus Crystals. Entries are
+        // pruned once their window closes (see getRepairableStreaks).
+        this.repairableStreaks = [];
+        this.STREAK_REPAIR_WINDOW_MS = 48 * 60 * 60 * 1000; // 48h to repair
+        // P2b — every player's first streak repair is free (no premium, no
+        // crystals); persisted so the one-time grant survives reloads.
+        this.freeStreakRepairUsed = false;
         this.focusTimer = null;
         this.focusTimeRemaining = 0;
         this.focusTimerRunning = false;
         this.focusEndTime = null;
-        this.focusSessionLength = 25;
+        this.focusSessionLength = FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES;
         this.totalFocusTime = 0; // in minutes
         
         // Pomodoro Chain System
         this.pomodoroChain = null; // { currentSession, totalSessions, isBreak, breakDuration, longBreakDuration }
-        this.pomodoroChainSettings = { sessionsPerChain: 4, breakDuration: 5, longBreakDuration: 15 };
+        this.pomodoroChainSettings = FOCUS_SESSION_LOGIC.defaultChainSettings();
         this.activeEnchantments = [];
         this.enchantmentDefinitions = this.initializeEnchantments();
         this.momentumStack = 0; // Tracks consecutive tasks for Momentum enchantment
         this.earlyBirdTasksToday = 0; // Tracks daily tasks completed today for Early Bird
+        // N3 effort-based XP (friction audit): the low/medium/high `priority`
+        // field doubles as an effort proxy — higher-effort/important quests pay
+        // more XP. Medium = 1.0× baseline so default-priority items keep their
+        // historical XP. The high-priority bonus on DAILY TASKS is capped per
+        // day (self-reported priority is gameable) — see _consumeHighPriorityDailySlot().
+        this.HIGH_PRIORITY_XP_DAILY_CAP = 8;
+        this.highPriorityTasksToday = 0; // # of high-priority daily-task bonuses granted today
+        this._highPriorityXpDate = null; // local-date stamp gating the counter (reload-proof, self-resets)
+        this.deepWorkStack = 0; // Scholar Deep Work: consecutive back-to-back focus sessions
+        this.lastFocusSessionEndTime = 0; // Timestamp of last completed focus session (Deep Work chaining)
+        this.rageComboCounter = 0; // Warrior Rage Combo: consecutive boss attacks toward the next guaranteed crit
+        this.activeCompanionId2 = null; // Ranger Twin Bond: second equipped companion id
+        this.rangerProtectionsUsedThisWeek = 0; // Ranger Guardian Instinct: weekly streak protections used
+        this.rangerProtectionResetWeek = null; // ISO week-key of the last Guardian Instinct reset
+        this.guardianProtectionsUsedThisWeek = 0; // Warrior Guardian subclass (v3.1 §9): own weekly streak-protection pool
+        this.guardianProtectionResetWeek = null; // ISO week-key of the last Guardian pool reset
+        this.freeCastUsedDate = null; // Wizard Daily Ritual: date-string of the last free spell cast
         
         // Settings
         this.timezone = 'auto'; // Can be 'auto' or a number (-12 to +13)
         this.timezoneOffset = 0;
         this.notificationsEnabled = false;
-        
-        // Web Push configuration (set PUSH_WORKER_URL after deploying the Cloudflare Worker)
-        this.PUSH_WORKER_URL = 'https://quest-push-worker.quest-push.workers.dev';
-        this.VAPID_PUBLIC_KEY = 'BEOYktBAvxMuysBxOfSsxQDagGg8-UEqY2u1mYLrfHnRQowjNZmb47OsyKdsw0jCcrpCPdZvY1QEj1s2R-fJxc8';
         
         // Bulk Actions
         this.bulkSelectionMode = false;
@@ -156,11 +552,13 @@ class GoalManager {
             focus: 5,
             questchains: 6
         };
-        this.goalTabUnlockLevels = {
-            weekly: 6, sidequests: 6,
-            monthly: 7,
-            yearly: 9, 'life-goals': 9
-        };
+        // Onboarding play-style fork (habits vs goals). The chosen path drives
+        // how soon the weekly/monthly/yearly/life goal tabs unlock. Default
+        // (no choice yet, or "Daily Focus") = fast progressive curve; "Grand
+        // Planner" opens the whole hierarchy at level 1. See
+        // getGoalTabUnlockLevelsForPath() / chooseOnboardingPath().
+        this.onboardingPath = null;
+        this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(null);
         this.arcaneTabUnlockLevels = {
             spellbook: 3,
             enchantments: 5
@@ -170,13 +568,21 @@ class GoalManager {
             3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
             4: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
             5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Chain multiple sessions together for bonus rewards! Spend crystals on Enchantments for powerful buffs." },
-            6: { title: '⚔️ New Quest Types & Chains!', text: "Your Quest Log now has Weekly Battles and Side Quests! Plus, Quest Chains let you link tasks into epic multi-step adventures for bonus rewards. You've also unlocked the Forest Kingdom theme!" },
-            7: { title: '📖 Monthly Raids Unlocked!', text: "Plan bigger with Monthly Raids! Set monthly goals and conquer larger challenges over longer timeframes." },
-            9: { title: '🚩 Life Goals & Yearly Campaigns!', text: "Think long-term! Set Yearly Campaigns and Epic Life Quests to plan your biggest, most ambitious goals." },
-            10: { title: '👑 Legend Status Achieved!', text: "You've reached Level 10 — the rank of Legend! All features are now unlocked. Your dedication is truly epic!" }
+            // Quest Chains still unlock at L6 (questchains in featureUnlockLevels).
+            // The weekly/side-quest/monthly/yearly/life goal tabs now unlock far
+            // earlier via the onboarding fork, so their old L6/L7/L9 celebration
+            // toasts were removed to avoid announcing unlocks that already happened.
+            6: { title: '⚔️ Quest Chains Unlocked!', text: "Quest Chains let you link tasks into epic multi-step adventures for bonus rewards! You've also unlocked the Forest Kingdom theme." },
+            8: { title: '🎖️ Choose Your Class!', text: "A major milestone! Open your Player Panel to choose a class — Warrior, Ranger, Wizard, or Scholar — each with its own perk tree. Pick freely now (re-picks are free until Level 10), then at Level 10 you'll start earning skill points to spend on your path!" },
+            10: { title: '👑 Legend Status & Skill Points!', text: "You've reached Level 10 — the rank of Legend! Your class skill points now begin: every level from here grants a point to spend in your Player Panel's class tree on powerful perks." }
         };
         this.seenFeatureTutorials = [];
         this.progressiveUnlockInitialized = false;
+        // L6 (UX audit): desktop sidebar "More" disclosure state. New users see
+        // their unlocked items + the immediate next unlock; further-off locked
+        // entries collapse behind a "More" toggle. Session-only (intentionally
+        // not persisted) so every launch starts decluttered.
+        this._navMoreExpanded = false;
         
         // Premium System
         this.isPremium = false;
@@ -196,6 +602,12 @@ class GoalManager {
         this.accountCreatedDate = null;
         this.BEGINNER_BLESSING_DAYS = 3;
 
+        // Limited-time events kill-switch (default on). A code/remote
+        // off-switch for the recurring Double XP Weekend; also keeps the
+        // event out of unit tests that assert exact XP (the test factory
+        // omits this field, so getActiveXPEvent() short-circuits there).
+        this.limitedTimeEventsEnabled = true;
+
         // v2.5 — Level-title style. 'masculine' keeps every existing user's
         // title chain unchanged on upgrade; 'feminine' swaps the gendered
         // entries (Knight→Dame, Baron→Baroness, Earl→Countess, Duke→
@@ -214,11 +626,23 @@ class GoalManager {
         // Onboarding Share Hook
         this.onboardingShareShown = false;
         
+        // Activation funnel instrumentation — fire-once flags so the
+        // first_task_created / first_task_completed analytics events
+        // each emit exactly once per account (the North-Star activation
+        // signals). Persisted like onboardingShareShown.
+        this.firstTaskCreatedTracked = false;
+        this.firstTaskCompletedTracked = false;
+        
         // In-App Review Prompt
         this.reviewPromptCount = 0;
         this.reviewPromptLastDate = null;
         this.reviewLeft = false;
-        
+    }
+
+    // Constructor side effects: localStorage load, retroactive unlock sweeps,
+    // timers, UI/theme/keyboard wiring, and the Capacitor native bridge.
+    // Skipped when constructed in testMode (see constructor / initState above).
+    _boot() {
         this.loadData();
 
         // v2.8 (Jun 4, 2026): retroactive theme-unlock sweep on load.
@@ -237,6 +661,27 @@ class GoalManager {
         } finally {
             this._suppressRewardToasts = false;
         }
+
+        // v2.9 Track 7 — End-of-trial revert + upsell. Fires after the
+        // retroactive unlock sweep so we don't flag a theme as
+        // "trial-expired" in the brief window before checkRewardUnlocks
+        // would have legitimately granted it. Deferred to a 0ms timeout
+        // so the initial render paints before the modal backdrop drops
+        // in (matches the pattern used by maybeShowFeaturedThemeSpotlight
+        // — keeps boot synchronous, mounts the modal on the next tick).
+        setTimeout(() => this.checkExpiredThemeTrial(), 0);
+
+        // v2.9 Track 7 Q7 — emit `weekly_theme_featured` once per ISO
+        // week on first launch. Deferred to the next tick (same pattern
+        // as checkExpiredThemeTrial above) so it doesn't block boot
+        // paint. Idempotent via `lastFeaturedWeekTracked`.
+        setTimeout(() => this.maybeTrackWeeklyThemeFeatured(), 0);
+
+        // v2.9.1 §1.8 — Royal Bounty. Expire stale windows and (re)assign
+        // this period's bounties on boot so completion crediting works even
+        // if the player never opens the dashboard. `renderRoyalBounty()` is
+        // DOM-guarded, so the deferred call is safe pre-paint.
+        setTimeout(() => this.refreshBounties(), 0);
 
         this.checkNotificationPermission();
         this.checkHabitReset();
@@ -261,18 +706,11 @@ class GoalManager {
         this.generateRecurringTasksForToday(); // Generate scheduled recurring tasks
         this.initializeReminders(); // Set up task reminders
         this.scheduleDay2Notification(); // Day 2 return notification for new users
-        
-        // Listen for service worker taking control (after skipWaiting + clients.claim)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('[SW] New service worker took control');
-                this.syncReminderSettingsToSW();
-                this.renderReminderSettings();
-            });
-        }
         this.initializeUI();
+        this._ensureActionDelegation();
         this.loadTheme();
         this.setupKeyboardShortcuts();
+        this.setupHardwareBackButton();
         this.updateTimezoneDisplay();
         this.checkFirstTimeUser();
         // v2.7 motion calm pass — wire the IntersectionObserver that
@@ -326,6 +764,13 @@ class GoalManager {
                 // upright on the very first foreground paint instead of
                 // sitting at a fixed tilt until the next spell event.
                 requestAnimationFrame(() => this._syncSigilCounterRotation());
+            } else if (document.visibilityState === 'hidden') {
+                // Flush any pending debounced save the moment the app is
+                // backgrounded. `beforeunload` is unreliable on Android
+                // WebView/Capacitor (swipe-kill and OS process death skip
+                // it), so this is the primary defense against losing the
+                // last ~100ms of writes (v2.9.x audit fix).
+                this.flushPendingSave();
             }
         });
         
@@ -365,11 +810,20 @@ class GoalManager {
         if (this._eveningTimer) clearTimeout(this._eveningTimer);
         if (this._bossWarningTimeout) clearTimeout(this._bossWarningTimeout);
         if (this._overdueCheckInterval) clearInterval(this._overdueCheckInterval);
-        if (this._swSyncInterval) clearInterval(this._swSyncInterval);
+        if (this._bossTimerInterval) clearInterval(this._bossTimerInterval);
         
         // Force save any pending data
+        this.flushPendingSave();
+    }
+
+    // Immediately write any pending debounced save to localStorage.
+    // Called from cleanup() (beforeunload) and the visibilitychange
+    // 'hidden' handler so backgrounding/killing the app never drops
+    // the last debounce window of changes.
+    flushPendingSave() {
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
+            this.saveTimeout = null;
             this._doSave();
         }
     }
@@ -412,6 +866,11 @@ class GoalManager {
                 this.goldCoins = data.goldCoins || 0;
                 this.unlockedThemes = data.unlockedThemes || ['default'];
                 this.currentTheme = data.currentTheme || 'default';
+                this.weeklyTrialPromptShown = data.weeklyTrialPromptShown || {};
+                this.weeklyTrialEndPromptShown = data.weeklyTrialEndPromptShown || {};
+                this.weeklyThemeCardDismissed = data.weeklyThemeCardDismissed || {};
+                this.lastFeaturedWeekTracked = data.lastFeaturedWeekTracked || null;
+                this.weeklyTrialApplyDates = data.weeklyTrialApplyDates || {};
                 this.unlockedTitles = data.unlockedTitles || [];
                 this.currentTitle = data.currentTitle || null;
                 this.treasureChests = data.treasureChests || [];
@@ -419,43 +878,51 @@ class GoalManager {
                 this.companions = data.companions || [];
                 this.activeCompanionId = data.activeCompanionId || null;
                 
-                // Migrate legacy single companion to collection
+                // Migrate legacy single companion to collection (Engineering Roadmap #1, 14th
+                // slice — pure helper in persistence-migrations.js; the push +
+                // activeCompanionId stamp stay here as the instance-state writes).
                 if (this.companion && this.companions.length === 0) {
-                    // Ensure legacy companion has required fields
-                    if (!this.companion.type) {
-                        // Try to infer type from name or assign a default
-                        const nameToType = {
-                            'Baby Dragon': 'dragon',
-                            'Wise Owl': 'owl',
-                            'Loyal Wolf': 'wolf',
-                            'Phoenix': 'phoenix'
-                        };
-                        this.companion.type = nameToType[this.companion.name] || 'wolf';
-                    }
-                    if (!this.companion.rarity) {
-                        this.companion.rarity = 'rare'; // Default legacy companions to rare
-                    }
+                    PERSISTENCE_MIGRATIONS.migrateLegacySingleCompanion(this.companion);
                     this.companions.push(this.companion);
                     this.activeCompanionId = this.companion.type;
                 }
                 
-                // Ensure all companions in collection have type and rarity
-                this.companions.forEach(comp => {
-                    if (!comp.rarity) comp.rarity = 'rare';
-                    if (!comp.type && comp.name) {
-                        const nameToType = {
-                            'Baby Dragon': 'dragon', 'Wise Owl': 'owl', 'Loyal Wolf': 'wolf', 
-                            'Phoenix': 'phoenix', 'Lucky Cat': 'cat', 'Swift Rabbit': 'rabbit',
-                            'Clever Fox': 'fox', 'Ancient Turtle': 'turtle', 'Golden Eagle': 'eagle',
-                            'Mighty Bear': 'bear', 'Mystic Unicorn': 'unicorn', 'Legendary Lion': 'lion'
-                        };
-                        comp.type = nameToType[comp.name] || 'wolf';
-                    }
-                });
+                // Ensure all companions in the collection have type + rarity (Engineering
+                // Roadmap #1, 14th slice — pure helper in persistence-migrations.js;
+                // the companion name→type map now lives there as ONE frozen table).
+                PERSISTENCE_MIGRATIONS.migrateCompanionCollection(this.companions);
                 
                 // Spellbook System
                 this.spellbook = data.spellbook || [];
                 this.activeSpells = data.activeSpells || [];
+
+                // v3.1 §3.1 — Class System (skill points derive from level).
+                // Schema-gated: only restore class state when the saved schema
+                // matches the current one. On a mismatch (node meanings changed)
+                // we HARD-RESET class state — no migration shim, per the v3.1
+                // dev-build decision. Points re-derive from level so nothing of
+                // value is lost; the player just re-picks their tree.
+                if (data.classSchemaVersion === this.CLASS_SCHEMA_VERSION) {
+                    this.playerClass = data.playerClass || null;
+                    // Defensive: legacy class id rename Mystic → Wizard.
+                    this.playerClass = PERSISTENCE_MIGRATIONS.normalizeClassId(this.playerClass);
+                    this.classNodesUnlocked = data.classNodesUnlocked || 0;
+                    this.classCapstone = data.classCapstone || null;
+                    this.skillPointsSpent = data.skillPointsSpent || 0;
+                    this.classSelectedAtLevel = data.classSelectedAtLevel ?? null;
+                    // v3.1 §9 Subclass Specialization (schema-gated alongside the
+                    // base class state — a subclass id is meaningless without it).
+                    this.subclass = data.subclass || null;
+                    this.subclassNodesUnlocked = data.subclassNodesUnlocked || 0;
+                } else {
+                    this.playerClass = null;
+                    this.classNodesUnlocked = 0;
+                    this.classCapstone = null;
+                    this.skillPointsSpent = 0;
+                    this.classSelectedAtLevel = null;
+                    this.subclass = null;
+                    this.subclassNodesUnlocked = 0;
+                }
                 
                 // Quest Chains System
                 this.activeQuestChains = data.activeQuestChains || [];
@@ -464,10 +931,14 @@ class GoalManager {
                 // Focus & Enchantments
                 this.focusCrystals = data.focusCrystals || 0;
                 this.focusCrystalShards = data.focusCrystalShards || 0;
+                this.repairableStreaks = Array.isArray(data.repairableStreaks) ? data.repairableStreaks : [];
+                this.freeStreakRepairUsed = data.freeStreakRepairUsed || false;
                 this.totalFocusTime = data.totalFocusTime || 0;
                 this.activeEnchantments = data.activeEnchantments || [];
                 this.focusEndTime = data.focusEndTime || null;
-                this.focusSessionLength = data.focusSessionLength || 25;
+                this.focusSessionLength = data.focusSessionLength || FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES;
+                this.deepWorkStack = data.deepWorkStack || 0;
+                this.lastFocusSessionEndTime = data.lastFocusSessionEndTime || 0;
                 this.pomodoroChain = data.pomodoroChain || null;
                 if (data.pomodoroChainSettings) this.pomodoroChainSettings = data.pomodoroChainSettings;
                 
@@ -475,23 +946,38 @@ class GoalManager {
                 this.timezone = data.timezone || 'auto';
                 this.timezoneOffset = data.timezoneOffset || 0;
                 
+                // Habit/weekly reset markers — real instance fields advanced
+                // ONLY by checkHabitReset(). Previously _doSave() stamped
+                // "today" on every write, which could silently skip a day's
+                // habit reset if any save landed after midnight but before
+                // checkHabitReset ran (v2.9.x audit fix).
+                this.lastHabitReset = data.lastHabitReset || null;
+                this.lastWeekReset = data.lastWeekReset || null;
+                
                 // Tutorial
                 this.tutorialCompleted = data.tutorialCompleted || false;
+
+                // Onboarding play-style fork (v3.2) — re-derive goal-tab
+                // thresholds from the saved path so a returning Grand Planner
+                // keeps the whole hierarchy open, and a Daily Focus / default
+                // player keeps the fast progressive curve.
+                this.onboardingPath = data.onboardingPath || null;
+                this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(this.onboardingPath);
                 
                 // Progressive Feature Unlock
                 this.seenFeatureTutorials = data.seenFeatureTutorials || [];
                 this.progressiveUnlockInitialized = data.progressiveUnlockInitialized || false;
                 
-                // Daily Quest Board & Wooden Chest
-                this.dailyQuestBoard = data.dailyQuestBoard || null;
-                this.dailyTracking = data.dailyTracking || null;
-                this.lastWoodenChestDate = data.lastWoodenChestDate || null;
-                
                 // Period Transition Tracking
-                this.lastVisitDate = data.lastVisitDate || null;
-                this.lastWeekNumber = data.lastWeekNumber || null;
-                this.lastMonth = data.lastMonth || null;
-                this.lastYear = data.lastYear || null;
+                // lastMonth is 0-INDEXED (January === 0), so `||` would coerce a stored January to
+                // null and silently suppress the month-transition recap for anyone whose last visit
+                // was in January. Must be `??`, matching importData(). The other three are safe
+                // under `||` (week numbers are 1-based, years are non-zero, the date is a string)
+                // but use `??` too so the whole block reads consistently.
+                this.lastVisitDate = data.lastVisitDate ?? null;
+                this.lastWeekNumber = data.lastWeekNumber ?? null;
+                this.lastMonth = data.lastMonth ?? null;
+                this.lastYear = data.lastYear ?? null;
                 
                 // Premium System
                 this.isPremium = data.isPremium || false;
@@ -511,6 +997,10 @@ class GoalManager {
                 // Onboarding Share Hook
                 this.onboardingShareShown = data.onboardingShareShown || false;
                 
+                // Activation funnel instrumentation
+                this.firstTaskCreatedTracked = data.firstTaskCreatedTracked || false;
+                this.firstTaskCompletedTracked = data.firstTaskCompletedTracked || false;
+                
                 // In-App Review Prompt
                 this.reviewPromptCount = data.reviewPromptCount || 0;
                 this.reviewPromptLastDate = data.reviewPromptLastDate || null;
@@ -528,6 +1018,10 @@ class GoalManager {
                 this.dailyQuestBoard = data.dailyQuestBoard || null;
                 this.dailyTracking = data.dailyTracking || null;
                 this.lastWoodenChestDate = data.lastWoodenChestDate || null;
+
+                // v2.9.1 §1.8 — Royal Bounty
+                this.activeBounties = data.activeBounties || { weekly: null, monthly: null };
+                this.lastBountyClaim = data.lastBountyClaim || {};
                 
                 // Challenge a Friend
                 this.activeChallenges = data.activeChallenges || [];
@@ -566,6 +1060,15 @@ class GoalManager {
                 this.weeklyBoss = data.weeklyBoss || null;
                 this.monthlyBoss = data.monthlyBoss || null;
                 this.attackCharges = data.attackCharges || 0;
+                this.rageComboCounter = data.rageComboCounter || 0;
+                this.activeCompanionId2 = data.activeCompanionId2 || null;
+                this.rangerProtectionsUsedThisWeek = data.rangerProtectionsUsedThisWeek || 0;
+                this.rangerProtectionResetWeek = data.rangerProtectionResetWeek || null;
+                this.guardianProtectionsUsedThisWeek = data.guardianProtectionsUsedThisWeek || 0;
+                this.guardianProtectionResetWeek = data.guardianProtectionResetWeek || null;
+                this.freeCastUsedDate = data.freeCastUsedDate || null;
+                this.highPriorityTasksToday = data.highPriorityTasksToday || 0;
+                this._highPriorityXpDate = data.highPriorityXpDate || null;
                 this.bossLog = data.bossLog || [];
                 this.defeatedBossList = data.defeatedBossList || [];
                 this.dailyBossStreak = data.dailyBossStreak || 0;
@@ -574,41 +1077,42 @@ class GoalManager {
                 this.bossKillsThisMonth = data.bossKillsThisMonth || 0;
                 this.bossKillsMonth = data.bossKillsMonth || null;
                 
-                // Migrate tasks with `name` but no `title` (from starter task bug)
-                [this.dailyTasks, this.weeklyGoals, this.monthlyGoals, this.yearlyGoals, this.lifeGoals, this.sideQuests, this.habits].forEach(arr => {
-                    arr.forEach(item => {
-                        if (!item.title && item.name) {
-                            item.title = item.name;
-                        }
-                    });
-                });
+                // Migrate tasks with `name` but no `title` (from the old starter-task bug) —
+                // pure helper in persistence-migrations.js (Roadmap #1, 14th slice).
+                PERSISTENCE_MIGRATIONS.migrateTaskTitles([this.dailyTasks, this.weeklyGoals, this.monthlyGoals, this.yearlyGoals, this.lifeGoals, this.sideQuests, this.habits]);
 
-                // Add dueDate to existing tasks that don't have one
-                this.dailyTasks.forEach(task => {
-                    if (!task.dueDate) {
-                        task.dueDate = this.getTodayDateString();
-                    }
-                });
+                // Add dueDate to existing daily tasks that don't have one (Roadmap #1, 14th
+                // slice — pure helper; today is injected so the helper stays pure).
+                PERSISTENCE_MIGRATIONS.backfillDueDates(this.dailyTasks, this.getTodayDateString());
 
-                this.yearlyGoals.forEach(g => {
-                    if (!g.priority || !['low', 'medium', 'high'].includes(g.priority)) g.priority = 'medium';
-                });
-
-                this.monthlyGoals.forEach(g => {
-                    if (!g.priority || !['low', 'medium', 'high'].includes(g.priority)) g.priority = 'medium';
-                });
-
-                this.weeklyGoals.forEach(g => {
-                    if (!g.priority || !['low', 'medium', 'high'].includes(g.priority)) g.priority = 'medium';
-                });
+                // Normalize goal priorities to the valid enum (Roadmap #1, 14th slice — pure
+                // helper in persistence-migrations.js).
+                PERSISTENCE_MIGRATIONS.normalizeGoalPriorities(this.yearlyGoals);
+                PERSISTENCE_MIGRATIONS.normalizeGoalPriorities(this.monthlyGoals);
+                PERSISTENCE_MIGRATIONS.normalizeGoalPriorities(this.weeklyGoals);
             }
         } catch (error) {
             console.error('Error loading data:', error);
             this.showErrorNotification('Failed to load your data. Some progress may be lost.');
-            // Try to backup corrupted data before resetting
+            // Backup corrupted data to a single rotating key. A persistently
+            // corrupt save would otherwise mint a new timestamped backup on
+            // EVERY boot until localStorage quota is exhausted — which then
+            // breaks the good save path too (v2.9.x audit fix). One backup
+            // of the same corrupt blob is as useful as fifty.
             const corrupted = localStorage.getItem('lifeOrganizeData');
             if (corrupted) {
-                localStorage.setItem('lifeOrganizeData_backup_' + Date.now(), corrupted);
+                try {
+                    // Migrate/clean any legacy timestamped backups first
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith('lifeOrganizeData_backup_')) {
+                            localStorage.removeItem(key);
+                        }
+                    }
+                    localStorage.setItem('lifeOrganizeData_backup', corrupted);
+                } catch (backupError) {
+                    console.error('Could not back up corrupted data:', backupError);
+                }
             }
         }
     }
@@ -626,22 +1130,12 @@ class GoalManager {
     
     _doSave() {
         try {
-            // Prune old archived goals to prevent unbounded localStorage growth
-            // Keep all archives < 6 months old, then cap at 500 most recent
-            if (this.archivedGoals.length > 500) {
-                const sixMonthsAgo = new Date();
-                sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-                const cutoff = sixMonthsAgo.toISOString();
-                // Sort by archived date descending, keep recent ones
-                this.archivedGoals.sort((a, b) => 
-                    (b.archivedAt || b.archivedDate || '') > (a.archivedAt || a.archivedDate || '') ? 1 : -1
-                );
-                this.archivedGoals = this.archivedGoals.slice(0, 500);
-            }
-            // Cap boss log at 200 entries (keep most recent)
-            if (this.bossLog.length > 200) {
-                this.bossLog = this.bossLog.slice(-200);
-            }
+            // Cap the two unbounded-growth lists before persisting: archived goals to the
+            // 500 most recent (by archived date), boss log to the last 200. Pure helpers in
+            // persistence-migrations.js (Roadmap #1, 21st slice); see their JSDoc for the
+            // dropped, previously-dead 6-month cutoff.
+            this.archivedGoals = PERSISTENCE_MIGRATIONS.pruneArchivedGoals(this.archivedGoals);
+            this.bossLog = PERSISTENCE_MIGRATIONS.pruneBossLog(this.bossLog);
 
             const dataToSave = JSON.stringify({
                 lifeGoals: this.lifeGoals,
@@ -659,6 +1153,11 @@ class GoalManager {
                 goldCoins: this.goldCoins,
                 unlockedThemes: this.unlockedThemes,
                 currentTheme: this.currentTheme,
+                weeklyTrialPromptShown: this.weeklyTrialPromptShown,
+                weeklyTrialEndPromptShown: this.weeklyTrialEndPromptShown,
+                weeklyThemeCardDismissed: this.weeklyThemeCardDismissed,
+                lastFeaturedWeekTracked: this.lastFeaturedWeekTracked,
+                weeklyTrialApplyDates: this.weeklyTrialApplyDates,
                 unlockedTitles: this.unlockedTitles,
                 currentTitle: this.currentTitle,
                 treasureChests: this.treasureChests,
@@ -667,21 +1166,34 @@ class GoalManager {
                 activeCompanionId: this.activeCompanionId,
                 spellbook: this.spellbook,
                 activeSpells: this.activeSpells,
+                classSchemaVersion: this.CLASS_SCHEMA_VERSION,
+                playerClass: this.playerClass,
+                classNodesUnlocked: this.classNodesUnlocked,
+                classCapstone: this.classCapstone,
+                skillPointsSpent: this.skillPointsSpent,
+                classSelectedAtLevel: this.classSelectedAtLevel,
+                subclass: this.subclass,
+                subclassNodesUnlocked: this.subclassNodesUnlocked,
                 activeQuestChains: this.activeQuestChains,
                 completedQuestChains: this.completedQuestChains,
                 focusCrystals: this.focusCrystals,
                 focusCrystalShards: this.focusCrystalShards,
+                repairableStreaks: this.repairableStreaks,
+                freeStreakRepairUsed: this.freeStreakRepairUsed,
                 totalFocusTime: this.totalFocusTime,
                 activeEnchantments: this.activeEnchantments,
                 focusEndTime: this.focusEndTime,
                 focusSessionLength: this.focusSessionLength,
+                deepWorkStack: this.deepWorkStack,
+                lastFocusSessionEndTime: this.lastFocusSessionEndTime,
                 pomodoroChain: this.pomodoroChain,
                 pomodoroChainSettings: this.pomodoroChainSettings,
                 timezone: this.timezone,
                 timezoneOffset: this.timezoneOffset,
                 tutorialCompleted: this.tutorialCompleted,
-                lastHabitReset: this.getTodayDateString(),
-                lastWeekReset: this.getWeekString(new Date()),
+                onboardingPath: this.onboardingPath,
+                lastHabitReset: this.lastHabitReset || this.getTodayDateString(),
+                lastWeekReset: this.lastWeekReset || this.getWeekString(new Date()),
                 lastVisitDate: this.lastVisitDate,
                 lastWeekNumber: this.lastWeekNumber,
                 lastMonth: this.lastMonth,
@@ -696,6 +1208,8 @@ class GoalManager {
                 referralRewardClaimed: this.referralRewardClaimed,
                 referralsSent: this.referralsSent,
                 onboardingShareShown: this.onboardingShareShown,
+                firstTaskCreatedTracked: this.firstTaskCreatedTracked,
+                firstTaskCompletedTracked: this.firstTaskCompletedTracked,
                 reviewPromptCount: this.reviewPromptCount,
                 reviewPromptLastDate: this.reviewPromptLastDate,
                 reviewLeft: this.reviewLeft,
@@ -708,6 +1222,15 @@ class GoalManager {
                 weeklyBoss: this.weeklyBoss,
                 monthlyBoss: this.monthlyBoss,
                 attackCharges: this.attackCharges,
+                rageComboCounter: this.rageComboCounter,
+                activeCompanionId2: this.activeCompanionId2,
+                rangerProtectionsUsedThisWeek: this.rangerProtectionsUsedThisWeek,
+                rangerProtectionResetWeek: this.rangerProtectionResetWeek,
+                guardianProtectionsUsedThisWeek: this.guardianProtectionsUsedThisWeek,
+                guardianProtectionResetWeek: this.guardianProtectionResetWeek,
+                freeCastUsedDate: this.freeCastUsedDate,
+                highPriorityTasksToday: this.highPriorityTasksToday,
+                highPriorityXpDate: this._highPriorityXpDate,
                 bossLog: this.bossLog,
                 defeatedBossList: this.defeatedBossList,
                 dailyBossStreak: this.dailyBossStreak,
@@ -722,6 +1245,8 @@ class GoalManager {
                 dailyQuestBoard: this.dailyQuestBoard,
                 dailyTracking: this.dailyTracking,
                 lastWoodenChestDate: this.lastWoodenChestDate,
+                activeBounties: this.activeBounties,
+                lastBountyClaim: this.lastBountyClaim,
                 activeChallenges: this.activeChallenges,
                 completedChallenges: this.completedChallenges
             });
@@ -742,196 +1267,20 @@ class GoalManager {
     }
 
     initializeEnchantments() {
-        return {
-            double_xp: {
-                id: 'double_xp',
-                name: 'Enchantment of Swiftness',
-                description: '2x XP from all sources for 3 hours',
-                icon: '⚡',
-                cost: 5,
-                duration: 180, // minutes
-                effect: 'double_xp',
-                premium: true
-            },
-            double_gold: {
-                id: 'double_gold',
-                name: 'Enchantment of Fortune',
-                description: '2x Gold from all sources for 3 hours',
-                icon: '💰',
-                cost: 5,
-                duration: 180,
-                effect: 'double_gold',
-                premium: true
-            },
-            streak_shield: {
-                id: 'streak_shield',
-                name: 'Enchantment of Resilience',
-                description: 'Protects your habit & login streak for 1 missed day',
-                icon: '🛡️',
-                cost: 8,
-                duration: 1440, // 24 hours
-                effect: 'streak_shield',
-                premium: true
-            },
-            boss_slayer: {
-                id: 'boss_slayer',
-                name: 'Enchantment of the Titan',
-                description: '+30% damage to boss battles for 2 hours',
-                icon: '⚔️',
-                cost: 5,
-                duration: 120,
-                effect: 'boss_damage',
-                premium: true
-            },
-            crystal_finder: {
-                id: 'crystal_finder',
-                name: 'Enchantment of Discovery',
-                description: '+1 bonus Focus Crystal per session for 4 hours',
-                icon: '💎',
-                cost: 4,
-                duration: 240,
-                effect: 'bonus_crystal',
-                premium: false
-            },
-            time_warden: {
-                id: 'time_warden',
-                name: 'Enchantment of the Time Warden',
-                description: 'Focus sessions are 35 min and grant +1 bonus crystal for 2 hours',
-                icon: '⏳',
-                cost: 2,
-                duration: 120,
-                effect: 'extended_focus',
-                premium: false
-            },
-            lucky_loot: {
-                id: 'lucky_loot',
-                name: 'Enchantment of Luck',
-                description: '+15% rare loot & companion chance from chests for 2 hours',
-                icon: '🍀',
-                cost: 3,
-                duration: 120,
-                effect: 'lucky_loot',
-                premium: false
-            },
-            serenity: {
-                id: 'serenity',
-                name: 'Enchantment of Serenity',
-                description: '30% chance to earn a bonus Focus Crystal on task completion for 3 hours',
-                icon: '🧘',
-                cost: 3,
-                duration: 180,
-                effect: 'crystal_chance',
-                premium: false
-            },
-            bonding: {
-                id: 'bonding',
-                name: 'Enchantment of Bonding',
-                description: '2x companion XP gain for 3 hours',
-                icon: '🐾',
-                cost: 5,
-                duration: 180,
-                effect: 'companion_bond',
-                premium: true
-            },
-            momentum: {
-                id: 'momentum',
-                name: 'Enchantment of Momentum',
-                description: '+5 bonus XP per consecutive task (stacks up to +25) for 3 hours',
-                icon: '⚡',
-                cost: 5,
-                duration: 180,
-                effect: 'momentum',
-                premium: true
-            },
-            early_bird: {
-                id: 'early_bird',
-                name: 'Enchantment of the Early Bird',
-                description: 'First 3 tasks of the day give 3x XP for 24 hours',
-                icon: '🌅',
-                cost: 4,
-                duration: 1440,
-                effect: 'early_bird',
-                premium: true
-            },
-            precision: {
-                id: 'precision',
-                name: 'Enchantment of Precision',
-                description: 'Habit completions count as double streak progress for 12 hours',
-                icon: '🎯',
-                cost: 7,
-                duration: 720,
-                effect: 'double_streak',
-                premium: true
-            },
-            battle_fury: {
-                id: 'battle_fury',
-                name: 'Enchantment of Battle Fury',
-                description: 'Earn +1 bonus attack charge per charge gained for 2 hours',
-                icon: '🗡️',
-                cost: 5,
-                duration: 120,
-                effect: 'bonus_charges',
-                premium: true
-            }
-        };
+        // Catalog captured into the module-scoped ENCHANTMENT_DEFINITIONS const at
+        // the top of this file; returned here so this.enchantmentDefinitions and
+        // every consumer are unchanged.
+        return ENCHANTMENT_DEFINITIONS;
     }
 
-    // v2.9 Track 5 — Boss theme definitions now carry a `particleType` field
-    // that drives the defeat-dissolve particle palette (effectsManager
-    // .bossDefeatDissolve). Five palettes:
-    //   • shadow — dark purple wisps (default for spectral/evil bosses)
-    //   • ember  — orange/red sparks (fire/demonic/draconic)
-    //   • slime  — green goo (slimes, serpents, sea creatures)
-    //   • leaf   — yellow-green nature (fungal, plant, scarecrow)
-    //   • arcane — bright purple runes (undead, void, ghost, magic)
-    // Existing saved boss objects (pre-v2.9) lack the field; the runtime
-    // helper getBossParticleType() falls back to a name lookup against
-    // these definitions, so no migration is needed.
+    // Boss theme catalog (Engineering Roadmap #1 incremental split) lives in
+    // boss-themes.js — the daily/weekly/monthly pools the boss generators draw
+    // from; each theme's `particleType` drives the defeat-dissolve palette that
+    // getBossParticleType() (below) name-matches legacy saves against.
     initializeBossThemes() {
-        return {
-            daily: [
-                { name: 'Slime of Procrastination', icon: '🟢', flavor: 'A gelatinous blob that feeds on delayed tasks.', particleType: 'slime' },
-                { name: 'Goblin of Distraction', icon: '👺', flavor: 'Sneaky creature that steals your focus.', particleType: 'shadow' },
-                { name: 'Imp of Laziness', icon: '😈', flavor: 'Whispers sweet nothings about staying in bed.', particleType: 'ember' },
-                { name: 'Shadow of Doubt', icon: '👤', flavor: 'A dark figure that questions your every move.', particleType: 'shadow' },
-                { name: 'Skeleton of Bad Habits', icon: '💀', flavor: 'Rattles with the chains of old patterns.', particleType: 'arcane' },
-                { name: 'Bat of Anxiety', icon: '🦇', flavor: 'Swoops in when you least expect it.', particleType: 'shadow' },
-                { name: 'Spider of Overwhelm', icon: '🕷️', flavor: 'Spins webs of endless to-do lists.', particleType: 'shadow' },
-                { name: 'Rat of Excuses', icon: '🐀', flavor: 'Gnaws away at your good intentions.', particleType: 'shadow' },
-                { name: 'Ghost of Yesterday', icon: '👻', flavor: 'Haunts you with missed opportunities.', particleType: 'arcane' },
-                { name: 'Mushroom of Confusion', icon: '🍄', flavor: 'Clouds your mind with indecision.', particleType: 'leaf' },
-                { name: 'Snake of Temptation', icon: '🐍', flavor: 'Lures you toward quick dopamine hits.', particleType: 'slime' },
-                { name: 'Scarecrow of Fear', icon: '🎃', flavor: 'Guards the field of your ambitions.', particleType: 'leaf' },
-                { name: 'Troll of Negativity', icon: '🧌', flavor: 'Blocks the bridge to your goals.', particleType: 'shadow' },
-                { name: 'Wisp of Forgetfulness', icon: '🔮', flavor: 'Makes important tasks vanish from memory.', particleType: 'arcane' }
-            ],
-            weekly: [
-                { name: 'Dragon of Distraction', icon: '🐉', flavor: 'Ancient beast that hoards your wasted hours.', particleType: 'ember' },
-                { name: 'Lich of Procrastination', icon: '☠️', flavor: 'Undying lord of "I\'ll do it tomorrow."', particleType: 'arcane' },
-                { name: 'Hydra of Overthinking', icon: '🐲', flavor: 'Cut one worry, two more take its place.', particleType: 'slime' },
-                { name: 'Demon of Self-Doubt', icon: '👿', flavor: 'Feeds on your insecurities to grow stronger.', particleType: 'ember' },
-                { name: 'Titan of Burnout', icon: '👹', flavor: 'Massive creature born from overwork.', particleType: 'ember' },
-                { name: 'Kraken of Chaos', icon: '🦑', flavor: 'Tentacles of disorder wrap around your plans.', particleType: 'slime' },
-                { name: 'Cerberus of Temptation', icon: '🐕', flavor: 'Three heads: social media, games, and snacks.', particleType: 'shadow' },
-                { name: 'Golem of Stagnation', icon: '🗿', flavor: 'An immovable wall blocking your progress.', particleType: 'shadow' },
-                { name: 'Wyvern of Wasted Time', icon: '🦅', flavor: 'Soars away with your precious hours.', particleType: 'ember' },
-                { name: 'Necromancer of Old Habits', icon: '🧙', flavor: 'Keeps resurrecting the patterns you buried.', particleType: 'arcane' }
-            ],
-            monthly: [
-                { name: 'The Obsidian Warden', icon: '🏴', flavor: 'An ancient guardian forged from pure resistance to change.', particleType: 'shadow' },
-                { name: 'Archmage of the Void', icon: '🌑', flavor: 'Master of nothingness who erases your motivation.', particleType: 'arcane' },
-                { name: 'Behemoth of Despair', icon: '🦣', flavor: 'A colossal beast whose footsteps shake your resolve.', particleType: 'shadow' },
-                { name: 'The Crimson Overlord', icon: '👑', flavor: 'Tyrannical ruler who demands your surrender to mediocrity.', particleType: 'ember' },
-                { name: 'Leviathan of Lost Days', icon: '🐋', flavor: 'Swallows entire weeks into its endless abyss.', particleType: 'slime' },
-                { name: 'The Phantom Emperor', icon: '👁️', flavor: 'Rules an invisible empire built on your abandoned dreams.', particleType: 'arcane' },
-                { name: 'Colossus of Complacency', icon: '🗽', flavor: 'A towering monument to "good enough" thinking.', particleType: 'shadow' },
-                { name: 'The Abyssal Serpent', icon: '🐍', flavor: 'Coils around your potential and drags it to the depths.', particleType: 'slime' },
-                { name: 'Infernal Juggernaut', icon: '🔥', flavor: 'An unstoppable force of destructive routines.', particleType: 'ember' },
-                { name: 'The Shadow Sovereign', icon: '🌘', flavor: 'Commands an army of every excuse you\'ve ever made.', particleType: 'shadow' },
-                { name: 'Dreadnought of Doom', icon: '⚓', flavor: 'An armored fortress of fear that blocks your horizon.', particleType: 'shadow' },
-                { name: 'The Eternal Watcher', icon: '🗿', flavor: 'Has observed a thousand failed resolutions. Will yours be different?', particleType: 'shadow' }
-            ]
-        };
+        // Captured into the module-scoped BOSS_THEMES const at the top of this
+        // file; returned here so this.bossThemes and every consumer are unchanged.
+        return BOSS_THEMES;
     }
 
     // v2.9 Track 5 — Resolve a boss's defeat-dissolve particle palette.
@@ -940,15 +1289,7 @@ class GoalManager {
     // data lacks it — fall back to a name lookup across all theme arrays.
     // Final fallback: 'shadow' (the most generic spectral/evil palette).
     getBossParticleType(boss) {
-        if (!boss) return 'shadow';
-        if (boss.particleType) return boss.particleType;
-        const all = [
-            ...(this.bossThemes?.daily   || []),
-            ...(this.bossThemes?.weekly  || []),
-            ...(this.bossThemes?.monthly || [])
-        ];
-        const match = all.find(t => t.name === boss.name);
-        return match?.particleType || 'shadow';
+        return BOSS_RENDER.getBossParticleType(boss, this.bossThemes);
     }
     
     generateBosses() {
@@ -994,57 +1335,26 @@ class GoalManager {
     }
     
     generateDailyBoss(today) {
-        const themes = this.bossThemes.daily;
-        const seed = this.hashDateString(today);
-        const theme = themes[seed % themes.length];
-        const bossLevel = Math.max(1, Math.floor(this.level / 2));
-        const maxHP = 8 + Math.floor(this.level / 3);
-        
-        this.dailyBoss = {
-            name: theme.name,
-            icon: theme.icon,
-            flavor: theme.flavor,
-            particleType: theme.particleType, // v2.9 Track 5
-            maxHP: maxHP,
-            currentHP: maxHP,
-            level: bossLevel,
-            spawnDate: today,
-            type: 'daily',
-            defeated: false,
-            totalDamage: 0,
-            rewards: {
-                xp: 50 + bossLevel * 20,
-                gold: 30 + bossLevel * 15
-            }
-        };
-        this.addBossLog(`<i class="ri-sword-line mr-1"></i>${theme.icon} ${theme.name} appeared! (${maxHP} HP)`);
+        // Pure boss factory in boss-generator.js (Engineering Roadmap #1, 13th slice);
+        // the assignment + log line are the side effects that stay here.
+        this.dailyBoss = BOSS_GENERATOR.buildBoss({
+            cadence: 'daily',
+            themes: this.bossThemes.daily,
+            seedKey: today,
+            level: this.level
+        });
+        this.addBossLog(`<i class="ri-sword-line mr-1"></i>${this.dailyBoss.icon} ${this.dailyBoss.name} appeared! (${this.dailyBoss.maxHP} HP)`);
     }
     
     generateWeeklyBoss(week) {
-        const themes = this.bossThemes.weekly;
-        const seed = this.hashDateString(week);
-        const theme = themes[seed % themes.length];
-        const bossLevel = Math.max(1, this.level);
-        const maxHP = 30 + Math.floor(this.level / 2) * 5;
-        
-        this.weeklyBoss = {
-            name: theme.name,
-            icon: theme.icon,
-            flavor: theme.flavor,
-            particleType: theme.particleType, // v2.9 Track 5
-            maxHP: maxHP,
-            currentHP: maxHP,
-            level: bossLevel,
-            spawnWeek: week,
-            type: 'weekly',
-            defeated: false,
-            totalDamage: 0,
-            rewards: {
-                xp: 200 + bossLevel * 30,
-                gold: 150 + bossLevel * 25
-            }
-        };
-        this.addBossLog(`<i class="ri-fire-line mr-1"></i>${theme.icon} ${theme.name} emerges! (${maxHP} HP)`);
+        // Pure boss factory in boss-generator.js (Engineering Roadmap #1, 13th slice).
+        this.weeklyBoss = BOSS_GENERATOR.buildBoss({
+            cadence: 'weekly',
+            themes: this.bossThemes.weekly,
+            seedKey: week,
+            level: this.level
+        });
+        this.addBossLog(`<i class="ri-fire-line mr-1"></i>${this.weeklyBoss.icon} ${this.weeklyBoss.name} emerges! (${this.weeklyBoss.maxHP} HP)`);
     }
     
     canChallengeMonthlyBoss() {
@@ -1056,43 +1366,24 @@ class GoalManager {
     
     challengeMonthlyBoss() {
         if (!this.canChallengeMonthlyBoss()) return;
-        
+
         const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
-        const themes = this.bossThemes.monthly;
-        const seed = this.hashDateString(currentMonth);
-        const theme = themes[seed % themes.length];
-        const bossLevel = Math.max(1, this.level);
-        const maxHP = 100 + this.level * 10;
-        
-        this.monthlyBoss = {
-            name: theme.name,
-            icon: theme.icon,
-            flavor: theme.flavor,
-            particleType: theme.particleType, // v2.9 Track 5
-            maxHP: maxHP,
-            currentHP: maxHP,
-            level: bossLevel,
-            spawnMonth: currentMonth,
-            type: 'monthly',
-            defeated: false,
-            totalDamage: 0,
-            rewards: {
-                xp: 500 + bossLevel * 50,
-                gold: 400 + bossLevel * 40
-            }
-        };
-        this.addBossLog(`<i class="ri-flag-2-line mr-1"></i>${theme.icon} ${theme.name} has been summoned! (${maxHP} HP) — MONTHLY CHAMPION`);
+        // Pure boss factory in boss-generator.js (Engineering Roadmap #1, 13th slice).
+        this.monthlyBoss = BOSS_GENERATOR.buildBoss({
+            cadence: 'monthly',
+            themes: this.bossThemes.monthly,
+            seedKey: currentMonth,
+            level: this.level
+        });
+        this.addBossLog(`<i class="ri-flag-2-line mr-1"></i>${this.monthlyBoss.icon} ${this.monthlyBoss.name} has been summoned! (${this.monthlyBoss.maxHP} HP) — MONTHLY CHAMPION`);
         this.saveData();
         this.renderBossBattles();
     }
     
     hashDateString(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-            hash |= 0;
-        }
-        return Math.abs(hash);
+        // Delegates to the pure hash in boss-generator.js (Engineering Roadmap #1,
+        // 13th slice); shared by the boss generators + the monthly-challenge preview.
+        return BOSS_GENERATOR.hashDateString(str);
     }
     
     addBossLog(message) {
@@ -1242,13 +1533,60 @@ class GoalManager {
         this._progressBarShimmerMO = mutationObserver;
     }
 
+    // Attack charge soft cap and overflow conversion rate (gold per
+    // overflowed charge). Referenced with `??` fallbacks in
+    // grantAttackCharge so prototype-only test instances still work.
+    ATTACK_CHARGE_CAP = 25;
+    CHARGE_OVERFLOW_GOLD = 5;
+
     grantAttackCharge(amount, source) {
-        // Battle Fury enchantment: +1 bonus charge per charge earned
-        if (this.hasActiveEnchantment('bonus_charges')) {
-            amount *= 2;
+        // Ranger Forage capstone (v3.1 §3.2): a chance for bonus gold + a Focus
+        // Crystal whenever a task/quest/habit completion grants a charge. Only
+        // completion-flavoured sources qualify (charge-rules.js owns that set).
+        if (CHARGE_RULES.isForageSource(source)) {
+            this.applyForage();
         }
-        this.attackCharges += amount;
-        this.trackDaily('chargesEarned', amount);
+        // Warrior class (v3.0 §3.1): chance of a bonus attack charge from
+        // task completions. Rolls once per task grant; stacks before the
+        // Battle Fury doubling. The roll is impure so it stays here — only its
+        // outcome is handed to the pure amount pipeline.
+        let bonusChargeHit = false;
+        if (source === 'task') {
+            const chargeChance = this.getClassPerkValue('charge_chance');
+            bonusChargeHit = chargeChance > 0 && this.rng() < chargeChance;
+        }
+        // Battle Fury enchantment doubles the total — bonus charge included.
+        const earned = CHARGE_RULES.grantedAmount(
+            amount,
+            bonusChargeHit,
+            this.hasActiveEnchantment('bonus_charges')
+        );
+        // Soft cap (v2.9.x balance audit): uncapped charges let heavy task
+        // days bank 20-30 charges that trivialize the next week of bosses
+        // (the daily boss is only 8-18 HP). Overflow converts to gold so
+        // earned charges are never wasted — 5 gold per charge, routed
+        // through addGold so multipliers and lifetime counters apply.
+        // Warrior class (v3.1 §3.2): Overflow capstone — attack charges earned
+        // above the soft cap are KEPT instead of converted to gold. Without the
+        // perk the cap still applies and overflow routes to gold (5 each).
+        const cap = this.ATTACK_CHARGE_CAP ?? CHARGE_RULES.ATTACK_CHARGE_CAP;
+        const split = CHARGE_RULES.chargeSplit(
+            earned,
+            this.attackCharges,
+            cap,
+            this.getClassPerkValue('charge_overflow') > 0
+        );
+        this.attackCharges += split.granted;
+        if (split.granted > 0) {
+            this.trackDaily('chargesEarned', split.granted);
+        }
+        if (split.overflow > 0) {
+            const overflowGold = CHARGE_RULES.overflowGold(split.overflow, this.CHARGE_OVERFLOW_GOLD);
+            this.addGold(overflowGold, 'charge_overflow');
+            if (!this._suppressRewardToasts) {
+                this.showAchievement(`⚔️ Charges full (${cap})! Overflow converted to +${overflowGold} gold`, 'daily');
+            }
+        }
         this.saveData();
         
         // Update attack counter in UI if visible
@@ -1260,15 +1598,29 @@ class GoalManager {
         }
     }
     
+    // Ranger Forage capstone (v3.1 §3.2): rolled once per qualifying task
+    // completion (see grantAttackCharge). On a hit, grants bonus gold and one
+    // Focus Crystal. No-op for non-Rangers / without the capstone.
+    applyForage() {
+        const chance = this.getClassPerkValue('forage');
+        if (chance <= 0 || this.rng() >= chance) return;
+        const bonusGold = 10 + Math.floor(this.rng() * 11); // 10-20
+        this.addGold(bonusGold, 'forage');
+        this.focusCrystals = (this.focusCrystals || 0) + 1;
+        if (!this._suppressRewardToasts) {
+            this.showAchievement(`🌿 Forage! +${bonusGold} gold, +1 💎`, 'daily');
+        }
+    }
+    
     attackBoss(bossType) {
         const boss = bossType === 'daily' ? this.dailyBoss : bossType === 'weekly' ? this.weeklyBoss : this.monthlyBoss;
-        if (!boss || boss.defeated || this.attackCharges <= 0) return;
+        if (!CHARGE_RULES.canAttack(boss, this.attackCharges)) return;
         
         this.attackCharges--;
         this.trackDaily('bossAttacks');
         
         // Calculate damage (scales +1 per 10 player levels)
-        let damage = 1 + Math.floor(this.level / 10);
+        let damage = COMBAT_DAMAGE.baseDamage(this.level);
         let messages = [];
         let isCrit = false;
         
@@ -1276,36 +1628,43 @@ class GoalManager {
         const companionAttackBonus = this.getCompanionBonus('attack');
         if (companionAttackBonus > 0) {
             const activeComp = this.getActiveCompanion();
-            damage = Math.ceil(damage * (1 + companionAttackBonus));
+            damage = COMBAT_DAMAGE.applyBonus(damage, companionAttackBonus);
             messages.push(`${activeComp?.icon || '🐾'} ${activeComp?.name || 'Companion'} Strike!`);
         }
         
         // Boss Slayer Enchantment (+30% damage)
         const enchantmentBonus = this.getEnchantmentMultiplier('boss_damage');
         if (enchantmentBonus > 1) {
-            damage = Math.ceil(damage * enchantmentBonus);
+            damage = COMBAT_DAMAGE.applyMultiplier(damage, enchantmentBonus);
             messages.push('⚔️ Titan Enchantment!');
         }
         
         // Berserker Rage spell (1.5x damage, consumed on use)
-        const berserkerRage = this.activeSpells.find(s => s.spellId === 'berserker_rage');
+        const berserkerRage = SPELL_LIFECYCLE.findActive(this.activeSpells, 'berserker_rage', Date.now());
         if (berserkerRage) {
-            damage = Math.ceil(damage * 1.5);
+            damage = COMBAT_DAMAGE.applyMultiplier(damage, COMBAT_DAMAGE.BERSERKER_RAGE_MULTIPLIER);
             messages.push('🔥 BERSERKER RAGE! x1.5!');
-            this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'berserker_rage');
+            this.activeSpells = SPELL_LIFECYCLE.consume(this.activeSpells, 'berserker_rage');
         }
         
         // Boss Slayer spell (+25% damage, duration-based)
-        const bossSlayer = this.activeSpells.find(s => s.spellId === 'boss_slayer' && s.expiresAt > Date.now());
+        const bossSlayer = SPELL_LIFECYCLE.findActive(this.activeSpells, 'boss_slayer', Date.now());
         if (bossSlayer) {
-            damage = Math.ceil(damage * 1.25);
+            damage = COMBAT_DAMAGE.applyMultiplier(damage, COMBAT_DAMAGE.BOSS_SLAYER_MULTIPLIER);
             messages.push('🗡️ Boss Slayer!');
         }
         
+        // Warrior class (v3.1 §3.1): Power Strikes flat boss-damage multiplier.
+        const warriorDamage = this.getClassPerkValue('boss_damage_mult');
+        if (warriorDamage > 0) {
+            damage = COMBAT_DAMAGE.applyBonus(damage, warriorDamage);
+            messages.push('⚔️ Power Strikes!');
+        }
+        
         // Critical Strike spell (50% chance for +50% damage)
-        const criticalStrike = this.activeSpells.find(s => s.spellId === 'critical_strike' && s.expiresAt > Date.now());
-        if (criticalStrike && Math.random() < 0.5) {
-            damage = Math.ceil(damage * 1.5);
+        const criticalStrike = SPELL_LIFECYCLE.findActive(this.activeSpells, 'critical_strike', Date.now());
+        if (criticalStrike && this.rng() < COMBAT_DAMAGE.CRITICAL_STRIKE_CHANCE) {
+            damage = COMBAT_DAMAGE.applyMultiplier(damage, COMBAT_DAMAGE.CRIT_MULTIPLIER);
             isCrit = true;
             messages.push('💥 CRITICAL HIT!');
             if (window.effectsManager) {
@@ -1314,9 +1673,100 @@ class GoalManager {
             }
         }
         
+        // Warrior class (v3.1 §3.1): Keen Edge crit chance for +50% damage.
+        // Additive with the Critical Strike spell (no multiplicative stacking)
+        // per the balance guardrail — only rolls if a crit hasn't already landed.
+        const warriorCrit = this.getClassPerkValue('crit_chance');
+        if (!isCrit && warriorCrit > 0 && this.rng() < warriorCrit) {
+            damage = COMBAT_DAMAGE.applyMultiplier(damage, COMBAT_DAMAGE.CRIT_MULTIPLIER);
+            isCrit = true;
+            messages.push('💥 KEEN EDGE!');
+            if (window.effectsManager) {
+                const bossEl = document.getElementById(`boss-card-${bossType}`);
+                window.effectsManager.bossCrit(bossEl);
+            }
+        }
+        
+        // Warrior class (v3.1 §3.2): Rage Combo — every Nth consecutive boss
+        // attack lands a guaranteed critical hit. Additive with the other crit
+        // sources (no multiplicative stacking): if a crit already landed this
+        // hit the combo still "spends" (counter resets) but doesn't re-multiply.
+        const rageComboEvery = this.getClassPerkValue('rage_combo');
+        if (rageComboEvery > 0) {
+            const combo = COMBAT_DAMAGE.rageComboAdvance(this.rageComboCounter, rageComboEvery);
+            this.rageComboCounter = combo.counter;
+            if (combo.triggered) {
+                if (!isCrit) {
+                    damage = COMBAT_DAMAGE.applyMultiplier(damage, COMBAT_DAMAGE.CRIT_MULTIPLIER);
+                    isCrit = true;
+                    messages.push('🔥 RAGE COMBO!');
+                    if (window.effectsManager) {
+                        const bossEl = document.getElementById(`boss-card-${bossType}`);
+                        window.effectsManager.bossCrit(bossEl);
+                    }
+                }
+            }
+        }
+        
+        // Warrior class (v3.1 §3.2): Executioner capstone — bonus damage to a
+        // boss already below 25% HP (measured on its CURRENT HP, before this hit
+        // lands). Synergises with the existing `execute` spell.
+        const executeBonus = this.getClassPerkValue('execute_bonus');
+        if (executeBonus > 0 && COMBAT_DAMAGE.isExecuteRange(boss)) {
+            damage = COMBAT_DAMAGE.applyBonus(damage, executeBonus);
+            messages.push('☠️ EXECUTIONER!');
+        }
+        
+        // Warrior Berserker subclass (v3.1 §9): boss damage ramps up as the boss's
+        // HP drops (measured pre-hit, like Executioner). §9.8 guardrail — the
+        // combined low-HP bonus with the Executioner capstone is capped at +75%
+        // so a Warrior running both can't double-dip below 25% HP.
+        const berserkerRamp = this.getClassPerkValue('berserker_ramp');
+        if (berserkerRamp > 0 && boss.maxHP > 0) {
+            const hpFrac = COMBAT_DAMAGE.hpFraction(boss);
+            const executeActive = (executeBonus > 0 && COMBAT_DAMAGE.isExecuteRange(boss)) ? executeBonus : 0;
+            const berserkerBonus = COMBAT_DAMAGE.berserkerBonus(berserkerRamp, hpFrac, executeActive);
+            if (berserkerBonus > 0) {
+                damage = COMBAT_DAMAGE.applyBonus(damage, berserkerBonus);
+                messages.push(`🪓 Berserker +${Math.round(berserkerBonus * 100)}%!`);
+            }
+        }
+        
+        // Ranger Hunter subclass (v3.1 §9): bonus damage to the larger weekly &
+        // monthly bosses only (daily bosses are excluded).
+        const hunterBonus = this.getClassPerkValue('hunter_bonus');
+        if (hunterBonus > 0 && COMBAT_DAMAGE.isHunterTarget(bossType)) {
+            damage = COMBAT_DAMAGE.applyBonus(damage, hunterBonus);
+            messages.push('🎯 Hunter!');
+        }
+        
         // Apply damage
         boss.currentHP = Math.max(0, boss.currentHP - damage);
         boss.totalDamage += damage;
+        
+        // Warrior class (v3.1 §3.2): Cleave — a fraction of this hit splashes to
+        // the OTHER active (non-defeated) bosses. The node value (≤25%) is the
+        // cap per the balance guardrail. A splashed boss that reaches 0 HP is
+        // defeated through the same onBossDefeated path as a direct kill.
+        const cleavePct = this.getClassPerkValue('cleave_pct');
+        if (cleavePct > 0) {
+            const splash = COMBAT_DAMAGE.cleaveSplash(damage, cleavePct);
+            if (splash > 0) {
+                ['daily', 'weekly', 'monthly'].forEach(otherType => {
+                    if (otherType === bossType) return;
+                    const other = otherType === 'daily' ? this.dailyBoss : otherType === 'weekly' ? this.weeklyBoss : this.monthlyBoss;
+                    if (!other || other.defeated || other.currentHP <= 0) return;
+                    other.currentHP = Math.max(0, other.currentHP - splash);
+                    other.totalDamage += splash;
+                    this.updateBossHPBar(otherType, other, splash, false);
+                    if (other.currentHP <= 0) {
+                        other.defeated = true;
+                        setTimeout(() => this.onBossDefeated(otherType), 600);
+                    }
+                });
+                messages.push(`🪓 Cleave ${Math.round(cleavePct * 100)}%!`);
+            }
+        }
         
         // Play slash sound
         if (window.audioManager) window.audioManager.playSlash(isCrit);
@@ -1499,12 +1949,7 @@ class GoalManager {
     // be read at render time; factoring it lets `updateBossHPBar` cross-fade
     // the chunk track to the new phase mid-fight without a full re-render.
     getBossPhase(currentHP, maxHP) {
-        const pct = maxHP > 0 ? (currentHP / maxHP) * 100 : 0;
-        if (pct <= 0) return { color: 'green', text: 'DEFEATED' };
-        if (pct <= 25) return { color: 'purple', text: 'CRITICAL!' };
-        if (pct <= 50) return { color: 'orange', text: 'Wounded' };
-        if (pct <= 75) return { color: 'yellow', text: 'Injured' };
-        return { color: 'red', text: 'Full Power' };
+        return BOSS_RENDER.getBossPhase(currentHP, maxHP);
     }
 
     // v2.9 Track 3 — damage-trail HP bar markup.
@@ -1522,22 +1967,7 @@ class GoalManager {
     // `data-phase` on the container drives gradient palette via CSS variables
     // (--hp-from / --hp-to in animations.css).
     renderBossHPBar(boss, phaseColor) {
-        const maxHP = Math.max(0, boss.maxHP || 0);
-        const currentHP = Math.max(0, Math.min(maxHP, boss.currentHP || 0));
-        if (maxHP <= 0) return '';
-        const hpPercent = (currentHP / maxHP) * 100;
-
-        const labelHtml = hpPercent > 15
-            ? `<span class="boss-hp-percent">${Math.round(hpPercent)}%</span>`
-            : '';
-
-        return `
-            <div class="boss-hp-bar relative w-full bg-stone-900 rounded-full h-6 border-2 border-${phaseColor}-700/70 overflow-hidden"
-                 data-phase="${phaseColor}">
-                <div class="boss-hp-damage" style="--hp-current: ${hpPercent}%; --hp-previous: ${hpPercent}%;"></div>
-                <div class="boss-hp-fill" style="width: ${hpPercent}%">${labelHtml}</div>
-            </div>
-        `;
+        return BOSS_RENDER.renderBossHPBar(boss, phaseColor);
     }
     
     onBossDefeated(bossType) {
@@ -1600,8 +2030,14 @@ class GoalManager {
         this.addGold(goldReward, 'boss');
         
         // Award Focus Crystals for boss kills (daily=1, weekly=2, monthly=3)
-        const crystalReward = bossType === 'monthly' ? 3 : bossType === 'weekly' ? 2 : 1;
+        const crystalReward = CRYSTAL_ECONOMY.bossCrystalReward(bossType);
         this.focusCrystals += crystalReward;
+        // Wizard Necromancer subclass (v3.1 §9): harvest bonus Focus Crystals on
+        // every boss defeat.
+        const soulHarvest = this.getClassPerkValue('soul_harvest');
+        if (soulHarvest > 0) {
+            this.focusCrystals += soulHarvest;
+        }
         
         // Generate and apply bonus loot drops
         const loot = this.generateBossLoot(bossType);
@@ -1715,11 +2151,11 @@ class GoalManager {
         if (!boss || boss.defeated) return;
         
         const hpPercent = (boss.currentHP / boss.maxHP) * 100;
-        const executeSpell = this.activeSpells.find(s => s.spellId === 'execute');
+        const executeSpell = SPELL_LIFECYCLE.findActive(this.activeSpells, 'execute', Date.now());
         if (!executeSpell || hpPercent > 25) return;
         
         // Consume Execute spell
-        this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'execute');
+        this.activeSpells = SPELL_LIFECYCLE.consume(this.activeSpells, 'execute');
         
         // Instant kill — remember the pre-kill HP as the "damage" of this hit so
         // the v2.9 chunk drain animation can cascade through ALL remaining chunks
@@ -1748,537 +2184,674 @@ class GoalManager {
         // the swap with proper timing.
     }
     
-    initializeSpells() {
-        // Free spells: lucky_draw, instant_archive, focus_mode, minor_wisdom, copper_blessing (5 free)
-        // Premium spells: all others
-        return {
-            arcane_surge: {
-                id: 'arcane_surge',
-                name: 'Arcane Surge',
-                icon: '🌟',
-                description: '2x XP for the entire day',
-                rarity: 'rare',
-                effect: 'xp_multiplier',
-                multiplier: 2,
-                duration: 86400000, // 24 hours
-                premium: true
-            },
-            golden_touch: {
-                id: 'golden_touch',
-                name: 'Golden Touch',
-                icon: '💰',
-                description: '2x Gold for the entire day',
-                rarity: 'rare',
-                effect: 'gold_multiplier',
-                multiplier: 2,
-                duration: 86400000, // 24 hours
-                premium: true
-            },
-            streak_shield: {
-                id: 'streak_shield',
-                name: 'Streak Shield',
-                icon: '🛡️',
-                description: 'Protect your habit & login streak for 1 day',
-                rarity: 'epic',
-                effect: 'streak_protection',
-                duration: 86400000, // 24 hours
-                premium: true
-            },
-            lucky_draw: {
-                id: 'lucky_draw',
-                name: 'Lucky Draw',
-                icon: '🎲',
-                description: 'Guaranteed uncommon+ loot on next chest opened',
-                rarity: 'uncommon',
-                effect: 'chest_boost',
-                multiplier: 1,
-                duration: -1, // Active until next chest opened
-                premium: false
-            },
-            inferno_focus: {
-                id: 'inferno_focus',
-                name: 'Inferno Focus',
-                icon: '🔥',
-                description: 'All tasks give +25% XP today',
-                rarity: 'rare',
-                effect: 'xp_boost',
-                multiplier: 1.25,
-                duration: 86400000,
-                premium: true
-            },
-            time_freeze: {
-                id: 'time_freeze',
-                name: 'Time Freeze',
-                icon: '❄️',
-                description: 'Prevent daily quest reset for 1 day',
-                rarity: 'legendary',
-                effect: 'pause_reset',
-                duration: 86400000,
-                premium: true
-            },
-            moonlight_blessing: {
-                id: 'moonlight_blessing',
-                name: 'Moonlight Blessing',
-                icon: '🌙',
-                description: 'All tasks worth +50% XP today',
-                rarity: 'legendary',
-                effect: 'xp_boost',
-                multiplier: 1.5,
-                duration: 86400000,
-                premium: true
-            },
-            quest_doubler: {
-                id: 'quest_doubler',
-                name: 'Quest Doubler',
-                icon: '📋',
-                description: '2x XP & Gold on next quest completed',
-                rarity: 'uncommon',
-                effect: 'double_reward',
-                duration: -1, // Active until next quest completed
-                premium: false
-            },
-            instant_archive: {
-                id: 'instant_archive',
-                name: 'Instant Archive',
-                icon: '📦',
-                description: 'Bulk archive all completed tasks',
-                rarity: 'uncommon',
-                effect: 'bulk_archive',
-                duration: 0, // Instant use
-                premium: false
-            },
-            focus_mode: {
-                id: 'focus_mode',
-                name: 'Focus Mode',
-                icon: '🎯',
-                description: '2x Focus Crystals & +50 XP per session for 2 hours',
-                rarity: 'uncommon',
-                effect: 'focus_boost',
-                duration: 7200000, // 2 hours
-                premium: false
-            },
-            minor_wisdom: {
-                id: 'minor_wisdom',
-                name: 'Minor Wisdom',
-                icon: '📚',
-                description: '+15% XP for the entire day',
-                rarity: 'common',
-                effect: 'xp_boost',
-                multiplier: 1.15,
-                duration: 86400000, // 24 hours
-                premium: false
-            },
-            copper_blessing: {
-                id: 'copper_blessing',
-                name: 'Copper Blessing',
-                icon: '🪙',
-                description: '+15% Gold for the entire day',
-                rarity: 'common',
-                effect: 'gold_multiplier',
-                multiplier: 1.15,
-                duration: 86400000, // 24 hours
-                premium: false
-            },
-            silver_blessing: {
-                id: 'silver_blessing',
-                name: 'Silver Blessing',
-                icon: '🥈',
-                description: '+25% Gold for the entire day',
-                rarity: 'uncommon',
-                effect: 'gold_multiplier',
-                multiplier: 1.25,
-                duration: 86400000, // 24 hours
-                premium: true
-            },
-            gold_blessing: {
-                id: 'gold_blessing',
-                name: 'Gold Blessing',
-                icon: '🥇',
-                description: '+50% Gold for the entire day',
-                rarity: 'rare',
-                effect: 'gold_multiplier',
-                multiplier: 1.5,
-                duration: 86400000, // 24 hours
-                premium: true
-            },
-            double_xp_weekend: {
-                id: 'double_xp_weekend',
-                name: 'Double XP Weekend',
-                icon: '⚡',
-                description: '2x XP for 48 hours',
-                rarity: 'legendary',
-                effect: 'xp_multiplier',
-                multiplier: 2,
-                duration: 172800000, // 48 hours
-                premium: true
-            },
-            berserker_rage: {
-                id: 'berserker_rage',
-                name: 'Berserker Rage',
-                icon: '⚔️',
-                description: 'Next boss attack deals 1.5x damage',
-                rarity: 'epic',
-                effect: 'boss_double_damage',
-                multiplier: 1.5,
-                duration: -1, // Active until next boss damage
-                premium: true
-            },
-            critical_strike: {
-                id: 'critical_strike',
-                name: 'Critical Strike',
-                icon: '💥',
-                description: '50% chance for +50% bonus damage on boss attacks today',
-                rarity: 'rare',
-                effect: 'boss_crit_chance',
-                multiplier: 1.5,
-                duration: 86400000, // 24 hours
-                premium: true
-            },
-            boss_slayer: {
-                id: 'boss_slayer',
-                name: 'Boss Slayer',
-                icon: '🗡️',
-                description: '+25% damage to ALL bosses for 7 days',
-                rarity: 'legendary',
-                effect: 'boss_damage_boost',
-                multiplier: 1.25,
-                duration: 604800000, // 7 days
-                premium: true
-            },
-            execute: {
-                id: 'execute',
-                name: 'Execute',
-                icon: '💀',
-                description: 'Instantly defeat ONE boss below 25% HP',
-                rarity: 'legendary',
-                effect: 'boss_execute',
-                duration: -1, // Active until used
-                premium: true
+    // v3.1 §3.1 — Class definitions (multi-perk redesign). Each class has a
+    // linear `nodes` array of 5 DISTINCT perks (each its own `effect`), plus a
+    // `capstones` array of mutually-exclusive endgame options (pick ONE). A
+    // node's `value` is the effect magnitude for that single perk (not a tier
+    // progression). Linear costs escalate [2,3,4,5,6] and the capstone costs
+    // 10 → 30 points total, so a main class maxes EXACTLY at Level 40 (the
+    // prestige unlock, since points = level - 10). `getClassPerkValue` scans
+    // the player's UNLOCKED nodes (+ chosen capstone) for the requested effect.
+    // See docs/CLASS_REDESIGN.md for the full spec.
+    initializeClasses() {
+        // Cost/tier SCHEDULE stays here (sourced from BALANCE.classTree) and is
+        // applied to the RAW node data from class-definitions.js, so costs never
+        // drift from the central balance table. See docs/CLASS_REDESIGN.md.
+        const LINEAR_COSTS = BALANCE.classTree.linearCosts;
+        const CAPSTONE_COST = BALANCE.classTree.capstoneCost;
+        const SUB_TIER_COSTS = BALANCE.classTree.subTierCosts;
+        const linear = defs => defs.map((d, i) => ({
+            id: d.id, tier: i + 1, cost: LINEAR_COSTS[i],
+            effect: d.effect, value: d.value, name: d.name, desc: d.desc
+        }));
+        const caps = defs => defs.map(d => ({
+            id: d.id, tier: 6, cost: CAPSTONE_COST, capstone: true,
+            effect: d.effect, value: d.value, name: d.name, desc: d.desc
+        }));
+        const subTiers = defs => defs.map((d, i) => ({
+            tier: i + 1, cost: SUB_TIER_COSTS[i], value: d.value, desc: d.desc
+        }));
+        const buildSubclasses = subs => {
+            const out = {};
+            for (const key of Object.keys(subs)) {
+                const s = subs[key];
+                out[key] = { id: s.id, name: s.name, icon: s.icon, tagline: s.tagline, effect: s.effect, tiers: subTiers(s.tiers) };
             }
+            return out;
         };
+        const tree = {};
+        for (const key of Object.keys(CLASS_DEFINITIONS)) {
+            const c = CLASS_DEFINITIONS[key];
+            tree[key] = {
+                id: c.id, name: c.name, icon: c.icon, color: c.color, tagline: c.tagline,
+                nodes: linear(c.nodes),
+                capstones: caps(c.capstones),
+                subclasses: buildSubclasses(c.subclasses)
+            };
+        }
+        return tree;
+    }
+
+    // ---- v3.1 §3.1 Class System helpers ----
+
+    // True once the player is high enough level to pick a class. Class
+    // SELECTION unlocks at CLASS_SELECT_LEVEL (8); the skill points to spend on
+    // the tree start later, at CLASS_UNLOCK_LEVEL (10) — see getEarnedSkillPoints.
+    isClassSystemUnlocked() {
+        return SKILL_POINTS.isClassSystemUnlocked(this.level, this.CLASS_SELECT_LEVEL);
+    }
+
+    hasClass() {
+        return !!this.playerClass;
+    }
+
+    getActiveClass() {
+        return this.playerClass ? (this.classDefinitions[this.playerClass] || null) : null;
+    }
+
+    // Total skill points the player has earned (derived from level, not
+    // stored): 1 per level beyond the unlock level. This auto-handles
+    // retroactive grants for players already past the unlock level when the
+    // feature ships, and removes the need for a per-level-up grant hook.
+    getEarnedSkillPoints() {
+        return SKILL_POINTS.earnedSkillPoints(this.level, this.CLASS_UNLOCK_LEVEL);
+    }
+
+    getAvailableSkillPoints() {
+        return SKILL_POINTS.availableSkillPoints(this.getEarnedSkillPoints(), this.skillPointsSpent);
+    }
+
+    // Count of linear nodes in a class tree (always 5 in the v3.1 design).
+    getLinearNodeCount(cls) {
+        return CLASS_PROGRESSION.linearNodeCount(cls);
+    }
+
+    // The next not-yet-unlocked LINEAR node, or null if all linear nodes are
+    // unlocked (at which point the capstone becomes available) / no class.
+    getNextClassNode() {
+        return CLASS_PROGRESSION.nextClassNode(this.getActiveClass(), this.classNodesUnlocked);
+    }
+
+    // True once every linear node is unlocked but no capstone is chosen yet —
+    // i.e. the capstone choice is now available.
+    isCapstoneReady() {
+        return CLASS_PROGRESSION.isCapstoneReady(this.getActiveClass(), this.classNodesUnlocked, this.classCapstone);
+    }
+
+    // The chosen capstone node object, or null if none picked.
+    getChosenCapstone() {
+        return CLASS_PERKS.chosenCapstone(this.getActiveClass(), this.classCapstone);
+    }
+
+    // Fully mastered = all linear nodes unlocked AND a capstone chosen.
+    isClassMastered() {
+        return CLASS_PROGRESSION.isClassMastered(this.getActiveClass(), this.classNodesUnlocked, this.classCapstone);
+    }
+
+    // The effect value for a given perk at the player's current progression.
+    // Scans UNLOCKED linear nodes (then the chosen capstone) for a node whose
+    // `effect` matches; returns its `value`. 0 when no class, the effect isn't
+    // in this class, or that node isn't unlocked yet. Each effect appears at
+    // most once per class, so the first match is authoritative.
+    getClassPerkValue(effect) {
+        // Unlocked-node scan → capstone fallback → highest-of-subclass merge; pure math in class-perks.js.
+        return CLASS_PERKS.classPerkValue(effect, this.getActiveClass(), this.classNodesUnlocked, this.getChosenCapstone(), this.getSubclassPerkValue(effect));
+    }
+
+    // The effective Focus-Crystal cost of an enchantment after the Scholar
+    // discount (floored at 1 so enchantments are never free).
+    getEffectiveEnchantmentCost(enchantment) {
+        if (!enchantment) return 0;
+        const discount = this.getClassPerkValue('enchant_discount');
+        return Math.max(1, enchantment.cost - discount);
+    }
+
+    selectClass(classId) {
+        if (!this.classDefinitions[classId]) return false;
+        if (!this.isClassSystemUnlocked()) {
+            this.showAchievement(`⚠️ Choose a class at Level ${this.CLASS_SELECT_LEVEL || 8}.`, 'error');
+            return false;
+        }
+        if (this.playerClass) return false; // use respecClass to change
+        this.playerClass = classId;
+        this.classNodesUnlocked = 0;
+        this.classCapstone = null;
+        this.skillPointsSpent = 0;
+        this.subclass = null;
+        this.subclassNodesUnlocked = 0;
+        this.classSelectedAtLevel = this.level;
+        this.saveData();
+        const cls = this.classDefinitions[classId];
+        this.showAchievement(`${cls.icon} You are now a ${cls.name}!`, 'badge');
+        if (typeof trackEvent === 'function') trackEvent('class_selected', { classId, level: this.level });
+        return true;
+    }
+
+    unlockNextClassNode() {
+        const node = this.getNextClassNode();
+        if (!node) {
+            // All linear nodes done — direct the player to the capstone choice.
+            if (this.isCapstoneReady()) {
+                this.showAchievement('⭐ Choose your capstone perk!', 'daily');
+            } else {
+                this.showAchievement('⭐ Your class tree is fully mastered!', 'daily');
+            }
+            return false;
+        }
+        if (this.getAvailableSkillPoints() < node.cost) {
+            this.showAchievement(`⚠️ Need ${node.cost} skill point${node.cost > 1 ? 's' : ''} to unlock that perk.`, 'error');
+            return false;
+        }
+        this.skillPointsSpent = (this.skillPointsSpent || 0) + node.cost;
+        this.classNodesUnlocked += 1;
+        // Ranger Wild Bond (v3.1 §3.2): unlocking this node grants the
+        // Ranger-exclusive companion (idempotent — a duplicate pays gold).
+        if (node.effect === 'ranger_companion') {
+            this.unlockCompanion('lynx');
+        }
+        // Wizard Forbidden Tomes (v3.1 §3.2): unlocking this node grants the
+        // Wizard-exclusive spells (idempotent — re-unlock after a respec won't
+        // re-stack charges).
+        if (node.effect === 'mage_spells') {
+            this.grantWizardSpells();
+        }
+        this.saveData();
+        this.showAchievement(`✨ Perk unlocked: ${node.name}`, 'badge');
+        if (typeof trackEvent === 'function') trackEvent('class_node_unlocked', { classId: this.playerClass, tier: node.tier });
+        return true;
+    }
+
+    // Pick one of the mutually-exclusive capstone perks. Requires all linear
+    // nodes unlocked and no capstone yet chosen.
+    chooseCapstone(capstoneId) {
+        const cls = this.getActiveClass();
+        if (!cls || !cls.capstones) return false;
+        if (!this.isCapstoneReady()) {
+            this.showAchievement('⚠️ Unlock all class perks before choosing a capstone.', 'error');
+            return false;
+        }
+        const cap = cls.capstones.find(c => c.id === capstoneId);
+        if (!cap) return false;
+        if (this.getAvailableSkillPoints() < cap.cost) {
+            this.showAchievement(`⚠️ Need ${cap.cost} skill points for your capstone.`, 'error');
+            return false;
+        }
+        this.skillPointsSpent = (this.skillPointsSpent || 0) + cap.cost;
+        this.classCapstone = cap.id;
+        this.saveData();
+        this.showAchievement(`🌟 Capstone mastered: ${cap.name}!`, 'badge');
+        if (typeof trackEvent === 'function') trackEvent('class_capstone_chosen', { classId: this.playerClass, capstone: cap.id });
+        return true;
+    }
+
+    // Combined respec: changes class AND/OR re-picks nodes in one action. Spends
+    // a Focus Crystal fee, refunds all spent points (they re-derive from level),
+    // and resets the tree + capstone. Leaves playerClass null so the selection
+    // cards re-open for a fresh pick (same class or different).
+    respecClass() {
+        if (!this.playerClass) return false;
+        // Re-picking is FREE until skill points start accruing (before
+        // CLASS_UNLOCK_LEVEL): no points are committed yet, so an early or
+        // under-informed class pick shouldn't cost crystals the player may not
+        // have. Once points are in play, the normal Focus Crystal fee applies.
+        const cost = SKILL_POINTS.respecCost(this.getEarnedSkillPoints(), this.CLASS_RESPEC_COST);
+        if ((this.focusCrystals || 0) < cost) {
+            this.showAchievement(`⚠️ Need ${cost} Focus Crystals to change class.`, 'error');
+            return false;
+        }
+        this.focusCrystals -= cost;
+        this.playerClass = null;
+        this.classNodesUnlocked = 0;
+        this.classCapstone = null;
+        this.skillPointsSpent = 0;
+        // A base respec also dissolves the subclass — its id is scoped to the
+        // old class tree and its points refund implicitly (skillPointsSpent=0).
+        this.subclass = null;
+        this.subclassNodesUnlocked = 0;
+        this.classSelectedAtLevel = null;
+        this.saveData();
+        const costMsg = cost > 0 ? ` (-${cost} 💎)` : ' (free — no points spent yet)';
+        this.showAchievement(`🔄 Class reset — choose a new path.${costMsg}`, 'daily');
+        if (typeof trackEvent === 'function') trackEvent('class_respec', { cost });
+        return true;
+    }
+
+    // ---- v3.1 §9 Subclass Specialization helpers ----
+
+    // True once the base class is fully mastered AND the player has reached the
+    // subclass unlock level (40) — the point where the 30-pt base tree maxes and
+    // surplus skill points become the subclass sink.
+    isSubclassUnlocked() {
+        return SKILL_POINTS.isSubclassUnlocked(this.isClassMastered(), this.level, this.SUBCLASS_UNLOCK_LEVEL);
+    }
+
+    // The subclass-definition map for the active class (keyed by id), or null.
+    getClassSubclasses() {
+        const cls = this.getActiveClass();
+        return (cls && cls.subclasses) ? cls.subclasses : null;
+    }
+
+    // The chosen subclass definition object, or null if none picked / invalid.
+    getActiveSubclass() {
+        const subs = this.getClassSubclasses();
+        if (!subs || !this.subclass) return null;
+        return subs[this.subclass] || null;
+    }
+
+    // Tier count of a subclass (always 3 in the v3.1 design).
+    getSubclassTierCount(sub) {
+        return CLASS_PROGRESSION.subclassTierCount(sub);
+    }
+
+    // The next not-yet-unlocked subclass tier object, or null when all tiers are
+    // unlocked / no subclass chosen.
+    getNextSubclassTier() {
+        return CLASS_PROGRESSION.nextSubclassTier(this.getActiveSubclass(), this.subclassNodesUnlocked);
+    }
+
+    // True once every tier of the chosen subclass is unlocked.
+    isSubclassMastered() {
+        return CLASS_PROGRESSION.isSubclassMastered(this.getActiveSubclass(), this.subclassNodesUnlocked);
+    }
+
+    // Skill points already sunk into the chosen subclass's unlocked tiers — used
+    // to refund precisely on a subclass-only respec (the shared skillPointsSpent
+    // pool also covers the base tree, so we can't just zero it).
+    getSubclassPointsSpent() {
+        return CLASS_PROGRESSION.subclassPointsSpent(this.getActiveSubclass(), this.subclassNodesUnlocked);
+    }
+
+    // The effect value of the chosen subclass at the player's current tier, or 0
+    // when no subclass / no tiers unlocked / the queried effect isn't this
+    // subclass's signature. Returns the HIGHEST unlocked tier's value — tiers are
+    // strictly escalating replacements, NOT additive stacks.
+    getSubclassPerkValue(effect) {
+        return CLASS_PERKS.subclassPerkValue(effect, this.getActiveSubclass(), this.subclassNodesUnlocked);
+    }
+
+    selectSubclass(subId) {
+        if (!this.isSubclassUnlocked()) {
+            this.showAchievement(`⚠️ Master your class & reach Level ${this.SUBCLASS_UNLOCK_LEVEL || 40} to specialize.`, 'error');
+            return false;
+        }
+        const subs = this.getClassSubclasses();
+        if (!subs || !subs[subId]) return false;
+        if (this.subclass) return false; // use respecSubclass to change
+        this.subclass = subId;
+        this.subclassNodesUnlocked = 0;
+        this.saveData();
+        const sub = subs[subId];
+        this.showAchievement(`${sub.icon} You specialized as a ${sub.name}!`, 'badge');
+        if (typeof trackEvent === 'function') trackEvent('subclass_selected', { classId: this.playerClass, subclass: subId, level: this.level });
+        return true;
+    }
+
+    unlockNextSubclassTier() {
+        const tier = this.getNextSubclassTier();
+        if (!tier) {
+            this.showAchievement('⭐ Your subclass is fully mastered!', 'daily');
+            return false;
+        }
+        if (this.getAvailableSkillPoints() < tier.cost) {
+            this.showAchievement(`⚠️ Need ${tier.cost} skill points to advance your subclass.`, 'error');
+            return false;
+        }
+        this.skillPointsSpent = (this.skillPointsSpent || 0) + tier.cost;
+        this.subclassNodesUnlocked += 1;
+        this.saveData();
+        const sub = this.getActiveSubclass();
+        this.showAchievement(`✨ ${sub.name} Tier ${tier.tier} unlocked!`, 'badge');
+        if (typeof trackEvent === 'function') trackEvent('subclass_tier_unlocked', { classId: this.playerClass, subclass: this.subclass, tier: tier.tier });
+        return true;
+    }
+
+    // Subclass-only respec: refunds the points sunk into subclass tiers back into
+    // the shared pool for a Focus-Crystal fee, then clears the subclass so the
+    // specialization cards re-open. Leaves the base class tree untouched.
+    respecSubclass() {
+        if (!this.subclass) return false;
+        const cost = this.SUBCLASS_RESPEC_COST || 8;
+        if ((this.focusCrystals || 0) < cost) {
+            this.showAchievement(`⚠️ Need ${cost} Focus Crystals to re-specialize.`, 'error');
+            return false;
+        }
+        this.focusCrystals -= cost;
+        this.skillPointsSpent = SKILL_POINTS.refundedSpent(this.skillPointsSpent, this.getSubclassPointsSpent());
+        this.subclass = null;
+        this.subclassNodesUnlocked = 0;
+        this.saveData();
+        this.showAchievement(`🔄 Subclass reset — choose a new specialization. (-${cost} 💎)`, 'daily');
+        if (typeof trackEvent === 'function') trackEvent('subclass_respec', { cost });
+        return true;
+    }
+
+    initializeSpells() {
+        // The spellbook catalog (Engineering Roadmap #1 incremental split) lives
+        // in spell-definitions.js; captured once into the module-scoped
+        // SPELL_DEFINITIONS const at the top of this file. Returned here so
+        // every this.spellDefinitions call site is unchanged.
+        return SPELL_DEFINITIONS;
+    }
+
+    // v3.2 friction audit P1b — single source of truth for the spells free
+    // users can receive from loot drops and bonus rewards. Derived from
+    // spellDefinitions (every non-premium, non-Wizard-exclusive spell) so newly
+    // added free spells widen the reward pool automatically instead of drifting
+    // from hardcoded lists. Wizard-exclusive spells are excluded — they're
+    // granted only by the Wizard's Forbidden Tomes node, never from chests.
+    getFreeLootableSpellIds() {
+        return Object.keys(this.spellDefinitions).filter(id => {
+            const spell = this.spellDefinitions[id];
+            return spell && !spell.premium && !spell.wizardExclusive;
+        });
     }
 
     initializeQuestChainTemplates() {
+        // Catalog captured into the module-scoped QUEST_CHAIN_TEMPLATES const at the
+        // top of this file; returned here so this.questChainTemplates and every
+        // consumer are unchanged.
+        return QUEST_CHAIN_TEMPLATES;
+    }
+
+    // v3.2 friction audit P2a — shared locked-feature toast builder. Every
+    // lock now (a) names the feature, (b) shows a "levels to go" progress
+    // affordance so the gate feels like a countdown instead of a dead-end,
+    // and (c) appends an optional value teaser selling what's coming. Used by
+    // the nav, goal-tab, and arcane-tab gates so the copy is consistent.
+    _lockedFeatureMessage(name, requiredLevel, teaser) {
+        const toGo = Math.max(0, (requiredLevel || 0) - (this.level || 1));
+        const progress = toGo > 0 ? ` (${toGo} level${toGo === 1 ? '' : 's'} to go)` : '';
+        return `🔒 ${name} unlocks at Level ${requiredLevel}${progress}${teaser ? ` — ${teaser}` : '!'}`;
+    }
+
+    // v2.7.1 audit L5 — locked-nav toast copy. Each locked feature gets a
+    // teaser fragment so the toast sells what's coming instead of just
+    // gating ("unlocks at Level 4 — open chests for spells..."). Extracted
+    // from the nav-click listener for testability. v3.2: delegates to
+    // _lockedFeatureMessage for the shared progress affordance.
+    _lockedNavMessage(view) {
+        const requiredLevel = this.featureUnlockLevels[view];
+        const featureNames = { rewards: 'Treasury & Rewards', arcane: 'Arcane Powers', focus: 'Focus Timer', bossbattles: 'Boss Battles', questchains: 'Quest Chains' };
+        const featureTeasers = {
+            rewards: 'open chests for spells, themes & companions!',
+            arcane: 'cast spells & brew powerful enchantments!',
+            focus: 'deep-work sessions that earn bonus rewards!',
+            bossbattles: 'slay epic bosses for legendary loot!',
+            questchains: 'forge quest chains for mastery bonuses!'
+        };
+        return this._lockedFeatureMessage(featureNames[view] || view, requiredLevel, featureTeasers[view]);
+    }
+
+    // v3.2 friction audit P2a — locked goal-tab / arcane-tab toast copy. The
+    // goal and arcane sub-tabs previously showed a bare "🔒 Unlocks at Level X!"
+    // with no name, progress, or "why". This mirrors _lockedNavMessage for them.
+    _lockedTabMessage(tabName, requiredLevel) {
+        const tabNames = {
+            weekly: 'Weekly Quests', sidequests: 'Side Quests', monthly: 'Monthly Quests',
+            yearly: 'Yearly Campaigns', 'life-goals': 'Life Goals',
+            spellbook: 'Spellbook', enchantments: 'Enchantments'
+        };
+        const tabTeasers = {
+            weekly: 'break big goals into weekly wins!',
+            sidequests: 'tackle optional quests for bonus rewards!',
+            monthly: 'plan the month and track bigger objectives!',
+            yearly: "set this year's big campaigns!",
+            'life-goals': "map the life you're questing toward!",
+            spellbook: 'cast spells for powerful boosts!',
+            enchantments: 'brew lasting buffs with Focus Crystals!'
+        };
+        return this._lockedFeatureMessage(tabNames[tabName] || tabName, requiredLevel, tabTeasers[tabName]);
+    }
+
+    // v2.7.1 audit L11 — offline indicator. The service worker keeps the
+    // app fully usable offline, but sync-dependent actions (referrals,
+    // challenges, shares) fail with cryptic errors. A small pill at the
+    // top of the viewport gives that failure context. Pill markup lives
+    // in index.html (#offline-indicator); we only toggle display here.
+    _updateOfflineIndicator() {
+        const pill = document.getElementById('offline-indicator');
+        if (!pill) return;
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        pill.style.display = offline ? 'flex' : 'none';
+    }
+
+    _initOfflineIndicator() {
+        window.addEventListener('online', () => this._updateOfflineIndicator());
+        window.addEventListener('offline', () => this._updateOfflineIndicator());
+        this._updateOfflineIndicator();
+    }
+
+    // ── Delegated click dispatch (Engineering Roadmap #7b) ───────────────
+    // One document-level listener replaces inline `onclick="goalManager.x()"`
+    // on dynamically-rendered markup. Elements opt in with
+    // `data-action="namespace.name"`; any dynamic values ride on `data-*`
+    // attributes and are read from `el.dataset` inside the handler. Action
+    // keys are namespaced (dotted) so they can never collide with the bare
+    // `data-action="dismiss|apply|close|…"` values a few modals still wire
+    // with their own local listeners — those aren't in the registry, so this
+    // dispatcher ignores them. Inline handlers are migrated panel-by-panel.
+    _ensureActionDelegation() {
+        if (this._actionDelegationWired) return;
+        this._actionDelegationWired = true;
+        if (!this._actionHandlers) this._actionHandlers = this._buildActionHandlers();
+        // Capture phase (3rd arg = true) is deliberate: many modals wrap their
+        // body in `onclick="event.stopPropagation()"` to stop backdrop-dismiss.
+        // A bubble-phase listener here would be blocked by that stopPropagation
+        // and never see clicks on data-action buttons nested inside the modal.
+        // Capturing runs top-down (document first), so we always see the click
+        // regardless of any app-level bubble-phase stopPropagation.
+        document.addEventListener('click', (e) => this._dispatchAction(e), true);
+    }
+
+    _dispatchAction(e) {
+        const target = e && e.target;
+        if (!target || typeof target.closest !== 'function') return;
+        const el = target.closest('[data-action]');
+        if (!el) return;
+        if (!this._actionHandlers) this._actionHandlers = this._buildActionHandlers();
+        const handler = this._actionHandlers[el.getAttribute('data-action')];
+        if (typeof handler !== 'function') return; // unregistered (e.g. a modal's local data-action) → ignore
+        handler.call(this, el, e);
+    }
+
+    // Registry of delegated click actions. Grows one panel at a time as inline
+    // onclick handlers are migrated (Roadmap #7b). Handlers receive
+    // (el, event); pull any dynamic values from `el.dataset`.
+    _buildActionHandlers() {
         return {
-            learn_web_dev: {
-                id: 'learn_web_dev',
-                name: 'Master Web Development',
-                icon: '💻',
-                description: 'From beginner to full-stack developer',
-                difficulty: 'medium',
-                estimatedWeeks: 16,
-                category: 'Programming',
-                chapters: [
-                    {
-                        id: 1,
-                        title: 'HTML & CSS Foundations',
-                        description: 'Build beautiful web pages',
-                        tasks: [
-                            'Complete HTML basics tutorial',
-                            'Build 3 static web pages',
-                            'Learn CSS styling and layouts',
-                            'Create a personal landing page'
-                        ],
-                        reward: { xp: 500, gold: 300, spell: 'arcane_surge', charges: 1 }
-                    },
-                    {
-                        id: 2,
-                        title: 'JavaScript Essentials',
-                        description: 'Make your pages interactive',
-                        tasks: [
-                            'Learn JavaScript basics',
-                            'DOM manipulation exercises',
-                            'Build a calculator app',
-                            'Create an interactive game'
-                        ],
-                        reward: { xp: 800, gold: 500, spell: 'golden_touch', charges: 1 }
-                    },
-                    {
-                        id: 3,
-                        title: 'React Framework',
-                        description: 'Modern component-based UI',
-                        tasks: [
-                            'Set up React development environment',
-                            'Learn components and props',
-                            'State management with hooks',
-                            'Build a todo app in React'
-                        ],
-                        reward: { xp: 1200, gold: 800, spell: 'inferno_focus', charges: 2 }
-                    },
-                    {
-                        id: 4,
-                        title: 'Backend Development',
-                        description: 'Server-side programming',
-                        tasks: [
-                            'Learn Node.js basics',
-                            'Build REST API with Express',
-                            'Database integration (MongoDB/SQL)',
-                            'Authentication and security'
-                        ],
-                        reward: { xp: 1500, gold: 1000, spell: 'moonlight_blessing', charges: 1 }
-                    },
-                    {
-                        id: 5,
-                        title: 'Full-Stack Project',
-                        description: 'Deploy a complete application',
-                        tasks: [
-                            'Design full-stack architecture',
-                            'Build complete CRUD application',
-                            'Deploy to production',
-                            'Portfolio and resume update'
-                        ],
-                        reward: { xp: 2500, gold: 2000, spell: 'boss_slayer', charges: 1 }
-                    }
-                ]
+            // Focus timer controls — updateFocusTimerControls()
+            'focus.start':  () => this.startFocusTimer(),
+            'focus.pause':  () => this.pauseFocusTimer(),
+            'focus.resume': () => this.resumeFocusTimer(),
+            'focus.stop':   () => this.stopFocusTimer(),
+            'focus.chain':  () => this.startPomodoroChain(),
+
+            // Recurring tasks panel — renderRecurringTasks(). ids are numeric
+            // (uniqueId()), so coerce the data-* string before strict compare.
+            'recurring.toggle': (el) => this.toggleRecurringTask(Number(el.dataset.rtId)),
+            'recurring.delete': (el) => this.deleteRecurringTask(Number(el.dataset.rtId)),
+
+            // Multi-select days modal — showMultiSelectDays()
+            'multiselect.cancel':  () => this.closeMultiSelectModal(),
+            'multiselect.confirm': () => this.submitMultiSelectDays(),
+
+            // Task checklist — renderChecklist(). task/item ids are numeric;
+            // the checkbox toggle rides click delegation (keyboard activation
+            // of a checkbox also dispatches a click), so `change` needs no wiring.
+            'checklist.add':    (el) => this.promptAddChecklistItem(el.dataset.taskType, Number(el.dataset.taskId)),
+            'checklist.toggle': (el) => this.toggleChecklistItem(el.dataset.taskType, Number(el.dataset.taskId), Number(el.dataset.itemId)),
+            'checklist.delete': (el) => this.showConfirm('Delete this item?', () => this.deleteChecklistItem(el.dataset.taskType, Number(el.dataset.taskId), Number(el.dataset.itemId))),
+
+            // Goal/task CRUD — edit/delete take a static type + numeric id.
+            // add* take an OPTIONAL numeric parent id (stored in *GoalIds arrays
+            // and later compared with ===/includes, so coercion is required). The
+            // empty-state / bounty CTAs omit data-parent-id for a top-level add,
+            // so a missing id passes undefined → the method's `= null` default.
+            'goal.edit':    (el) => this.editGoal(el.dataset.goalType, Number(el.dataset.goalId)),
+            'goal.delete':  (el) => this.deleteGoal(el.dataset.goalType, Number(el.dataset.goalId)),
+            'goal.restore': (el) => this.restoreGoal(Number(el.dataset.goalId)),
+            'goal.purgeArchived': (el) => this.showConfirm('Permanently delete?', () => {
+                const gid = Number(el.dataset.goalId);
+                this.archivedGoals = this.archivedGoals.filter(g => g.id !== gid);
+                this.saveData();
+                this.render();
+            }),
+            'goal.addYearly':  (el) => this.addYearlyGoal(el.dataset.parentId ? Number(el.dataset.parentId) : undefined),
+            'goal.addMonthly': (el) => this.addMonthlyGoal(el.dataset.parentId ? Number(el.dataset.parentId) : undefined),
+            'goal.addWeekly':  (el) => this.addWeeklyGoal(el.dataset.parentId ? Number(el.dataset.parentId) : undefined),
+
+            // Top-level "create your first X" empty-state CTAs (no parent arg).
+            'quest.addLife':      () => this.addLifeGoal(),
+            'quest.addRecurring': () => this.addRecurringTask(),
+            'quest.addHabit':     () => this.addHabit(),
+            'sidequest.add':      () => this.addSideQuest(),
+            'sidequest.showAll':  () => this.filterSideQuests('all'),
+
+            // Class / subclass panel (v3.x) — renderClassPanel(). All ids are
+            // string keys (class/subclass/capstone/title), so no coercion.
+            // Disabled unlock buttons suppress clicks natively, preserving the
+            // affordability gate without an explicit guard here.
+            'class.choose':             (el) => this.chooseClass(el.dataset.classId),
+            'class.unlockNode':         () => this.unlockClassNode(),
+            'class.selectCapstone':     (el) => this.selectCapstone(el.dataset.capstoneId),
+            'class.respec':             () => this.confirmRespec(),
+            'class.chooseSubclass':     (el) => this.chooseSubclass(el.dataset.subclassId),
+            'class.unlockSubclassTier': () => this.unlockSubclassTier(),
+            'class.subclassRespec':     () => this.confirmSubclassRespec(),
+            'title.select':             (el) => this.selectTitle(el.dataset.titleId),
+
+            // Combat & spells — spell/boss ids are string keys. The overcharge
+            // variant rides a data-overcharge flag; a plain cast matches the
+            // original single-arg call (castSpell's options default to {}).
+            'spell.cast':            (el) => el.dataset.overcharge === 'true'
+                ? this.castSpell(el.dataset.spellId, { overcharge: true })
+                : this.castSpell(el.dataset.spellId),
+            'boss.attack':           (el) => this.attackBoss(el.dataset.bossType),
+            'boss.execute':          (el) => this.executeBossBySpell(el.dataset.bossType),
+            'boss.challengeMonthly': () => this.challengeMonthlyBoss(),
+
+            // Global search overlay — filter values already live on data-filter;
+            // result rows carry view + id (both used as strings) and close the
+            // overlay after navigating.
+            'search.close':  () => this.closeSearch(),
+            'search.filter': (el) => this.filterSearchResults(el.dataset.filter),
+            'search.goto':   (el) => { this.goToSearchResult(el.dataset.view, el.dataset.resultId); this.closeSearch(); },
+
+            // Reminders — permission enable flows re-render on resolve; the
+            // boolean toggles flip the live reminderSettings value by key, so
+            // no computed state needs to ride the markup.
+            'reminder.enable':           () => this.requestNotificationPermission().then(() => this.renderReminderSettings()),
+            'reminder.enableFromPrompt': () => this.requestNotificationPermission().then(() => {
+                document.getElementById('notification-prompt')?.remove();
+                this.renderReminderSettings();
+            }),
+            'reminder.toggle':           (el) => {
+                const key = el.dataset.setting;
+                this.updateReminderSettings(key, !this.reminderSettings[key]);
+                this.renderReminderSettings();
             },
-            fitness_journey: {
-                id: 'fitness_journey',
-                name: 'Ultimate Fitness Journey',
-                icon: '💪',
-                description: 'Transform your body and mind',
-                difficulty: 'hard',
-                estimatedWeeks: 12,
-                category: 'Health',
-                chapters: [
-                    {
-                        id: 1,
-                        title: 'Foundation Phase',
-                        description: 'Build healthy habits',
-                        tasks: [
-                            'Set fitness goals and baseline measurements',
-                            'Exercise 3x per week for 2 weeks',
-                            'Track meals for 14 days',
-                            'Establish sleep routine'
-                        ],
-                        reward: { xp: 400, gold: 200, spell: 'streak_shield', charges: 1 }
-                    },
-                    {
-                        id: 2,
-                        title: 'Strength Building',
-                        description: 'Develop core strength',
-                        tasks: [
-                            'Learn proper form for major lifts',
-                            'Complete 4 weeks of strength training',
-                            'Increase protein intake',
-                            'Track progress photos'
-                        ],
-                        reward: { xp: 700, gold: 400, spell: 'berserker_rage', charges: 1 }
-                    },
-                    {
-                        id: 3,
-                        title: 'Cardio Mastery',
-                        description: 'Build endurance',
-                        tasks: [
-                            'Run/walk 5K without stopping',
-                            'Do 30 min cardio 4x/week',
-                            'Hit target heart rate zones',
-                            'Complete a fitness challenge'
-                        ],
-                        reward: { xp: 900, gold: 600, spell: 'inferno_focus', charges: 2 }
-                    },
-                    {
-                        id: 4,
-                        title: 'Transformation',
-                        description: 'Achieve your goals',
-                        tasks: [
-                            'Reach target weight/measurements',
-                            'Take final progress photos',
-                            'Maintain routine for 4 weeks',
-                            'Share your journey'
-                        ],
-                        reward: { xp: 2000, gold: 1500, spell: 'double_xp_weekend', charges: 1 }
-                    }
-                ]
+            'reminder.dismissPrompt':    () => {
+                document.getElementById('notification-prompt')?.remove();
+                localStorage.setItem('notificationPromptDismissed', Date.now().toString());
             },
-            business_builder: {
-                id: 'business_builder',
-                name: 'Launch Your Business',
-                icon: '🚀',
-                description: 'From idea to profitable venture',
-                difficulty: 'hard',
-                estimatedWeeks: 20,
-                category: 'Business',
-                chapters: [
-                    {
-                        id: 1,
-                        title: 'Ideation & Validation',
-                        description: 'Find your business idea',
-                        tasks: [
-                            'Brainstorm 10 business ideas',
-                            'Research market and competitors',
-                            'Validate idea with 20 potential customers',
-                            'Create value proposition'
-                        ],
-                        reward: { xp: 600, gold: 400, spell: 'lucky_draw', charges: 2 }
-                    },
-                    {
-                        id: 2,
-                        title: 'Business Planning',
-                        description: 'Create your roadmap',
-                        tasks: [
-                            'Write business plan',
-                            'Define target audience',
-                            'Create financial projections',
-                            'Legal setup (LLC, etc.)'
-                        ],
-                        reward: { xp: 1000, gold: 700, spell: 'golden_touch', charges: 2 }
-                    },
-                    {
-                        id: 3,
-                        title: 'Product Development',
-                        description: 'Build your MVP',
-                        tasks: [
-                            'Design MVP features',
-                            'Build/create first version',
-                            'Test with beta users',
-                            'Iterate based on feedback'
-                        ],
-                        reward: { xp: 1500, gold: 1000, spell: 'critical_strike', charges: 2 }
-                    },
-                    {
-                        id: 4,
-                        title: 'Launch & Marketing',
-                        description: 'Go to market',
-                        tasks: [
-                            'Create marketing materials',
-                            'Build online presence',
-                            'Launch to first customers',
-                            'Get first 10 paying customers'
-                        ],
-                        reward: { xp: 2000, gold: 1500, spell: 'boss_slayer', charges: 1 }
-                    },
-                    {
-                        id: 5,
-                        title: 'Growth & Scale',
-                        description: 'Build sustainable business',
-                        tasks: [
-                            'Reach $1000 monthly revenue',
-                            'Establish systems and processes',
-                            'Hire first team member/contractor',
-                            'Plan for next phase'
-                        ],
-                        reward: { xp: 3000, gold: 3000, spell: 'execute', charges: 1 }
-                    }
-                ]
-            },
-            creative_writer: {
-                id: 'creative_writer',
-                name: 'Become a Published Writer',
-                icon: '✍️',
-                description: 'Craft and publish your first book',
-                difficulty: 'medium',
-                estimatedWeeks: 24,
-                category: 'Creative',
-                chapters: [
-                    {
-                        id: 1,
-                        title: 'Writing Foundation',
-                        description: 'Develop your craft',
-                        tasks: [
-                            'Write daily for 30 days',
-                            'Complete writing course',
-                            'Read 5 books in your genre',
-                            'Join writing community'
-                        ],
-                        reward: { xp: 500, gold: 300, spell: 'streak_shield', charges: 1 }
-                    },
-                    {
-                        id: 2,
-                        title: 'Story Development',
-                        description: 'Plan your masterpiece',
-                        tasks: [
-                            'Develop plot outline',
-                            'Create character profiles',
-                            'Build story world',
-                            'Write first 3 chapters'
-                        ],
-                        reward: { xp: 800, gold: 500, spell: 'inferno_focus', charges: 1 }
-                    },
-                    {
-                        id: 3,
-                        title: 'First Draft',
-                        description: 'Write your book',
-                        tasks: [
-                            'Write 50,000 words',
-                            'Complete full first draft',
-                            'Let manuscript rest 2 weeks',
-                            'Celebrate completion'
-                        ],
-                        reward: { xp: 1500, gold: 1000, spell: 'moonlight_blessing', charges: 1 }
-                    },
-                    {
-                        id: 4,
-                        title: 'Editing & Revision',
-                        description: 'Polish your work',
-                        tasks: [
-                            'Complete self-edit',
-                            'Get beta reader feedback',
-                            'Hire professional editor',
-                            'Final revisions'
-                        ],
-                        reward: { xp: 1200, gold: 800, spell: 'critical_strike', charges: 1 }
-                    },
-                    {
-                        id: 5,
-                        title: 'Publishing',
-                        description: 'Share with the world',
-                        tasks: [
-                            'Design book cover',
-                            'Format for publication',
-                            'Publish to Amazon/platform',
-                            'Launch marketing campaign'
-                        ],
-                        reward: { xp: 2000, gold: 2000, spell: 'double_xp_weekend', charges: 1 }
-                    }
-                ]
-            },
-            language_master: {
-                id: 'language_master',
-                name: 'Master a New Language',
-                icon: '🗣️',
-                description: 'Become fluent in your target language',
-                difficulty: 'medium',
-                estimatedWeeks: 52,
-                category: 'Education',
-                chapters: [
-                    {
-                        id: 1,
-                        title: 'Beginner Basics',
-                        description: 'Start your journey',
-                        tasks: [
-                            'Learn 500 common words',
-                            'Master basic grammar',
-                            'Complete beginner course',
-                            'Have first conversation'
-                        ],
-                        reward: { xp: 400, gold: 300, spell: 'arcane_surge', charges: 1 }
-                    },
-                    {
-                        id: 2,
-                        title: 'Intermediate Progress',
-                        description: 'Build fluency',
-                        tasks: [
-                            'Expand vocabulary to 2000 words',
-                            'Watch movies with subtitles',
-                            'Read first book in target language',
-                            'Practice speaking 3x/week'
-                        ],
-                        reward: { xp: 800, gold: 600, spell: 'golden_touch', charges: 1 }
-                    },
-                    {
-                        id: 3,
-                        title: 'Advanced Fluency',
-                        description: 'Think in the language',
-                        tasks: [
-                            'Have 30-min conversation',
-                            'Write essay in target language',
-                            'Pass proficiency exam',
-                            'Make friends who speak language'
-                        ],
-                        reward: { xp: 1500, gold: 1000, spell: 'boss_slayer', charges: 1 }
-                    }
-                ]
-            }
+            'reminder.guide':            () => this.showNotificationSettingsGuide(),
+            'reminder.test':             () => this.sendConfirmationNotification(),
+            'reminder.closeGuide':       () => { document.getElementById('notification-settings-guide')?.remove(); this._stopPermissionWatch(); },
+
+            // Challenges — the create flow carries preset/target/difficulty/
+            // deadline on data-*; target & days parse to numbers, and the custom
+            // title is always empty from the difficulty picker. Accept/decline
+            // dismiss the accept modal after acting; list ids are numeric.
+            'challenge.create':         () => this.showCreateChallenge(),
+            'challenge.customForm':     () => this.showCustomChallengeForm(),
+            'challenge.pickTarget':     (el) => this.showChallengeDifficulty(el.dataset.preset, Number(el.dataset.n)),
+            'challenge.finish':         (el) => this.finishCreateChallenge(el.dataset.preset, Number(el.dataset.target) || 0, el.dataset.difficulty, Number(el.dataset.days), ''),
+            'challenge.submitCustom':   () => this.submitCustomChallenge(),
+            'challenge.accept':         () => { this.acceptChallenge(); document.getElementById('accept-challenge-modal')?.remove(); },
+            'challenge.declineAccept':  () => document.getElementById('accept-challenge-modal')?.remove(),
+            'challenge.manualComplete': (el) => this.manualCompleteChallenge(Number(el.dataset.id)),
+            'challenge.abandon':        (el) => this.abandonChallenge(Number(el.dataset.id)),
+            'challenge.createFromList': () => { document.getElementById('active-challenges-modal')?.remove(); this.showCreateChallenge(); },
+
+            // Sharing — platform buttons carry data-platform; the primary
+            // Share/Download buttons also dismiss their host modal after firing.
+            'share.toPlatform':          (el) => this.shareToPlatform(el.dataset.platform),
+            'share.recapToPlatform':     (el) => this.shareRecapToPlatform(el.dataset.platform),
+            'share.challengeToPlatform': (el) => this.shareChallengeToPlatform(el.dataset.platform),
+            'share.statCard':            () => this.shareStatCard(),
+            'share.statCardClose':       () => { this.shareStatCard(); document.getElementById('share-card-modal')?.remove(); },
+            'share.weeklyRecapClose':    () => { this.shareWeeklyRecap(); document.getElementById('weekly-recap-modal')?.remove(); },
+            'share.copyChallengeLink':   () => this.copyChallengeLinkDirect(),
+
+            // Premium / monetization — upgrade prompts open the purchase modal;
+            // enchantment and starter-pack buttons carry their id on data-id.
+            'premium.showModal':    () => this.showPremiumPurchaseModal(),
+            'premium.purchase':     () => this.initiatePremiumPurchase(),
+            'premium.enchant':      (el) => this.purchaseEnchantment(el.dataset.id),
+            'premium.starterPack':  (el) => this.addStarterPack(el.dataset.id),
+
+            // Modals — close/submit controls and option pickers. Backdrop
+            // close stays on each modal's own listener; these are the buttons.
+            'modal.closeInput':        () => this.closeInputModal(),
+            'modal.submitInput':       () => this.submitInputModal(),
+            'modal.closeSelect':       () => this.closeSelectModal(),
+            'modal.selectOption':      (el) => this.selectOption(el.dataset.value),
+            'modal.closePriority':     () => this.closePriorityModal(),
+            'modal.selectPriority':    (el) => this.selectPriority(el.dataset.priority),
+            'modal.closeStarterTasks': () => this.closeStarterTasksModal(),
+            'modal.addStarterTasks':   () => this.addSelectedStarterTasks(),
+            'modal.closeAwayRecap':    () => this.closeAwayRecapModal(),
+            'modal.closeLoginStreak':  () => this.closeLoginStreakModal(),
+            'loginShield.accept':      () => this._acceptLoginShield(),
+            'loginShield.decline':     () => this._declineLoginShield(),
+
+            // Period recap slideshow + rollover flows. Dynamic period/date
+            // ride on data-period/data-end; compound handlers fold in the
+            // follow-up navigation or overlay removal the inline code did.
+            'slideshow.next':          () => this.nextSlide(),
+            'slideshow.prev':          () => this.prevSlide(),
+            'slideshow.shareWeekly':   () => { this.closeSlideshow(); this.showWeeklyRecapPreview(); },
+            'slideshow.rolloverNext':  (el) => { this.rolloverFromSlideshow(el.dataset.period, el.dataset.end); this.nextSlide(); },
+            'recap.rollover':          (el) => { this.rolloverIncompleteTasks(el.dataset.period, el.dataset.end); el.closest('.fixed')?.remove(); },
+            // Period-recap modal stat cards deep-link into the matching view and
+            // dismiss the host `.fixed` modal; the week variant's share button
+            // hands off to the weekly-recap preview after closing.
+            'recap.gotoView':          (el) => { this.switchView(el.dataset.view); el.closest('.fixed')?.remove(); },
+            'recap.shareWeekly':       (el) => { el.closest('.fixed')?.remove(); this.showWeeklyRecapPreview(); },
+            'share.previewDismiss':    (el) => { this.showShareCardPreview(); if (el.dataset.remove) document.getElementById(el.dataset.remove)?.remove(); },
+
+            // Rewards: treasure chests + daily quest board.
+            'chest.claimWooden':       () => this.claimWoodenChest(),
+            'chest.openTreasure':      (el) => this.openTreasureChest(el.dataset.chestType),
+            'quest.claimDaily':        (el) => this.claimDailyQuest(el.dataset.questId),
+
+            // Habits heatmap: id is numeric, so restore it from the stringified
+            // dataset (markHabitPastCompletion compares with strict ===).
+            'habit.markPast':          (el) => this.markHabitPastCompletion(Number(el.dataset.habitId), el.dataset.date),
+
+            // Theme gallery previews (both the featured banner and the tiles).
+            'theme.preview':           (el) => this.previewTheme(el.dataset.themeId),
+
+            // Companions roster: single-tap equip, or Twin Bond dual slots.
+            'nav.switchView':          (el) => this.switchView(el.dataset.view),
+            'companion.setActive':     (el) => this.setActiveCompanion(el.dataset.companionType),
+            'companion.setSecond':     (el) => this.setSecondCompanion(el.dataset.companionType || null),
+
+            // Royal bounty reroll + streak repair.
+            'bounty.reroll':           (el) => this.rerollBounty(el.dataset.cadence),
+            'streak.repair':           (el) => this.repairStreak(el.dataset.entityId),
+
+            // Multi-parent goal/task connections + daily-task creation. goalId is
+            // numeric (strict === and stored in *GoalIds arrays), so coerce it.
+            'goal.manageParents':      (el) => this.manageParentConnections(el.dataset.scope, Number(el.dataset.goalId)),
+            'connections.done':        () => { document.getElementById('connection-modal')?.remove(); this.render(); },
+            'task.addDaily':           (el) => this.addDailyTask(el.dataset.goalId ? Number(el.dataset.goalId) : null, el.dataset.date || null),
+
+            // Quest chains, onboarding path choice, challenge presets.
+            'questChain.start':        (el) => this.startQuestChain(el.dataset.templateId),
+            'questChain.abandon':      (el) => this.abandonQuestChain(el.dataset.chainId),
+            'onboarding.choosePath':   (el) => this.chooseOnboardingPath(el.dataset.path),
+            'preset.showOptions':      (el) => this.showPresetOptions(el.dataset.presetId),
         };
     }
 
@@ -2290,10 +2863,7 @@ class GoalManager {
                 const view = link.getAttribute('data-view');
                 // Show toast for locked nav links
                 if (link.classList.contains('nav-locked')) {
-                    const requiredLevel = this.featureUnlockLevels[view];
-                    const featureNames = { rewards: 'Treasury & Rewards', arcane: 'Arcane Powers', focus: 'Focus Timer', bossbattles: 'Boss Battles', questchains: 'Quest Chains' };
-                    const name = featureNames[view] || view;
-                    this.showAchievement(`🔒 ${name} unlocks at Level ${requiredLevel}!`, 'locked');
+                    this.showAchievement(this._lockedNavMessage(view), 'locked');
                     return;
                 }
                 this.switchView(view);
@@ -2302,6 +2872,14 @@ class GoalManager {
                 link.classList.add('active');
             });
         });
+
+        // v2.7.1 audit L11 — offline indicator pill
+        this._initOfflineIndicator();
+
+        // v2.9 Track 1 — discover chest art assets (PNG/WebP statics +
+        // WebM open cinematics). Fire-and-forget: missing files are the
+        // normal case until the assets ship.
+        this._probeChestArt().catch(() => {});
 
         // Calculate progress on load
         this.updateParentProgress();
@@ -2352,6 +2930,28 @@ class GoalManager {
         if (requiredLevel === undefined) return true;
         return this.level >= requiredLevel;
     }
+
+    // ── Onboarding play-style fork ─────────────────────────────────────
+    // Goal-tab unlock thresholds depend on the play-style the player picks
+    // during the tutorial:
+    //   • 'goals'  (Grand Planner) → the full weekly→life hierarchy is open
+    //     from level 1, for users who came to map big goals on day one.
+    //   • 'habits' / null (Daily Focus, and the default) → a FAST progressive
+    //     curve (lowered from the old 6/7/9) so habit-first players still
+    //     reach every planning tier within days, not weeks.
+    getGoalTabUnlockLevelsForPath(path) {
+        if (path === 'goals') {
+            return { weekly: 1, sidequests: 1, monthly: 1, yearly: 1, 'life-goals': 1 };
+        }
+        return { weekly: 2, sidequests: 2, monthly: 3, yearly: 4, 'life-goals': 4 };
+    }
+
+    // Persist the chosen path and re-derive the goal-tab thresholds from it.
+    // Safe to call with any value; unknown paths fall back to the default curve.
+    applyOnboardingPath(path) {
+        this.onboardingPath = (path === 'goals' || path === 'habits') ? path : null;
+        this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(this.onboardingPath);
+    }
     
     updateNavVisibility() {
         document.querySelectorAll('.nav-link').forEach(link => {
@@ -2385,6 +2985,7 @@ class GoalManager {
             }
         });
         
+        this._applyNavMoreDisclosure();
         this.updateGoalTabVisibility();
         this.updateArcaneTabVisibility();
         
@@ -2393,6 +2994,68 @@ class GoalManager {
         if (companionSection) {
             companionSection.style.display = this.level >= 3 ? '' : 'none';
         }
+    }
+
+    // L6 (UX audit) — desktop sidebar declutter. Returns the locked nav views
+    // that should hide behind the "More" disclosure: those unlocking two or
+    // more levels out. Unlocked views and the immediate next unlock always
+    // stay visible (motivation + discoverability). Returns [] while the
+    // disclosure is expanded so the caller un-hides everything.
+    _navCollapsedViews() {
+        if (this._navMoreExpanded) return [];
+        return Object.keys(this.featureUnlockLevels).filter(view => {
+            const req = this.featureUnlockLevels[view];
+            return typeof req === 'number' && req >= this.level + 2;
+        });
+    }
+
+    // Applies the "More" disclosure to the desktop sidebar: hides far-off
+    // locked links (CSS only acts on `.nav-more-hidden` at >=769px, so the
+    // mobile bottom bar still shows everything via horizontal scroll) and
+    // maintains a single toggle button anchored just before the first
+    // collapsible item. No-op once nothing is far enough out to collapse.
+    _applyNavMoreDisclosure() {
+        const nav = document.querySelector('#main-sidebar > nav');
+        if (!nav) return;
+        const links = [...nav.querySelectorAll('.nav-link')];
+        const collapsed = new Set(this._navCollapsedViews());
+
+        links.forEach(link => {
+            link.classList.toggle('nav-more-hidden', collapsed.has(link.getAttribute('data-view')));
+        });
+
+        // "Is anything collapsible at all?" is independent of expanded state.
+        const isCollapsible = (link) => {
+            const req = this.featureUnlockLevels[link.getAttribute('data-view')];
+            return typeof req === 'number' && req >= this.level + 2;
+        };
+        const collapsible = links.filter(isCollapsible);
+        let toggle = document.getElementById('nav-more-toggle');
+
+        if (collapsible.length === 0) {
+            if (toggle) toggle.remove();
+            return;
+        }
+        if (!toggle) {
+            toggle = document.createElement('button');
+            toggle.id = 'nav-more-toggle';
+            toggle.type = 'button';
+            toggle.className = 'nav-more-toggle flex items-center w-full px-6 py-3 hover:bg-amber-800/30 transition-all border-l-4 border-transparent text-amber-300/80';
+            toggle.addEventListener('click', () => this.toggleNavMore());
+            nav.appendChild(toggle);
+        }
+        const icon = this._navMoreExpanded ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line';
+        const label = this._navMoreExpanded ? 'Show less' : `More (${collapsible.length})`;
+        toggle.innerHTML = `<i class="${icon} mr-3 text-2xl text-amber-400"></i><span class="fancy-font text-lg">${label}</span>`;
+        toggle.setAttribute('aria-expanded', this._navMoreExpanded ? 'true' : 'false');
+        // Anchor it just before the first collapsible item so expanding reveals
+        // the group directly beneath the toggle.
+        nav.insertBefore(toggle, collapsible[0]);
+    }
+
+    toggleNavMore() {
+        this._navMoreExpanded = !this._navMoreExpanded;
+        this._applyNavMoreDisclosure();
     }
     
     updateGoalTabVisibility() {
@@ -2495,22 +3158,37 @@ class GoalManager {
         this.updateNavVisibility();
     }
     
-    showFeatureUnlockPopup(title, text) {
+    showFeatureUnlockPopup(title, text, onClose = null) {
         const emoji = title.split(' ')[0];
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:center;justify-content:center;padding:0 1rem;';
-        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+        // v3.2 friction audit P1a — dismissal routes through close() so callers
+        // can chain a follow-up (e.g. the post-onboarding notification prompt)
+        // exactly when the user dismisses the popup. Fires onClose at most once,
+        // whether the user taps "Awesome!" or the backdrop.
+        let closed = false;
+        const close = () => {
+            if (closed) return;
+            closed = true;
+            overlay.remove();
+            if (typeof onClose === 'function') {
+                try { onClose(); } catch (e) { /* follow-up is best-effort */ }
+            }
+        };
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
         overlay.innerHTML = `
             <div class="bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 rounded-2xl shadow-2xl border-4 border-yellow-500" id="unlock-popup-inner" style="max-width:28rem;width:100%;padding:2rem;text-align:center;transform:scale(0);transition:transform 0.5s;">
                 <div class="text-7xl mb-4 animate-bounce">${emoji}</div>
                 <h2 class="text-2xl font-bold text-yellow-300 medieval-title mb-4">${title.split(' ').slice(1).join(' ')}</h2>
                 <p class="text-amber-200 fancy-font text-lg mb-6 leading-relaxed">${text}</p>
-                <button onclick="this.parentElement.parentElement.remove()" class="px-8 py-3 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white font-bold rounded-xl fancy-font text-lg border-2 border-yellow-400 transition-all hover:scale-105">
+                <button id="unlock-popup-dismiss" class="px-8 py-3 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white font-bold rounded-xl fancy-font text-lg border-2 border-yellow-400 transition-all hover:scale-105">
                     Awesome!
                 </button>
             </div>
         `;
         document.body.appendChild(overlay);
+        const dismissBtn = overlay.querySelector('#unlock-popup-dismiss');
+        if (dismissBtn) dismissBtn.onclick = close;
         
         // Animate in
         requestAnimationFrame(() => {
@@ -2525,12 +3203,22 @@ class GoalManager {
     
     // v2.5 — single source of truth for the level-title chain. Indexed by
     // level (1-based; level 1 maps to titles[0], level >= titles.length maps
-    // to the last entry, i.e. 'Legend' / 'Legend'). Masculine and feminine
-    // chains are the same length so every level has a counterpart entry.
-    LEVEL_TITLES = {
-        masculine: ['Peasant', 'Squire', 'Knight', 'Baron',    'Earl',     'Duke',    'Prince',   'King',  'Emperor', 'Legend'],
-        feminine:  ['Peasant', 'Squire', 'Dame',   'Baroness', 'Countess', 'Duchess', 'Princess', 'Queen', 'Empress', 'Legend']
-    };
+    // to the last entry, i.e. 'Paragon'). Masculine and feminine chains are
+    // the same length so every level has a counterpart entry.
+    //
+    // v2.9.x balance audit: extended from 10 to 50 entries. Long-term users
+    // sat at 'Legend' forever once they crossed level 10 (reachable in
+    // ~2 months of active play), removing a key progression hook. Levels
+    // 11-50 continue through heroic, mythic, and celestial tiers; level 50+
+    // clamps at 'Paragon'. Entries 2-10 are unchanged; entry 1 was renamed
+    // 'Peasant' → 'Wanderer' (L1 onboarding fix), which retitles existing
+    // level-1 users on update (called out in the changelog).
+    // The title chains themselves live in level-titles.js (extracted verbatim,
+    // Engineering Roadmap #1); captured once into the module-scoped
+    // LEVEL_TITLE_CHAINS const at the top of this file. Assigned here so both the
+    // `this.LEVEL_TITLES[style]` call sites and tests that read gm.LEVEL_TITLES
+    // stay unchanged.
+    LEVEL_TITLES = LEVEL_TITLE_CHAINS;
 
     getLevelTitle(level) {
         const style = this.titleStyle === 'feminine' ? 'feminine' : 'masculine';
@@ -2618,13 +3306,14 @@ class GoalManager {
 
     // v2.7+ — One-time "What's New" modal logic. Re-armed each release
     // by bumping `CHANGELOG_VERSION` below to match the modal's headline
-    // (v2.7.1 = polish & performance patch on top of v2.7's visual
-    // overhaul). Shows for existing users upgrading; suppressed for
-    // brand-new installs (those users have never seen anything else, so
-    // a "what's new" would be confusing). State persisted in localStorage
-    // so the modal never re-shows on the same install. Suppressed if a
-    // tutorial is currently up so we never stack two overlays.
-    CHANGELOG_VERSION = '2.8.0';
+    // (v2.10 = Sound Design Expansion + chest open animations). Shows for
+    // existing users upgrading;
+    // suppressed for brand-new installs (those users have never seen
+    // anything else, so a "what's new" would be confusing). State
+    // persisted in localStorage so the modal never re-shows on the same
+    // install. Suppressed if a tutorial is currently up so we never stack
+    // two overlays.
+    CHANGELOG_VERSION = '3.0.0';
 
     maybeShowWhatsNew() {
         try {
@@ -2670,7 +3359,7 @@ class GoalManager {
         // Progressive unlock gating
         const directViewCheck = this.featureUnlockLevels[viewName];
         if (directViewCheck && this.level < directViewCheck) {
-            this.showAchievement(`🔒 Unlocks at Level ${directViewCheck}!`, 'daily');
+            this.showAchievement(this._lockedNavMessage(viewName), 'daily');
             return;
         }
         
@@ -2704,7 +3393,7 @@ class GoalManager {
             // Gate locked goal tabs
             if (!this.isGoalTabUnlocked(viewName)) {
                 const reqLvl = this.goalTabUnlockLevels[viewName];
-                this.showAchievement(`🔒 Unlocks at Level ${reqLvl}!`, 'daily');
+                this.showAchievement(this._lockedTabMessage(viewName, reqLvl), 'daily');
                 return;
             }
             this.currentView = 'goals';
@@ -2757,7 +3446,7 @@ class GoalManager {
         // Progressive unlock gating
         if (!this.isGoalTabUnlocked(tabName)) {
             const reqLvl = this.goalTabUnlockLevels[tabName];
-            this.showAchievement(`🔒 Unlocks at Level ${reqLvl}!`, 'daily');
+            this.showAchievement(this._lockedTabMessage(tabName, reqLvl), 'daily');
             return;
         }
         
@@ -2873,7 +3562,7 @@ class GoalManager {
         // Progressive unlock gating
         if (!this.isArcaneTabUnlocked(tabName)) {
             const reqLvl = this.arcaneTabUnlockLevels[tabName];
-            this.showAchievement(`🔒 Unlocks at Level ${reqLvl}!`, 'daily');
+            this.showAchievement(this._lockedTabMessage(tabName, reqLvl), 'daily');
             return;
         }
         
@@ -2912,53 +3601,30 @@ class GoalManager {
         const container = document.getElementById('active-buffs-container');
         if (!container) return;
         
-        const buffs = [];
-        
-        // Collect active spells
-        if (this.activeSpells && this.activeSpells.length > 0) {
-            this.activeSpells.forEach(active => {
-                const spell = this.spellDefinitions ? this.spellDefinitions[active.spellId] : null;
-                if (spell) {
-                    const remaining = (active.expiresAt && active.expiresAt !== -1) ? Math.max(0, Math.ceil((active.expiresAt - Date.now()) / 60000)) : null;
-                    const timeText = remaining !== null ? `${remaining}m` : (active.expiresAt === -1 ? 'Until triggered' : '');
-                    buffs.push(`
-                        <div class="flex items-center gap-1.5 bg-purple-800/50 border border-purple-600/50 rounded-lg px-3 py-1.5 text-sm">
-                            <span class="text-lg">${spell.icon}</span>
-                            <span class="text-purple-200 fancy-font">${spell.name}</span>
-                            ${timeText ? `<span class="text-purple-400 text-xs">(${timeText})</span>` : ''}
-                        </div>
-                    `);
-                }
-            });
-        }
-        
-        // Collect active enchantments
-        if (this.activeEnchantments && this.activeEnchantments.length > 0) {
-            this.activeEnchantments.forEach(active => {
-                const remaining = Math.max(0, Math.ceil((new Date(active.expiresAt) - new Date()) / 60000));
-                if (remaining > 0) {
-                    buffs.push(`
-                        <div class="flex items-center gap-1.5 bg-pink-800/50 border border-pink-600/50 rounded-lg px-3 py-1.5 text-sm">
-                            <span class="text-lg">${active.icon || '🔮'}</span>
-                            <span class="text-pink-200 fancy-font">${active.name}</span>
-                            <span class="text-pink-400 text-xs">(${remaining}m)</span>
-                        </div>
-                    `);
-                }
-            });
-        }
-        
-        if (buffs.length === 0) {
-            container.innerHTML = '<span class="text-purple-400/60 fancy-font text-sm">No active buffs</span>';
-        } else {
-            container.innerHTML = buffs.join('');
-        }
+        container.innerHTML = PLAYER_HUD_RENDER.renderActiveBuffsSummaryHTML(this.activeSpells, this.activeEnchantments, { spellDefinitions: this.spellDefinitions, now: Date.now() });
     }
 
     playAchievementSound(level = 'daily') {
-        if (window.audioManager) {
-            window.audioManager.playAchievement(level);
+        if (!window.audioManager) return;
+        // §2.6 — pseudo-levels route a showAchievement call to a dedicated
+        // event sound instead of the achievement *tier* fanfare it used to
+        // borrow (which was doing double-duty). The toast visual is driven
+        // by `type` (derived from the text), not this level, so the badge /
+        // warning styling is unaffected. Each dedicated sound falls back to
+        // its prior tier sound (see audio-manager _fallbacks) until the real
+        // asset ships, so these are audibly a no-op for now.
+        const pseudoLevels = {
+            'task': () => window.audioManager.playTaskComplete(),          // R6
+            'badge': () => window.audioManager.playBadgeUnlock(),
+            'focus-start': () => window.audioManager.playFocusStart(),
+            'streak-freeze': () => window.audioManager.playStreakFreezeUsed(),
+            'error': () => window.audioManager.playErrorBlocked()
+        };
+        if (pseudoLevels[level]) {
+            pseudoLevels[level]();
+            return;
         }
+        window.audioManager.playAchievement(level);
     }
 
     showAchievement(text, level = 'daily', playSound = true) {
@@ -2985,10 +3651,20 @@ class GoalManager {
             type = 'info';
         }
         
-        this.showToast(text, type, playSound ? level : null);
+        // §2.6 Pass 2 — blocked/invalid actions (warning toasts) get the
+        // dedicated error-blocked sound rather than the celebratory tier
+        // fanfare the caller passed. Visual styling is driven by `type`
+        // above, so only the sound changes.
+        const soundLevel = type === 'warning' ? 'error' : level;
+        
+        this.showToast(text, type, playSound ? soundLevel : null);
     }
     
-    showToast(text, type = 'info', soundLevel = null) {
+    // v2.9.x UX audit — `action` is an optional `{ label, callback }` pair
+    // rendered as a tappable button inside the toast (used by the delete
+    // UNDO flow; Ctrl+Z is unreachable on Android so the keyboard-only
+    // undo system was dead code for the entire user base).
+    showToast(text, type = 'info', soundLevel = null, action = null) {
         // Queue-based toast system: toasts show one at a time sequentially
         if (!this._toastQueue) this._toastQueue = [];
         
@@ -3001,7 +3677,7 @@ class GoalManager {
         // Cap queue to prevent runaway accumulation
         if (this._toastQueue.length >= 8) this._toastQueue.shift();
         
-        this._toastQueue.push({ text, type, soundLevel });
+        this._toastQueue.push({ text, type, soundLevel, action });
         
         // If not currently showing a toast, start processing
         if (!this._toastShowing) {
@@ -3017,7 +3693,7 @@ class GoalManager {
         }
         
         this._toastShowing = true;
-        const { text, type, soundLevel } = this._toastQueue.shift();
+        const { text, type, soundLevel, action } = this._toastQueue.shift();
         this._currentToastText = text;
         
         const toast = this.getElement('achievement-toast');
@@ -3025,6 +3701,14 @@ class GoalManager {
         const toastIcon = this.getElement('toast-icon');
         const toastTitle = this.getElement('toast-title');
         const achievementText = this.getElement('achievement-text');
+        
+        // Degrade gracefully when the toast DOM isn't mounted (e.g. very
+        // early boot or headless tests) — drop the toast instead of crashing.
+        if (!toast || !toastContainer || !toastIcon || !toastTitle || !achievementText) {
+            this._toastShowing = false;
+            this._currentToastText = null;
+            return;
+        }
         
         // v2.7 iconography pass — toast big-icon swapped from emoji to
         // Remix Icon SVG so it renders identically across Android brands
@@ -3109,6 +3793,39 @@ class GoalManager {
         toastTitle.textContent = style.title;
         achievementText.textContent = text;
         
+        // v2.9.x UX audit — tap-to-dismiss: power users running through bulk
+        // completions get queued toasts they previously couldn't skip. The
+        // whole toast is the tap target; wired once per session.
+        if (!this._toastDismissWired) {
+            this._toastDismissWired = true;
+            toast.style.cursor = 'pointer';
+            toast.addEventListener('click', () => this.dismissCurrentToast());
+        }
+        
+        // Optional action button (e.g. UNDO on delete toasts). Created
+        // lazily so the static toast markup in index.html stays untouched.
+        let actionBtn = document.getElementById('toast-action-btn');
+        if (action && action.label) {
+            if (!actionBtn) {
+                actionBtn = document.createElement('button');
+                actionBtn.id = 'toast-action-btn';
+                actionBtn.className = 'mt-3 w-full py-2 rounded-lg font-bold text-sm fancy-font bg-white/20 hover:bg-white/30 active:scale-95 transition-all border border-white/40 text-white';
+                toastContainer.appendChild(actionBtn);
+            }
+            actionBtn.textContent = action.label;
+            actionBtn.onclick = (e) => {
+                // Don't let the tap-to-dismiss handler also fire — the
+                // action's own dismiss below advances the queue exactly once.
+                e.stopPropagation();
+                this.dismissCurrentToast();
+                action.callback();
+            };
+            actionBtn.classList.remove('hidden');
+        } else if (actionBtn) {
+            actionBtn.classList.add('hidden');
+            actionBtn.onclick = null;
+        }
+        
         // Clear any previous timers
         if (this._toastHideTimer) clearTimeout(this._toastHideTimer);
         if (this._toastHiddenTimer) clearTimeout(this._toastHiddenTimer);
@@ -3123,7 +3840,10 @@ class GoalManager {
         // Shorter durations when more toasts are queued so user isn't waiting forever
         const hasMore = this._toastQueue.length > 0;
         let duration;
-        if (hasMore) {
+        if (action) {
+            // Action toasts stay up longer so the button is actually tappable
+            duration = 6000;
+        } else if (hasMore) {
             duration = (type === 'loot' || type === 'achievement') ? 3500 : 2000;
         } else {
             duration = (type === 'loot' || type === 'achievement' || type === 'companion') ? 6000 : 3000;
@@ -3138,6 +3858,21 @@ class GoalManager {
                 this._processToastQueue();
             }, 300);
         }, duration);
+    }
+    
+    // Immediately hide the visible toast and advance the queue. Used by
+    // tap-to-dismiss and by the toast action button.
+    dismissCurrentToast() {
+        if (!this._toastShowing) return;
+        const toast = this.getElement('achievement-toast');
+        if (this._toastHideTimer) clearTimeout(this._toastHideTimer);
+        if (this._toastHiddenTimer) clearTimeout(this._toastHiddenTimer);
+        toast.classList.remove('scale-100');
+        toast.classList.add('scale-0');
+        this._toastHiddenTimer = setTimeout(() => {
+            toast.classList.add('hidden');
+            this._processToastQueue();
+        }, 150);
     }
 
     addLifeGoal() {
@@ -3291,10 +4026,12 @@ class GoalManager {
                         created: new Date().toISOString(),
                         dueDate: dueDate,
                         completed: false,
+                        priority: 'medium',
                         checklist: []
                     };
                     this.dailyTasks.push(task);
                     this.trackDaily('tasksCreated');
+                    this.trackFirstTaskCreated();
                     this.saveData();
                     this.render();
                 };
@@ -3329,10 +4066,12 @@ class GoalManager {
             created: new Date().toISOString(),
             dueDate: this.getTodayDateString(),
             completed: false,
+            priority: 'medium',
             checklist: []
         };
         this.dailyTasks.push(task);
         this.trackDaily('tasksCreated');
+        this.trackFirstTaskCreated();
         this.saveData();
         this.render();
         this.showAchievement('⚔️ Quest added! Go forth and conquer.', 'daily');
@@ -3423,12 +4162,37 @@ class GoalManager {
         this.showAchievement('🏰 Life goal added!', 'daily');
     }
 
+    // Mirrors `addHabit`'s record shape but skips the title/description modal
+    // chain — the quick-add FAB already captured the title, so creating a
+    // ritual blind (empty description, defaults) is the whole point. Routed
+    // from handleQuickAdd for the rituals tab + dedicated habits view, which
+    // previously called `addHabit(text)` and silently dropped the typed text.
+    quickAddHabit(title) {
+        this.habits.push({
+            id: this.uniqueId(),
+            title: title,
+            description: '',
+            created: new Date().toISOString(),
+            completedToday: false,
+            streak: 0,
+            totalCompletions: 0
+        });
+        this.saveData();
+        this.render();
+        this.showAchievement('🔥 Daily ritual added!', 'daily');
+    }
+
     // ==================== RECURRING TASKS ====================
     
-    addRecurringTask() {
+    // `prefillTitle` lets the quick-add FAB seed the name field instead of
+    // discarding the typed text. A recurring task genuinely needs a schedule,
+    // so the modal chain stays — but the user's typed title now carries
+    // through as the default rather than forcing them to retype it.
+    addRecurringTask(prefillTitle = '') {
         this.showInputModal({
             title: 'New Recurring Task',
             placeholder: 'Enter the recurring task name...',
+            defaultValue: typeof prefillTitle === 'string' ? prefillTitle : '',
             icon: 'ri-repeat-line'
         }, (title) => {
             if (!title || !title.trim()) return;
@@ -3562,11 +4326,11 @@ class GoalManager {
                     `).join('')}
                 </div>
                 <div class="flex gap-3">
-                    <button onclick="goalManager.closeMultiSelectModal()" 
+                    <button data-action="multiselect.cancel" 
                         class="flex-1 p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold transition-all fancy-font">
                         Cancel
                     </button>
-                    <button onclick="goalManager.submitMultiSelectDays()" 
+                    <button data-action="multiselect.confirm" 
                         class="flex-1 p-3 rounded-lg bg-amber-700 hover:bg-amber-600 text-amber-100 font-semibold transition-all fancy-font">
                         Confirm
                     </button>
@@ -3724,49 +4488,16 @@ class GoalManager {
                 body: "Set up tasks that repeat on a schedule. They'll auto-generate so you never forget!",
                 ctaLabel: 'Add Recurring Task',
                 ctaIcon: 'ri-repeat-line',
-                ctaOnclick: 'goalManager.addRecurringTask()',
+                ctaAction: 'quest.addRecurring',
                 ctaColor: 'cyan'
             });
             return;
         }
         
-        const dayLabels = { sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat' };
-        
-        container.innerHTML = this.recurringTasks.map(rt => {
-            let scheduleText = '';
-            switch (rt.recurrence.type) {
-                case 'weekly':
-                    scheduleText = 'Every ' + rt.recurrence.days.map(d => dayLabels[d] || d).join(', ');
-                    break;
-                case 'biweekly':
-                    scheduleText = 'Every other ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day);
-                    break;
-                case 'monthly-date':
-                    scheduleText = 'Monthly on day ' + rt.recurrence.dayOfMonth;
-                    break;
-                case 'monthly-weekday':
-                    const weekLabel = rt.recurrence.week === -1 ? 'Last' : ['', '1st', '2nd', '3rd', '4th'][rt.recurrence.week];
-                    scheduleText = weekLabel + ' ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day) + ' of month';
-                    break;
-            }
-            
-            return `
-                <div class="flex items-center gap-2 p-2 rounded-lg ${rt.active ? 'bg-cyan-900/40' : 'bg-gray-800/40 opacity-60'} border border-cyan-700/50">
-                    <button onclick="goalManager.toggleRecurringTask(${rt.id})" 
-                        class="text-lg ${rt.active ? 'text-green-400' : 'text-gray-500'}">
-                        ${rt.active ? '<i class="ri-checkbox-circle-fill"></i>' : '<i class="ri-checkbox-blank-circle-line"></i>'}
-                    </button>
-                    <div class="flex-1 min-w-0">
-                        <div class="text-white text-sm font-bold truncate">${this.escapeHTML(rt.title)}</div>
-                        <div class="text-cyan-300/70 text-xs">${scheduleText}</div>
-                    </div>
-                    <button onclick="goalManager.deleteRecurringTask(${rt.id})" 
-                        class="text-red-400 hover:text-red-300 p-1" aria-label="Delete recurring task">
-                        <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                    </button>
-                </div>
-            `;
-        }).join('');
+        container.innerHTML = RECURRING_RENDER.renderRecurringTasksHTML({
+            recurringTasks: this.recurringTasks,
+            escapeHTML: (s) => this.escapeHTML(s),
+        });
     }
 
     addSideQuest() {
@@ -3816,7 +4547,9 @@ class GoalManager {
             quest.completed = !quest.completed;
             if (quest.completed && !quest.rewarded) {
                 quest.rewarded = true;
-                const baseXp = quest.priority === 'high' ? 30 : quest.priority === 'medium' ? 20 : 15;
+                // N3 effort-based XP: 20 base × priority multiplier keeps the
+                // historical high/med/low = 30/20/15 ramp exactly.
+                const baseXp = EFFORT_XP_LOGIC.scaledXP(20, quest.priority);
                 // Snapshot pre-grant values so a future uncheck refunds the
                 // ACTUAL multiplied amounts (Blessing 2x, Quest Doubler, etc.)
                 // instead of the raw base reward. Mirrors `toggleTask` and
@@ -3840,10 +4573,16 @@ class GoalManager {
                 if (window.effectsManager) {
                     const questEl = document.querySelector(`[data-side-quest-id="${quest.id}"]`);
                     window.effectsManager.sideQuestCompleted(questEl, baseXp);
+                    // sideQuestCompleted is visual-only and addXP('side') is quiet,
+                    // so the completion would otherwise be silent. Play the dedicated
+                    // completion sound here (the showAchievement fallback below only
+                    // fires when effectsManager is absent, so no double-play).
+                    if (window.audioManager) window.audioManager.playTaskComplete();
                 } else {
-                    this.showAchievement(`Side Quest Completed! +${baseXp} XP 🧭`, 'daily');
+                    this.showAchievement(`Side Quest Completed! +${baseXp} XP 🧭`, 'task');
                 }
                 this.checkOnboardingShareHook();
+                this.checkBountyCompletion(quest.id);
             } else if (!quest.completed && quest.rewarded) {
                 // Refund EXACT multiplied amounts and clear `rewarded` so a
                 // future re-completion grants symmetrically (no net gain or
@@ -3999,15 +4738,7 @@ class GoalManager {
     }
 
     getChecklistProgress(task) {
-        if (!task.checklist || task.checklist.length === 0) {
-            return { completed: 0, total: 0, percent: 0 };
-        }
-
-        const completed = task.checklist.filter(i => i.completed).length;
-        const total = task.checklist.length;
-        const percent = total > 0 ? Math.floor((completed / total) * 100) : 0;
-
-        return { completed, total, percent };
+        return TASK_RENDER.getChecklistProgress(task);
     }
 
     canCompleteTask(task) {
@@ -4031,78 +4762,36 @@ class GoalManager {
     }
 
     renderChecklistHTML(task, taskType) {
-        if (!task.checklist || task.checklist.length === 0) {
-            return `
-                <div class="mt-3 pt-3 border-t border-gray-700/50">
-                    <button onclick="goalManager.promptAddChecklistItem('${taskType}', ${task.id});" 
-                        class="text-xs bg-purple-800/50 hover:bg-purple-700/60 text-purple-200 px-3 py-1 rounded border border-purple-600 fancy-font">
-                        ✓ Add Checklist Item
-                    </button>
-                </div>
-            `;
-        }
-
-        const progress = this.getChecklistProgress(task);
-        
-        return `
-            <div class="mt-3 pt-3 border-t border-gray-700/50">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-xs text-purple-300 font-semibold">✓ Checklist (${progress.completed}/${progress.total})</p>
-                    <button onclick="goalManager.promptAddChecklistItem('${taskType}', ${task.id});" 
-                        class="text-xs bg-purple-800/50 hover:bg-purple-700/60 text-purple-200 px-2 py-1 rounded border border-purple-600 fancy-font">
-                        + Add
-                    </button>
-                </div>
-                <div class="space-y-2 pl-2">
-                    ${task.checklist.map(item => `
-                        <div class="flex items-center text-sm group">
-                            <input type="checkbox" ${item.completed ? 'checked' : ''} 
-                                onchange="goalManager.toggleChecklistItem('${taskType}', ${task.id}, ${item.id})"
-                                class="mr-2">
-                            <span class="${item.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'} flex-1">${this.escapeHTML(item.text)}</span>
-                            <button onclick="goalManager.showConfirm('Delete this item?', () => goalManager.deleteChecklistItem('${taskType}', ${task.id}, ${item.id}))" 
-                                class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 ml-2 text-xs">
-                                <i class="ri-close-circle-line"></i>
-                            </button>
-                        </div>
-                    `).join('')}
-                </div>
-                ${progress.completed > 0 && progress.completed < progress.total ? `
-                    <div class="progress-bar w-full bg-purple-950/60 rounded-full h-2 mt-2 border border-purple-700">
-                        <div class="bg-gradient-to-r from-purple-500 to-purple-400 h-2 rounded-full shadow-lg transition-all duration-500" style="width: ${progress.percent}%"></div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
+        return TASK_RENDER.renderChecklistHTML(task, taskType, { escapeHTML: (s) => this.escapeHTML(s) });
     }
 
     // Habit/Recurring Task System
     checkHabitReset() {
-        // Read lastHabitReset BEFORE flushing pending saves.
-        // _doSave() computes lastHabitReset = today at write time, so flushing
-        // first would overwrite yesterday's date and trick us into skipping reset.
-        const saved = localStorage.getItem('lifeOrganizeData');
-        if (this.saveTimeout) {
-            clearTimeout(this.saveTimeout);
-            this._doSave();
-        }
-        if (saved) {
-            let data;
-            try { data = JSON.parse(saved); } catch (e) { console.error('checkHabitReset: corrupt data', e); return; }
-            const lastReset = data.lastHabitReset;
-            const lastWeekReset = data.lastWeekReset;
+        // lastHabitReset/lastWeekReset are instance fields advanced ONLY
+        // here — saves elsewhere can no longer clobber them with "today"
+        // and trick us into skipping a reset (v2.9.x audit fix).
+        {
+            const lastReset = this.lastHabitReset;
+            const lastWeekReset = this.lastWeekReset;
             const today = this.getTodayDateString();
+            
+            // First run (fresh install or pre-fix save without the field):
+            // initialize markers without resetting anything.
+            if (!lastReset) {
+                this.lastHabitReset = today;
+                this.lastWeekReset = this.getWeekString(new Date());
+                this.saveData();
+                return;
+            }
             
             // Daily habit reset
             if (lastReset && lastReset !== today) {
                 // Check for Time Freeze spell - skip the entire reset if active
-                const timeFreezeActive = this.activeSpells.some(s => 
-                    s.spellId === 'time_freeze' && (s.expiresAt === -1 || s.expiresAt > Date.now())
-                );
+                const timeFreezeActive = SPELL_LIFECYCLE.isActive(this.activeSpells, 'time_freeze', Date.now());
                 
                 if (timeFreezeActive) {
                     // Time Freeze prevents habit reset - consume the spell
-                    this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'time_freeze');
+                    this.activeSpells = SPELL_LIFECYCLE.consume(this.activeSpells, 'time_freeze');
                     // Also carry over daily quest board and tracking to today
                     if (this.dailyQuestBoard && this.dailyQuestBoard.date !== today) {
                         this.dailyQuestBoard.date = today;
@@ -4110,19 +4799,24 @@ class GoalManager {
                     if (this.dailyTracking && this.dailyTracking.date !== today) {
                         this.dailyTracking.date = today;
                     }
-                    this.showAchievement('❄️ TIME FREEZE! Daily reset was prevented!', 'life');
+                    // Mark today as handled so the freeze covers exactly one day
+                    this.lastHabitReset = today;
+                    this.showAchievement('❄️ TIME FREEZE! Daily reset was prevented!', 'streak-freeze');
                     this.saveData();
                     return; // Skip the entire reset
                 }
                 
                 // Check for Streak Shield spell
-                const streakShieldActive = this.activeSpells.some(s => 
-                    s.spellId === 'streak_shield' && (s.expiresAt === -1 || s.expiresAt > Date.now())
-                );
+                const streakShieldActive = SPELL_LIFECYCLE.isActive(this.activeSpells, 'streak_shield', Date.now());
                 
                 // Reset all habits for new day
                 const activeCompanion = this.getActiveCompanion();
                 this.earlyBirdTasksToday = 0; // Reset Early Bird enchantment counter for new day
+                // v2.9.x UX audit: collect streak events during the reset so
+                // a user returning after days away gets ONE consolidated
+                // "While you were away" recap instead of a stack of toasts
+                // (and silently-zeroed streaks now get surfaced too).
+                this._recapEvents = [];
                 this.habits.forEach(habit => {
                     // Always clear rewardedToday so stale dates don't block rewards
                     habit.rewardedToday = null;
@@ -4154,6 +4848,11 @@ class GoalManager {
                     }
                 }
                 
+                const recapEvents = this._recapEvents;
+                this._recapEvents = null;
+                this._flushRecapEvents(recapEvents, lastReset, today);
+                
+                this.lastHabitReset = today;
                 this.saveData();
             }
             
@@ -4176,6 +4875,7 @@ class GoalManager {
                 //     goal.progress = 0;
                 // });
                 
+                this.lastWeekReset = currentWeek;
                 this.saveData();
             }
         }
@@ -4184,29 +4884,278 @@ class GoalManager {
     _applyStreakBreak(habit, streakShieldActive, activeCompanion) {
         // Check for Streak Shield spell first
         if (streakShieldActive && habit.streak > 0) {
-            this.showAchievement(`🛡️ STREAK SHIELD! Your ${habit.title} streak of ${habit.streak} days was protected!`, 'life');
+            this._queueRecapEvent({ type: 'protected', message: `🛡️ STREAK SHIELD! Your ${habit.title} streak of ${habit.streak} days was protected!` });
             return; // Spell protects all streaks for its duration
         }
         // Check for Streak Shield enchantment (Enchantment of Resilience)
         if (this.hasActiveEnchantment('streak_shield') && habit.streak > 0) {
-            this.showAchievement(`🛡️ Enchantment of Resilience! Your ${habit.title} streak of ${habit.streak} days was protected!`, 'life');
+            this._queueRecapEvent({ type: 'protected', message: `🛡️ Enchantment of Resilience! Your ${habit.title} streak of ${habit.streak} days was protected!` });
             return;
         }
-        // Then check for streak protection companion
-        const maxProtections = activeCompanion?.bonusAmount || 0;
-        const usedProtections = activeCompanion?.protectionsUsedThisWeek || 0;
-        
-        if (activeCompanion && 
-            activeCompanion.bonusType === 'streak_protection' && 
-            usedProtections < maxProtections &&
-            habit.streak > 0) {
-            activeCompanion.protectionsUsedThisWeek = usedProtections + 1;
-            this.showAchievement(`${activeCompanion.icon} ${activeCompanion.name.toUpperCase()} PROTECTS! Your ${habit.title} streak of ${habit.streak} days was saved! (${maxProtections - usedProtections - 1} protections left this week)`, 'life');
+        // Then check for streak protection — from a protector companion
+        // (Turtle/Phoenix) and/or the Ranger Guardian Instinct perk (v3.1 §3.2),
+        // which grants its OWN weekly pool usable with any companion. Companion
+        // protections are consumed before the Ranger pool.
+        const companionMax = (activeCompanion && activeCompanion.bonusType === 'streak_protection')
+            ? (activeCompanion.bonusAmount || 0) : 0;
+        const companionUsed = activeCompanion?.protectionsUsedThisWeek || 0;
+        const companionLeft = Math.max(0, companionMax - companionUsed);
+
+        const rangerMax = this.getClassPerkValue('companion_protect');
+        if (rangerMax > 0) {
+            const currentWeek = this.getWeekString(new Date());
+            if (this.rangerProtectionResetWeek !== currentWeek) {
+                this.rangerProtectionsUsedThisWeek = 0;
+                this.rangerProtectionResetWeek = currentWeek;
+            }
+        }
+        const rangerLeft = Math.max(0, rangerMax - (this.rangerProtectionsUsedThisWeek || 0));
+
+        // Warrior Guardian subclass (v3.1 §9): its OWN weekly streak-protection
+        // pool, independent of the Ranger one and usable with any companion.
+        const guardianMax = this.getClassPerkValue('guardian_protect');
+        if (guardianMax > 0) {
+            const currentWeek = this.getWeekString(new Date());
+            if (this.guardianProtectionResetWeek !== currentWeek) {
+                this.guardianProtectionsUsedThisWeek = 0;
+                this.guardianProtectionResetWeek = currentWeek;
+            }
+        }
+        const guardianLeft = Math.max(0, guardianMax - (this.guardianProtectionsUsedThisWeek || 0));
+
+        if (habit.streak > 0 && (companionLeft > 0 || rangerLeft > 0 || guardianLeft > 0)) {
+            // Consume a companion protection first, then a Ranger one, then a
+            // Warrior Guardian one.
+            let saverIcon = '🛡️';
+            let saverName = 'GUARDIAN INSTINCT';
+            if (companionLeft > 0) {
+                activeCompanion.protectionsUsedThisWeek = companionUsed + 1;
+                saverIcon = activeCompanion.icon;
+                saverName = (activeCompanion.name || '').toUpperCase();
+            } else if (rangerLeft > 0) {
+                this.rangerProtectionsUsedThisWeek = (this.rangerProtectionsUsedThisWeek || 0) + 1;
+            } else {
+                this.guardianProtectionsUsedThisWeek = (this.guardianProtectionsUsedThisWeek || 0) + 1;
+                saverName = 'GUARDIAN';
+            }
+            const totalLeft = companionLeft + rangerLeft + guardianLeft - 1;
+            this._queueRecapEvent({ type: 'protected', message: `${saverIcon} ${saverName} PROTECTS! Your ${habit.title} streak of ${habit.streak} days was saved! (${totalLeft} protection${totalLeft === 1 ? '' : 's'} left this week)` });
         } else {
+            const lostStreak = habit.streak;
             habit.streak = 0;
+            // Surface real streak losses (previously silent). Only streaks of
+            // 2+ days are worth a mention — a 1-day streak isn't a loss yet.
+            if (lostStreak >= 2) {
+                // §1.7 Streak Repair — snapshot so a premium player can restore
+                // this habit's streak within 48h by spending Focus Crystals.
+                this._recordRepairableStreak({ kind: 'habit', habitId: habit.id, title: habit.title, lostStreak });
+                this._queueRecapEvent({ type: 'broken', message: `💔 ${habit.title} streak of ${lostStreak} days was lost` });
+            }
         }
     }
     
+    // Queue a streak event while checkHabitReset is collecting; outside of
+    // a reset (defensive fallback) show the toast immediately as before.
+    _queueRecapEvent(event) {
+        if (Array.isArray(this._recapEvents)) {
+            this._recapEvents.push(event);
+            return;
+        }
+        this.showAchievement(event.message, 'life');
+    }
+    
+    // Decide how to surface collected streak events: a single event keeps
+    // the familiar toast; 2+ events become one consolidated recap modal.
+    _flushRecapEvents(events, lastReset, today) {
+        if (!events || events.length === 0) return;
+        if (events.length === 1) {
+            this.showAchievement(events[0].message, 'life');
+            return;
+        }
+        let awayDays = 1;
+        try {
+            awayDays = Math.max(1, Math.floor((new Date(today) - new Date(lastReset)) / (1000 * 60 * 60 * 24)));
+        } catch (e) { /* keep default */ }
+        this.showAwayRecapModal(events, awayDays);
+    }
+    
+    showAwayRecapModal(events, awayDays) {
+        const existing = document.getElementById('away-recap-modal');
+        if (existing) existing.remove();
+        
+        const protectedEvents = events.filter(e => e.type === 'protected');
+        const brokenEvents = events.filter(e => e.type === 'broken');
+        // `text` is stripIcon(e.message), and streak messages embed the
+        // user-entered habit.title — escape so a habit named e.g.
+        // `<img src=x onerror=...>` can't inject via this recap modal.
+        const rowHTML = (icon, text, colorClass) => `
+            <div class="flex items-start gap-2 py-1.5 text-sm fancy-font ${colorClass}">
+                <span class="shrink-0">${icon}</span><span>${this.escapeHTML(text)}</span>
+            </div>`;
+        // Strip the leading emoji from queued messages — the row renders its own icon
+        const stripIcon = (msg) => msg.replace(/^\S+\s/, '');
+        
+        const modal = document.createElement('div');
+        modal.id = 'away-recap-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', 'While you were away recap');
+        modal.className = 'fixed inset-0 bg-black/80 z-50 overflow-hidden';
+        modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 0.3s ease-out;';
+        modal.innerHTML = `
+            <div style="max-width:380px;width:100%;" class="relative" onclick="event.stopPropagation()">
+                <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border-4 border-amber-700/60 relative max-h-[90vh] overflow-y-auto">
+                    <button data-action="modal.closeAwayRecap"
+                        class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
+                        <i class="ri-close-line"></i>
+                    </button>
+                    <div class="text-center mb-4">
+                        <div class="text-3xl mb-1">🌙</div>
+                        <div class="text-lg text-amber-300 medieval-title">While You Were Away</div>
+                        <div class="text-amber-200/60 fancy-font text-xs mt-1">${awayDays > 1 ? `${awayDays} days passed in the realm` : 'A new day dawned'}</div>
+                    </div>
+                    ${protectedEvents.length > 0 ? `
+                    <div class="mb-3">
+                        <div class="text-emerald-300/80 text-xs font-bold uppercase tracking-wide mb-1 fancy-font">🛡️ Streaks Protected</div>
+                        ${protectedEvents.map(e => rowHTML('🛡️', stripIcon(e.message), 'text-emerald-200/90')).join('')}
+                    </div>` : ''}
+                    ${brokenEvents.length > 0 ? `
+                    <div class="mb-3">
+                        <div class="text-red-300/80 text-xs font-bold uppercase tracking-wide mb-1 fancy-font">💔 Streaks Lost</div>
+                        ${brokenEvents.map(e => rowHTML('💔', stripIcon(e.message), 'text-red-200/90')).join('')}
+                    </div>` : ''}
+                    <button data-action="modal.closeAwayRecap"
+                        class="w-full mt-2 py-3 rounded-xl font-bold text-base fancy-font transition-all hover:scale-[1.02] active:scale-95 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg">
+                        ⚔️ Back to the Quest
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    closeAwayRecapModal() {
+        const modal = document.getElementById('away-recap-modal');
+        if (modal) modal.remove();
+    }
+
+    // ── §1.7 Streak Repair ──────────────────────────────────────
+    // When a streak of 2+ days breaks, _recordRepairableStreak snapshots it.
+    // The player then has 48h to restore it. P2b (friction audit): every
+    // player's FIRST repair is free (no premium, no crystals) so the sharpest
+    // churn moment isn't fully paywalled; after that, repairs are a premium
+    // action costing Focus Crystals (cost scales with the lost length).
+    // Everything here is client-side and display-only until the player acts via
+    // repairStreak(); expired snapshots are pruned on read so the list never
+    // grows unbounded.
+
+    // Focus-Crystal cost to repair a streak — ~1 per 10 lost days, min 1,
+    // capped at 5 so even a year-long streak stays affordable for an engaged
+    // player (bosses award 1–3 crystals each).
+    getStreakRepairCost(lostStreak) {
+        return STREAK_LOGIC.streakRepairCost(lostStreak);
+    }
+
+    // Snapshot a freshly-broken streak. Only 2+ day streaks are worth offering
+    // (a 1-day streak isn't a real loss). De-dupes per target — one 'login'
+    // entry, one per habit id — so repeated breaks replace rather than stack.
+    _recordRepairableStreak(snapshot, now = Date.now()) {
+        const { entry, list } = STREAK_LOGIC.computeRepairableStreakInsert(snapshot, this.repairableStreaks, now);
+        if (entry === null) return null;
+        this.repairableStreaks = list;
+        return entry;
+    }
+
+    // Live repairable entries (snapshots still inside the 48h window). Prunes
+    // expired ones in-memory as a side effect; the next saveData persists the
+    // pruned list (we don't force a write here so reads stay cheap).
+    getRepairableStreaks(now = Date.now()) {
+        if (!Array.isArray(this.repairableStreaks)) { this.repairableStreaks = []; return []; }
+        this.repairableStreaks = STREAK_LOGIC.pruneRepairableStreaks(this.repairableStreaks, now, this.STREAK_REPAIR_WINDOW_MS);
+        return this.repairableStreaks;
+    }
+
+    // P2b — whether the player's one free lifetime repair is still available.
+    // Only non-premium players use it (premium already repair with the Focus
+    // Crystals they earn for free); it ignores the crystal cost entirely.
+    hasFreeStreakRepair() {
+        return !this.isPremium && !this.freeStreakRepairUsed;
+    }
+
+    // Whether THIS entry can be repaired right now: inside the 48h window, and
+    // either the free repair is available (P2b) or the player is premium with
+    // enough Focus Crystals for the cost.
+    canRepairStreak(entry, now = Date.now()) {
+        return STREAK_LOGIC.canRepairStreakEntry(entry, {
+            now,
+            windowMs: this.STREAK_REPAIR_WINDOW_MS,
+            hasFreeRepair: this.hasFreeStreakRepair(),
+            isPremium: this.isPremium,
+            focusCrystals: this.focusCrystals,
+            cost: this.getStreakRepairCost(entry ? entry.lostStreak : 0),
+        });
+    }
+
+    // Restore a broken streak. Returns true on success. P2b: the player's first
+    // repair is free; afterwards a non-premium user is routed to the upsell and
+    // a premium user spends Focus Crystals. Guarded end-to-end: an unaffordable
+    // repair shows a hint, and a vanished habit target is a no-op (nothing is
+    // spent until the restore is guaranteed to land).
+    repairStreak(id, now = Date.now()) {
+        const entry = this.getRepairableStreaks(now).find(e => e.id === id);
+        if (!entry) return false;
+
+        // P2b — the first repair is free (no premium, no crystals). Capture the
+        // decision up front so the vanished-habit early return below can't
+        // silently consume the freebie.
+        const useFreeRepair = this.hasFreeStreakRepair();
+
+        if (!useFreeRepair && !this.isPremium) { this.showPremiumPurchaseModal(); return false; }
+
+        const cost = useFreeRepair ? 0 : this.getStreakRepairCost(entry.lostStreak);
+        if (!useFreeRepair && (this.focusCrystals || 0) < cost) {
+            this.showAchievement(`Need ${cost} Focus Crystal${cost > 1 ? 's' : ''} to repair that streak.`, 'error');
+            return false;
+        }
+
+        // Resolve the restore target BEFORE spending so a deleted habit can't
+        // burn crystals (or the free repair) for nothing.
+        let restore;
+        if (entry.kind === 'login') {
+            restore = () => { this.loginStreak = entry.lostStreak + 1; };
+        } else {
+            const habit = (this.habits || []).find(h => h.id === entry.habitId);
+            if (!habit) {
+                this.repairableStreaks = this.repairableStreaks.filter(e => e.id !== id);
+                this.saveData();
+                return false;
+            }
+            restore = () => { habit.streak = entry.lostStreak; };
+        }
+
+        if (useFreeRepair) {
+            this.freeStreakRepairUsed = true;
+        } else {
+            this.focusCrystals = Math.max(0, (this.focusCrystals || 0) - cost);
+        }
+        restore();
+        this.repairableStreaks = this.repairableStreaks.filter(e => e.id !== id);
+        this.saveData();
+
+        const what = entry.kind === 'login' ? 'login' : this.escapeHTML(entry.title || 'habit');
+        const costLabel = useFreeRepair ? "first repair's on us — free!" : `−${cost} 🔮`;
+        this.showAchievement(`❄️ Streak Repaired! Your ${entry.lostStreak}-day ${what} streak is restored (${costLabel})`, 'streak-freeze');
+        if (typeof this.render === 'function') this.render();
+        return true;
+    }
+
+    // Human-readable "Xh left" within the 48h repair window.
+    _streakRepairTimeLeftLabel(entry, now = Date.now()) {
+        const msLeft = (entry.brokenAt + this.STREAK_REPAIR_WINDOW_MS) - now;
+        if (msLeft <= 0) return 'expired';
+        const hours = Math.ceil(msLeft / (60 * 60 * 1000));
+        return hours <= 1 ? '<1h left' : `${hours}h left`;
+    }
+
     scheduleMidnightReset() {
         // Clear any existing midnight timer
         if (this.midnightResetTimeout) {
@@ -4285,44 +5234,41 @@ class GoalManager {
     checkDailyLoginBonus() {
         // Defer until tutorial is complete so modal doesn't overlap tutorial overlay
         if (this.tutorialActive) return;
-        
+
         const today = this.getTodayDateString();
-        
-        // Already claimed today
-        if (this.lastLoginBonusDate === today) {
-            return;
-        }
-        
-        // Calculate streak
-        const prevStreak = this.loginStreak || 0;
-        if (this.lastLoginBonusDate) {
-            const lastDate = new Date(this.lastLoginBonusDate);
-            const todayDate = new Date(today);
-            const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
-            
-            if (dayDiff === 1) {
-                this.loginStreak = (this.loginStreak || 0) + 1;
-            } else if (dayDiff > 1) {
-                // Streak would break — check for available streak shields
-                if (prevStreak > 1) {
-                    const shieldSpellEntry = this.spellbook?.find(s => s.spellId === 'streak_shield' && s.charges > 0);
-                    const hasActiveShieldSpell = this.activeSpells?.some(s => 
-                        s.spellId === 'streak_shield' && (s.expiresAt === -1 || s.expiresAt > Date.now())
-                    );
-                    const hasShieldEnchantment = this.hasActiveEnchantment('streak_shield');
-                    
-                    if (shieldSpellEntry || hasActiveShieldSpell || hasShieldEnchantment) {
-                        // Prompt user to use their streak shield
-                        this._showLoginShieldPrompt(prevStreak, dayDiff, shieldSpellEntry, hasActiveShieldSpell, hasShieldEnchantment);
-                        return; // _completeLoginBonus called after user responds
-                    }
+
+        // Date-gap break detection (Engineering Roadmap #1 — streak-logic.js). The pure classifier
+        // picks the branch; the impure shield check + repair snapshot on a 'gap' stay here.
+        const decision = STREAK_LOGIC.classifyLoginBonus(this.lastLoginBonusDate, today, this.loginStreak);
+        if (decision.status === 'already-claimed') return;
+
+        const prevStreak = decision.prevStreak;
+        if (decision.status === 'continue') {
+            this.loginStreak = decision.newStreak;
+        } else if (decision.status === 'gap') {
+            // Streak would break — check for available streak shields
+            if (prevStreak > 1) {
+                const shieldSpellEntry = this.spellbook?.find(s => s.spellId === 'streak_shield' && s.charges > 0);
+                const hasActiveShieldSpell = SPELL_LIFECYCLE.isActive(this.activeSpells, 'streak_shield', Date.now());
+                const hasShieldEnchantment = this.hasActiveEnchantment('streak_shield');
+
+                if (shieldSpellEntry || hasActiveShieldSpell || hasShieldEnchantment) {
+                    // Prompt user to use their streak shield
+                    this._showLoginShieldPrompt(prevStreak, decision.dayDiff, shieldSpellEntry, hasActiveShieldSpell, hasShieldEnchantment);
+                    return; // _completeLoginBonus called after user responds
                 }
-                this.loginStreak = 1;
             }
-        } else {
+            // §1.7 Streak Repair — snapshot the streak we're about to lose
+            // so a premium player can restore it within 48h. No-op for
+            // streaks under 2 days (not a meaningful loss).
+            this._recordRepairableStreak({ kind: 'login', lostStreak: prevStreak });
+            this.loginStreak = 1;
+        } else if (decision.status === 'first') {
             this.loginStreak = 1;
         }
-        
+        // decision.status === 'ignore' (clock moved backwards): leave loginStreak unchanged,
+        // matching the original (dayDiff <= 0 fell through both branches).
+
         this._completeLoginBonus(prevStreak);
     }
 
@@ -4371,12 +5317,12 @@ class GoalManager {
                     </div>
                     
                     <!-- Buttons -->
-                    <button onclick="goalManager._acceptLoginShield()" 
+                    <button data-action="loginShield.accept" 
                         class="w-full py-3.5 rounded-xl font-bold text-lg fancy-font transition-all hover:scale-[1.02] active:scale-95
                         bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white shadow-lg shadow-blue-500/30 mb-3">
                         🛡️ Use Streak Shield
                     </button>
-                    <button onclick="goalManager._declineLoginShield()" 
+                    <button data-action="loginShield.decline" 
                         class="w-full py-2.5 rounded-xl font-semibold text-sm fancy-font transition-all
                         bg-gray-700/60 hover:bg-gray-600/60 text-gray-300 hover:text-white border border-gray-600/40">
                         No thanks — reset my streak
@@ -4424,6 +5370,9 @@ class GoalManager {
         const ctx = this._loginShieldContext;
         if (!ctx) return;
         
+        // §1.7 Streak Repair — record the declined streak as repairable (48h
+        // window) before zeroing it. No-op for <2-day streaks.
+        this._recordRepairableStreak({ kind: 'login', lostStreak: ctx.prevStreak });
         // Reset streak
         this.loginStreak = 1;
         
@@ -4442,17 +5391,10 @@ class GoalManager {
         // Check challenges that track login streak
         if (this.activeChallenges?.length > 0) this.checkChallengeProgress();
         
-        // Escalating daily gold: base 15, +5 per streak day (caps at day 7 = 45)
-        const goldReward = 15 + Math.min(this.loginStreak - 1, 6) * 5;
-        // Escalating daily XP: base 10, +3 per streak day (caps at day 7 = 28)
-        const xpReward = 10 + Math.min(this.loginStreak - 1, 6) * 3;
-        
-        // Check for milestone bonus
-        const milestone = this.LOGIN_STREAK_MILESTONES.find(m => m.day === this.loginStreak);
-        
-        // Total rewards include milestone bonuses
-        const totalXP = xpReward + (milestone ? milestone.xpBonus : 0);
-        const totalGold = goldReward + (milestone ? milestone.goldBonus : 0);
+        // Escalating daily gold/XP + the exact-day milestone bonus (Engineering Roadmap #1 —
+        // streak-logic.js): base 15 gold / 10 XP, +5/+3 per streak day, both capped at day 7.
+        const { milestone, totalXP, totalGold, nextMilestone } =
+            STREAK_LOGIC.computeLoginRewards(this.loginStreak, this.LOGIN_STREAK_MILESTONES);
         
         // Award base + milestone rewards (routed through addXP/addGold so Beginner's Blessing applies).
         // Suppress both sounds AND reward toasts/sprites here — the login streak
@@ -4473,7 +5415,9 @@ class GoalManager {
                 // We'll show it in the modal instead
             }
             if (extra.type === 'charges') {
-                this.attackCharges += extra.amount;
+                // Route through grantAttackCharge so the charge cap (with
+                // gold overflow) and Battle Fury doubling both apply.
+                this.grantAttackCharge(extra.amount, 'milestone');
             }
             if (extra.type === 'title') {
                 if (!this.unlockedTitles.find(t => (typeof t === 'object' ? t.id : t) === extra.id)) {
@@ -4486,10 +5430,13 @@ class GoalManager {
         this.lastLoginBonusDate = today;
         this.saveData();
         
+        // Today's streak is now safe — cancel today's pending streak-risk
+        // reminder and re-arm it for the next un-claimed day.
+        this.scheduleStreakRiskReminder();
+        
         if (this.loginStreak >= 7 && this.loginStreak % 7 === 0) this.maybeShowReviewPrompt('login_streak');
         
-        // Find next milestone for preview
-        const nextMilestone = this.LOGIN_STREAK_MILESTONES.find(m => m.day > this.loginStreak);
+        // nextMilestone (from computeLoginRewards above) previews the upcoming reward in the modal.
 
         // Streak milestone celebration effect (fires on 7/14/30/etc. days defined in LOGIN_STREAK_MILESTONES)
         if (milestone && window.effectsManager) {
@@ -4631,7 +5578,7 @@ class GoalManager {
                 ` : ''}
                 <div class="bg-gradient-to-br ${bgGradient} p-6 rounded-2xl ${glowClass} border-4 ${borderColor} relative max-h-[90vh] overflow-y-auto">
                     <!-- Close X button -->
-                    <button onclick="goalManager.closeLoginStreakModal()" 
+                    <button data-action="modal.closeLoginStreak" 
                         class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600 text-gray-300 hover:text-white transition-all text-lg z-10" aria-label="Close">
                         <i class="ri-close-line"></i>
                     </button>
@@ -4667,13 +5614,13 @@ class GoalManager {
                     
                     ${isMilestone || streak >= 7 ? `
                     <!-- Share Button -->
-                    <button onclick="goalManager.shareStatCard();"
+                    <button data-action="share.statCard"
                         class="w-full mt-4 py-2.5 rounded-xl font-bold text-sm fancy-font transition-all hover:scale-[1.02] active:scale-95 bg-gradient-to-r from-orange-600/80 to-amber-700/80 hover:from-orange-500 hover:to-amber-600 text-amber-100 border border-amber-500/40">
                         <i class="ri-share-line mr-1"></i> Share ${isMilestone ? 'Milestone' : 'Streak'}
                     </button>
                     ` : ''}
                     <!-- Claim Button -->
-                    <button onclick="goalManager.closeLoginStreakModal()" 
+                    <button data-action="modal.closeLoginStreak" 
                         class="w-full mt-2 py-3.5 rounded-xl font-bold text-lg fancy-font transition-all hover:scale-[1.02] active:scale-95
                         ${isMilestone ? 
                             'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black shadow-lg shadow-yellow-500/30' :
@@ -4723,6 +5670,479 @@ class GoalManager {
         const yearStart = new Date(d.getFullYear(), 0, 1);
         const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
         return `${d.getFullYear()}-W${weekNo}`;
+    }
+
+    // ── v2.9 Track 7 — Theme of the Week helpers ──────────────────────
+    //
+    // `getISOWeekNumber(date)` returns just the integer ISO 8601 week
+    // number (1–53). Same Thursday-of-the-week trick as `getWeekString`
+    // above — the spec defines week 1 as the week containing the year's
+    // first Thursday, so adding `4 - (day || 7)` shifts any input date
+    // to its corresponding Thursday before we count days from Jan 1.
+    //
+    // We deliberately keep this independent from `getWeekString` (rather
+    // than parsing the trailing "-Wxx" off a `getWeekString()` call)
+    // because the rotation index is a pure number and stringifying just
+    // to re-parse felt fragile. Tests cover both helpers in lock-step.
+    getISOWeekNumber(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+        const yearStart = new Date(d.getFullYear(), 0, 1);
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // `getISOWeekYear(date)` returns the ISO 8601 week-YEAR — the year
+    // that owns the week containing `date`, which is NOT always the
+    // calendar year. Dec 29–31 can belong to week 1 of the NEXT year
+    // and Jan 1–3 can belong to week 52/53 of the PREVIOUS year.
+    // Using `now.getFullYear()` to build week keys around New Year
+    // produces colliding keys (e.g. Dec 2026's "2026-W1" vs Jan
+    // 2026's "2026-W1"), wrongly suppressing once-per-week prompts
+    // and analytics events (v2.9.x audit fix). Same Thursday-shift as
+    // getISOWeekNumber — the Thursday's calendar year IS the week-year.
+    getISOWeekYear(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+        return d.getFullYear();
+    }
+
+    // `getWeeklyFeaturedThemeId(date)` is the heart of Track 7. Returns
+    // the id of the premium theme being trialed FREE this week, or null
+    // if no premium themes carry a `weeklyRotationIndex`. Determinism:
+    // same week → same id for every user, no server roundtrip.
+    //
+    // Implementation:
+    //   1. Filter `themeDefinitions` to entries that are premium AND
+    //      have `weeklyRotationIndex` set (currently all 9 premium
+    //      themes — the field is what opts a theme into the rotation,
+    //      so a future "secret premium theme" can be excluded by
+    //      omitting the field).
+    //   2. Sort by `weeklyRotationIndex` ascending so the cycle order
+    //      is stable regardless of object-key insertion order.
+    //   3. `weekNumber % rotation.length` picks this week's slot.
+    //
+    // `date` defaults to "now" so most callers don't need to pass
+    // anything; tests inject specific dates to assert determinism +
+    // year-boundary behavior.
+    getWeeklyFeaturedThemeId(date = new Date()) {
+        const rotation = Object.entries(this.themeDefinitions)
+            .filter(([_, t]) => t.premium && t.weeklyRotationIndex != null)
+            .sort((a, b) => a[1].weeklyRotationIndex - b[1].weeklyRotationIndex);
+        if (rotation.length === 0) return null;
+        const week = this.getISOWeekNumber(date);
+        return rotation[week % rotation.length][0];
+    }
+
+    // First-of-week spotlight prompt for the Theme of the Week. Idempotent
+    // per `(year, isoWeek)` pair — once dismissed, `weeklyTrialPromptShown`
+    // gets the key set so navigating back to Themes the same week is a
+    // no-op. Year is included in the key so a quiet user who skips an
+    // entire year doesn't get pre-suppressed by a stale "W12" entry.
+    // Called from `renderThemes()`; safe no-op if no rotation themes
+    // exist or the user has already seen this week's prompt.
+    maybeShowFeaturedThemeSpotlight() {
+        const featuredId = this.getWeeklyFeaturedThemeId();
+        if (!featuredId) return;
+        const theme = this.themeDefinitions[featuredId];
+        if (!theme) return;
+
+        const now = new Date();
+        const weekKey = `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
+        if (this.weeklyTrialPromptShown && this.weeklyTrialPromptShown[weekKey]) return;
+
+        // Avoid stacking if one is already up (e.g. user re-enters view
+        // before clicking Got it).
+        if (document.getElementById('theme-spotlight-modal')) return;
+
+        const modal = document.createElement('div');
+        modal.id = 'theme-spotlight-modal';
+        modal.className = 'theme-spotlight-backdrop';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', `${theme.name} — Theme of the Week`);
+        modal.innerHTML = `
+            <div class="theme-spotlight-card">
+                <div class="theme-spotlight-stage theme-tile-bg-${featuredId}">
+                    <div class="theme-spotlight-icon">${theme.icon}</div>
+                </div>
+                <div class="theme-spotlight-body">
+                    <div class="theme-spotlight-eyebrow">✨ Theme of the Week</div>
+                    <h3 class="theme-spotlight-title">${theme.name}</h3>
+                    <p class="theme-spotlight-copy">
+                        This premium theme is <strong>free for everyone</strong> this week.
+                        Try it on, take it for a spin — when the week ends it goes back behind
+                        its normal unlock.
+                    </p>
+                    <div class="theme-spotlight-actions">
+                        <button class="theme-spotlight-secondary" data-action="dismiss">Maybe later</button>
+                        <button class="theme-spotlight-primary" data-action="apply">Try it now</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Bind buttons. "Try it now" applies the theme via the same
+        // `selectTheme` path that the picker uses (which already has the
+        // featured-week bypass from Phase 2), then dismisses; "Maybe
+        // later" / backdrop / Esc just dismiss. All paths mark the
+        // weekly key shown so we don't re-prompt on the next render.
+        //
+        // CRITICAL: every dismissal path MUST detach the document-level
+        // keydown handler. The original implementation only detached on
+        // Escape — a user who dismissed via Maybe Later, backdrop click,
+        // or Try It Now left the listener stranded on `document`.
+        // Repeated Themes-panel visits stacked listeners; pressing Esc
+        // anywhere later would fire N stale dismiss() calls (each one
+        // re-running saveData). Single `dismiss` closure now removes the
+        // listener before delegating to the state mutator.
+        const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+        const dismiss = () => {
+            document.removeEventListener('keydown', onKey);
+            this.dismissFeaturedThemeSpotlight(weekKey);
+        };
+        modal.querySelector('[data-action="dismiss"]').addEventListener('click', dismiss);
+        modal.querySelector('[data-action="apply"]').addEventListener('click', () => {
+            // Apply BEFORE dismiss so selectTheme's downstream renderThemes
+            // → setTimeout(maybeShowFeaturedThemeSpotlight, 0) sees the
+            // modal still mounted and short-circuits via the stacking
+            // guard instead of relying on the week-key being set first.
+            this.selectTheme(featuredId);
+            dismiss();
+        });
+        modal.addEventListener('click', (e) => { if (e.target === modal) dismiss(); });
+        document.addEventListener('keydown', onKey);
+    }
+
+    dismissFeaturedThemeSpotlight(weekKey) {
+        const modal = document.getElementById('theme-spotlight-modal');
+        if (modal) {
+            modal.classList.add('theme-spotlight-leaving');
+            setTimeout(() => modal.remove(), 200);
+        }
+        if (!this.weeklyTrialPromptShown) this.weeklyTrialPromptShown = {};
+        this.weeklyTrialPromptShown[weekKey] = true;
+        this.saveData();
+    }
+
+    // ── v2.9 Track 7 — Passive dashboard discovery card ───────────────
+    //
+    // The spotlight modal above only fires inside `renderThemes()`, i.e.
+    // ONLY if the user opens the Themes panel — so a user who never
+    // visits Themes never learns the weekly trial exists. This card
+    // closes that discoverability gap on the main dashboard without an
+    // interruptive overlay. Behavior:
+    //
+    //   - No-op (wrapper hidden, emptied) when there's no rotation theme
+    //     (`getWeeklyFeaturedThemeId()` returns null) or the user already
+    //     dismissed it this ISO week.
+    //   - Free users see a "Try it free this week" CTA; premium users see
+    //     softer "This week's featured look" framing (they can't be
+    //     "converted", but the card still surfaces the rotation).
+    //   - Hides itself once the featured theme is the current theme — the
+    //     user already applied it, no reason to keep nudging.
+    //   - "Preview" routes through the same `previewTheme()` modal the
+    //     Themes panel uses; dismissal is per-week (re-appears on the
+    //     next rotation) via `weeklyThemeCardDismissed`.
+    //
+    // Called from `renderDashboard()`.
+    renderWeeklyThemeCard() {
+        const wrap = document.getElementById('dashboard-weekly-theme');
+        if (!wrap) return;
+
+        const hide = () => { wrap.classList.add('hidden'); wrap.innerHTML = ''; };
+
+        const featuredId = this.getWeeklyFeaturedThemeId();
+        if (!featuredId) return hide();
+        const theme = this.themeDefinitions[featuredId];
+        if (!theme) return hide();
+
+        // Already wearing this week's theme — nothing left to nudge.
+        if (this.currentTheme === featuredId) return hide();
+
+        const now = new Date();
+        const weekKey = `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
+        if (this.weeklyThemeCardDismissed && this.weeklyThemeCardDismissed[weekKey]) {
+            return hide();
+        }
+
+        const isFree = !this.isPremium;
+        const eyebrow = isFree ? '✨ Free for everyone this week' : '✨ This week\'s featured look';
+        const copy = isFree
+            ? `<strong>${this.escapeHTML(theme.name)}</strong> is unlocked free this week — take it for a spin before it goes back behind its normal unlock.`
+            : `<strong>${this.escapeHTML(theme.name)}</strong> is in the spotlight this week. Give your kingdom a fresh coat.`;
+        const cta = isFree ? 'Try it free' : 'Preview';
+
+        // Swatch uses the theme's own gradient identity (cardFrom/cardTo)
+        // with its accent border + icon — mirrors the Themes-panel tile
+        // preview without pulling in the heavier WebM/particle layers.
+        const from = theme.cardFrom || theme.color || '#1c1917';
+        const to = theme.cardTo || '#0c0a09';
+        const border = theme.border || theme.color || '#b45309';
+
+        wrap.classList.remove('hidden');
+        wrap.innerHTML = DASHBOARD_RENDER.renderWeeklyThemeCardHTML(theme, { eyebrow, copy, cta, from, to, border, escapeHTML: (s) => this.escapeHTML(s) });
+
+        wrap.querySelector('[data-action="preview"]').addEventListener('click', () => {
+            this.previewTheme(featuredId);
+        });
+        wrap.querySelector('[data-action="dismiss"]').addEventListener('click', () => {
+            this.dismissWeeklyThemeCard(weekKey);
+        });
+    }
+
+    dismissWeeklyThemeCard(weekKey) {
+        if (!this.weeklyThemeCardDismissed) this.weeklyThemeCardDismissed = {};
+        this.weeklyThemeCardDismissed[weekKey] = true;
+        const wrap = document.getElementById('dashboard-weekly-theme');
+        if (wrap) { wrap.classList.add('hidden'); wrap.innerHTML = ''; }
+        this.saveData();
+    }
+
+    // ── v2.9 Track 7 — End-of-trial revert + upsell ───────────────────
+    //
+    // Closes the loop on the featured-theme trial. docs/HISTORY.md \u00A72.5 Q3
+    // committed to: "keep theme active visually past Sunday midnight;
+    // on first launch of the new week, show a one-shot 'trial ended —
+    // subscribe to keep [Theme Name]' upsell modal; revert to default
+    // theme on dismiss."
+    //
+    // Trigger condition (ALL must hold):
+    //   1. `currentTheme` is a premium theme.
+    //   2. User has NOT permanently unlocked it (`unlockedThemes`
+    //      doesn't include it) AND is NOT a premium subscriber
+    //      (`isPremium !== true`). Together these mean the only way
+    //      they got access was the weekly trial.
+    //   3. The theme is NOT the currently-featured one — they're past
+    //      Sunday midnight of their trial week.
+    //   4. The end-of-trial prompt for this theme has not already been
+    //      dismissed (`weeklyTrialEndPromptShown[themeId]` is falsy).
+    //
+    // Called from the constructor immediately after `loadData()` +
+    // `checkRewardUnlocks()` so it fires on every cold boot. Idempotent
+    // within a single session via the prompt-shown map; the user only
+    // ever sees this modal ONCE per trial-theme.
+    //
+    // Returns true if the trial-ended modal was mounted (lets tests
+    // assert the trigger without scraping DOM), false otherwise.
+    checkExpiredThemeTrial() {
+        const themeId = this.currentTheme;
+        if (!themeId || themeId === 'default') return false;
+
+        const theme = this.themeDefinitions?.[themeId];
+        if (!theme || !theme.premium) return false;
+
+        // Already permanently unlocked, or globally premium — they
+        // keep the theme legitimately, no trial-end prompt.
+        if (Array.isArray(this.unlockedThemes) && this.unlockedThemes.includes(themeId)) return false;
+        if (this.isPremium === true) return false;
+
+        // Still inside the trial week — let the user enjoy it.
+        if (this.getWeeklyFeaturedThemeId() === themeId) return false;
+
+        // Already prompted about this specific theme; don't re-prompt
+        // even if it cycles back into the rotation later.
+        if (this.weeklyTrialEndPromptShown && this.weeklyTrialEndPromptShown[themeId]) {
+            // Revert silently — the prompt was their one chance, they
+            // dismissed it, contract is fulfilled.
+            this.currentTheme = 'default';
+            this.applyColorTheme();
+            this.saveData();
+            return false;
+        }
+
+        this.showThemeTrialEndedModal(themeId, theme);
+        return true;
+    }
+
+    // Mounts the trial-ended upsell modal. Distinct DOM id from the
+    // start-of-week spotlight (`#theme-trial-ended-modal` vs
+    // `#theme-spotlight-modal`) so they can co-exist on a Monday cold
+    // boot where the user's old trial just ended AND a new featured
+    // theme just rotated in (both prompts fire, neither stacks on
+    // itself). Two CTAs:
+    //   • Subscribe — routes through the existing premium upsell path
+    //     (`showPremiumPurchaseModal`, the same entry used by every
+    //     other premium gate in the app — spells, enchantments,
+    //     theme tiles). Guarded with typeof so missing-method
+    //     refactors fail soft instead of trapping the user in a modal.
+    //   • Keep default — dismisses and reverts to Medieval Default.
+    //
+    // Either way the trial-ended key for THIS theme is marked shown
+    // and currentTheme reverts to 'default' on dismiss (we never leave
+    // a non-premium user on a premium-locked theme after this modal).
+    showThemeTrialEndedModal(themeId, theme) {
+        if (document.getElementById('theme-trial-ended-modal')) return;
+
+        const modal = document.createElement('div');
+        modal.id = 'theme-trial-ended-modal';
+        modal.className = 'theme-spotlight-backdrop';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', `${theme.name} — trial ended`);
+        modal.innerHTML = `
+            <div class="theme-spotlight-card">
+                <div class="theme-spotlight-stage theme-tile-bg-${themeId}">
+                    <div class="theme-spotlight-icon">${theme.icon}</div>
+                </div>
+                <div class="theme-spotlight-body">
+                    <div class="theme-spotlight-eyebrow">⏳ Trial ended</div>
+                    <h3 class="theme-spotlight-title">${theme.name}</h3>
+                    <p class="theme-spotlight-copy">
+                        Your free week with <strong>${theme.name}</strong> just wrapped.
+                        Subscribe to keep it on permanently — or revert to the default
+                        theme and catch the next one in the rotation.
+                    </p>
+                    <div class="theme-spotlight-actions">
+                        <button class="theme-spotlight-secondary" data-action="revert">Keep default</button>
+                        <button class="theme-spotlight-primary" data-action="subscribe">Subscribe to keep</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+        const dismiss = () => {
+            document.removeEventListener('keydown', onKey);
+            this.dismissThemeTrialEndedModal(themeId);
+        };
+        modal.querySelector('[data-action="revert"]').addEventListener('click', dismiss);
+        modal.querySelector('[data-action="subscribe"]').addEventListener('click', () => {
+            // Mark dismissed FIRST so any state mutations from the
+            // premium-modal opener (which may re-render the themes
+            // panel) don't see us as "still pending trial end".
+            dismiss();
+            if (typeof this.showPremiumPurchaseModal === 'function') {
+                try { this.showPremiumPurchaseModal(); } catch (_) {}
+            }
+        });
+        modal.addEventListener('click', (e) => { if (e.target === modal) dismiss(); });
+        document.addEventListener('keydown', onKey);
+    }
+
+    dismissThemeTrialEndedModal(themeId) {
+        const modal = document.getElementById('theme-trial-ended-modal');
+        if (modal) {
+            modal.classList.add('theme-spotlight-leaving');
+            setTimeout(() => modal.remove(), 200);
+        }
+        if (!this.weeklyTrialEndPromptShown) this.weeklyTrialEndPromptShown = {};
+        this.weeklyTrialEndPromptShown[themeId] = true;
+        // Always revert — the trial is over and the user is not premium
+        // (checkExpiredThemeTrial guards on that). Leaving them on a
+        // premium-locked theme after this modal would be a contract
+        // violation: they no longer have legitimate access.
+        this.currentTheme = 'default';
+        if (typeof this.applyColorTheme === 'function') this.applyColorTheme();
+        this.saveData();
+    }
+
+    // ── v2.9 Track 7 Q7 — Analytics funnel ──────────────────────────
+    //
+    // Three events validate the "featured-week trial → subscription"
+    // hypothesis. All firings are guarded with `typeof trackEvent ===
+    // 'function'` to mirror the rest of the codebase (the analytics
+    // module is loaded as a global; some test harnesses don't wire it).
+    //
+    //   weekly_theme_featured  — once per ISO week, on first launch of
+    //                            that week. `{ themeId, weekKey }`.
+    //   weekly_theme_applied   — when a free user applies the current
+    //                            featured theme. `{ themeId, isFreeUser,
+    //                            isPremium }`. Stamps `weeklyTrialApply
+    //                            Dates[themeId]` so the conversion
+    //                            event below can correlate later.
+    //   weekly_theme_subscribe — fires from `unlockPremium()` for each
+    //                            recent trial (≤14 days) at conversion
+    //                            time. `{ themeId, daysFromApply }`.
+
+    /**
+     * Boot-time helper: emit `weekly_theme_featured` exactly once per
+     * ISO week. Called from the constructor after `loadData()`. No-op
+     * when the rotation is disabled (no themes carry weeklyRotation
+     * Index) or when this week's event has already fired on a prior
+     * launch (persisted via `lastFeaturedWeekTracked`).
+     */
+    maybeTrackWeeklyThemeFeatured() {
+        const featuredId = this.getWeeklyFeaturedThemeId();
+        if (!featuredId) return false;
+        const now = new Date();
+        const weekKey = `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
+        if (this.lastFeaturedWeekTracked === weekKey) return false;
+        this.lastFeaturedWeekTracked = weekKey;
+        if (typeof this.saveData === 'function') this.saveData();
+        if (typeof trackEvent === 'function') {
+            trackEvent('weekly_theme_featured', { themeId: featuredId, weekKey });
+        }
+        return true;
+    }
+
+    /**
+     * Called from `selectTheme()` when a user applies a theme. Fires
+     * `weekly_theme_applied` iff the theme being applied IS this week's
+     * featured slot. Records the apply date in `weeklyTrialApplyDates`
+     * so a later `unlockPremium()` can correlate the conversion.
+     *
+     * We intentionally fire for BOTH free users and premium users on
+     * the featured theme — the `isFreeUser` payload field lets the
+     * analytics consumer distinguish "trial activation" from "premium
+     * user trying out this week's featured theme", and the funnel
+     * math (subscribe conversion rate) is just filtered to
+     * `isFreeUser === true` downstream.
+     */
+    trackWeeklyThemeApplied(themeId) {
+        if (this.getWeeklyFeaturedThemeId() !== themeId) return false;
+        const isFreeUser = !this.isPremium;
+        // Only stamp the apply-date for free users — premium users
+        // can't be "converted", so cluttering the map would just
+        // create false positives in `maybeTrackWeeklyThemeSubscribe`.
+        if (isFreeUser) {
+            if (!this.weeklyTrialApplyDates) this.weeklyTrialApplyDates = {};
+            this.weeklyTrialApplyDates[themeId] = new Date().toISOString();
+            if (typeof this.saveData === 'function') this.saveData();
+        }
+        if (typeof trackEvent === 'function') {
+            trackEvent('weekly_theme_applied', {
+                themeId,
+                isFreeUser,
+                isPremium: this.isPremium
+            });
+        }
+        return true;
+    }
+
+    /**
+     * Called from `unlockPremium()` right after `isPremium = true`.
+     * Scans `weeklyTrialApplyDates` for any trial-apply within the
+     * last 14 days (configurable via `windowDays`) and emits one
+     * `weekly_theme_subscribe` event per qualifying entry, carrying
+     * the day-delta. Returns the array of themeIds that triggered an
+     * event (used by tests).
+     *
+     * Older entries are NOT pruned — they remain in the map for
+     * future audits but only entries within `windowDays` count as
+     * conversion signal. This matches the Q7 design note ("subscribe
+     * within N=14 days of weekly_theme_applied").
+     */
+    maybeTrackWeeklyThemeSubscribe(windowDays = 14) {
+        const fired = [];
+        if (!this.weeklyTrialApplyDates) return fired;
+        const now = Date.now();
+        const windowMs = windowDays * 24 * 60 * 60 * 1000;
+        for (const [themeId, isoDate] of Object.entries(this.weeklyTrialApplyDates)) {
+            const applied = Date.parse(isoDate);
+            if (Number.isNaN(applied)) continue;
+            const deltaMs = now - applied;
+            if (deltaMs < 0 || deltaMs > windowMs) continue;
+            const daysFromApply = Math.floor(deltaMs / (24 * 60 * 60 * 1000));
+            if (typeof trackEvent === 'function') {
+                trackEvent('weekly_theme_subscribe', { themeId, daysFromApply });
+            }
+            fired.push(themeId);
+        }
+        return fired;
     }
 
     // ==================== DAILY QUEST BOARD ====================
@@ -4847,8 +6267,13 @@ class GoalManager {
         if (window.effectsManager) {
             const questCard = document.querySelector(`[data-daily-quest-id="${quest.id}"]`);
             window.effectsManager.dailyQuestCompleted(questCard, def.xp, def.gold);
+            // effectsManager.dailyQuestCompleted is visual-only and addGold('daily')
+            // is a quiet source, so the claim would otherwise be silent. Play the
+            // dedicated completion sound here (the showAchievement fallback below
+            // only fires when effectsManager is absent, so no double-play).
+            if (window.audioManager) window.audioManager.playTaskComplete();
         } else {
-            this.showAchievement(`📜 ${def.name} complete! +${def.xp} XP, +${def.gold} Gold`, 'daily');
+            this.showAchievement(`📜 ${def.name} complete! +${def.xp} XP, +${def.gold} Gold`, 'task');
         }
         
         // Check if all 3 claimed — bonus reward
@@ -4858,8 +6283,8 @@ class GoalManager {
             setTimeout(() => {
                 this.addXP(25, 'daily');
                 this.addGold(15, 'daily');
-                const freeSpells = ['lucky_draw', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'instant_archive', 'quest_doubler'];
-                const randomSpell = freeSpells[Math.floor(Math.random() * freeSpells.length)];
+                const freeSpells = this.getFreeLootableSpellIds();
+                const randomSpell = freeSpells[Math.floor(this.rng() * freeSpells.length)];
                 this.addSpellToBook(randomSpell, 1);
                 const spellDef = this.spellDefinitions[randomSpell];
                 this.showAchievement(`🏅 Daily Board Sweep! Bonus +25 XP, +15 Gold & ${spellDef?.icon || '🔮'} ${spellDef?.name || 'Spell'}!`, 'weekly');
@@ -4878,42 +6303,11 @@ class GoalManager {
         if (!this.dailyQuestBoard) return;
         
         const tracking = this.ensureDailyTracking();
-        const quests = this.dailyQuestBoard.quests;
-        const allDone = quests.every(q => q.claimed);
-        
-        container.innerHTML = quests.map(quest => {
-            const def = this.DAILY_QUEST_POOL.find(q => q.id === quest.id);
-            if (!def) return '';
-            const progress = def.check(tracking);
-            const statusClass = quest.claimed ? 'opacity-50' : quest.completed ? 'border-green-500/70 bg-green-900/20' : '';
-            // statusIcon kept for any external reference; daily quest row
-            // below uses Remix Icon SVG for the claimed state to render
-            // identically across Android brands.
-            const statusIcon = quest.claimed ? '✅' : quest.completed ? '🎉' : '○';
-            
-            return `
-                <div class="flex items-center gap-3 p-3 rounded-lg border-2 border-amber-700/40 ${statusClass} transition-all" data-daily-quest-id="${quest.id}">
-                    <span class="text-2xl">${quest.claimed ? '<i class="ri-checkbox-circle-fill text-green-400"></i>' : def.icon}</span>
-                    <div class="flex-1 min-w-0">
-                        <div class="text-amber-100 font-bold text-sm fancy-font">${def.name}</div>
-                        <div class="text-amber-300/70 text-xs">${def.desc}</div>
-                    </div>
-                    <div class="flex-shrink-0 text-right">
-                        ${quest.claimed ? '<span class="text-green-400 text-xs font-bold">CLAIMED</span>' :
-                          quest.completed ? `<button onclick="goalManager.claimDailyQuest('${quest.id}')" class="btn-ripple bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold fancy-font shadow transition-all hover:scale-105">Claim</button>` :
-                          `<span class="text-amber-400/60 text-xs">${def.xp} XP</span>`}
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        // Sweep bonus indicator
-        if (allDone) {
-            container.innerHTML += `<div class="text-center text-green-400 text-sm font-bold fancy-font mt-2">🏅 Board Swept! All bonuses claimed!</div>`;
-        } else {
-            const claimed = quests.filter(q => q.claimed).length;
-            container.innerHTML += `<div class="text-center text-amber-400/60 text-xs mt-2">${claimed}/3 complete — sweep the board for a bonus!</div>`;
-        }
+        container.innerHTML = DAILY_BOARD_RENDER.renderDailyQuestBoardHTML({
+            quests: this.dailyQuestBoard.quests,
+            tracking,
+            dailyQuestPool: this.DAILY_QUEST_POOL,
+        });
     }
 
     // ==================== DAILY FREE WOODEN CHEST ====================
@@ -4943,7 +6337,7 @@ class GoalManager {
         ];
         
         const totalWeight = lootTable.reduce((sum, item) => sum + item.weight, 0);
-        let roll = Math.random() * totalWeight;
+        let roll = this.rng() * totalWeight;
         let reward = lootTable[0];
         for (const item of lootTable) {
             roll -= item.weight;
@@ -4958,6 +6352,10 @@ class GoalManager {
         if (reward.type === 'shards') this.addFocusCrystalShards(reward.amount);
         if (reward.type === 'spell') this.addSpellToBook(reward.spellId, reward.amount);
         
+        // Play the chest-open cinematic (WebM when present, CSS otherwise),
+        // matching the treasury chests. Mirrors openTreasureChest's visual
+        // moment for the dashboard's free daily chest.
+        this.celebrateChestOpen('wooden', [reward]);
         this.showAchievement(`🪵 Wooden Chest opened! Found: ${reward.label}`, 'daily');
         this.saveData();
         this.render();
@@ -4967,22 +6365,10 @@ class GoalManager {
         const container = document.getElementById('daily-wooden-chest');
         if (!container) return;
         
-        if (this.canClaimWoodenChest()) {
-            container.innerHTML = `
-                <div class="text-6xl mb-3 animate-bounce">🪵</div>
-                <p class="text-amber-200/80 fancy-font text-sm mb-4">A free chest awaits you each day!</p>
-                <button onclick="goalManager.claimWoodenChest()" 
-                    class="btn-ripple bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-yellow-400/60">
-                    <i class="ri-gift-line mr-2"></i>Open Chest
-                </button>
-            `;
-        } else {
-            container.innerHTML = `
-                <div class="text-5xl mb-3 opacity-40">🪵</div>
-                <p class="text-amber-200/50 fancy-font text-sm mb-2">Already claimed today!</p>
-                <p class="text-amber-400/40 text-xs fancy-font">Return tomorrow for another chest</p>
-            `;
-        }
+        container.innerHTML = DAILY_BOARD_RENDER.renderWoodenChestHTML({
+            canClaim: this.canClaimWoodenChest(),
+            chestStaticHTML: (tier, emoji, extraClasses) => this._chestStaticHTML(tier, emoji, extraClasses),
+        });
     }
 
     // ==================== DAY 2 RETURN NOTIFICATION ====================
@@ -5019,14 +6405,6 @@ class GoalManager {
                 'day2-return'
             );
         }, delay);
-        
-        // Also send to push worker for background delivery
-        if (navigator.serviceWorker?.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'SCHEDULE_DAY2',
-                delay: delay
-            });
-        }
     }
 
     addHabit() {
@@ -5059,6 +6437,53 @@ class GoalManager {
         });
     }
 
+    // ── Limited-time events — recurring "Double XP Weekend" (→ §3.3) ──
+    // A deterministic, recurring "Double XP Weekend": the FIRST full
+    // weekend (Saturday 00:00 → Sunday 23:59:59, UTC) of each calendar
+    // month grants 2× XP. Computed purely from the clock — no persistence,
+    // no scheduling — so every client agrees on the window and tests are
+    // deterministic. UTC is deliberate: a fixed global window makes the
+    // event feel shared (everyone at once) rather than drifting per zone.
+    // Gated by `limitedTimeEventsEnabled` (a kill-switch; absent in the
+    // unit-test factory so legacy addXP assertions stay multiplier-free).
+    getActiveXPEvent(now = Date.now()) {
+        if (!this.limitedTimeEventsEnabled) return null;
+        const d = new Date(now);
+        const year = d.getUTCFullYear();
+        const month = d.getUTCMonth();
+        // Date-of-month of the first Saturday: day-of-week of the 1st,
+        // stepped forward to Saturday (6).
+        const firstDow = new Date(Date.UTC(year, month, 1)).getUTCDay(); // 0=Sun..6=Sat
+        const firstSaturday = 1 + ((6 - firstDow + 7) % 7);
+        const startsAt = Date.UTC(year, month, firstSaturday, 0, 0, 0, 0);
+        const endsAt = Date.UTC(year, month, firstSaturday + 1, 23, 59, 59, 999); // through Sunday
+        if (now < startsAt || now > endsAt) return null;
+        return {
+            id: `xp2x-${year}-${String(month + 1).padStart(2, '0')}`,
+            label: 'Double XP Weekend',
+            icon: '⚡',
+            multiplier: 2,
+            startsAt,
+            endsAt,
+        };
+    }
+
+    // The XP multiplier from any active limited-time event (1 when none).
+    getXPEventMultiplier(now = Date.now()) {
+        const event = this.getActiveXPEvent(now);
+        return event ? event.multiplier : 1;
+    }
+
+    // "Xh left" / "<1h left" / "Nd left" until the event window closes.
+    _xpEventTimeLeftLabel(event, now = Date.now()) {
+        const msLeft = event.endsAt - now;
+        if (msLeft <= 0) return 'ending now';
+        const hours = Math.ceil(msLeft / (60 * 60 * 1000));
+        if (hours <= 1) return '<1h left';
+        if (hours < 24) return `${hours}h left`;
+        return `${Math.ceil(hours / 24)}d left`;
+    }
+
     // Beginner's Blessing System
     isBeginnerBlessingActive() {
         if (!this.accountCreatedDate) return false;
@@ -5078,44 +6503,79 @@ class GoalManager {
 
     // XP and Leveling System
     getXPForLevel(level) {
-        // Progressive scaling: Each level requires more XP
-        // Level 1: 150 XP  (1-2 days for new users)
-        // Level 2: 400 XP
-        // Level 3: 650 XP
-        // Level 4: 900 XP
-        // Level 5: 1,150 XP
-        // Formula: 150 + (level - 1) * 250
-        return 150 + (level - 1) * 250;
+        // XP to advance from a level to the next: 150 + (level - 1) * 250 (L1=150,
+        // L2=400, L3=650, L4=900, L5=1150). Curve math lives in leveling-logic.js.
+        return LEVELING_LOGIC.xpForLevel(level);
     }
 
     getTotalXPForLevel(level) {
-        // Calculate total XP needed to reach a specific level from level 1
-        let total = 0;
-        for (let i = 1; i < level; i++) {
-            total += this.getXPForLevel(i);
+        // Cumulative XP to reach a level from level 1 (leveling-logic.js).
+        return LEVELING_LOGIC.totalXpForLevel(level);
+    }
+
+    // ── N3 effort-based XP: priority → reward multiplier ─────────────────
+    // Reuses the existing low/medium/high `priority` field as an effort proxy.
+    // Medium is the 1.0× baseline so default-priority items keep their historical
+    // XP exactly (no balance regression). Mirrors the long-standing side-quest
+    // reward ramp (high 30 / med 20 / low 15 = ×20).
+    _normalizePriority(priority) {
+        return EFFORT_XP_LOGIC.normalizePriority(priority);
+    }
+
+    getPriorityXPMultiplier(priority) {
+        return EFFORT_XP_LOGIC.priorityXPMultiplier(priority);
+    }
+
+    // Anti-gaming for self-reported effort: only the first
+    // HIGH_PRIORITY_XP_DAILY_CAP high-priority DAILY-TASK completions per day
+    // earn the high bonus; beyond that they pay the medium (1.0×) rate. The
+    // counter is date-stamped so it self-resets at local midnight and survives
+    // reloads (no reliance on the daily-rollover hook). Returns true when a
+    // high-bonus slot was available (and consumes it).
+    _consumeHighPriorityDailySlot() {
+        const today = this.getTodayDateString();
+        if (this._highPriorityXpDate !== today) {
+            this._highPriorityXpDate = today;
+            this.highPriorityTasksToday = 0;
         }
-        return total;
+        if ((this.highPriorityTasksToday || 0) >= (this.HIGH_PRIORITY_XP_DAILY_CAP ?? 8)) return false;
+        this.highPriorityTasksToday = (this.highPriorityTasksToday || 0) + 1;
+        return true;
+    }
+
+    // Effort-scaled XP for a single DAILY TASK (base 15 = the historical flat
+    // reward), applying the per-day cap on the high-priority bonus.
+    _dailyTaskXP(task) {
+        const BASE = 15;
+        let priority = EFFORT_XP_LOGIC.normalizePriority(task && task.priority);
+        if (priority === 'high' && !this._consumeHighPriorityDailySlot()) {
+            priority = 'medium'; // over today's cap → no high bonus
+        }
+        return EFFORT_XP_LOGIC.scaledXP(BASE, priority);
     }
 
     addXP(amount, source) {
-        // Early Bird enchantment: 3x XP for first 3 daily tasks of the day
+        // Early Bird enchantment: 3x XP for first 5 daily tasks of the day. The counter keeps
+        // climbing past the cap (only the comparison is capped), so it is incremented BEFORE
+        // reward-economy.js decides whether this task still qualifies.
         if (source === 'daily' && this.hasActiveEnchantment('early_bird')) {
             this.earlyBirdTasksToday++;
-            if (this.earlyBirdTasksToday <= 3) {
-                amount *= 3;
-            }
+            amount = REWARD_ECONOMY.earlyBirdAmount(amount, this.earlyBirdTasksToday);
         }
         
         // Momentum enchantment: +5 bonus XP per consecutive task (stacks up to +25)
         if (this.hasActiveEnchantment('momentum')) {
-            this.momentumStack = Math.min(this.momentumStack + 1, 5);
-            amount += this.momentumStack * 5;
+            this.momentumStack = REWARD_ECONOMY.nextMomentumStack(this.momentumStack);
+            amount += REWARD_ECONOMY.momentumBonus(this.momentumStack);
         } else {
             this.momentumStack = 0;
         }
         
         // Beginner's Blessing: 2x XP during first 3 days
-        const blessingMultiplier = this.isBeginnerBlessingActive() ? 2 : 1;
+        const blessingMultiplier = REWARD_ECONOMY.blessingMultiplier(this.isBeginnerBlessingActive());
+        // Limited-time event: Double XP Weekend (2× on the first
+        // weekend of each month). Stacks multiplicatively with the rest.
+        const eventMultiplier = this.getXPEventMultiplier();
         
         // Apply spell multipliers
         const xpMultiplier = this.getActiveSpellMultiplier('xp_multiplier') * this.getActiveSpellMultiplier('xp_boost');
@@ -5123,6 +6583,8 @@ class GoalManager {
         const enchantmentMultiplier = this.getEnchantmentMultiplier('xp');
         // Apply companion bonus (Owl: +10% XP)
         const companionBonus = 1 + this.getCompanionBonus('xp');
+        // Scholar class (v3.1 §3.1): Scholarship grants +X% XP from all sources.
+        const studyMultiplier = 1 + this.getClassPerkValue('study_xp_mult');
         
         // Quest Doubler spell: 2x XP & Gold on next QUEST completion only.
         // Gated to quest sources so it isn't consumed by chest XP loot, focus
@@ -5131,19 +6593,26 @@ class GoalManager {
         // call follows synchronously, the flag won't apply to an unrelated
         // future gold gain (e.g. a chest opened later).
         let questDoublerMultiplier = 1;
-        const questDoublerSources = ['daily', 'weekly', 'monthly', 'life', 'epic', 'side'];
-        if (questDoublerSources.includes(source)) {
-            const questDoublerActive = this.activeSpells.find(s => s.spellId === 'quest_doubler');
+        if (REWARD_ECONOMY.isQuestDoublerSource(source)) {
+            const questDoublerActive = SPELL_LIFECYCLE.findActive(this.activeSpells, 'quest_doubler', Date.now());
             if (questDoublerActive) {
-                questDoublerMultiplier = 2;
-                this._questDoublerGoldPending = 2;
+                questDoublerMultiplier = REWARD_ECONOMY.QUEST_DOUBLER_MULTIPLIER;
+                this._questDoublerGoldPending = REWARD_ECONOMY.QUEST_DOUBLER_MULTIPLIER;
                 Promise.resolve().then(() => { this._questDoublerGoldPending = null; });
-                this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'quest_doubler');
+                this.activeSpells = SPELL_LIFECYCLE.consume(this.activeSpells, 'quest_doubler');
                 this.showAchievement('📋 QUEST DOUBLER! 2x XP & Gold earned!', 'weekly');
             }
         }
         
-        const finalXP = Math.floor(amount * blessingMultiplier * xpMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
+        const finalXP = REWARD_ECONOMY.applyStack(amount, [
+            blessingMultiplier,
+            eventMultiplier,
+            xpMultiplier,
+            enchantmentMultiplier,
+            companionBonus,
+            studyMultiplier,
+            questDoublerMultiplier
+        ]);
         
         // Grant companion XP (Bonding enchantment doubles it)
         this.grantCompanionXP(finalXP);
@@ -5186,13 +6655,12 @@ class GoalManager {
     showXPToast(amount, oldXP, oldLevel) {
         const title = this.getLevelTitle(oldLevel);
         
-        const currentLevelXP = this.getTotalXPForLevel(oldLevel);
-        const nextLevelXP = this.getTotalXPForLevel(oldLevel + 1);
-        const xpNeededForLevel = nextLevelXP - currentLevelXP;
-        
-        const oldProgress = Math.max(0, Math.min(100, ((oldXP - currentLevelXP) / xpNeededForLevel) * 100));
-        const newXPIntoLevel = (oldXP + amount) - currentLevelXP;
-        const newProgress = Math.max(0, Math.min(100, (newXPIntoLevel / xpNeededForLevel) * 100));
+        // XP-into-level math (leveling-logic.js) — old + new progress share oldLevel's band.
+        const { currentLevelXP, nextLevelXP, xpNeededForLevel, pct: oldProgress } =
+            LEVELING_LOGIC.levelProgress(oldXP, oldLevel);
+        const newBand = LEVELING_LOGIC.levelProgress(oldXP + amount, oldLevel);
+        const newXPIntoLevel = newBand.xpIntoLevel;
+        const newProgress = newBand.pct;
         const willLevelUp = (oldXP + amount) >= nextLevelXP;
         
         // Get or create toast element
@@ -5288,14 +6756,25 @@ class GoalManager {
             this._questDoublerGoldPending = null;
         }
         // Beginner's Blessing: 2x Gold during first 3 days
-        const blessingMultiplier = this.isBeginnerBlessingActive() ? 2 : 1;
+        const blessingMultiplier = REWARD_ECONOMY.blessingMultiplier(this.isBeginnerBlessingActive());
         // Apply spell multipliers
         const goldMultiplier = this.getActiveSpellMultiplier('gold_multiplier');
         // Apply enchantment multipliers
         const enchantmentMultiplier = this.getEnchantmentMultiplier('gold');
         // Apply companion bonus (Dragon: +15% gold)
         const companionBonus = 1 + this.getCompanionBonus('gold');
-        const finalGold = Math.floor(amount * blessingMultiplier * goldMultiplier * enchantmentMultiplier * companionBonus * questDoublerMultiplier);
+        // Ranger Pathfinder subclass (v3.1 §9): +X% gold from all sources. addGold
+        // is the single choke point every gold grant routes through, so applying
+        // the multiplier here (and ONLY here) guarantees no source is doubled.
+        const pathfinderBonus = 1 + this.getClassPerkValue('pathfinder_fortune');
+        const finalGold = REWARD_ECONOMY.applyStack(amount, [
+            blessingMultiplier,
+            goldMultiplier,
+            enchantmentMultiplier,
+            companionBonus,
+            questDoublerMultiplier,
+            pathfinderBonus
+        ]);
         
         this.goldCoins += finalGold;
         // Lifetime gold-earned counter — drives Golden Empire theme
@@ -5305,14 +6784,14 @@ class GoalManager {
         this.totalGoldEarned = (this.totalGoldEarned || 0) + finalGold;
         this.trackDaily('goldEarned', finalGold);
         // Skip gold sound for routine task/habit completions (they have their own sound)
-        const quietSources = ['daily', 'habit', 'weekly', 'monthly'];
-        if (!this._suppressRewardSounds && !quietSources.includes(source) && window.audioManager) {
+        const isQuietSource = REWARD_ECONOMY.isQuietGoldSource(source);
+        if (!this._suppressRewardSounds && !isQuietSource && window.audioManager) {
             window.audioManager.playGoldEarned();
         }
         // Flying gold sprite to the top-right inventory badge for non-quiet
         // sources (focus session bonuses, chest loot, boss rewards, etc.).
         // Daily/habit/weekly/monthly gold uses dailyQuestCompleted's float-up.
-        if (!this._suppressRewardToasts && !quietSources.includes(source) && finalGold > 0 && window.effectsManager) {
+        if (!this._suppressRewardToasts && !isQuietSource && finalGold > 0 && window.effectsManager) {
             window.effectsManager.goldEarned(finalGold);
         }
         this.checkRewardUnlocks();
@@ -5320,19 +6799,20 @@ class GoalManager {
 
     // Loot Drop System
     checkLootDrop(source) {
-        const random = Math.random() * 100;
+        const random = this.rng() * 100;
+        const t = BALANCE.loot.dropRarityThresholds;
         let rarity, reward;
         
-        if (random < 1) { // 1% Legendary
+        if (random < t.legendary) { // 1% Legendary
             rarity = 'legendary';
             reward = { coins: 500, xpBonus: 100, special: 'theme_unlock' };
-        } else if (random < 5) { // 4% Epic
+        } else if (random < t.epic) { // 4% Epic
             rarity = 'epic';
             reward = { coins: 200, xpBonus: 50, special: 'ability_unlock' };
-        } else if (random < 15) { // 10% Rare
+        } else if (random < t.rare) { // 10% Rare
             rarity = 'rare';
             reward = { coins: 100, xpBonus: 20 };
-        } else if (random < 40) { // 25% Uncommon
+        } else if (random < t.uncommon) { // 25% Uncommon
             rarity = 'uncommon';
             reward = { coins: 50, xpBonus: 10 };
         } else { // 60% Common
@@ -5360,8 +6840,8 @@ class GoalManager {
             if (reward.special === 'theme_unlock') this.tryUnlockRandomTheme();
             if (reward.special === 'ability_unlock') {
                 // Give a random spell as the "ability" reward
-                const freeSpells = ['lucky_draw', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'instant_archive', 'quest_doubler'];
-                const randomSpell = freeSpells[Math.floor(Math.random() * freeSpells.length)];
+                const freeSpells = this.getFreeLootableSpellIds();
+                const randomSpell = freeSpells[Math.floor(this.rng() * freeSpells.length)];
                 this.addSpellToBook(randomSpell, 1);
             }
             this.saveData();
@@ -5631,7 +7111,7 @@ class GoalManager {
         });
         const lockedThemes = allThemes.filter(t => !this.unlockedThemes.includes(t));
         if (lockedThemes.length > 0) {
-            const randomTheme = lockedThemes[Math.floor(Math.random() * lockedThemes.length)];
+            const randomTheme = lockedThemes[Math.floor(this.rng() * lockedThemes.length)];
             const themeName = this.themeDefinitions[randomTheme].name;
             this.unlockTheme(randomTheme, themeName);
             return { unlocked: true, id: randomTheme, name: themeName };
@@ -5643,6 +7123,55 @@ class GoalManager {
             this.showAchievement('💰 All themes unlocked! +100 gold bonus!', 'daily');
             return { duplicate: true, gold: 100 };
         }
+    }
+
+    // v2.9 Track 1 — chest visual assets (asset-gated, code-first; same
+    // pattern as the §2.6 optional sounds). Naming contract:
+    //   images/chests/chest-<tier>.webp|png     — static closed-chest art
+    //   images/chests/chest-open-<tier>.webm    — alpha-transparent open
+    //                                             cinematic (≤2s; the loot
+    //                                             panel arrives at 2200ms)
+    // Tiers: wooden, bronze, silver, gold, royal. Files are probed with
+    // HEAD requests at startup; absent files = emoji tiles + the CSS
+    // celebration, exactly as today. Drop assets in to activate — zero
+    // code changes. WebP is preferred over PNG when both exist (smaller
+    // at identical quality; repo precedent: Dark Cathedral fallback).
+    _getChestArt() {
+        if (!this._chestArt) this._chestArt = { statics: {}, videos: {} };
+        return this._chestArt;
+    }
+
+    async _probeChestArt() {
+        const art = this._getChestArt();
+        const tiers = ['wooden', 'bronze', 'silver', 'gold', 'royal'];
+        const head = async (path) => {
+            try {
+                const res = await fetch(path, { method: 'HEAD' });
+                return res.ok;
+            } catch (e) { return false; } // offline / missing — normal case
+        };
+        for (const tier of tiers) {
+            for (const ext of ['webp', 'png']) {
+                const path = `./images/chests/chest-${tier}.${ext}`;
+                if (await head(path)) { art.statics[tier] = path; break; }
+            }
+            const videoPath = `./images/chests/chest-open-${tier}.webm`;
+            if (await head(videoPath)) art.videos[tier] = videoPath;
+        }
+        // Tiles may have rendered emoji before the probe finished —
+        // refresh the treasury grid if any static art was found.
+        if (Object.keys(art.statics).length > 0) this.renderTreasureChests();
+    }
+
+    // Static chest visual for treasury tiles + the celebration icon:
+    // <img> when art exists, the emoji otherwise. Image keeps the same
+    // box the emoji occupied so the tile layout doesn't shift.
+    _chestStaticHTML(tier, emoji, extraClasses = '') {
+        const src = this._getChestArt().statics[tier];
+        if (src) {
+            return `<img src="${src}" alt="" aria-hidden="true" class="chest-static-img mx-auto mb-3 ${extraClasses}">`;
+        }
+        return `<div class="text-6xl mb-3 ${extraClasses}">${emoji}</div>`;
     }
 
     // Treasure Chest System
@@ -5672,7 +7201,7 @@ class GoalManager {
         });
         
         // Check if Lucky Draw spell is active
-        const luckyDrawActive = this.activeSpells.some(s => s.spellId === 'lucky_draw');
+        const luckyDrawActive = SPELL_LIFECYCLE.isActive(this.activeSpells, 'lucky_draw', Date.now());
         
         // Generate rewards based on chest type
         const rewards = this.generateChestRewards(type, luckyDrawActive);
@@ -5680,7 +7209,7 @@ class GoalManager {
         
         // Consume Lucky Draw spell if active
         if (luckyDrawActive) {
-            this.activeSpells = this.activeSpells.filter(s => s.spellId !== 'lucky_draw');
+            this.activeSpells = SPELL_LIFECYCLE.consume(this.activeSpells, 'lucky_draw');
             this.showAchievement('🎲 Lucky Draw! Guaranteed rare loot!', 'monthly', false);
         }
         
@@ -5711,89 +7240,105 @@ class GoalManager {
     }
 
     getMasterLootPool() {
+        // Returns the shared frozen catalog from loot-pool.js (Engineering Roadmap #1,
+        // 12th slice). buildAvailableLootPools() only spreads/filters this (never
+        // mutates), so sharing one frozen instance is behaviour-identical.
+        return MASTER_LOOT_POOL;
+    }
+
+    // Wizard-only loot (v3.x): the Forbidden Tomes spells become findable in
+    // high-tier chests/bosses, giving a Wizard a class-gated way to replenish
+    // them after the one-time grant. Gated on playerClass so no other class —
+    // nor the free/premium filter — ever surfaces them, which is why they stay
+    // OUT of getMasterLootPool(). Derived from the wizardExclusive flag so the
+    // set never drifts from the definitions.
+    getWizardLootEntries() {
+        if (this.playerClass !== 'wizard') return {};
+        const wizardSpellIds = Object.values(this.spellDefinitions)
+            .filter(spell => spell.wizardExclusive)
+            .map(spell => spell.id);
+        if (wizardSpellIds.length === 0) return {};
         return {
-            common: [
-                { type: 'gold', amount: [50, 100], weight: 22, name: 'Small Gold Pouch', icon: '💰' },
-                { type: 'gold', amount: [100, 175], weight: 15, name: 'Gold Pouch', icon: '💰' },
-                { type: 'xp', amount: [15, 30], weight: 18, name: 'Minor XP Scroll', icon: '📜' },
-                { type: 'xp', amount: [5, 15], weight: 12, name: 'Tiny XP Scroll', icon: '📜' },
-                { type: 'charges', amount: 1, weight: 10, name: 'Attack Charge', icon: '⚔️' },
-                { type: 'shards', amount: [5, 8], weight: 15, name: 'Focus Crystal Shards', icon: '🔮' },
-                { type: 'spell', spellId: 'minor_wisdom', charges: 1, weight: 15 },
-                { type: 'spell', spellId: 'copper_blessing', charges: 1, weight: 10 },
-            ],
-            uncommon: [
-                { type: 'gold', amount: [150, 300], weight: 18, name: 'Large Gold Pouch', icon: '💰' },
-                { type: 'xp', amount: [50, 100], weight: 15, name: 'Greater XP Scroll', icon: '📜' },
-                { type: 'charges', amount: 1, weight: 15, name: 'Attack Charge', icon: '⚔️' },
-                { type: 'spell', spellId: 'lucky_draw', charges: 1, weight: 14 },
-                { type: 'spell', spellId: 'focus_mode', charges: 1, weight: 12 },
-                { type: 'spell', spellId: 'instant_archive', charges: 1, weight: 10 },
-                { type: 'spell', spellId: 'quest_doubler', charges: 1, weight: 10 },
-                { type: 'spell', spellId: 'silver_blessing', charges: 1, weight: 8 },
-                { type: 'companion', companions: ['cat', 'rabbit'], weight: 8 },
-            ],
-            rare: [
-                { type: 'gold', amount: [300, 550], weight: 12, name: 'Grand Gold Pouch', icon: '💰' },
-                { type: 'xp', amount: [100, 200], weight: 10, name: 'Epic XP Scroll', icon: '📜' },
-                { type: 'charges', amount: 2, weight: 10, name: 'Attack Charges x2', icon: '⚔️' },
-                { type: 'spell', spellId: 'arcane_surge', charges: 2, weight: 15 },
-                { type: 'spell', spellId: 'golden_touch', charges: 1, weight: 12 },
-                { type: 'spell', spellId: 'inferno_focus', charges: 1, weight: 12 },
-                { type: 'spell', spellId: 'critical_strike', charges: 1, weight: 10 },
-                { type: 'theme', weight: 10 },
-                { type: 'companion', companions: ['owl', 'fox', 'turtle'], weight: 9 },
-            ],
-            epic: [
-                { type: 'spell', spellId: 'berserker_rage', charges: 1, weight: 20 },
-                { type: 'spell', spellId: 'streak_shield', charges: 1, weight: 15 },
-                { type: 'spell', spellId: 'boss_slayer', charges: 1, weight: 15 },
-                { type: 'spell', spellId: 'execute', charges: 1, weight: 10 },
-                { type: 'companion', companions: ['wolf', 'eagle', 'bear', 'unicorn'], weight: 18 },
-                { type: 'gold', amount: [500, 900], weight: 10, name: 'Epic Gold Hoard', icon: '💰' },
-                { type: 'charges', amount: 3, weight: 7, name: 'Battle Charges x3', icon: '⚔️' },
-                { type: 'theme', weight: 5 },
-            ],
-            legendary: [
-                { type: 'spell', spellId: 'moonlight_blessing', charges: 2, weight: 22 },
-                { type: 'spell', spellId: 'double_xp_weekend', charges: 1, weight: 18 },
-                { type: 'spell', spellId: 'time_freeze', charges: 2, weight: 18 },
-                { type: 'companion', companions: ['dragon', 'phoenix', 'lion'], weight: 17 },
-                { type: 'gold', amount: [800, 1500], weight: 12, name: 'Legendary Treasure', icon: '👑' },
-                { type: 'charges', amount: 5, weight: 8, name: 'War Chest x5', icon: '⚔️' },
-                { type: 'theme', weight: 5 },
-            ]
+            epic: wizardSpellIds.map(spellId => ({ type: 'spell', spellId, charges: 1, weight: 12 })),
+            legendary: wizardSpellIds.map(spellId => ({ type: 'spell', spellId, charges: 1, weight: 10 }))
         };
     }
 
-    generateChestRewards(type, luckyDrawActive = false) {
-        const rewards = [];
-        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'quest_doubler'];
-        
+    // Shared loot-pool builder for chests and bosses: applies the free-user
+    // spell filter (premium spells only drop for premium players), injects any
+    // Wizard-only drops into their rarity tiers, and substitutes a gold/xp/charge
+    // fallback for any tier left empty. Centralised so the two callers can't
+    // drift apart — the exact class of bug that had hidden scholars_charm and
+    // merchants_fortune from loot.
+    buildAvailableLootPools() {
         const lootPool = this.getMasterLootPool();
-        
-        // Rarity weights per chest tier
-        const rarityWeights = {
-            bronze:  { common: 50, uncommon: 30, rare: 15, epic: 4, legendary: 1 },
-            silver:  { common: 30, uncommon: 35, rare: 25, epic: 8, legendary: 2 },
-            gold:    { common: 10, uncommon: 25, rare: 35, epic: 22, legendary: 8 },
-            royal:   { common: 5, uncommon: 15, rare: 30, epic: 30, legendary: 20 }
-        };
-        
-        // Item counts per chest tier
-        const itemCounts = { bronze: 1, silver: 2, gold: 3, royal: 4 };
-        
+        const freeSpellIds = this.getFreeLootableSpellIds();
+        const wizardDrops = this.getWizardLootEntries();
+        const availablePools = {};
+        for (const [rarity, pool] of Object.entries(lootPool)) {
+            let filtered = this.isPremium ? [...pool] : pool.filter(item => {
+                if (item.type === 'spell' && !freeSpellIds.includes(item.spellId)) return false;
+                return true;
+            });
+            if (wizardDrops[rarity]) filtered = [...filtered, ...wizardDrops[rarity]];
+            if (filtered.length === 0) {
+                const fallbackGold = BALANCE.loot.emptyPoolFallbackGold;
+                filtered = [
+                    { type: 'gold', amount: fallbackGold[rarity] || fallbackGold.default, weight: 40, name: 'Gold Pouch', icon: '💰' },
+                    { type: 'xp', amount: [30, 80], weight: 30, name: 'XP Scroll', icon: '📜' },
+                    { type: 'charges', amount: rarity === 'legendary' ? 3 : rarity === 'epic' ? 2 : 1, weight: 30, name: 'Attack Charges', icon: '⚔️' },
+                ];
+            }
+            availablePools[rarity] = filtered;
+        }
+        return availablePools;
+    }
+
+    generateChestRewards(type, luckyDrawActive = false) {
+        // Rarity weights + item counts per chest tier (see balance.js)
+        const rarityWeights = BALANCE.loot.chestRarityWeights;
+        const itemCounts = BALANCE.loot.chestItemCounts;
+
         const weights = { ...(rarityWeights[type] || rarityWeights.bronze) };
         const itemCount = itemCounts[type] || 1;
-        
-        // Lucky Loot enchantment: shift rarity weights upward
+
+        // Lucky Loot enchantment: shift 15 rarity weight points upward to
+        // match the advertised "+15% rare loot & companion chance". Pulls
+        // from common first, then uncommon when common runs short (gold
+        // chests only carry 10 common weight, royal only 5 — the old
+        // common-only version was nearly a no-op on exactly the chests
+        // players buff before opening). Companion odds rise implicitly
+        // since companion entries live in the rare/epic pools.
         if (this.hasActiveEnchantment('lucky_loot')) {
-            const shift = Math.min(weights.common, 10);
+            let shift = Math.min(weights.common, 15);
             weights.common -= shift;
-            weights.rare += Math.floor(shift * 0.5);
+            if (shift < 15) {
+                const fromUncommon = Math.min(weights.uncommon, 15 - shift);
+                weights.uncommon -= fromUncommon;
+                shift += fromUncommon;
+            }
+            weights.rare += Math.ceil(shift * 0.5);
             weights.epic += Math.floor(shift * 0.5);
         }
-        
+
+        // Ranger class (v3.0 §3.1): bonus rare-loot weight on chest opens.
+        // Mirrors the Lucky Loot enchantment shift — pulls weight from
+        // common (then uncommon) and pushes it into rare/epic, so the
+        // perk meaningfully helps even on high-tier chests that carry
+        // little common weight. Stacks additively with Lucky Loot.
+        const rangerWeight = this.getClassPerkValue('loot_weight');
+        if (rangerWeight > 0) {
+            let shift = Math.min(weights.common, rangerWeight);
+            weights.common -= shift;
+            if (shift < rangerWeight) {
+                const fromUncommon = Math.min(weights.uncommon, rangerWeight - shift);
+                weights.uncommon -= fromUncommon;
+                shift += fromUncommon;
+            }
+            weights.rare += Math.ceil(shift * 0.5);
+            weights.epic += Math.floor(shift * 0.5);
+        }
+
         // Lucky Draw: minimum uncommon rarity
         if (luckyDrawActive) {
             const commonWeight = weights.common;
@@ -5803,172 +7348,214 @@ class GoalManager {
             weights.epic += Math.floor(commonWeight * 0.2);
             weights.legendary += Math.floor(commonWeight * 0.1);
         }
-        
-        // Build available pools (filter premium spells for free users)
-        const availablePools = {};
-        for (const [rarity, pool] of Object.entries(lootPool)) {
-            let filtered = this.isPremium ? [...pool] : pool.filter(item => {
-                if (item.type === 'spell' && !freeSpellIds.includes(item.spellId)) return false;
-                return true;
-            });
-            // Fallback if rarity pool is empty after filtering
-            if (filtered.length === 0) {
-                const fallbackAmounts = { common: [25, 75], uncommon: [75, 150], rare: [150, 300], epic: [300, 600], legendary: [500, 1000] };
-                filtered = [
-                    { type: 'gold', amount: fallbackAmounts[rarity] || [50, 150], weight: 40, name: 'Gold Pouch', icon: '💰' },
-                    { type: 'xp', amount: [30, 80], weight: 30, name: 'XP Scroll', icon: '📜' },
-                    { type: 'charges', amount: rarity === 'legendary' ? 3 : rarity === 'epic' ? 2 : 1, weight: 30, name: 'Attack Charges', icon: '⚔️' },
-                ];
-            }
-            availablePools[rarity] = filtered;
-        }
-        
-        // Roll each item
-        const rarityEntries = Object.entries(weights).map(([rarity, weight]) => ({ rarity, weight }));
-        for (let i = 0; i < itemCount; i++) {
-            // Step 1: Roll rarity
-            const rarityRoll = this.weightedRandomSelect(rarityEntries);
-            const rolledRarity = rarityRoll.rarity;
-            
-            // Step 2: Pick item from that rarity's pool
-            const pool = availablePools[rolledRarity];
-            const item = this.weightedRandomSelect(pool);
-            
-            // Step 3: Build reward object
-            const reward = this.buildLootReward(item, rolledRarity);
-            if (reward) rewards.push(reward);
-        }
-        
-        return rewards;
+
+        const availablePools = this.buildAvailableLootPools();
+
+        // Shared roll loop lives in the loot engine (Engineering Roadmap #1, 11th
+        // slice) so chest + boss loot can't drift. The instance methods are passed
+        // in so the RNG seam and any spy-based tests still route through `this`.
+        return LOOT_ENGINE.rollLootTable({
+            rarityWeights: weights,
+            availablePools,
+            itemCount,
+            weightedRandomSelect: (entries) => this.weightedRandomSelect(entries),
+            buildLootReward: (item, itemRarity) => this.buildLootReward(item, itemRarity)
+        });
     }
     
     generateBossLoot(bossType) {
-        const rewards = [];
-        const freeSpellIds = ['lucky_draw', 'instant_archive', 'focus_mode', 'minor_wisdom', 'copper_blessing', 'quest_doubler'];
-        
-        const lootPool = this.getMasterLootPool();
-        
-        // Boss-specific rarity weights and item counts
-        const rarityWeights = {
-            daily:   { common: 40, uncommon: 35, rare: 18, epic: 5, legendary: 2 },
-            weekly:  { common: 15, uncommon: 30, rare: 35, epic: 15, legendary: 5 },
-            monthly: { common: 5, uncommon: 15, rare: 30, epic: 30, legendary: 20 }
-        };
-        const itemCounts = { daily: 1, weekly: 2, monthly: 3 };
-        
+        // Boss-specific rarity weights + item counts (see balance.js)
+        const rarityWeights = BALANCE.loot.bossRarityWeights;
+        const itemCounts = BALANCE.loot.bossItemCounts;
+
         const weights = { ...(rarityWeights[bossType] || rarityWeights.daily) };
-        const itemCount = itemCounts[bossType] || 1;
-        
-        // Build available pools (filter premium spells for free users)
-        const availablePools = {};
-        for (const [rarity, pool] of Object.entries(lootPool)) {
-            let filtered = this.isPremium ? [...pool] : pool.filter(item => {
-                if (item.type === 'spell' && !freeSpellIds.includes(item.spellId)) return false;
-                return true;
-            });
-            if (filtered.length === 0) {
-                const fallbackAmounts = { common: [25, 75], uncommon: [75, 150], rare: [150, 300], epic: [300, 600], legendary: [500, 1000] };
-                filtered = [
-                    { type: 'gold', amount: fallbackAmounts[rarity] || [50, 150], weight: 40, name: 'Gold Pouch', icon: '💰' },
-                    { type: 'xp', amount: [30, 80], weight: 30, name: 'XP Scroll', icon: '📜' },
-                    { type: 'charges', amount: rarity === 'legendary' ? 3 : rarity === 'epic' ? 2 : 1, weight: 30, name: 'Attack Charges', icon: '⚔️' },
-                ];
-            }
-            availablePools[rarity] = filtered;
-        }
-        
-        // Roll each item
-        const rarityEntries = Object.entries(weights).map(([rarity, weight]) => ({ rarity, weight }));
-        for (let i = 0; i < itemCount; i++) {
-            const rarityRoll = this.weightedRandomSelect(rarityEntries);
-            const rolledRarity = rarityRoll.rarity;
-            const pool = availablePools[rolledRarity];
-            const item = this.weightedRandomSelect(pool);
-            const reward = this.buildLootReward(item, rolledRarity);
-            if (reward) rewards.push(reward);
-        }
-        
-        return rewards;
+        // Ranger Trophy Hunter (v3.1 §3.2): +N bonus loot rolls from bosses.
+        const itemCount = (itemCounts[bossType] || 1) + this.getClassPerkValue('boss_loot');
+
+        const availablePools = this.buildAvailableLootPools();
+
+        // Shared roll loop lives in the loot engine (Engineering Roadmap #1, 11th
+        // slice); see generateChestRewards for the rationale.
+        return LOOT_ENGINE.rollLootTable({
+            rarityWeights: weights,
+            availablePools,
+            itemCount,
+            weightedRandomSelect: (entries) => this.weightedRandomSelect(entries),
+            buildLootReward: (item, itemRarity) => this.buildLootReward(item, itemRarity)
+        });
     }
     
     buildLootReward(item, rarity) {
-        if (item.type === 'gold') {
-            const [min, max] = item.amount;
-            const amount = Math.floor(Math.random() * (max - min + 1)) + min;
-            return { type: 'gold', amount, rarity, name: item.name, icon: item.icon };
-        }
-        if (item.type === 'xp') {
-            const [min, max] = item.amount;
-            const amount = Math.floor(Math.random() * (max - min + 1)) + min;
-            return { type: 'xp', amount, rarity, name: item.name, icon: item.icon };
-        }
-        if (item.type === 'charges') {
-            return { type: 'charges', amount: item.amount, rarity, name: item.name, icon: item.icon };
-        }
-        if (item.type === 'shards') {
-            const [min, max] = item.amount;
-            const amount = Math.floor(Math.random() * (max - min + 1)) + min;
-            return { type: 'shards', amount, rarity, name: item.name, icon: item.icon };
-        }
-        if (item.type === 'spell') {
-            return { type: 'spell', spellId: item.spellId, charges: item.charges, rarity };
-        }
-        if (item.type === 'theme') {
-            return { type: 'theme', value: 'random', rarity };
-        }
-        if (item.type === 'companion') {
-            if (this.level < 3) {
-                // Companions locked before level 3 - give gold instead
-                const goldAmounts = { uncommon: [75, 150], rare: [150, 300], epic: [300, 500], legendary: [500, 1000] };
-                const [min, max] = goldAmounts[rarity] || [50, 100];
-                const amount = Math.floor(Math.random() * (max - min + 1)) + min;
-                return { type: 'gold', amount, rarity, name: 'Gold (Companion Locked)', icon: '💰' };
-            }
-            const companionId = item.companions[Math.floor(Math.random() * item.companions.length)];
-            return { type: 'companion', value: companionId, rarity };
-        }
-        return null;
+        // Delegates to the pure loot-engine reward builder (Engineering Roadmap #1,
+        // 11th slice). The instance-dependent inputs — the injected RNG (#4), the
+        // player level (companion lvl-3 gate), and the balance-sourced locked-gold
+        // table — are passed in so the module stays pure and testable.
+        return LOOT_ENGINE.buildLootReward(item, rarity, {
+            rng: () => this.rng(),
+            level: this.level,
+            companionLockedGold: BALANCE.loot.companionLockedGold
+        });
     }
     
+    // Injectable RNG seam (Engineering Roadmap #4). Every *gameplay* random
+    // draw — loot rarity/item rolls, reward amounts, and the class/enchantment
+    // procs (crit, bonus charge, forage, sage crystals, serenity, enchant
+    // preserve, spell-charge refund) — routes through this instead of calling
+    // Math.random() directly, so tests can inject a deterministic source (set `_rng` to a
+    // function returning a value in [0,1)) and assert real drop rates / proc
+    // outcomes. Cosmetic randomness (particle bursts) intentionally keeps
+    // using Math.random(). Production leaves `_rng` unset, so this IS
+    // Math.random() — identical distribution, zero behavior change.
+    rng() {
+        return (typeof this._rng === 'function' ? this._rng : Math.random)();
+    }
+
     weightedRandomSelect(items) {
-        const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
-        let random = Math.random() * totalWeight;
-        
-        for (const item of items) {
-            random -= item.weight;
-            if (random <= 0) {
-                return item;
-            }
-        }
-        return items[items.length - 1];
+        // Delegates to the pure loot-engine primitive (Engineering Roadmap #1, 11th
+        // slice); the RNG seam (#4) is injected so tests stay deterministic.
+        return LOOT_ENGINE.weightedRandomSelect(items, () => this.rng());
     }
 
     showChestRewards(type, rewards) {
         this.celebrateChestOpen(type, rewards);
-        
-        // Show loot panel after celebration animation finishes
-        setTimeout(() => {
-            this.showLootPanel(type, rewards);
-        }, 2200);
-        
+
+        const openPanel = () => this.showLootPanel(type, rewards);
+
+        // v2.9 — Chest loot fountain. Mirrors the boss-defeat flow
+        // (onBossDefeated → effectsManager.lootFountain): once the chest
+        // has visually burst open, the reward icons arc up into the
+        // player's avatar ring, and the loot panel opens via onArrive as
+        // the LAST sprite lands — so the moment reads as "loot flows from
+        // the chest into you, then you open it." The chest's own outward
+        // burst (CSS path) / WebM cinematic plays first as the explosion;
+        // this inward fountain is the collection beat.
+        //
+        // The ~1200ms lead-in lets the chest-open climax land before the
+        // fountain erupts (the WebM runs ~2s; the CSS burst peaks ~1s).
+        // lootFountain handles all the fallbacks itself: minimal-fx /
+        // empty items → onArrive fires immediately; reduced intensity →
+        // 4-sprite cap; a missing/off-screen avatar ring resolves to
+        // viewport center and still calls onArrive. We only fall back to
+        // the legacy fixed-delay open when effectsManager isn't present
+        // or the avatar ring element doesn't exist at all.
+        const targetEl = typeof document !== 'undefined'
+            ? document.getElementById('player-avatar-ring')
+            : null;
+        if (window.effectsManager && targetEl) {
+            const fountainItems = rewards.map(r => ({ icon: this._lootFountainIcon(r) }));
+            setTimeout(() => {
+                window.effectsManager.lootFountain(document.body, targetEl, fountainItems, openPanel);
+            }, 1200);
+        } else {
+            setTimeout(openPanel, 2200);
+        }
+
         if (type === 'gold' || type === 'royal') this.maybeShowReviewPrompt('chest_open');
     }
 
-    celebrateChestOpen(type, rewards) {
-        if (window.audioManager) window.audioManager.playChestOpen();
-        const chestIcons = { bronze: '🟫', silver: '⬜', gold: '🟨', royal: '🟪' };
-        const chestIcon = chestIcons[type] || '🎁';
+    // Resolve the emoji a chest reward should use as its loot-fountain
+    // sprite. Most rewards carry an explicit `icon`; theme/companion/spell
+    // rewards resolve theirs from the relevant definition map (matching
+    // showLootPanel's display logic), with a per-type emoji fallback.
+    _lootFountainIcon(reward) {
+        if (!reward) return '✨';
+        if (reward.icon) return reward.icon;
+        if (reward.type === 'companion') {
+            const c = this.getCompanionDefinitions()[reward.value];
+            return (c && c.icon) || '🐾';
+        }
+        if (reward.type === 'spell') {
+            const s = this.spellDefinitions && this.spellDefinitions[reward.spellId];
+            return (s && s.icon) || '🔮';
+        }
+        if (reward.type === 'theme') return '🎨';
+        const fallback = { gold: '💰', xp: '📜', charges: '⚔️', shards: '🔮' };
+        return fallback[reward.type] || '✨';
+    }
 
+    celebrateChestOpen(type, rewards) {
+        if (window.audioManager) window.audioManager.playChestOpen(type);
+        // WebM cinematic when the asset exists (and motion is allowed);
+        // otherwise the original CSS celebration. The video path also
+        // falls back to CSS mid-flight on a playback error.
+        if (this._tryChestOpenVideo(type)) return;
+        this._celebrateChestOpenCSS(type);
+    }
+
+    // Plays the alpha-transparent chest-open WebM as a centered
+    // fullscreen overlay. Returns false when the CSS path should run
+    // instead (no asset, reduced motion, minimal effects).
+    _tryChestOpenVideo(type) {
+        const src = this._getChestArt().videos[type];
+        if (!src) return false;
+        // Mirror the theme-preview N2 gate: reduced-motion users get no
+        // autoplaying video. fx-minimal users have opted out of big
+        // effects entirely (matches effectsManager's intensity gates).
+        const reducedMotion = window.matchMedia
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reducedMotion) return false;
+        if (document.body && document.body.classList.contains('fx-minimal')) return false;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'chest-open-video-overlay';
+        const video = document.createElement('video');
+        video.className = `chest-open-video ${type}`;
+        video.src = src;
+        video.muted = true;            // chest-open.mp3 carries the audio
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('aria-hidden', 'true');
+        overlay.appendChild(video);
+        document.body.appendChild(overlay);
+
+        let done = false;
+        const cleanup = () => {
+            if (done) return;
+            done = true;
+            overlay.remove();
+        };
+        video.onended = cleanup;
+        // Decode/playback failure (corrupt file, unsupported alpha codec
+        // on this device): swap to the CSS celebration so the moment is
+        // never silent-visual.
+        video.onerror = () => { cleanup(); this._celebrateChestOpenCSS(type); };
+        // Safety net — the loot panel arrives at 2200ms; never let a
+        // stalled video linger past it.
+        setTimeout(cleanup, 2200);
+
+        try {
+            const p = video.play();
+            if (p && p.catch) p.catch(() => { cleanup(); this._celebrateChestOpenCSS(type); });
+        } catch (e) {
+            cleanup();
+            return false;
+        }
+        return true;
+    }
+
+    // Original DOM/CSS celebration (flash + icon + aura + beam +
+    // particles + confetti) — now the fallback path behind the WebM.
+    _celebrateChestOpenCSS(type) {
         // 1. Full-screen flash
         const flash = document.createElement('div');
         flash.className = `chest-open-flash ${type}`;
         document.body.appendChild(flash);
         setTimeout(() => flash.remove(), 1000);
 
-        // 2. Chest icon (shakes then bursts)
+        // 2. Chest icon (shakes then bursts) — static chest art when
+        // available, gift emoji otherwise
         const icon = document.createElement('div');
         icon.className = `chest-open-icon chest-tier-${type}`;
-        icon.textContent = '🎁';
+        const staticSrc = this._getChestArt().statics[type];
+        if (staticSrc) {
+            const img = document.createElement('img');
+            img.src = staticSrc;
+            img.alt = '';
+            img.className = 'chest-open-icon-img';
+            icon.appendChild(img);
+        } else {
+            icon.textContent = '🎁';
+        }
         document.body.appendChild(icon);
         setTimeout(() => icon.remove(), 1800);
 
@@ -5984,8 +7571,10 @@ class GoalManager {
         document.body.appendChild(beam);
         setTimeout(() => beam.remove(), 2000);
 
-        // 5. Coin/particle burst outward
-        const particleCount = 20;
+        // 5. Coin/particle burst outward — trimmed (was 20) so it reads as
+        // the chest "explosion" without competing with the inward loot
+        // fountain that follows (showChestRewards), which is the payoff beat.
+        const particleCount = 12;
         for (let i = 0; i < particleCount; i++) {
             setTimeout(() => {
                 const p = document.createElement('div');
@@ -6034,7 +7623,7 @@ class GoalManager {
                 return { icon: r.icon || '⚔️', name: r.name || 'Attack Charges', desc: `+${r.amount} charge${r.amount > 1 ? 's' : ''}`, rarity: r.rarity || 'uncommon' };
             }
             if (r.type === 'shards') {
-                return { icon: r.icon || '🔮', name: r.name || 'Crystal Shards', desc: `+${r.amount} shard${r.amount > 1 ? 's' : ''} (${this.focusCrystalShards}/10)`, rarity: r.rarity || 'common' };
+                return { icon: r.icon || '🔮', name: r.name || 'Crystal Shards', desc: `+${r.amount} shard${r.amount > 1 ? 's' : ''} (${this.focusCrystalShards}/${CRYSTAL_ECONOMY.SHARDS_PER_CRYSTAL})`, rarity: r.rarity || 'common' };
             }
             if (r.type === 'theme') {
                 if (r._resolved?.duplicate) {
@@ -6056,6 +7645,15 @@ class GoalManager {
             }
             return { icon: '✨', name: 'Reward', desc: '', rarity: 'common' };
         });
+
+        // v2.9 Track 1 — sequential loot reveal by rarity. The list below
+        // reveals top-to-bottom via the staggered `lootItemIn` animation, so
+        // ordering the rows by ascending rarity makes the reveal build to the
+        // rarest drop, which lands last for a satisfying crescendo. Stable
+        // sort keeps the original (generation) order within a tier. This is
+        // display-only: the rewards were already granted before the panel
+        // opened, so reordering here can never change what the player gets.
+        rewardItems.sort((a, b) => this._rarityRank(a.rarity) - this._rarityRank(b.rarity));
 
         const rarityColors = {
             common: 'text-gray-300 border-gray-600 bg-gray-800/50',
@@ -6106,113 +7704,11 @@ class GoalManager {
 
     // Companion System
     getCompanionDefinitions() {
-        return {
-            // COMMON - Bronze chest (5% chance)
-            cat: { 
-                name: 'Lucky Cat', 
-                icon: '🐱', 
-                rarity: 'common',
-                bonusType: 'gold', 
-                bonusAmount: 0.05,
-                description: '+5% Gold from all sources'
-            },
-            rabbit: { 
-                name: 'Swift Rabbit', 
-                icon: '🐰', 
-                rarity: 'common',
-                bonusType: 'xp', 
-                bonusAmount: 0.05,
-                description: '+5% XP from all tasks'
-            },
-            
-            // UNCOMMON - Silver chest (10% chance)
-            owl: { 
-                name: 'Wise Owl', 
-                icon: '🦉', 
-                rarity: 'uncommon',
-                bonusType: 'xp', 
-                bonusAmount: 0.10,
-                description: '+10% XP from all tasks'
-            },
-            fox: { 
-                name: 'Clever Fox', 
-                icon: '🦊', 
-                rarity: 'uncommon',
-                bonusType: 'gold', 
-                bonusAmount: 0.10,
-                description: '+10% Gold from all sources'
-            },
-            turtle: { 
-                name: 'Ancient Turtle', 
-                icon: '🐢', 
-                rarity: 'uncommon',
-                bonusType: 'streak_protection', 
-                bonusAmount: 1,
-                description: 'Protects one streak per week from breaking'
-            },
-            
-            // RARE - Gold chest (20% chance)
-            wolf: { 
-                name: 'Loyal Wolf', 
-                icon: '🐺', 
-                rarity: 'rare',
-                bonusType: 'attack', 
-                bonusAmount: 0.15,
-                description: '+15% Boss damage'
-            },
-            eagle: { 
-                name: 'Golden Eagle', 
-                icon: '🦅', 
-                rarity: 'rare',
-                bonusType: 'xp', 
-                bonusAmount: 0.15,
-                description: '+15% XP from all tasks'
-            },
-            bear: { 
-                name: 'Mighty Bear', 
-                icon: '🐻', 
-                rarity: 'rare',
-                bonusType: 'attack', 
-                bonusAmount: 0.20,
-                description: '+20% Boss damage'
-            },
-            
-            // EPIC - Royal chest (30% chance)
-            dragon: { 
-                name: 'Baby Dragon', 
-                icon: '🐉', 
-                rarity: 'epic',
-                bonusType: 'gold', 
-                bonusAmount: 0.20,
-                description: '+20% Gold from all sources'
-            },
-            unicorn: { 
-                name: 'Mystic Unicorn', 
-                icon: '🦄', 
-                rarity: 'epic',
-                bonusType: 'xp', 
-                bonusAmount: 0.20,
-                description: '+20% XP from all tasks'
-            },
-            
-            // LEGENDARY - Royal chest (10% chance)
-            phoenix: { 
-                name: 'Phoenix', 
-                icon: '🔥', 
-                rarity: 'legendary',
-                bonusType: 'streak_protection', 
-                bonusAmount: 2,
-                description: 'Protects TWO streaks per week from breaking'
-            },
-            lion: { 
-                name: 'Legendary Lion', 
-                icon: '🦁', 
-                rarity: 'legendary',
-                bonusType: 'attack', 
-                bonusAmount: 0.30,
-                description: '+30% Boss damage'
-            }
-        };
+        // The companion catalog (Engineering Roadmap #1 incremental split) lives
+        // in companion-definitions.js; captured once into the module-scoped
+        // COMPANION_DEFINITIONS const at the top of this file. Returned here so
+        // every this.getCompanionDefinitions() call site is unchanged.
+        return COMPANION_DEFINITIONS;
     }
     
     unlockCompanion(companionType) {
@@ -6274,14 +7770,15 @@ class GoalManager {
     }
     
     getActiveCompanion() {
-        if (!this.activeCompanionId || this.companions.length === 0) return null;
-        return this.companions.find(c => c.type === this.activeCompanionId) || null;
+        return COMPANION_LOGIC.activeCompanion(this.companions, this.activeCompanionId);
     }
     
     setActiveCompanion(companionType) {
         const companion = this.companions.find(c => c.type === companionType);
         if (companion) {
             this.activeCompanionId = companionType;
+            // Twin Bond: never let both slots hold the same companion.
+            if (this.activeCompanionId2 === companionType) this.activeCompanionId2 = null;
             this.companion = companion; // Keep legacy in sync
             this.saveData();
             this.renderCompanion(); // Directly update companion UI
@@ -6293,10 +7790,14 @@ class GoalManager {
     
     addFocusCrystalShards(amount) {
         this.focusCrystalShards += amount;
-        // Auto-convert every 10 shards into 1 Focus Crystal
-        if (this.focusCrystalShards >= 10) {
-            const crystalsFormed = Math.floor(this.focusCrystalShards / 10);
-            this.focusCrystalShards = this.focusCrystalShards % 10;
+        // Auto-convert every SHARDS_PER_CRYSTAL shards into 1 Focus Crystal. The threshold and the
+        // split live in crystal-economy.js as the single source of truth (shared with the shard
+        // reward-display string below). A large grant can form several crystals at once; the
+        // leftover carries forward. The guard keeps the toast/effect firing ONLY on a real form.
+        const conversion = CRYSTAL_ECONOMY.shardConversion(this.focusCrystalShards);
+        const crystalsFormed = conversion.crystals;
+        if (crystalsFormed > 0) {
+            this.focusCrystalShards = conversion.remainder;
             this.focusCrystals += crystalsFormed;
             if (window.effectsManager) {
                 window.effectsManager.crystalEarned(crystalsFormed);
@@ -6307,7 +7808,7 @@ class GoalManager {
     }
 
     checkSerenityBonus() {
-        if (this.hasActiveEnchantment('crystal_chance') && Math.random() < 0.3) {
+        if (this.hasActiveEnchantment('crystal_chance') && this.rng() < 0.3) {
             this.focusCrystals++;
             if (window.effectsManager) {
                 window.effectsManager.crystalEarned(1);
@@ -6323,7 +7824,13 @@ class GoalManager {
         
         // Bonding enchantment: 2x companion XP
         const bondingActive = this.hasActiveEnchantment('companion_bond');
-        const xpGain = bondingActive ? amount * 2 : amount;
+        let xpGain = bondingActive ? amount * 2 : amount;
+        
+        // Ranger class (v3.1 §3.1): Beastmaster boosts companion XP gain.
+        const rangerCompXp = this.getClassPerkValue('companion_xp_mult');
+        if (rangerCompXp > 0) {
+            xpGain = Math.ceil(xpGain * (1 + rangerCompXp));
+        }
         
         companion.xp = (companion.xp || 0) + xpGain;
         
@@ -6343,12 +7850,30 @@ class GoalManager {
     }
     
     getCompanionBonus(type) {
-        const activeCompanion = this.getActiveCompanion();
-        if (!activeCompanion) return 0;
-        if (activeCompanion.bonusType === type) {
-            return activeCompanion.bonusAmount;
-        }
-        return 0;
+        // Sum of the primary + Twin Bond slots' matching-type bonus; pure math in companion-logic.js.
+        return COMPANION_LOGIC.companionBonus(type, this.getActiveCompanion(), this.getSecondCompanion());
+    }
+
+    // Ranger Twin Bond (v3.1 §3.2): the second equipped companion, or null when
+    // the capstone isn't active / no valid second companion is set. Always
+    // differs from the primary active companion.
+    getSecondCompanion() {
+        return COMPANION_LOGIC.secondCompanion(this.companions, this.activeCompanionId, this.activeCompanionId2, this.getClassPerkValue('second_companion'));
+    }
+
+    // Equip (or clear, when passed a falsy type) the second companion slot.
+    // No-op without the Twin Bond capstone, or when the type duplicates the
+    // primary slot / isn't owned. Returns whether the slot changed.
+    setSecondCompanion(companionType) {
+        if (this.getClassPerkValue('second_companion') <= 0) return false;
+        if (companionType && companionType === this.activeCompanionId) return false;
+        const companion = companionType ? this.companions.find(c => c.type === companionType) : null;
+        if (companionType && !companion) return false;
+        this.activeCompanionId2 = companionType || null;
+        this.saveData();
+        if (typeof this.renderCompanion === 'function') this.renderCompanion();
+        if (companion) this.showAchievement(`${companion.icon} ${companion.name} equipped as your second companion!`, 'daily');
+        return true;
     }
 
     levelUp(depth = 0) {
@@ -6389,53 +7914,24 @@ class GoalManager {
                 icon,
                 unlockedAt: new Date().toISOString()
             });
-            if (!silent) this.showAchievement(`🏆 Badge Unlocked: ${name}!`, 'monthly');
+            if (!silent) this.showAchievement(`🏆 Badge Unlocked: ${name}!`, 'badge');
         }
     }
 
     checkBadges(source) {
-        const totalTasks = this.dailyTasks.filter(t => t.completed).length +
-                          this.weeklyGoals.filter(g => g.completed).length +
-                          this.monthlyGoals.filter(g => g.completed).length;
-        
-        // First quest
-        if (totalTasks === 1) {
-            this.unlockBadge('first_quest', 'First Quest', 'Completed your first quest', '🎖️');
+        // Single source of truth (Engineering Roadmap #1): unlock every achievement
+        // whose tracked progress has reached its target. The id, progress `type`,
+        // `target`, and the display name/description/icon all come from
+        // achievement-definitions.js via getAchievementDefinitions(), so adding a
+        // badge there wires up its unlock automatically. This method used to
+        // hand-maintain a second copy of all 16 thresholds/labels (drift risk —
+        // cf. the July 2026 loot bug that two hand-kept copies caused).
+        const progress = this.getAchievementProgress();
+        for (const def of this.getAchievementDefinitions()) {
+            if ((progress[def.type] || 0) >= def.target) {
+                this.unlockBadge(def.id, def.name, def.description, def.icon);
+            }
         }
-        
-        // Task milestones
-        if (totalTasks >= 10) this.unlockBadge('novice', 'Novice', 'Completed 10 quests', '🥉');
-        if (totalTasks >= 50) this.unlockBadge('adept', 'Adept', 'Completed 50 quests', '🥈');
-        if (totalTasks >= 100) this.unlockBadge('century', 'Century', 'Completed 100 quests', '🥇');
-        if (totalTasks >= 500) this.unlockBadge('master', 'Master', 'Completed 500 quests', '💎');
-        
-        // Habit streaks
-        const maxStreak = Math.max(...this.habits.map(h => h.streak || 0), 0);
-        if (maxStreak >= 7) this.unlockBadge('week_warrior', 'Week Warrior', '7-day habit streak', '🔥');
-        if (maxStreak >= 30) this.unlockBadge('month_master', 'Month Master', '30-day habit streak', '⚡');
-        if (maxStreak >= 100) this.unlockBadge('centurion', 'Centurion', '100-day habit streak', '👑');
-        
-        // Life goals
-        const completedLifeGoals = this.lifeGoals.filter(g => g.completed).length;
-        if (completedLifeGoals >= 1) this.unlockBadge('legend', 'Legend', 'Completed a life goal', '🌟');
-        if (completedLifeGoals >= 5) this.unlockBadge('mythic', 'Mythic', 'Completed 5 life goals', '💫');
-        
-        // Planner badge
-        const futureTasks = this.dailyTasks.filter(t => t.dueDate > this.getCachedToday()).length;
-        if (futureTasks >= 30) this.unlockBadge('planner', 'Master Planner', 'Scheduled 30+ future tasks', '📅');
-        
-        // Treasure hunter badges
-        if (this.chestsOpened >= 10) this.unlockBadge('treasure_hunter', 'Treasure Hunter', 'Opened 10 chests', '🎁');
-        if (this.chestsOpened >= 50) this.unlockBadge('treasure_master', 'Treasure Master', 'Opened 50 chests', '👑');
-        
-        // Boss hunter badge
-        if (this.bossesDefeated >= 5) this.unlockBadge('boss_hunter', 'Boss Hunter', 'Defeated 5 bosses', '💀');
-        
-        // Spell caster badge
-        if (this.spellsCast >= 20) this.unlockBadge('spell_caster', 'Spell Caster', 'Cast 20 spells', '✨');
-        
-        // Focus master badge
-        if (this.focusSessionsCompleted >= 25) this.unlockBadge('focus_master', 'Focus Master', 'Completed 25 focus sessions', '🎯');
     }
 
     toggleHabit(habitId) {
@@ -6456,6 +7952,8 @@ class GoalManager {
                 habit.streak = (habit.streak || 0) + streakInc;
                 habit.totalCompletions = (habit.totalCompletions || 0) + 1;
                 habit.lastCompleted = today;
+                // §2.6 asset drop — dedicated habit-completion sound.
+                if (window.audioManager) window.audioManager.playHabitComplete();
                 
                 // Add to completion history if not already there
                 if (!habit.completionHistory.includes(today)) {
@@ -6478,15 +7976,27 @@ class GoalManager {
                     this.addGold(3, 'habit');
                     this.grantAttackCharge(1, 'habit');
                     this.addFocusCrystalShards(1);
+                    // Scholar Sage subclass (v3.1 §9): a completed habit has a
+                    // chance to yield a bonus Focus Crystal. Granted before the
+                    // lastRewards snapshot below so an uncheck refunds it.
+                    const sageChance = this.getClassPerkValue('sage_habit_crystals');
+                    if (sageChance > 0 && this.rng() < sageChance) {
+                        this.focusCrystals = (this.focusCrystals || 0) + 1;
+                    }
                     this.checkSerenityBonus();
                     this.trackDaily('habitsCompleted');
-                    // Record exact gains for accurate refund on uncheck
+                    // Record exact gains for accurate refund on uncheck.
+                    // `streak` records the ACTUAL increment applied above (2
+                    // with Precision/double_streak active, 1 otherwise) so the
+                    // uncheck path can't be farmed for +1 net streak per
+                    // on/off toggle while the enchantment is active.
                     habit.lastRewards = {
                         xp: Math.max(0, this.xp - xpBefore),
                         gold: Math.max(0, this.goldCoins - goldBefore),
                         charges: Math.max(0, this.attackCharges - chargesBefore),
                         shards: Math.max(0, (this.focusCrystalShards || 0) - shardsBefore),
-                        crystals: Math.max(0, (this.focusCrystals || 0) - crystalsBefore)
+                        crystals: Math.max(0, (this.focusCrystals || 0) - crystalsBefore),
+                        streak: streakInc
                     };
                     if (typeof trackEvent === 'function') trackEvent('habit_completed');
                     this.checkOnboardingShareHook();
@@ -6514,21 +8024,23 @@ class GoalManager {
                     this.showAchievement('👑 100-Day Streak! ULTIMATE MASTERY!', 'life');
                     setTimeout(() => this._showMilestoneSharePrompt(`I hit a 100-day streak on "${habit.title}" in Life Quest Journal!`), 1500);
                 } else {
-                    this.showAchievement('Daily Ritual Completed! 🕯️', 'daily');
+                    this.showAchievement('Daily Ritual Completed! 🕯️', 'task');
                 }
             } else if (!habit.completedToday) {
                 // Only reverse streak/history if it was rewarded (not just toggled visually)
                 if (habit.rewardedToday === today) {
-                    habit.streak = Math.max(0, (habit.streak || 0) - 1);
+                    // Revoke EXACT multiplied rewards (recorded at grant time)
+                    // to close the check/uncheck farming exploit. Falls back
+                    // to the legacy raw values for habits rewarded before this
+                    // tracking was added. `streak` refunds the recorded
+                    // increment (2 under Precision/double_streak, 1 normally)
+                    // so toggling under the enchantment is symmetric.
+                    const r = habit.lastRewards || { xp: 10, gold: 3, charges: 1, shards: 1, crystals: 0, streak: 1 };
+                    habit.streak = Math.max(0, (habit.streak || 0) - (r.streak || 1));
                     habit.totalCompletions = Math.max(0, (habit.totalCompletions || 0) - 1);
                     habit.rewardedToday = null;
                     // Remove from completion history
                     habit.completionHistory = habit.completionHistory.filter(d => d !== today);
-                    // Revoke EXACT multiplied rewards (recorded at grant time)
-                    // to close the check/uncheck farming exploit. Falls back
-                    // to the legacy raw values for habits rewarded before this
-                    // tracking was added.
-                    const r = habit.lastRewards || { xp: 10, gold: 3, charges: 1, shards: 1, crystals: 0 };
                     this.xp = Math.max(0, this.xp - (r.xp || 0));
                     this.goldCoins = Math.max(0, this.goldCoins - (r.gold || 0));
                     this.attackCharges = Math.max(0, this.attackCharges - (r.charges || 0));
@@ -6640,15 +8152,15 @@ class GoalManager {
 
         // Check if extended focus enchantment is active
         const extendedFocus = this.hasActiveEnchantment('extended_focus');
-        this.focusSessionLength = extendedFocus ? 35 : 25;
+        this.focusSessionLength = FOCUS_SESSION_LOGIC.sessionMinutes(extendedFocus);
         
-        this.focusEndTime = Date.now() + this.focusSessionLength * 60 * 1000;
+        this.focusEndTime = Date.now() + FOCUS_SESSION_LOGIC.minutesToMs(this.focusSessionLength);
         this.focusTimerRunning = true;
         this._startFocusInterval();
         this._scheduleFocusTimerNotification();
         this.saveData();
         
-        this.showAchievement(`🎯 Focus session started! (${this.focusSessionLength} minutes)`, 'daily');
+        this.showAchievement(`🎯 Focus session started! (${this.focusSessionLength} minutes)`, 'focus-start');
         this.render();
     }
 
@@ -6661,7 +8173,7 @@ class GoalManager {
 
     _tickFocusTimer() {
         if (!this.focusEndTime) return;
-        const remaining = Math.max(0, Math.ceil((this.focusEndTime - Date.now()) / 1000));
+        const remaining = FOCUS_SESSION_LOGIC.remainingSeconds(this.focusEndTime, Date.now());
         this.focusTimeRemaining = remaining;
         
         if (remaining <= 0) {
@@ -6684,7 +8196,7 @@ class GoalManager {
 
     restoreFocusTimer() {
         if (this.focusEndTime) {
-            const remaining = Math.max(0, Math.ceil((this.focusEndTime - Date.now()) / 1000));
+            const remaining = FOCUS_SESSION_LOGIC.remainingSeconds(this.focusEndTime, Date.now());
             if (remaining > 0) {
                 this.focusTimerRunning = true;
                 this.focusTimeRemaining = remaining;
@@ -6702,24 +8214,15 @@ class GoalManager {
     }
 
     _scheduleFocusTimerNotification() {
-        // Tell the service worker to fire a notification when the focus session ends
-        // This ensures the user gets notified even if the app is backgrounded/suspended
-        if (!this.focusEndTime) return;
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'SCHEDULE_FOCUS_COMPLETE',
-                endTime: this.focusEndTime
-            });
-        }
+        // No-op: background focus-completion notifications were delivered by the
+        // PWA service worker, which was retired (Capacitor/Android only). The
+        // in-page interval still fires completeFocusSession() while the app is
+        // open. Kept as a seam — the focus-timer flow calls it in several places
+        // (and tests mock it); a native pre-scheduled notification could go here.
     }
 
     _cancelFocusTimerNotification() {
-        // Tell the service worker to cancel the scheduled focus completion notification
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'CANCEL_FOCUS_COMPLETE'
-            });
-        }
+        // No-op counterpart to _scheduleFocusTimerNotification (service worker retired).
     }
 
     pauseFocusTimer() {
@@ -6729,7 +8232,7 @@ class GoalManager {
         
         clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
-        this.focusTimeRemaining = Math.max(0, Math.ceil((this.focusEndTime - Date.now()) / 1000));
+        this.focusTimeRemaining = FOCUS_SESSION_LOGIC.remainingSeconds(this.focusEndTime, Date.now());
         this.focusEndTime = null;
         this._cancelFocusTimerNotification();
         this.saveData();
@@ -6776,20 +8279,50 @@ class GoalManager {
         this.focusEndTime = null;
         this._cancelFocusTimerNotification();
         
-        const sessionLength = this.focusSessionLength || 25;
+        const sessionLength = this.focusSessionLength || FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES;
+        
+        // Scholar capstone (v3.1 §3.1): Deep Work — consecutive back-to-back
+        // focus sessions stack an escalating crystal & XP bonus. A session
+        // counts as "back-to-back" when completed within the previous session's
+        // length + a 30-min break grace; a longer gap resets the chain. The
+        // stack/timestamp update BEFORE the Pomodoro early-return below so
+        // chained sessions accumulate correctly. Window + stack/multiplier math
+        // in focus-session-logic.js.
+        const now = Date.now();
+        const deepWork = FOCUS_SESSION_LOGIC.deepWorkAdvance({
+            perkValue: this.getClassPerkValue('deep_work'),
+            stack: this.deepWorkStack,
+            lastEndTime: this.lastFocusSessionEndTime,
+            now,
+            sessionMinutes: sessionLength,
+        });
+        this.deepWorkStack = deepWork.stack;
+        const deepWorkMult = deepWork.multiplier;
+        this.lastFocusSessionEndTime = now;
         
         // Award crystals
         const bonusCrystal = this.hasActiveEnchantment('bonus_crystal');
         const timeWarden = this.hasActiveEnchantment('extended_focus');
-        let crystalsEarned = 1 + (bonusCrystal ? 1 : 0) + (timeWarden ? 1 : 0);
-        
+        // Scholar class (v3.1 §3.1): Crystal Harvest grants bonus crystals per session.
+        const scholarCrystals = this.getClassPerkValue('crystal_yield');
         // Check for Focus Mode spell (2x crystals)
-        const focusModeActive = this.activeSpells.some(s => 
-            s.spellId === 'focus_mode' && (s.expiresAt === -1 || s.expiresAt > Date.now())
-        );
-        if (focusModeActive) {
-            crystalsEarned *= 2;
-        }
+        const focusModeActive = SPELL_LIFECYCLE.isActive(this.activeSpells, 'focus_mode', Date.now());
+        // Scholar Archivist subclass (v3.1 §9): +X% XP & crystals from focus
+        // sessions. Stacks on top of Deep Work.
+        const archivistMult = 1 + this.getClassPerkValue('archivist_focus_mult');
+        // Yield pipeline (crystal-economy.js): base 1 + the bonus_crystal / extended_focus
+        // enchantments + the Scholar crystal_yield perk, then the Focus Mode doubling, then the Deep
+        // Work capstone and Archivist subclass multipliers — each rounded SEPARATELY, so the stages
+        // do not commute. focusModeActive / archivistMult / deepWorkMult are still read further down
+        // for the XP bonus and the completion toast.
+        const crystalsEarned = CRYSTAL_ECONOMY.focusSessionCrystals({
+            bonusCrystal,
+            timeWarden,
+            perkCrystals: scholarCrystals,
+            focusModeActive,
+            deepWorkMult,
+            archivistMult,
+        });
         
         this.focusCrystals += crystalsEarned;
         this.totalFocusTime += sessionLength;
@@ -6803,10 +8336,17 @@ class GoalManager {
             window.audioManager.playCrystalEarn();
         }
         
-        // Award XP bonus if Focus Mode is active
-        let xpBonus = 0;
-        if (focusModeActive) {
-            xpBonus = 50;
+        // Award XP bonus if Focus Mode is active, plus the Scholar class perk
+        // (v3.0 §3.1) which grants flat bonus XP per focus session, then the Deep
+        // Work capstone and Archivist subclass multipliers — each rounded SEPARATELY
+        // (focus-session-logic.js), mirroring the crystal pipeline above.
+        const xpBonus = FOCUS_SESSION_LOGIC.focusXpBonus({
+            focusModeActive,
+            perkXP: this.getClassPerkValue('focus_xp'),
+            deepWorkMult,
+            archivistMult,
+        });
+        if (xpBonus > 0) {
             this.addXP(xpBonus, 'daily');
         }
         
@@ -6819,7 +8359,8 @@ class GoalManager {
         );
         
         const focusModeText = focusModeActive ? ' (🎯 Focus Mode!)' : '';
-        this.showAchievement(`✨ Focus session complete! +${crystalsEarned} 💎${xpText}${focusModeText}`, 'weekly', false);
+        const deepWorkText = deepWorkMult > 1 ? ` (🧠 Deep Work x${this.deepWorkStack}!)` : '';
+        this.showAchievement(`✨ Focus session complete! +${crystalsEarned} 💎${xpText}${focusModeText}${deepWorkText}`, 'weekly', false);
         
         // Pomodoro Chain: advance to break or complete chain
         if (this.pomodoroChain) {
@@ -6859,11 +8400,10 @@ class GoalManager {
         if (!chain) return;
         
         // Long break after the final session, short break between sessions
-        const isLongBreak = chain.currentSession > chain.totalSessions;
-        const breakMinutes = isLongBreak ? chain.longBreakDuration : chain.breakDuration;
+        const { isLongBreak, minutes: breakMinutes } = FOCUS_SESSION_LOGIC.breakPlan(chain);
         
         chain.isBreak = true;
-        this.focusEndTime = Date.now() + breakMinutes * 60 * 1000;
+        this.focusEndTime = Date.now() + FOCUS_SESSION_LOGIC.minutesToMs(breakMinutes);
         this.focusTimerRunning = true;
         this.focusTimeRemaining = breakMinutes * 60;
         this.focusSessionLength = breakMinutes;
@@ -6872,7 +8412,7 @@ class GoalManager {
         this.saveData();
         
         if (window.audioManager) {
-            window.audioManager.playNotification();
+            window.audioManager.playFocusBreakStart();
         }
         
         const breakLabel = isLongBreak ? '🏆 Final long break!' : `☕ Break time! Session ${chain.currentSession - 1}/${chain.totalSessions} done`;
@@ -6895,11 +8435,11 @@ class GoalManager {
         }
         
         if (window.audioManager) {
-            window.audioManager.playNotification();
+            window.audioManager.playFocusBreakEnd();
         }
         
         // If all sessions are done (long break just ended), complete the chain
-        if (this.pomodoroChain.currentSession > this.pomodoroChain.totalSessions) {
+        if (FOCUS_SESSION_LOGIC.isChainFinished(this.pomodoroChain)) {
             this.completePomodoroChain();
             return;
         }
@@ -6909,12 +8449,13 @@ class GoalManager {
     }
 
     completePomodoroChain() {
-        const totalSessions = this.pomodoroChain ? this.pomodoroChain.totalSessions : 4;
+        const totalSessions = this.pomodoroChain
+            ? this.pomodoroChain.totalSessions
+            : FOCUS_SESSION_LOGIC.DEFAULT_CHAIN_SETTINGS.sessionsPerChain;
         this.pomodoroChain = null;
         
         // Chain completion bonus: +2 crystals and +50 XP per session in chain
-        const bonusCrystals = 2;
-        const bonusXP = totalSessions * 50;
+        const { crystals: bonusCrystals, xp: bonusXP } = FOCUS_SESSION_LOGIC.chainCompletionRewards(totalSessions);
         
         this.focusCrystals += bonusCrystals;
         this.addXP(bonusXP, 'daily');
@@ -6959,7 +8500,7 @@ class GoalManager {
 
     updatePomodoroChainSettings(key, value) {
         if (!this.pomodoroChainSettings) {
-            this.pomodoroChainSettings = { sessionsPerChain: 4, breakDuration: 5, longBreakDuration: 15 };
+            this.pomodoroChainSettings = FOCUS_SESSION_LOGIC.defaultChainSettings();
         }
         this.pomodoroChainSettings[key] = value;
         this.saveData();
@@ -6987,7 +8528,7 @@ class GoalManager {
         // Update progress bar
         const progressBar = this.getElement('focus-timer-progress');
         if (progressBar) {
-            const totalSeconds = (this.focusSessionLength || 25) * 60;
+            const totalSeconds = (this.focusSessionLength || FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES) * 60;
             const progress = ((totalSeconds - remaining) / totalSeconds) * 100;
             progressBar.style.width = `${progress}%`;
             
@@ -7014,36 +8555,7 @@ class GoalManager {
         }
         
         container.classList.remove('hidden');
-        const chain = this.pomodoroChain;
-        const dots = [];
-        
-        for (let i = 1; i <= chain.totalSessions; i++) {
-            let dotClass = '';
-            let icon = '';
-            if (i < chain.currentSession) {
-                dotClass = 'bg-green-500 border-green-400';
-                icon = '✓';
-            } else if (i === chain.currentSession && !chain.isBreak) {
-                dotClass = 'bg-blue-500 border-blue-400 animate-pulse';
-                icon = '⚔️';
-            } else if (i === chain.currentSession && chain.isBreak) {
-                dotClass = 'bg-green-500/50 border-green-400 animate-pulse';
-                icon = '☕';
-            } else {
-                dotClass = 'bg-stone-700 border-stone-500';
-                icon = i;
-            }
-            dots.push(`<div class="w-10 h-10 rounded-full ${dotClass} border-2 flex items-center justify-center text-xs font-bold text-white fancy-font">${icon}</div>`);
-        }
-        
-        const statusText = chain.isBreak 
-            ? `☕ Break — Next: Session ${chain.currentSession}` 
-            : `⚔️ Session ${chain.currentSession} of ${chain.totalSessions}`;
-        
-        container.innerHTML = `
-            <div class="flex items-center justify-center gap-2 mb-2">${dots.join('')}</div>
-            <div class="text-center text-sm text-amber-200 fancy-font">${statusText}</div>
-        `;
+        container.innerHTML = FOCUS_TIMER_RENDER.renderChainProgressHTML(this.pomodoroChain);
     }
 
     playNotificationSound() {
@@ -7063,8 +8575,10 @@ class GoalManager {
             return;
         }
         
-        if (this.focusCrystals < enchantment.cost) {
-            this.showAchievement(`⚠️ Not enough Focus Crystals! Need ${enchantment.cost}, have ${this.focusCrystals}`, 'daily');
+        // Mystic class (v3.0 §3.1): reduced enchantment cost (floored at 1).
+        const effectiveCost = this.getEffectiveEnchantmentCost(enchantment);
+        if (this.focusCrystals < effectiveCost) {
+            this.showAchievement(`⚠️ Not enough Focus Crystals! Need ${effectiveCost}, have ${this.focusCrystals}`, 'daily');
             return;
         }
         
@@ -7074,8 +8588,8 @@ class GoalManager {
             return;
         }
         
-        // Deduct cost
-        this.focusCrystals -= enchantment.cost;
+        // Deduct cost (Mystic discount applied via effectiveCost)
+        this.focusCrystals -= effectiveCost;
         
         // Reset per-day counters tied to the enchantment so a re-cast after
         // expiry doesn't carry over stale counts (e.g. early_bird previously
@@ -7088,11 +8602,16 @@ class GoalManager {
             this.momentumStack = 0;
         }
         
-        // Add to active enchantments
+        // Add to active enchantments. Scholar's Lingering Magic (v3.1 §3.1)
+        // extends enchantment duration; totalDuration is stored so the progress
+        // bar reflects the actual (extended) window rather than the base value.
+        const enchantDurationMult = 1 + this.getClassPerkValue('enchant_duration_mult');
+        const effectiveDurationMs = Math.round(enchantment.duration * 60 * 1000 * enchantDurationMult);
         const activeEnchantment = {
             id: enchantment.id,
             effect: enchantment.effect,
-            expiresAt: Date.now() + (enchantment.duration * 60 * 1000),
+            expiresAt: Date.now() + effectiveDurationMs,
+            totalDuration: effectiveDurationMs,
             name: enchantment.name,
             icon: enchantment.icon
         };
@@ -7107,7 +8626,7 @@ class GoalManager {
         } else {
             this.showAchievement(`✨ ${enchantment.icon} ${enchantment.name} activated!`, 'weekly');
         }
-        if (window.audioManager) window.audioManager.playSpell();
+        if (window.audioManager) window.audioManager.playEnchantmentActivate();
         this.saveData();
         this.render();
     }
@@ -7122,35 +8641,57 @@ class GoalManager {
         const expired = this.activeEnchantments.filter(e => e.expiresAt <= now);
         if (expired.length === 0) return;
         
+        // Scholar capstone (v3.1 §3.1): Insight — each expiring enchantment has a
+        // chance to NOT be consumed, re-extending for another full duration
+        // window instead of being removed (mirrors the Wizard's charge-preserve
+        // perk for spells). The roll runs once per expiry: preserved entries get
+        // a future expiresAt and survive the filter below; the rest are dropped.
+        const preserveChance = this.getClassPerkValue('enchant_preserve');
+        const preserved = [];
+        if (preserveChance > 0) {
+            expired.forEach(e => {
+                if (this.rng() >= preserveChance) return;
+                const def = this.enchantmentDefinitions && this.enchantmentDefinitions[e.id];
+                const windowMs = e.totalDuration || (def ? def.duration * 60 * 1000 : 0);
+                if (windowMs <= 0) return;
+                e.expiresAt = now + windowMs;
+                this.scheduleEnchantmentExpiryNotification(e);
+                preserved.push(e);
+            });
+        }
+        
         this.activeEnchantments = this.activeEnchantments.filter(e => e.expiresAt > now);
+        
+        const consumed = expired.filter(e => !preserved.includes(e));
+        
+        if (preserved.length > 0) {
+            const names = preserved.map(e => `${e.icon} ${e.name}`).join(', ');
+            this.showAchievement(`📖 Insight preserved ${names}!`, 'badge');
+        }
         
         // Batch into a single toast (mirrors checkExpiredSpells) to avoid a
         // flood of notifications when the user returns after a long absence
         // with multiple enchantments expiring at once.
-        if (expired.length === 1) {
-            this.showAchievement(`⏱️ ${expired[0].icon} ${expired[0].name} has expired`, 'daily');
-        } else {
-            const names = expired.map(e => `${e.icon} ${e.name}`).join(', ');
-            this.showAchievement(`⏱️ ${expired.length} enchantments expired: ${names}`, 'daily');
+        if (consumed.length === 1) {
+            this.showAchievement(`⏱️ ${consumed[0].icon} ${consumed[0].name} has expired`, 'daily');
+        } else if (consumed.length > 1) {
+            const names = consumed.map(e => `${e.icon} ${e.name}`).join(', ');
+            this.showAchievement(`⏱️ ${consumed.length} enchantments expired: ${names}`, 'daily');
         }
         
         this.saveData();
+        // Sync the avatar orbit immediately so the expired enchantment
+        // sigils disappear without waiting for the next full render
+        // (mirrors checkExpiredSpells).
+        this.renderActiveSpellSigils();
     }
 
     getEnchantmentMultiplier(type) {
+        // Enchantment reward multiplier (double_xp / double_gold → 2×, boss_damage → 1.3×). The
+        // pure type→multiplier lookup lives in buff-multipliers.js; the expiry sweep + the
+        // active-enchantment predicate stay on the class.
         this.checkExpiredEnchantments();
-        
-        if (type === 'xp' && this.hasActiveEnchantment('double_xp')) {
-            return 2;
-        }
-        if (type === 'gold' && this.hasActiveEnchantment('double_gold')) {
-            return 2;
-        }
-        if (type === 'boss_damage' && this.hasActiveEnchantment('boss_damage')) {
-            return 1.3;
-        }
-        
-        return 1;
+        return BUFF_MULTIPLIERS.enchantmentMultiplier(type, (id) => this.hasActiveEnchantment(id));
     }
 
     calculateProgress(parentId, childArray, idField) {
@@ -7181,6 +8722,7 @@ class GoalManager {
                     this.grantAttackCharge(2, 'weekly');
                 }
                 this.showAchievement('Weekly Quest Auto-Completed! +50 XP 🛡️', 'weekly');
+                this.checkBountyCompletion(goal.id);
             }
         });
 
@@ -7195,6 +8737,7 @@ class GoalManager {
                     this.grantAttackCharge(3, 'monthly');
                 }
                 this.showAchievement('Monthly Victory Auto-Achieved! +200 XP 👑', 'monthly');
+                this.checkBountyCompletion(goal.id);
             }
         });
 
@@ -7205,6 +8748,7 @@ class GoalManager {
                 goal.completed = true;
                 this.addXP(1000, 'yearly');
                 this.showAchievement('Yearly Campaign Auto-Completed! +1000 XP 🏆', 'yearly');
+                this.checkBountyCompletion(goal.id);
             }
         });
 
@@ -7215,6 +8759,7 @@ class GoalManager {
                 goal.completed = true;
                 this.addXP(5000, 'life');
                 this.showAchievement('LIFE GOAL AUTO-MASTERED! +5000 XP ⚡👑⚡', 'life');
+                this.checkBountyCompletion(goal.id);
             }
             // Check for boss defeat
             this.checkBossDefeat(goal);
@@ -7250,7 +8795,8 @@ class GoalManager {
                 const chargesBefore = this.attackCharges;
                 const shardsBefore = this.focusCrystalShards || 0;
                 const crystalsBefore = this.focusCrystals || 0;
-                this.addXP(15, 'daily');
+                const taskXp = this._dailyTaskXP(task);
+                this.addXP(taskXp, 'daily');
                 this.addGold(5, 'daily');
                 this.grantAttackCharge(1, 'task');
                 this.addFocusCrystalShards(1);
@@ -7266,8 +8812,9 @@ class GoalManager {
                 const hour = new Date().getHours();
                 if (hour < 12) this.trackDaily('tasksBeforeNoon');
                 if (hour >= 18) this.trackDaily('tasksAfter6pm');
-                this.showAchievement('Quest Task Completed! +15 XP, +5 Gold ⚔️', 'daily');
+                this.showAchievement(`Quest Task Completed! +${taskXp} XP, +5 Gold ⚔️`, 'task');
                 if (typeof trackEvent === 'function') trackEvent('task_completed');
+                this.trackFirstTaskCompleted();
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
                 this.checkOnboardingShareHook();
@@ -7307,7 +8854,8 @@ class GoalManager {
                 const xpBefore = this.xp;
                 const goldBefore = this.goldCoins;
                 const chargesBefore = this.attackCharges;
-                this.addXP(50, 'weekly');
+                const weeklyXp = EFFORT_XP_LOGIC.scaledXP(50, goal.priority);
+                this.addXP(weeklyXp, 'weekly');
                 this.addGold(15, 'weekly');
                 this.grantAttackCharge(2, 'weekly');
                 this.checkSerenityBonus();
@@ -7317,11 +8865,12 @@ class GoalManager {
                     charges: Math.max(0, this.attackCharges - chargesBefore)
                 };
                 this.trackDaily('weeklyProgress');
-                this.showAchievement('Weekly Quest Conquered! +50 XP, +15 Gold 🛡️', 'weekly');
+                this.showAchievement(`Weekly Quest Conquered! +${weeklyXp} XP, +15 Gold 🛡️`, 'weekly');
                 if (typeof trackEvent === 'function') trackEvent('quest_completed', { type: 'weekly' });
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
                 this.checkOnboardingShareHook();
+                this.checkBountyCompletion(goal.id);
             } else if (!goal.completed && goal.rewarded) {
                 const r = goal.lastRewards || { xp: 50, gold: 15, charges: 2 };
                 this.xp = Math.max(0, this.xp - (r.xp || 0));
@@ -7345,7 +8894,8 @@ class GoalManager {
                 const xpBefore = this.xp;
                 const goldBefore = this.goldCoins;
                 const chargesBefore = this.attackCharges;
-                this.addXP(200, 'monthly');
+                const monthlyXp = EFFORT_XP_LOGIC.scaledXP(200, goal.priority);
+                this.addXP(monthlyXp, 'monthly');
                 this.addGold(50, 'monthly');
                 this.grantAttackCharge(3, 'monthly');
                 this.checkSerenityBonus();
@@ -7354,10 +8904,11 @@ class GoalManager {
                     gold: Math.max(0, this.goldCoins - goldBefore),
                     charges: Math.max(0, this.attackCharges - chargesBefore)
                 };
-                this.showAchievement('Monthly Victory Achieved! +200 XP, +50 Gold 👑', 'monthly');
+                this.showAchievement(`Monthly Victory Achieved! +${monthlyXp} XP, +50 Gold 👑`, 'monthly');
                 if (typeof trackEvent === 'function') trackEvent('quest_completed', { type: 'monthly' });
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
+                this.checkBountyCompletion(goal.id);
             } else if (!goal.completed && goal.rewarded) {
                 const r = goal.lastRewards || { xp: 200, gold: 50, charges: 3 };
                 this.xp = Math.max(0, this.xp - (r.xp || 0));
@@ -7470,13 +9021,15 @@ class GoalManager {
                 // 1000 XP — buffed players could farm net XP each cycle.
                 goal.rewarded = true;
                 const xpBefore = this.xp;
-                this.addXP(1000, 'yearly');
+                const yearlyXp = EFFORT_XP_LOGIC.scaledXP(1000, goal.priority);
+                this.addXP(yearlyXp, 'yearly');
                 goal.lastRewards = { xp: Math.max(0, this.xp - xpBefore) };
-                this.showAchievement('Yearly Triumph! LEGENDARY! +1000 XP 🏆', 'yearly');
+                this.showAchievement(`Yearly Triumph! LEGENDARY! +${yearlyXp} XP 🏆`, 'yearly');
                 // Deal damage to parent boss if exists
                 this.dealBossDamage(goal, 'yearly');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
+                this.checkBountyCompletion(goal.id);
             } else if (!goal.completed && goal.rewarded) {
                 const r = goal.lastRewards || { xp: 1000 };
                 this.xp = Math.max(0, this.xp - (r.xp || 0));
@@ -7503,6 +9056,7 @@ class GoalManager {
                 this.showAchievement('LIFE GOAL MASTERED! +5000 XP! ⚡👑⚡', 'life');
                 // Trigger completion animation
                 this.playQuestCompleteAnimation(event);
+                this.checkBountyCompletion(goal.id);
             } else if (!goal.completed && goal.rewarded) {
                 const r = goal.lastRewards || { xp: 5000 };
                 this.xp = Math.max(0, this.xp - (r.xp || 0));
@@ -7514,34 +9068,59 @@ class GoalManager {
         }
     }
 
+    // Maps deleteGoal's `type` keys to the backing list property names.
+    // Shared by deleteGoal and undoLastDelete.
+    DELETE_LIST_KEYS = {
+        life: 'lifeGoals', yearly: 'yearlyGoals', monthly: 'monthlyGoals',
+        weekly: 'weeklyGoals', daily: 'dailyTasks', side: 'sideQuests',
+        habit: 'habits'
+    };
+
     deleteGoal(type, id) {
         this.showConfirm('Are you sure you want to delete this quest?', () => {
-            switch(type) {
-                case 'life':
-                    this.lifeGoals = this.lifeGoals.filter(g => g.id !== id);
-                    break;
-                case 'yearly':
-                    this.yearlyGoals = this.yearlyGoals.filter(g => g.id !== id);
-                    break;
-                case 'monthly':
-                    this.monthlyGoals = this.monthlyGoals.filter(g => g.id !== id);
-                    break;
-                case 'weekly':
-                    this.weeklyGoals = this.weeklyGoals.filter(g => g.id !== id);
-                    break;
-                case 'daily':
-                    this.dailyTasks = this.dailyTasks.filter(t => t.id !== id);
-                    break;
-                case 'side':
-                    this.sideQuests = this.sideQuests.filter(q => q.id !== id);
-                    break;
-                case 'habit':
-                    this.habits = this.habits.filter(h => h.id !== id);
-                    break;
-            }
+            const listKey = (this.DELETE_LIST_KEYS ?? {
+                life: 'lifeGoals', yearly: 'yearlyGoals', monthly: 'monthlyGoals',
+                weekly: 'weeklyGoals', daily: 'dailyTasks', side: 'sideQuests',
+                habit: 'habits'
+            })[type];
+            if (!listKey) return;
+            
+            // v2.9.x UX audit — snapshot the deleted item + its position so
+            // the toast UNDO button can restore it in place. Ctrl+Z exists
+            // but is unreachable on Android, which is the entire user base.
+            const index = this[listKey].findIndex(item => item.id === id);
+            if (index === -1) return;
+            const deleted = this[listKey][index];
+            this._lastDelete = { listKey, item: deleted, index };
+            
+            this[listKey] = this[listKey].filter(item => item.id !== id);
             this.saveData();
             this.render();
+            
+            const name = deleted.title || deleted.name || 'Quest';
+            this.showToast(`🗑️ "${name}" deleted`, 'info', null, {
+                label: '↩️ UNDO',
+                callback: () => this.undoLastDelete()
+            });
         });
+    }
+
+    // Restore the most recently deleted item at its original position.
+    // One-shot: clears the snapshot so a stale toast can't double-restore.
+    undoLastDelete() {
+        const snapshot = this._lastDelete;
+        if (!snapshot) return;
+        this._lastDelete = null;
+        
+        const { listKey, item, index } = snapshot;
+        // Guard against a duplicate id already back in the list (e.g. the
+        // user re-created the task before tapping UNDO).
+        if (this[listKey].some(existing => existing.id === item.id)) return;
+        
+        this[listKey].splice(Math.min(index, this[listKey].length), 0, item);
+        this.saveData();
+        this.render();
+        this.showAchievement('↩️ Restored!', 'daily');
     }
 
     editGoal(type, id) {
@@ -7585,8 +9164,9 @@ class GoalManager {
         }, (newTitle) => {
             if (!newTitle || !newTitle.trim()) return;
 
-            // For weekly/monthly/yearly, show priority selection
-            if (type === 'weekly' || type === 'monthly' || type === 'yearly') {
+            // For daily/weekly/monthly/yearly, show priority selection (priority
+            // drives effort-based XP — see getPriorityXPMultiplier / N3).
+            if (type === 'weekly' || type === 'monthly' || type === 'yearly' || type === 'daily') {
                 const currentPriority = item.priority && ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
                 this.showPriorityModal(currentPriority, (newPriority) => {
                     item.title = newTitle.trim();
@@ -7766,11 +9346,8 @@ class GoalManager {
     renderXPDisplay() {
         const title = this.getLevelTitle(this.level);
         
-        const currentLevelXP = this.getTotalXPForLevel(this.level);
-        const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
-        const xpIntoCurrentLevel = this.xp - currentLevelXP;
-        const xpNeededForLevel = nextLevelXP - currentLevelXP;
-        const xpProgress = Math.max(0, Math.min(100, (xpIntoCurrentLevel / xpNeededForLevel) * 100));
+        // XP-into-level math (leveling-logic.js).
+        const { nextLevelXP, pct: xpProgress } = LEVELING_LOGIC.levelProgress(this.xp, this.level);
         
         // Use cached DOM elements for better performance
         const playerLevel = this.getElement('player-level');
@@ -7924,21 +9501,24 @@ class GoalManager {
 
     /**
      * v2.6 Item 5 — populate the avatar's sigil orbit with one bubble per
-     * currently-active spell. Renders into BOTH the mini and panel orbit
-     * containers (#player-sigil-orbit and #panel-sigil-orbit). Idempotent;
-     * safe to call whenever spell state changes or the avatar HUD redraws.
+     * currently-active spell AND enchantment. Renders into BOTH the mini
+     * and panel orbit containers (#player-sigil-orbit and
+     * #panel-sigil-orbit). Idempotent; safe to call whenever spell or
+     * enchantment state changes or the avatar HUD redraws.
      *
      * Layout: sigils are distributed evenly around the orbit at angles
-     * `i * 360 / total`. Cap is 7 visible spell sigils + 1 "+N" overflow
+     * `i * 360 / total`. Cap is 7 visible sigils + 1 "+N" overflow
      * badge (8 bubbles total max) — at the panel orbit's 68px radius
      * that's ~53px of arc per bubble, which keeps even small (mini)
      * sigils legible without overlap.
      *
      * Each sigil:
-     *   • `.avatar-sigil` outer bubble — gets the rarity class
-     *     (`--common` / `--uncommon` / `--rare` / `--epic` / `--legendary`)
-     *     for the gradient + glow color, and an inline `--angle` custom
-     *     property that the CSS transform consumes for placement.
+     *   • `.avatar-sigil` outer bubble — spells get the rarity class
+     *     (`--common` / `--uncommon` / `--rare` / `--epic` / `--legendary`),
+     *     enchantments get the distinct cool `--enchantment` crystal tint
+     *     so the two effect types are tellable apart at a glance; plus an
+     *     inline `--angle` custom property that the CSS transform consumes
+     *     for placement.
      *   • `.avatar-sigil__icon` inner span — carries the emoji and
      *     counter-rotates to stay upright while the orbit spins.
      *
@@ -7950,67 +9530,27 @@ class GoalManager {
         const panelOrbit = document.getElementById('panel-sigil-orbit');
         if (!miniOrbit && !panelOrbit) return;
 
-        // Filter to truly-active spells (skip any with a past expiry that
-        // the periodic checkExpiredSpells hasn't reaped yet — keeps the
-        // orbit accurate even between cleanup ticks).
-        const now = Date.now();
-        const active = (this.activeSpells || []).filter(s => {
-            return s.expiresAt === -1 || s.expiresAt > now;
+        // Filter to truly-active spells + enchantments (skip any with a
+        // past expiry the periodic cleanup hasn't reaped yet — keeps the
+        // orbit accurate even between cleanup ticks). Both share the orbit
+        // so players see every active effect at a glance; the per-item
+        // `cls` distinguishes them — rarity-tinted gemstones for spells,
+        // a unified cool "crystal" tint for enchantments.
+        const html = PLAYER_HUD_RENDER.renderActiveSpellSigilsHTML(this.activeSpells, this.activeEnchantments, {
+            spellDefinitions: this.spellDefinitions,
+            enchantmentDefinitions: this.enchantmentDefinitions,
+            now: Date.now(),
+            escapeHTML: (s) => this.escapeHTML(s),
         });
 
-        // Visual cap: 7 individual sigils + 1 overflow badge = 8 slots.
-        // The badge only appears if there are >7 active spells.
-        const MAX_VISIBLE_SIGILS = 7;
-        const visible = active.slice(0, MAX_VISIBLE_SIGILS);
-        const overflowCount = active.length - visible.length;
-        const totalBubbles = visible.length + (overflowCount > 0 ? 1 : 0);
-
-        if (totalBubbles === 0) {
-            // No active spells → clear both orbits. Setting innerHTML to
-            // empty is cheap and guarantees no stale bubbles linger after
-            // the last spell expires.
+        if (!html) {
+            // No active effects → clear both orbits (faithful to the original early-return;
+            // no counter-rotation sync is needed for empty orbits).
             if (miniOrbit)  miniOrbit.innerHTML  = '';
             if (panelOrbit) panelOrbit.innerHTML = '';
             return;
         }
 
-        // Build the bubble HTML once; both orbits use identical markup.
-        // The orbit-radius / sigil-size differences come from the CSS
-        // custom properties on `.avatar-sigil-orbit--mini` vs `--panel`,
-        // so the per-sigil transform automatically scales to each size.
-        const bubbles = [];
-        visible.forEach((activeSpell, index) => {
-            const spellDef = this.spellDefinitions[activeSpell.spellId];
-            if (!spellDef) return;  // Defensive: skip if definition vanished
-            // Even angular distribution around the full 360° orbit.
-            const angle = (index / totalBubbles) * 360;
-            const rarity = spellDef.rarity || 'common';
-            const icon = spellDef.icon || '✨';
-            const name = spellDef.name || 'Active spell';
-            bubbles.push(
-                `<div class="avatar-sigil avatar-sigil--${rarity}"` +
-                ` style="--angle: ${angle.toFixed(2)}deg"` +
-                ` title="${this.escapeHTML(name)}">` +
-                `<span class="avatar-sigil__icon">${icon}</span>` +
-                `</div>`
-            );
-        });
-
-        if (overflowCount > 0) {
-            // Overflow badge always takes the LAST slot in the rotation
-            // so the 7 named sigils stay together and the "+N" reads as
-            // a continuation marker rather than a random bubble.
-            const angle = ((totalBubbles - 1) / totalBubbles) * 360;
-            bubbles.push(
-                `<div class="avatar-sigil avatar-sigil--overflow"` +
-                ` style="--angle: ${angle.toFixed(2)}deg"` +
-                ` title="+${overflowCount} more active spell${overflowCount === 1 ? '' : 's'}">` +
-                `<span class="avatar-sigil__icon">+${overflowCount}</span>` +
-                `</div>`
-            );
-        }
-
-        const html = bubbles.join('');
         // Only rewrite innerHTML when the content actually changed —
         // avoids restarting the spawn-fade animation on every render.
         let mutated = false;
@@ -8023,19 +9563,10 @@ class GoalManager {
             mutated = true;
         }
 
-        // v2.6 Item 5 — re-sync icon counter-rotations whenever bubbles
-        // are (re)mounted. CSS animation start times are per-element:
-        // the parent `.avatar-sigil-orbit` starts at page load, but
-        // each `.avatar-sigil__icon` starts when its <span> first
-        // renders. Without intervention the two run at the same speed
-        // but from different phases, leaving every icon visibly tilted
-        // by a fixed offset (the bug the user reported — "icons were
-        // slightly turned to the left"). Syncing via WAAPI fixes that.
+        // v2.6 Item 5 — re-sync icon counter-rotations whenever bubbles are
+        // (re)mounted; deferred one frame so the freshly-inserted spans have
+        // realized their CSS animations before the WAAPI re-alignment.
         if (mutated) {
-            // Defer one frame so the freshly-inserted spans have
-            // actually started their CSS animations (getAnimations()
-            // returns nothing for elements that haven't had their
-            // animations realized yet).
             requestAnimationFrame(() => this._syncSigilCounterRotation());
         }
     }
@@ -8149,10 +9680,8 @@ class GoalManager {
         // sources (we don't track per-XP-event provenance). Players
         // get a clear picture of what bonuses they're earning right
         // now and what's contributing to faster level-up.
-        const currentLevelXP = this.getTotalXPForLevel(this.level);
-        const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
-        const xpIntoLevel = this.xp - currentLevelXP;
-        const xpForLevel = nextLevelXP - currentLevelXP;
+        // XP-into-level math (leveling-logic.js).
+        const { nextLevelXP, xpIntoLevel, xpNeededForLevel: xpForLevel } = LEVELING_LOGIC.levelProgress(this.xp, this.level);
 
         const rows = [
             { label: 'Total XP earned', value: `${this.xp.toLocaleString()}`, accent: 'default' },
@@ -8310,6 +9839,15 @@ class GoalManager {
     // rarity-frame border/glow and this nameplate are driven by the
     // same `data-rarity` attribute, so the visual tier is always
     // consistent between the two layers.
+    // Canonical rarity ladder, lowest → highest. Shared by the loot-reveal
+    // ordering (showLootPanel) and any other rank comparison so the tiers
+    // never drift. Unknown/missing rarities sort as `common` (0); accepts
+    // any case.
+    _rarityRank(rarity) {
+        const order = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+        return order[String(rarity || 'common').toLowerCase()] ?? 0;
+    }
+
     _rarityNameplate(rarity) {
         const r = String(rarity || 'common').toLowerCase();
         const glyphs = {
@@ -8328,38 +9866,11 @@ class GoalManager {
     }
 
     getAchievementDefinitions() {
-        // v2.7 — `rarity` per badge drives the .rarity-frame chrome in the
-        // Achievement Gallery. Tiers are calibrated against actual effort:
-        //   common     onboarding action / one-shot setup (first quest,
-        //              30 future-task plan)
-        //   uncommon   a few days of casual play (10 tasks, 7-day streak,
-        //              20 spells cast, 5 bosses, 10 chests)
-        //   rare       a couple weeks of committed use (50 tasks, first
-        //              life goal)
-        //   epic       a couple months of dedicated play (30-day streak,
-        //              100 tasks, 50 chests, 25 focus sessions ≈ 10 h)
-        //   legendary  extreme commitment (500 tasks, 100-day streak,
-        //              5 life goals)
-        // Life-goal badges skew higher than their target counts suggest
-        // because completing a life goal is itself a major arc.
-        return [
-            { id: 'first_quest', name: 'First Quest', description: 'Complete your first quest', icon: '🎖️', type: 'tasks', target: 1, rarity: 'common' },
-            { id: 'novice', name: 'Novice', description: 'Complete 10 quests', icon: '🥉', type: 'tasks', target: 10, rarity: 'uncommon' },
-            { id: 'adept', name: 'Adept', description: 'Complete 50 quests', icon: '🥈', type: 'tasks', target: 50, rarity: 'rare' },
-            { id: 'century', name: 'Century', description: 'Complete 100 quests', icon: '🥇', type: 'tasks', target: 100, rarity: 'epic' },
-            { id: 'master', name: 'Master', description: 'Complete 500 quests', icon: '💎', type: 'tasks', target: 500, rarity: 'legendary' },
-            { id: 'week_warrior', name: 'Week Warrior', description: '7-day habit streak', icon: '🔥', type: 'streak', target: 7, rarity: 'uncommon' },
-            { id: 'month_master', name: 'Month Master', description: '30-day habit streak', icon: '⚡', type: 'streak', target: 30, rarity: 'epic' },
-            { id: 'centurion', name: 'Centurion', description: '100-day habit streak', icon: '👑', type: 'streak', target: 100, rarity: 'legendary' },
-            { id: 'legend', name: 'Legend', description: 'Complete a life goal', icon: '🌟', type: 'life_goals', target: 1, rarity: 'epic' },
-            { id: 'mythic', name: 'Mythic', description: 'Complete 5 life goals', icon: '💫', type: 'life_goals', target: 5, rarity: 'legendary' },
-            { id: 'planner', name: 'Master Planner', description: 'Schedule 30+ future tasks', icon: '📅', type: 'future_tasks', target: 30, rarity: 'common' },
-            { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open 10 chests', icon: '🎁', type: 'chests', target: 10, rarity: 'uncommon' },
-            { id: 'treasure_master', name: 'Treasure Master', description: 'Open 50 chests', icon: '👑', type: 'chests', target: 50, rarity: 'epic' },
-            { id: 'boss_hunter', name: 'Boss Hunter', description: 'Defeat 5 bosses', icon: '💀', type: 'bosses', target: 5, rarity: 'uncommon' },
-            { id: 'spell_caster', name: 'Spell Caster', description: 'Cast 20 spells', icon: '✨', type: 'spells', target: 20, rarity: 'uncommon' },
-            { id: 'focus_master', name: 'Focus Master', description: 'Complete 25 focus sessions', icon: '🎯', type: 'focus', target: 25, rarity: 'epic' }
-        ];
+        // The achievement/badge catalog (Engineering Roadmap #1 incremental split)
+        // lives in achievement-definitions.js; captured once into the module-scoped
+        // ACHIEVEMENT_DEFINITIONS const at the top of this file. Returned here so
+        // every this.getAchievementDefinitions() call site is unchanged.
+        return ACHIEVEMENT_DEFINITIONS;
     }
     
     getAchievementProgress() {
@@ -8388,83 +9899,25 @@ class GoalManager {
         
         const achievements = this.getAchievementDefinitions();
         const progress = this.getAchievementProgress();
-        const unlockedIds = this.badges.map(b => b.id);
-        
-        // Separate unlocked and locked achievements
-        const unlocked = achievements.filter(a => unlockedIds.includes(a.id));
-        const locked = achievements.filter(a => !unlockedIds.includes(a.id));
-        
-        // Sort locked by closest to completion
-        locked.sort((a, b) => {
-            const progressA = (progress[a.type] || 0) / a.target;
-            const progressB = (progress[b.type] || 0) / b.target;
-            return progressB - progressA;
-        });
-        
-        let html = '';
-        
-        // Unlocked badges section
-        if (unlocked.length > 0) {
-            html += '<div class="col-span-2 md:col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-trophy-line mr-1.5"></i>Unlocked</h4></div>';
-            html += unlocked.map(achievement => {
-                const badge = this.badges.find(b => b.id === achievement.id);
-                return `
-                    <div data-rarity="${achievement.rarity || 'common'}" class="quest-card rarity-frame bg-amber-950/60 p-5 rounded-lg border-2 border-amber-500 text-center">
-                        <div class="text-4xl mb-2">${achievement.icon}</div>
-                        <div class="text-amber-300 font-bold fancy-font text-sm">${achievement.name}</div>
-                        <div class="text-amber-200 text-xs mt-1">${achievement.description}</div>
-                        <div class="text-green-400 text-xs mt-2">✓ ${badge ? new Date(badge.unlockedAt).toLocaleDateString() : 'Unlocked'}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        // In-progress achievements section
-        if (locked.length > 0) {
-            html += '<div class="col-span-2 md:col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-line-chart-line mr-1.5"></i>In Progress</h4></div>';
-            html += locked.map(achievement => {
-                const current = progress[achievement.type] || 0;
-                const target = achievement.target;
-                const percent = Math.min(100, Math.round((current / target) * 100));
-                const remaining = target - current;
-                
-                // Color based on progress
-                let progressColor = 'bg-gray-600';
-                let borderColor = 'border-gray-600';
-                if (percent >= 75) {
-                    progressColor = 'bg-green-500';
-                    borderColor = 'border-green-600';
-                } else if (percent >= 50) {
-                    progressColor = 'bg-yellow-500';
-                    borderColor = 'border-yellow-600';
-                } else if (percent >= 25) {
-                    progressColor = 'bg-orange-500';
-                    borderColor = 'border-orange-600';
-                }
-                
-                return `
-                    <div data-rarity="${achievement.rarity || 'common'}" class="quest-card rarity-frame bg-gray-900/60 p-5 rounded-lg border-2 ${borderColor} text-center opacity-80 hover:opacity-100">
-                        <div class="text-3xl mb-2 grayscale-[50%]">${achievement.icon}</div>
-                        <div class="text-gray-300 font-bold fancy-font text-sm">${achievement.name}</div>
-                        <div class="text-gray-400 text-xs mt-1">${achievement.description}</div>
-                        <div class="mt-2">
-                            <div class="progress-bar w-full bg-gray-700 rounded-full h-2">
-                                <div class="${progressColor} h-2 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
-                            </div>
-                            <div class="text-xs mt-1 ${percent >= 75 ? 'text-green-400' : 'text-gray-400'}">
-                                ${current}/${target} ${percent >= 75 ? `(${remaining} to go!)` : `(${percent}%)`}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        if (html === '') {
-            html = '<p class="col-span-2 md:col-span-4 text-center text-amber-200 py-8 fancy-font">Complete quests to unlock badges!</p>';
-        }
-        
-        container.innerHTML = html;
+        container.innerHTML = BADGE_RENDER.renderBadgesHTML({ achievements, progress, badges: this.badges });
+    }
+
+    // Sunday that begins the oldest visible week of a GitHub-style heatmap
+    // whose newest column is THIS week (Sun–Sat), so today is always in the
+    // last row. Returns a Date at local midnight.
+    //
+    // Bug fixed here (§5.0 audit): both heatmaps previously subtracted
+    // `weeksToShow*7 - 1` (83) days instead of `(weeksToShow-1)*7` (77). The
+    // extra 6 days made `startDate` land on a Monday every time (the `-dow`
+    // term cancels today's weekday, and -83 ≡ 1 (mod 7)), so the grid was
+    // mislabeled (Monday shown under the 'S'/Sunday column, every day shifted
+    // one) AND its newest cell was LAST week's Sunday — meaning today's square
+    // was missing 6 days out of 7.
+    _heatmapStartSunday(weeksToShow, today = new Date()) {
+        const start = new Date(today);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - today.getDay() - (weeksToShow - 1) * 7);
+        return start;
     }
 
     generateHabitHeatMap(habit) {
@@ -8474,9 +9927,9 @@ class GoalManager {
         const todayStr = this.getTodayDateString();
         const weeksToShow = 12;
         
-        // Find the Sunday that starts the oldest week (12 weeks back)
-        const startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - (weeksToShow * 7 - 1) - today.getDay());
+        // Calendar-aligned start: the Sunday that begins the oldest visible
+        // week (grid ends on THIS week's Saturday so today is always shown).
+        const startDate = this._heatmapStartSunday(weeksToShow, today);
         
         // Build calendar-aligned weeks (each row = Sun-Sat)
         const weeks = [];
@@ -8517,7 +9970,7 @@ class GoalManager {
                     const clickable = !day.completed;
                     html += `<div class="heatmap-cell level-${level} ${clickable ? 'cursor-pointer hover:opacity-70' : ''}" 
                         title="${title}"
-                        ${clickable ? `onclick="goalManager.markHabitPastCompletion(${habit.id}, '${day.date}')"` : ''}
+                        ${clickable ? `data-action="habit.markPast" data-habit-id="${habit.id}" data-date="${day.date}"` : ''}
                         ></div>`;
                 }
             });
@@ -8556,48 +10009,15 @@ class GoalManager {
                 body: 'Daily rituals forge legendary habits. Start a streak and watch your power grow!',
                 ctaLabel: 'Create Daily Ritual',
                 ctaIcon: 'ri-fire-line',
-                ctaOnclick: 'goalManager.addHabit()',
+                ctaAction: 'quest.addHabit',
                 ctaColor: 'amber'
             });
         } else {
-            container.innerHTML = this.habits.map(habit => `
-                <div class="quest-card bg-gradient-to-br from-yellow-100 to-amber-50 p-5 rounded-lg shadow-lg border-3 border-yellow-600 hover:shadow-xl transition-all draggable-item"
-                    data-habit-id="${habit.id}"
-                    draggable="true"
-                    ondragstart="goalManager.handleDragStart('habit', ${habit.id}, event)"
-                    ondragend="goalManager.handleDragEnd(event)"
-                    ondragover="goalManager.handleDragOver(event)"
-                    ondragenter="goalManager.handleDragEnter(event)"
-                    ondragleave="goalManager.handleDragLeave(event)"
-                    ondrop="goalManager.handleDrop('habit', ${habit.id}, event)">
-                    
-                    <div class="flex items-center">
-                        <i class="ri-draggable drag-handle text-amber-600 mr-2"></i>
-                        <input 
-                            type="checkbox" 
-                            ${habit.completedToday ? 'checked' : ''} 
-                            onchange="goalManager.toggleHabit(${habit.id})">
-                        <div class="ml-4 flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-lg font-bold fancy-font ${habit.completedToday ? 'line-through text-amber-700 opacity-60' : 'text-amber-900'}">${this.escapeHTML(habit.title)}</span>
-                                ${habit.streak > 0 ? `<span class="text-xs bg-orange-500 text-white px-2 py-1 rounded-full font-bold">🔥 ${habit.streak} day${habit.streak !== 1 ? 's' : ''}</span>` : ''}
-                            </div>
-                            ${habit.description ? `<p class="text-sm text-amber-800 italic mt-1">${this.escapeHTML(habit.description)}</p>` : ''}
-                            <div class="text-xs text-amber-700 mt-1">
-                                Total: ${habit.totalCompletions || 0} completions
-                            </div>
-                        </div>
-                        <button onclick="goalManager.editGoal('habit', ${habit.id})" class="text-blue-400 hover:text-blue-200 text-xl mr-2" title="Edit habit" aria-label="Edit habit">
-                            <i class="ri-edit-line" aria-hidden="true"></i>
-                        </button>
-                        <button onclick="goalManager.deleteGoal('habit', ${habit.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete habit" aria-label="Delete habit">
-                            <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                    
-                    ${this.generateHabitHeatMap(habit)}
-                </div>
-            `).join('');
+            container.innerHTML = HABIT_RENDER.renderHabitsHTML({
+                habits: this.habits,
+                escapeHTML: (s) => this.escapeHTML(s),
+                heatmapHTML: (habit) => this.generateHabitHeatMap(habit),
+            });
         }
     }
 
@@ -8621,56 +10041,10 @@ class GoalManager {
                 body: 'Archive completed quests from your active lists to keep them tidy. Your hall of memories will fill as your journey grows.'
             });
         } else {
-            const sortedArchives = [...this.archivedGoals].sort((a, b) => 
-                new Date(b.archivedAt) - new Date(a.archivedAt)
-            );
-            
-            container.innerHTML = sortedArchives.map(goal => {
-                const typeIcons = {
-                    life: '🏰',
-                    yearly: '📅',
-                    monthly: '🗓️',
-                    weekly: '⚔️',
-                    daily: '🗡️'
-                };
-                
-                const typeColors = {
-                    life: 'red',
-                    yearly: 'purple',
-                    monthly: 'blue',
-                    weekly: 'green',
-                    daily: 'orange'
-                };
-                
-                const color = typeColors[goal.type] || 'gray';
-                
-                return `
-                    <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700">
-                        <div class="flex items-start space-x-4">
-                            <div class="text-3xl">${typeIcons[goal.type]}</div>
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <span class="text-xs bg-${color}-800/50 text-${color}-200 px-2 py-1 rounded fancy-font capitalize">${goal.type}</span>
-                                    ${goal.completed ? '<span class="text-xs text-green-400">✓ Completed</span>' : ''}
-                                </div>
-                                <h4 class="font-bold text-lg text-amber-300 medieval-title mb-1">${this.escapeHTML(goal.title)}</h4>
-                                ${goal.description ? `<p class="text-sm text-${color}-200 italic mb-2">${this.escapeHTML(goal.description)}</p>` : ''}
-                                <div class="text-xs text-${color}-300">
-                                    Archived: ${new Date(goal.archivedAt).toLocaleDateString()}
-                                </div>
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                <button onclick="goalManager.restoreGoal(${goal.id})" class="text-${color}-400 hover:text-${color}-200 text-xl" title="Restore" aria-label="Restore archived goal">
-                                    <i class="ri-refresh-line" aria-hidden="true"></i>
-                                </button>
-                                <button onclick="goalManager.showConfirm('Permanently delete?', () => { goalManager.archivedGoals = goalManager.archivedGoals.filter(g => g.id !== ${goal.id}); goalManager.saveData(); goalManager.render(); })" class="text-red-500 hover:text-red-300 text-xl" title="Delete Forever" aria-label="Permanently delete goal">
-                                    <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            container.innerHTML = ARCHIVE_RENDER.renderArchivesHTML({
+                archivedGoals: this.archivedGoals,
+                escapeHTML: (s) => this.escapeHTML(s),
+            });
         }
     }
 
@@ -8684,110 +10058,39 @@ class GoalManager {
         const container = document.getElementById('treasure-chests-container');
         if (!container) return;
 
-        // v2.7 — added `rarity` so chest cards can opt into the
-        // .rarity-frame chrome below. Map mirrors the in-game tier ramp:
-        // wooden=common, bronze=uncommon, silver=rare, gold=epic,
-        // royal=legendary. The legendary frame is the one that picks up
-        // the parallax tilt module on hover (epic+ trigger it).
-        const chestTypes = [
-            { type: 'bronze', name: 'Bronze Chest', cost: 200, color: 'orange', icon: '🎁', rarity: 'uncommon' },
-            { type: 'silver', name: 'Silver Chest', cost: 600, color: 'gray', icon: '💎', rarity: 'rare' },
-            { type: 'gold', name: 'Gold Chest', cost: 1500, color: 'yellow', icon: '👑', rarity: 'epic' },
-            { type: 'royal', name: 'Royal Chest', cost: 5000, color: 'purple', icon: '⭐', rarity: 'legendary' }
-        ];
-
-        // Daily Free Wooden Chest at the top
-        const canClaimWooden = this.canClaimWoodenChest();
-        const woodenChestHTML = `
-            <div data-rarity="common" class="quest-card rarity-frame bg-gradient-to-br from-yellow-900/80 to-amber-950/80 p-5 rounded-xl shadow-xl border-3 border-yellow-600 text-center relative overflow-hidden">
-                ${canClaimWooden ? '<div class="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full fancy-font animate-pulse">FREE</div>' : ''}
-                <div class="text-6xl mb-3 ${canClaimWooden ? 'animate-bounce' : 'opacity-40'}">🪵</div>
-                <h4 class="text-xl font-bold text-yellow-300 medieval-title mb-2">Wooden Chest</h4>
-                <p class="text-yellow-200 text-lg font-bold mb-2">Free Daily!</p>
-                <button onclick="goalManager.claimWoodenChest()" 
-                    class="w-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105 ${!canClaimWooden ? 'opacity-50 cursor-not-allowed' : ''}"
-                    ${!canClaimWooden ? 'disabled' : ''}>
-                    ${canClaimWooden ? '🪵 Open Chest!' : '<i class="ri-checkbox-circle-fill mr-1"></i>Claimed Today'}
-                </button>
-            </div>
-        `;
-
-        container.innerHTML = woodenChestHTML + chestTypes.map(chest => {
-            const canAfford = this.goldCoins >= chest.cost;
-            const timesOpened = this.treasureChests.filter(c => c.type === chest.type).length;
-            
-            return `
-                <div data-rarity="${chest.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${chest.color}-900 to-${chest.color}-950 p-5 rounded-xl shadow-xl border-3 border-${chest.color}-600 text-center">
-                    <div class="text-6xl mb-3">${chest.icon}</div>
-                    <h4 class="text-xl font-bold text-amber-300 medieval-title mb-2">${chest.name}</h4>
-                    <p class="text-${chest.color}-200 text-lg font-bold mb-2">${chest.cost} Gold</p>
-                    ${timesOpened > 0 ? `
-                        <p class="text-${chest.color}-300 text-xs mb-2 fancy-font">Opened ${timesOpened} time${timesOpened !== 1 ? 's' : ''}</p>
-                    ` : ''}
-                    <button onclick="goalManager.openTreasureChest('${chest.type}')" 
-                        class="w-full bg-gradient-to-r from-${chest.color}-600 to-${chest.color}-700 hover:from-${chest.color}-700 hover:to-${chest.color}-800 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105 ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}"
-                        ${!canAfford ? 'disabled' : ''}>
-                        ${canAfford ? '🎁 Open Chest!' : `🔒 Need ${chest.cost - this.goldCoins} More Gold`}
-                    </button>
-                </div>
-            `;
-        }).join('');
+        container.innerHTML = REWARD_RENDER.renderTreasureChestsHTML({
+            canClaimWooden: this.canClaimWoodenChest(),
+            goldCoins: this.goldCoins,
+            treasureChests: this.treasureChests,
+            chestStaticHTML: (tier, emoji, extraClasses) => this._chestStaticHTML(tier, emoji, extraClasses),
+        });
     }
 
     renderThemes() {
         const container = document.getElementById('themes-container');
         if (!container) return;
 
-        container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
-            const isUnlocked = this.unlockedThemes.includes(id);
-            const isSelected = this.currentTheme === id;
-            const lockReason = !isUnlocked ?
-                (theme.special ? theme.special : `Level ${theme.unlockLevel}`) : '';
+        // v2.9 Track 7 — Theme of the Week.
+        // Compute the featured id ONCE per render so we don't re-derive
+        // it inside the per-tile map (the helper does an Object.entries
+        // + sort + filter, cheap but pointless to repeat 12 times). The
+        // returned id is used twice below: to render the banner above
+        // the grid, and to flag the matching tile with a FEATURED badge
+        // + glow ring.
+        const featuredId = this.getWeeklyFeaturedThemeId();
+        container.innerHTML = THEME_RENDER.renderThemesHTML({
+            themeDefinitions: this.themeDefinitions,
+            unlockedThemes: this.unlockedThemes,
+            currentTheme: this.currentTheme,
+            featuredId,
+        });
 
-            // Layered tile structure (z-stack):
-            //   .theme-tile-bg      z=0 — static gradient preview mirroring body.theme-X
-            //   .theme-tile-content z=2 — icon, name, status pill
-            // CSS for these classes lives in themes.css "THEME TILE LIVE
-            // PREVIEWS" section. (Previously had a `.theme-tile-video`
-            // layer at z=1 with autoplay WebM per hybrid tile — REMOVED
-            // Jun 6, 2026 evening after user feedback that 6 simultaneous
-            // WebMs on the Themes panel slowed initial load too much. The
-            // tile now shows only the static gradient identity; clicking
-            // the tile opens a preview modal via `previewTheme(id)` which
-            // renders the WebM ON DEMAND for one theme at a time. ROADMAP
-            // § 2.4 final v2.8 deliverable revision.)
-            //
-            // Tile click changed from `selectTheme(id)` to `previewTheme(id)`
-            // — selection now requires explicit Apply confirmation in the
-            // modal, which (a) reduces accidental theme switches and
-            // (b) lets locked themes display a preview as motivation
-            // before unlock.
-            return `
-                <div onclick="goalManager.previewTheme('${id}')"
-                    class="theme-option quest-card rounded-xl shadow-xl text-center cursor-pointer transition-all ${isSelected ? 'ring-4 ring-yellow-400' : ''} ${!isUnlocked ? 'theme-locked' : ''}"
-                    title="${isUnlocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview'}">
-                    <div class="theme-tile-bg theme-tile-bg-${id}"></div>
-                    <div class="theme-tile-content p-5">
-                        <div class="text-5xl mb-2">${theme.icon}</div>
-                        <h4 class="text-lg font-bold text-white medieval-title mb-2">${theme.name}</h4>
-                        ${!isUnlocked ? `
-                            <p class="text-white/80 text-xs mb-2">
-                                🔒 ${lockReason}
-                            </p>
-                            <div class="text-white/70 text-sm italic">Click to preview</div>
-                        ` : isSelected ? `
-                            <div class="bg-yellow-500/30 border-2 border-yellow-400 rounded-lg px-3 py-2 text-yellow-300 text-sm font-bold backdrop-blur-sm">
-                                ✓ Active Theme
-                            </div>
-                        ` : `
-                            <div class="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 text-white text-sm font-bold transition-all backdrop-blur-sm">
-                                👁 Preview
-                            </div>
-                        `}
-                    </div>
-                </div>
-            `;
-        }).join('');
+        // v2.9 Track 7 Phase 5 — first-of-week spotlight prompt. Fires
+        // at most once per ISO week (persisted via
+        // `weeklyTrialPromptShown`). Deferred so the underlying grid
+        // has painted before the backdrop overlays it; otherwise the
+        // user sees a blank dark page for one frame on cold start.
+        setTimeout(() => this.maybeShowFeaturedThemeSpotlight(), 0);
     }
 
     openTitleHall() {
@@ -8818,214 +10121,20 @@ class GoalManager {
         const lockedGrid = document.getElementById('titles-locked-grid');
         if (!container) return;
 
-        // Title categories with icons and color accents.
-        //
-        // v2.7 rarity calibration pass — each title carries an explicit
-        // `rarity` calibrated to the actual effort required to earn it,
-        // not its position inside its category. (The earlier positional
-        // ramp had structural problems: categories with mixed metrics
-        // — e.g. Wealth interleaving gold and chest counts, Arcane
-        // interleaving focus sessions and spells — produced wrong
-        // tiers, and the 2-entry Login Streak category collapsed a
-        // 100-day login streak to "common". Explicit per-title rarity
-        // removes the algorithm entirely.) Anchor: common = onboarding
-        // one-shots; uncommon = a few days; rare = a couple weeks of
-        // committed play; epic = a couple months of dedication;
-        // legendary = extreme / multi-year commitment.
-        const titleCategories = [
-            { key: 'early', icon: '⚔️', label: 'Early Game', color: 'green', titles: [
-                { id: 'beginner', name: 'The Beginner', description: 'Complete your first task', rarity: 'common' },
-                { id: 'habit_starter', name: 'Habit Starter', description: 'Create your first habit', rarity: 'common' },
-                { id: 'apprentice', name: 'The Apprentice', description: 'Reach Level 5', rarity: 'common' },
-            ]},
-            { key: 'tasks', icon: '📜', label: 'Quest Milestones', color: 'amber', titles: [
-                { id: 'determined', name: 'The Determined', description: 'Complete 10 tasks', rarity: 'common' },
-                { id: 'dedicated', name: 'The Dedicated', description: 'Complete 50 tasks', rarity: 'uncommon' },
-                { id: 'seasoned_adventurer', name: 'Seasoned Adventurer', description: 'Complete 100 tasks', rarity: 'rare' },
-                { id: 'relentless', name: 'The Relentless', description: 'Complete 250 tasks', rarity: 'epic' },
-                { id: 'quest_master', name: 'Quest Master', description: 'Complete 500 tasks', rarity: 'epic' },
-                { id: 'grand_master', name: 'Grand Master', description: 'Complete 1000 tasks', rarity: 'legendary' },
-            ]},
-            { key: 'streaks', icon: '🔥', label: 'Habit Streaks', color: 'orange', titles: [
-                { id: 'consistent', name: 'The Consistent', description: 'Maintain a 3-day streak', rarity: 'common' },
-                { id: 'disciplined', name: 'The Disciplined', description: 'Maintain a 7-day streak', rarity: 'uncommon' },
-                { id: 'devoted', name: 'The Devoted', description: 'Maintain a 14-day streak', rarity: 'rare' },
-                { id: 'unstoppable', name: 'The Unstoppable', description: 'Maintain a 30-day streak', rarity: 'epic' },
-                { id: 'iron_will', name: 'Iron Will', description: 'Maintain a 60-day streak', rarity: 'epic' },
-                { id: 'the_ascended', name: 'The Ascended', description: 'Maintain a 100-day streak', rarity: 'legendary' },
-                { id: 'eternal', name: 'The Eternal', description: 'Maintain a 365-day streak', rarity: 'legendary' },
-            ]},
-            { key: 'levels', icon: '⬆️', label: 'Level Milestones', color: 'blue', titles: [
-                { id: 'journeyman', name: 'Journeyman', description: 'Reach Level 10', rarity: 'uncommon' },
-                { id: 'veteran', name: 'Veteran', description: 'Reach Level 25', rarity: 'rare' },
-                { id: 'elite', name: 'Elite', description: 'Reach Level 50', rarity: 'epic' },
-                { id: 'legendary_hero', name: 'Legendary Hero', description: 'Reach Level 100', rarity: 'legendary' },
-            ]},
-            { key: 'goals', icon: '🏰', label: 'Goal Conqueror', color: 'purple', titles: [
-                // Life goals are major arcs even at count=1, so they skew
-                // higher than raw count suggests. Yearly goal = legendary
-                // because it represents a full annual commitment.
-                { id: 'legendary', name: 'The Legendary', description: 'Complete a life goal', rarity: 'epic' },
-                { id: 'dream_chaser', name: 'Dream Chaser', description: 'Complete 5 life goals', rarity: 'legendary' },
-                { id: 'weekly_warrior', name: 'Weekly Warrior', description: 'Complete 10 weekly goals', rarity: 'epic' },
-                { id: 'monthly_champion', name: 'Monthly Champion', description: 'Complete 6 monthly goals', rarity: 'epic' },
-                { id: 'visionary', name: 'The Visionary', description: 'Complete a yearly goal', rarity: 'legendary' },
-            ]},
-            { key: 'wealth', icon: '💰', label: 'Wealth & Treasury', color: 'yellow', titles: [
-                { id: 'wealthy', name: 'The Wealthy', description: 'Accumulate 1,000 gold', rarity: 'uncommon' },
-                { id: 'rich', name: 'The Rich', description: 'Accumulate 10,000 gold', rarity: 'epic' },
-                { id: 'tycoon', name: 'Tycoon', description: 'Accumulate 100,000 gold', rarity: 'legendary' },
-                { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open your first chest', rarity: 'common' },
-                { id: 'loot_seeker', name: 'Loot Seeker', description: 'Open 25 chests', rarity: 'rare' },
-                { id: 'chest_master', name: 'Chest Master', description: 'Open 100 chests', rarity: 'legendary' },
-            ]},
-            { key: 'arcane', icon: '✨', label: 'Arcane Mastery', color: 'indigo', titles: [
-                { id: 'focused', name: 'The Focused', description: 'Complete your first focus session', rarity: 'common' },
-                { id: 'zen_master', name: 'Zen Master', description: 'Complete 25 focus sessions', rarity: 'rare' },
-                { id: 'meditation_guru', name: 'Meditation Guru', description: 'Complete 100 focus sessions', rarity: 'legendary' },
-                { id: 'spellcaster', name: 'Spellcaster', description: 'Cast your first spell', rarity: 'common' },
-                { id: 'mage', name: 'Mage', description: 'Cast 25 spells', rarity: 'rare' },
-                { id: 'archmage', name: 'Archmage', description: 'Cast 50 spells', rarity: 'epic' },
-            ]},
-            { key: 'combat', icon: '🐉', label: 'Combat & Companions', color: 'red', titles: [
-                { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss', rarity: 'common' },
-                { id: 'champion', name: 'Champion', description: 'Defeat 10 bosses', rarity: 'rare' },
-                { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 50 bosses', rarity: 'legendary' },
-                // Companions drop from chests, so first companion is
-                // onboarding tier; collecting all 10 is the capstone.
-                { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion', rarity: 'common' },
-                { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions', rarity: 'rare' },
-                { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions', rarity: 'legendary' },
-            ]},
-            { key: 'login', icon: '👑', label: 'Login Streak Milestones', color: 'yellow', titles: [
-                { id: 'centurion', name: '🌟 Centurion', description: '100-day login streak', rarity: 'epic' },
-                { id: 'mythic_warrior', name: '🏆 Mythic Warrior', description: '365-day login streak', rarity: 'legendary' },
-            ]},
-        ];
-
-        const unlockedIds = new Set(this.unlockedTitles.map(t => t.id));
-        const unlockedMap = {};
-        this.unlockedTitles.forEach(t => { unlockedMap[t.id] = t; });
-        const totalUnlocked = this.unlockedTitles.length;
-        const totalTitles = titleCategories.reduce((sum, cat) => sum + cat.titles.length, 0);
-
-        // Current Active Title Display
         if (activeDisplay) {
             const activeTitle = this.unlockedTitles.find(t => t.id === this.currentTitle);
-            if (activeTitle) {
-                activeDisplay.innerHTML = `
-                    <div class="quest-card bg-gradient-to-br from-yellow-900 to-yellow-950 p-6 rounded-xl shadow-2xl border-4 border-yellow-500">
-                        <div class="flex items-center gap-6">
-                            <div class="text-8xl">👑</div>
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs px-2 py-1 rounded bg-yellow-700 text-yellow-200 uppercase font-bold">EQUIPPED</span>
-                                </div>
-                                <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">"${activeTitle.name}"</h4>
-                                <p class="text-yellow-200 fancy-font text-lg">${activeTitle.description}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                activeDisplay.innerHTML = `
-                    <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 p-8 rounded-xl shadow-2xl border-4 border-purple-600 text-center">
-                        <div class="text-8xl mb-4">🎖️</div>
-                        <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Title Equipped</h4>
-                        <p class="text-purple-200 fancy-font text-lg">Earn titles by completing achievements, then equip one below!</p>
-                    </div>
-                `;
-            }
+            activeDisplay.innerHTML = TITLE_RENDER.renderActiveTitleDisplayHTML(activeTitle);
         }
 
-        // Progress summary
-        const progressPct = totalTitles > 0 ? Math.round((totalUnlocked / totalTitles) * 100) : 0;
-        let html = `
-            <div class="mb-4 p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-amber-300 fancy-font text-sm font-bold">Title Collection</span>
-                    <span class="text-amber-200/70 text-xs fancy-font">${totalUnlocked} / ${totalTitles} (${progressPct}%)</span>
-                </div>
-                <div class="progress-bar w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all" style="width:${progressPct}%"></div>
-                </div>
-            </div>
-        `;
-
-        // Render each category as a collapsible section
-        titleCategories.forEach(cat => {
-            const earned = cat.titles.filter(t => unlockedIds.has(t.id));
-            const locked = cat.titles.filter(t => !unlockedIds.has(t.id));
-            const catComplete = locked.length === 0;
-            const catPct = Math.round((earned.length / cat.titles.length) * 100);
-            // Default open if category has any earned titles, or is Early Game
-            const defaultOpen = earned.length > 0 || cat.key === 'early';
-
-            html += `
-                <div class="mb-3">
-                    <button onclick="this.parentElement.querySelector('.title-cat-body').classList.toggle('hidden');this.querySelector('.title-cat-arrow').classList.toggle('rotate-90')"
-                        class="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/40 transition-all cursor-pointer text-left">
-                        <span class="text-2xl">${cat.icon}</span>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span class="text-${cat.color}-300 font-bold fancy-font text-sm">${cat.label}</span>
-                                ${catComplete ? '<span class="text-xs px-1.5 py-0.5 rounded bg-green-700/50 text-green-300 font-bold">✓ COMPLETE</span>' : ''}
-                            </div>
-                            <div class="flex items-center gap-2 mt-1">
-                                <div class="progress-bar flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                    <div class="h-full bg-${cat.color}-500 rounded-full transition-all" style="width:${catPct}%"></div>
-                                </div>
-                                <span class="text-gray-400 text-xs">${earned.length}/${cat.titles.length}</span>
-                            </div>
-                        </div>
-                        <i class="ri-arrow-right-s-line text-gray-400 text-lg title-cat-arrow transition-transform ${defaultOpen ? 'rotate-90' : ''}"></i>
-                    </button>
-                    <div class="title-cat-body ${defaultOpen ? '' : 'hidden'} mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pl-2">
-            `;
-
-            // Earned titles in this category
-            earned.forEach(t => {
-                const titleData = unlockedMap[t.id] || t;
-                const active = this.currentTitle === t.id;
-                const rarity = t.rarity || 'common';
-                html += `
-                    <div data-rarity="${rarity}" class="rarity-frame bg-gradient-to-br from-purple-900/80 to-purple-950/80 p-4 rounded-xl shadow-lg border-2 ${active ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-purple-600/60'} text-center">
-                        <div class="text-3xl mb-1">🎖️</div>
-                        <h5 class="font-bold text-amber-300 text-sm medieval-title mb-1">"${titleData.name}"</h5>
-                        <p class="text-purple-300 text-xs mb-2 italic">${t.description}</p>
-                        ${active ? `
-                            <div class="bg-yellow-500/20 border border-yellow-400/50 rounded-lg px-2 py-1 text-yellow-300 text-xs font-bold">✓ Equipped</div>
-                        ` : `
-                            <button onclick="goalManager.selectTitle('${t.id}')" 
-                                class="w-full bg-purple-700/80 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold fancy-font transition-all hover:scale-105">
-                                Equip
-                            </button>
-                        `}
-                    </div>
-                `;
-            });
-
-            // Locked titles in this category — same rarity chrome so the
-            // shape of the collection is visible even before unlock
-            // (player can see at a glance which slots are the rare/epic/
-            // legendary capstones in this category).
-            locked.forEach(t => {
-                const rarity = t.rarity || 'common';
-                html += `
-                    <div data-rarity="${rarity}" class="rarity-frame bg-gradient-to-br from-stone-800/60 to-stone-900/60 p-4 rounded-xl border-2 border-stone-700/40 text-center opacity-50">
-                        <div class="text-3xl mb-1">🔒</div>
-                        <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
-                        <p class="text-xs text-stone-500">${t.description}</p>
-                    </div>
-                `;
-            });
-
-            html += `</div></div>`;
+        container.innerHTML = TITLE_RENDER.renderTitleHallContentHTML({
+            unlockedTitles: this.unlockedTitles,
+            currentTitle: this.currentTitle,
+            level: this.level,
+            titleStyle: this.titleStyle,
+            levelTitles: this.LEVEL_TITLES,
         });
 
-        container.innerHTML = html;
-
-        // Hide legacy locked grid since everything is now in the categorized container
+                // Hide legacy locked grid since everything is now in the categorized container
         if (lockedGrid) lockedGrid.innerHTML = '';
     }
 
@@ -9076,38 +10185,14 @@ class GoalManager {
 
         // Active Companion Display
         if (this.companions.length === 0 || !activeCompanion) {
-            activeDisplay.innerHTML = `
-                <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-8 rounded-xl shadow-2xl border-4 border-green-600 text-center">
-                    <div class="text-8xl mb-4">🥚</div>
-                    <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Companions Yet</h4>
-                    <p class="text-green-200 fancy-font text-lg mb-4">Open treasure chests to discover loyal companions!</p>
-                    <p class="text-green-300 text-sm">Each chest tier has different companions with unique bonuses!</p>
-                    <button onclick="goalManager.switchView('rewards')" class="mt-4 px-6 py-2 bg-amber-700 hover:bg-amber-600 text-amber-100 rounded-lg font-bold fancy-font transition-all border-2 border-amber-500">
-                        <i class="ri-treasure-map-line mr-2"></i>Visit Treasury
-                    </button>
-                </div>
-            `;
+            activeDisplay.innerHTML = COMPANION_RENDER.renderNoActiveCompanionHTML();
         } else {
-            const colors = rarityColors[activeCompanion.rarity] || defaultColors;
-            const description = activeCompanion.description || companionDefs[activeCompanion.type]?.description || 'Loyal companion';
-            const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
-
-            activeDisplay.innerHTML = `
-                <div data-rarity="${activeCompanion.rarity || 'rare'}" class="quest-card rarity-frame bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl">
-                    <div class="flex items-center gap-6">
-                        <div class="text-8xl">${icon}</div>
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                ${this._rarityNameplate(activeCompanion.rarity || 'rare')}
-                                <span class="text-xs px-2 py-1 rounded bg-green-700 text-green-200 font-bold">ACTIVE</span>
-                            </div>
-                            <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-1">${activeCompanion.name}</h4>
-                            <p class="text-${colors.text}-200 fancy-font text-lg mb-2">${description}</p>
-                            <p class="text-${colors.text}-300 text-sm">Level ${activeCompanion.level || 1}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
+            activeDisplay.innerHTML = COMPANION_RENDER.renderActiveCompanionHTML(activeCompanion, {
+                rarityColors,
+                defaultColors,
+                companionDefs,
+                rarityNameplate: (r) => this._rarityNameplate(r),
+            });
         }
 
         // Companion Collection Grid
@@ -9124,27 +10209,21 @@ class GoalManager {
                 const sortedCompanions = [...this.companions].sort((a, b) => 
                     rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity)
                 );
+                // Ranger Twin Bond (v3.1 §3.2): when active, cards expose two
+                // equip slots instead of a single click-to-equip action.
+                const twinBond = this.getClassPerkValue('second_companion') > 0;
 
                 collectionGrid.innerHTML = `
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        ${sortedCompanions.map(comp => {
-                            const cColors = rarityColors[comp.rarity] || defaultColors;
-                            const isActive = comp.type === this.activeCompanionId;
-                            const compIcon = comp.icon || companionDefs[comp.type]?.icon || '🐾';
-                            const compName = comp.name || companionDefs[comp.type]?.name || 'Companion';
-                            const compDesc = comp.description || companionDefs[comp.type]?.description || '';
-                            
-                            return `
-                                <div data-rarity="${comp.rarity || 'rare'}" class="quest-card rarity-frame bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-5 rounded-lg ${isActive ? 'ring-2 ring-green-400' : ''} text-center cursor-pointer hover:scale-105 transition-transform"
-                                     onclick="goalManager.setActiveCompanion('${comp.type}')">
-                                    <div class="text-5xl mb-2">${compIcon}</div>
-                                    <h5 class="font-bold text-amber-200 text-sm mb-1">${compName}</h5>
-                                    <div class="my-1">${this._rarityNameplate(comp.rarity || 'rare')}</div>
-                                    <p class="text-xs text-${cColors.text}-300 mt-1">${compDesc}</p>
-                                    ${isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>'}
-                                </div>
-                            `;
-                        }).join('')}
+                        ${sortedCompanions.map(comp => COMPANION_RENDER.renderCompanionCollectionCardHTML(comp, {
+                            companionDefs,
+                            rarityColors,
+                            defaultColors,
+                            activeCompanionId: this.activeCompanionId,
+                            activeCompanionId2: this.activeCompanionId2,
+                            twinBond,
+                            rarityNameplate: (r) => this._rarityNameplate(r),
+                        })).join('')}
                     </div>
                 `;
             }
@@ -9153,32 +10232,19 @@ class GoalManager {
         // Undiscovered Companions Grid
         if (undiscoveredGrid) {
             const unlockedTypes = this.companions.map(c => c.type);
-            const lockedCompanions = Object.entries(companionDefs).filter(([type]) => !unlockedTypes.includes(type));
+            // Hide Ranger-exclusive companions the player doesn't own — they
+            // can't drop from chests, so the "Found in treasure chests" hint
+            // would mislead and the count would be unreachable for non-Rangers.
+            const lockedCompanions = Object.entries(companionDefs)
+                .filter(([type, def]) => !unlockedTypes.includes(type) && !def.rangerExclusive);
 
             if (lockedCompanions.length === 0) {
-                undiscoveredGrid.innerHTML = `
-                    <div class="text-center py-6">
-                        <div class="text-4xl mb-2">🏆</div>
-                        <p class="text-amber-300 fancy-font font-bold text-lg">All companions discovered!</p>
-                        <p class="text-amber-200 text-sm">You've collected every companion. Legendary!</p>
-                    </div>
-                `;
+                undiscoveredGrid.innerHTML = COMPANION_RENDER.renderAllCompanionsDiscoveredHTML();
             } else {
-                undiscoveredGrid.innerHTML = `
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        ${lockedCompanions.map(([type, def]) => {
-                            const cColors = rarityColors[def.rarity] || defaultColors;
-                            return `
-                                <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg border-2 border-stone-600 text-center opacity-60">
-                                    <div class="text-5xl mb-2">❓</div>
-                                    <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
-                                    <span class="text-xs px-2 py-0.5 rounded bg-${cColors.bg}-800 text-${cColors.text}-300 uppercase">${def.rarity}</span>
-                                    <p class="text-xs text-stone-500 mt-1">Found in treasure chests</p>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
+                undiscoveredGrid.innerHTML = COMPANION_RENDER.renderUndiscoveredCompanionsGridHTML(lockedCompanions, {
+                    rarityColors,
+                    defaultColors,
+                });
             }
         }
     }
@@ -9239,19 +10305,10 @@ class GoalManager {
                 this.saveData();
             }
             
-            // v2.7 — active-spell cards now mirror their actual rarity
-            // instead of always rendering purple. Same rarity→color map
-            // as renderSpellCollection so the chrome reads consistently
-            // between the "active" row and the spellbook below it.
-            const rarityColors = {
-                common: 'gray', uncommon: 'green', rare: 'blue',
-                epic: 'purple', legendary: 'yellow'
-            };
             container.innerHTML = validActiveSpells.map(activeSpell => {
                 const spell = this.spellDefinitions[activeSpell.spellId];
-                const color = rarityColors[spell.rarity] || 'purple';
                 let timeDisplay;
-                
+
                 if (activeSpell.expiresAt === -1) {
                     // Spell active until triggered
                     timeDisplay = '✨ Active until triggered';
@@ -9261,20 +10318,29 @@ class GoalManager {
                     const minutes = Math.floor((timeRemaining % 3600000) / 60000);
                     timeDisplay = `⏰ ${hours}h ${minutes}m remaining`;
                 }
-                
-                return `
-                    <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-800 to-${color}-900 p-5 rounded-xl shadow-2xl active-spell">
-                        <div class="text-5xl mb-2 text-center rune-text">${spell.icon}</div>
-                        <h4 class="text-xl font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                        <div class="text-center mb-2">${this._rarityNameplate(spell.rarity)}</div>
-                        <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
-                        <div class="bg-${color}-950 rounded-lg px-3 py-2 text-center">
-                            <p class="text-${color}-200 text-sm font-bold">${timeDisplay}</p>
-                        </div>
-                    </div>
-                `;
+
+                return SPELL_RENDER.renderActiveSpellCardHTML(spell, {
+                    timeDisplay,
+                    rarityNameplate: (r) => this._rarityNameplate(r),
+                });
             }).join('');
         }
+    }
+
+    // Wizard Overcharge capstone (v3.1 §3.2): the spellbook "Overcharge" button.
+    // Returns '' unless the player owns the capstone AND the spell is a timed
+    // multiplier spell with at least 2 charges — the exact conditions castSpell
+    // re-validates before doubling the effect.
+    _overchargeButtonHTML(spell, charges) {
+        if (this.getClassPerkValue('overcharge') <= 0) return '';
+        if (!(spell.multiplier > 1 && spell.duration > 0)) return '';
+        if (charges < 2) return '';
+        return `
+            <button data-action="spell.cast" data-spell-id="${spell.id}" data-overcharge="true"
+                class="w-full mt-2 bg-gradient-to-r from-fuchsia-700 to-purple-700 hover:from-fuchsia-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105 flex items-center justify-center gap-1">
+                ⚡ Overcharge <span class="text-xs opacity-80">(2 charges)</span>
+            </button>
+        `;
     }
 
     renderSpellCollection() {
@@ -9287,114 +10353,41 @@ class GoalManager {
         const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
         const sortByRarity = (a, b) => rarityOrder.indexOf(a[1].rarity) - rarityOrder.indexOf(b[1].rarity);
         
-        const allSpells = Object.entries(this.spellDefinitions);
+        // Wizard-exclusive spells (Forbidden Tomes) stay hidden from the
+        // collection until the player actually owns them — they're granted by
+        // the Wizard's Forbidden Tomes node, never bought or dropped.
+        const allSpells = Object.entries(this.spellDefinitions).filter(([id, spell]) =>
+            !spell.wizardExclusive || this.spellbook.some(s => s.spellId === id)
+        );
         const freeSpells = allSpells.filter(([id, spell]) => !spell.premium).sort(sortByRarity);
         const premiumSpells = allSpells.filter(([id, spell]) => spell.premium).sort(sortByRarity);
         
-        const rarityColors = {
-            common: 'gray',
-            uncommon: 'green',
-            rare: 'blue',
-            epic: 'purple',
-            legendary: 'yellow'
-        };
-        
+        const nameplate = (r) => this._rarityNameplate(r);
+        const overcharge = (spell, charges) => this._overchargeButtonHTML(spell, charges);
+
         // Section header for free spells
-        let html = `
-            <div class="w-full mb-2">
-                <h3 class="text-lg font-bold text-green-300 medieval-title flex items-center justify-center md:justify-start gap-2">
-                    <span>✨</span> Free Spells <span class="text-sm font-normal text-green-400">(${freeSpells.length} available)</span>
-                </h3>
-            </div>
-        `;
-        
+        let html = SPELL_RENDER.renderFreeSpellsHeaderHTML(freeSpells.length);
+
         // Render free spells
         html += freeSpells.map(([spellId, spell]) => {
             const spellEntry = this.spellbook.find(s => s.spellId === spellId);
             const charges = spellEntry ? spellEntry.charges : 0;
-            const color = rarityColors[spell.rarity] || 'gray';
             const isActive = this.activeSpells.some(s => s.spellId === spellId);
-            
-            return `
-                <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl">
-                    <div class="text-5xl mb-2 text-center">${spell.icon}</div>
-                    <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                    <div class="text-center mb-2">${this._rarityNameplate(spell.rarity)}</div>
-                    <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
-                    <div class="text-center mb-3">
-                        <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${charges}</span>
-                    </div>
-                    ${isActive ? `
-                        <div class="bg-green-500/20 border-2 border-green-400 rounded-lg px-3 py-2 text-green-300 text-sm font-bold text-center">
-                            ✓ Active
-                        </div>
-                    ` : charges > 0 ? `
-                        <button onclick="goalManager.castSpell('${spell.id}')" 
-                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
-                            Cast Spell
-                        </button>
-                    ` : `
-                        <div class="bg-${color}-950 border-2 border-${color}-800 rounded-lg px-3 py-2 text-${color}-500 text-sm font-bold text-center">
-                            Open chests for charges
-                        </div>
-                    `}
-                </div>
-            `;
+            return SPELL_RENDER.renderFreeSpellCardHTML(spell, { charges, isActive, rarityNameplate: nameplate, overchargeButtonHTML: overcharge });
         }).join('');
-        
+
         // Section header for premium spells
-        html += `
-            <div class="w-full mt-6 mb-2">
-                ${this.getPremiumBannerHTML('Unlock all premium spells & enchantments!')}
-                <h3 class="text-lg font-bold text-yellow-300 medieval-title flex items-center justify-center md:justify-start gap-2">
-                    <span>👑</span> Premium Spells <span class="text-sm font-normal text-yellow-400">(${premiumSpells.length} spells)</span>
-                </h3>
-            </div>
-        `;
-        
+        html += SPELL_RENDER.renderPremiumSpellsHeaderHTML(premiumSpells.length, this.getPremiumBannerHTML('Unlock all premium spells & enchantments!'));
+
         // Render premium spells
         html += premiumSpells.map(([spellId, spell]) => {
             const spellEntry = this.spellbook.find(s => s.spellId === spellId);
             const charges = spellEntry ? spellEntry.charges : 0;
-            const color = rarityColors[spell.rarity] || 'gray';
             const isActive = this.activeSpells.some(s => s.spellId === spellId);
             const isPremiumLocked = !this.isPremium;
-            
-            return `
-                <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl ${isPremiumLocked ? 'opacity-60' : ''}">
-                    <div class="text-5xl mb-2 text-center">${spell.icon}</div>
-                    <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
-                    <div class="text-center mb-2 flex items-center justify-center gap-2">
-                        ${this._rarityNameplate(spell.rarity)}
-                        ${isPremiumLocked ? '<i class="ri-lock-line text-yellow-500/80" aria-label="Premium locked"></i>' : ''}
-                    </div>
-                    <p class="text-${color}-300 text-sm mb-3 text-center">${spell.description}</p>
-                    <div class="text-center mb-3">
-                        <span class="text-${color}-200 text-sm font-bold">⚡ Charges: ${charges}</span>
-                    </div>
-                    ${isPremiumLocked ? `
-                        <button onclick="goalManager.showPremiumPurchaseModal()" 
-                            class="w-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
-                            👑 Unlock Premium
-                        </button>
-                    ` : isActive ? `
-                        <div class="bg-green-500/20 border-2 border-green-400 rounded-lg px-3 py-2 text-green-300 text-sm font-bold text-center">
-                            ✓ Active
-                        </div>
-                    ` : charges > 0 ? `
-                        <button onclick="goalManager.castSpell('${spell.id}')" 
-                            class="w-full bg-${color}-700 hover:bg-${color}-600 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-transform hover:scale-105">
-                            Cast Spell
-                        </button>
-                    ` : `
-                        <div class="bg-${color}-950 border-2 border-${color}-800 rounded-lg px-3 py-2 text-${color}-500 text-sm font-bold text-center">
-                            Open chests for charges
-                        </div>
-                    `}
-                </div>
-            `;
+            return SPELL_RENDER.renderPremiumSpellCardHTML(spell, { charges, isActive, isPremiumLocked, rarityNameplate: nameplate, overchargeButtonHTML: overcharge });
         }).join('');
-        
+
         container.innerHTML = html;
     }
 
@@ -9414,7 +10407,25 @@ class GoalManager {
         this.render();
     }
 
-    castSpell(spellId) {
+    // Wizard Forbidden Tomes (v3.1 §3.2): grant every Wizard-exclusive spell.
+    // Idempotent — only adds a spell the player doesn't already own, so a
+    // respec → re-unlock cycle never re-stacks charges (mirrors how Wild Bond's
+    // companion persists). Derives the exclusive set from the `wizardExclusive`
+    // flag on the definitions so it stays in sync automatically.
+    grantWizardSpells(charges = 2) {
+        let grantedAny = false;
+        Object.values(this.spellDefinitions).forEach(spell => {
+            if (!spell.wizardExclusive) return;
+            if (this.spellbook.some(s => s.spellId === spell.id)) return;
+            this.spellbook.push({ spellId: spell.id, charges });
+            this.celebrateSpellUnlock(spell);
+            grantedAny = true;
+        });
+        if (grantedAny) this.saveData();
+        return grantedAny;
+    }
+
+    castSpell(spellId, options = {}) {
         // Prevent simultaneous spell casting
         if (this.isCastingSpell) {
             return;
@@ -9442,32 +10453,86 @@ class GoalManager {
             return;
         }
         
-        // Check if spell is already active
+        // Check if spell is already active. DELIBERATELY a bare id check, NOT
+        // SPELL_LIFECYCLE.isActive(): for a finite spell that has expired but has not yet been swept
+        // by the checkExpiredSpells interval, the canonical predicate would report "not active" and
+        // let the player re-cast marginally sooner. That is a gameplay change, not a refactor, so the
+        // stricter guard stays until it is decided deliberately. Same reasoning for the two
+        // spellbook-card isActive reads in renderSpellCollection.
         if (this.activeSpells.some(s => s.spellId === spellId)) {
             this.isCastingSpell = false;
             this.showAchievement('✨ This spell is already active!', 'daily');
             return;
         }
 
-        // Use a charge
-        spellEntry.charges--;
+        // --- Charge consumption (Wizard perks) ---
+        const today = this.getTodayDateString();
+        // Overcharge capstone (v3.1 §3.2): deliberately spend 2 charges for a
+        // doubled effect, recorded on the active-spell instance so
+        // getActiveSpellMultiplier can apply it. Only valid on timed
+        // multiplier spells (instant/flag spells have nothing to amplify).
+        const overcharged = !!options.overcharge
+            && this.getClassPerkValue('overcharge') > 0
+            && spell.multiplier > 1
+            && spell.duration > 0;
+        if (overcharged && spellEntry.charges < 2) {
+            this.isCastingSpell = false;
+            this.showAchievement('⚡ Overcharge needs 2 charges!', 'daily');
+            return;
+        }
+
+        let chargeSpent = false;
+        if (overcharged) {
+            spellEntry.charges -= 2;
+            chargeSpent = true;
+        } else {
+            // Daily Ritual (v3.1 §3.2): the first common/uncommon cast each day
+            // is free — no charge consumed. High-tier spells are excluded by
+            // the rarity gate so a free OP cast can't happen.
+            const freeCastEligible = this.getClassPerkValue('free_daily_cast') > 0
+                && ['common', 'uncommon'].includes(spell.rarity)
+                && this.freeCastUsedDate !== today;
+            if (freeCastEligible) {
+                this.freeCastUsedDate = today;
+                this.showAchievement('🔮 Daily Ritual — free cast!', 'badge');
+            } else {
+                spellEntry.charges--;
+                chargeSpent = true;
+            }
+        }
+
+        // Arcane Efficiency (linear) + Archmage (capstone) each give a chance to
+        // refund the spent charge so the cast is effectively free. An
+        // Overcharged cast never refunds (it's a deliberate 2-charge play) and a
+        // free Daily Ritual cast has nothing to refund.
+        if (chargeSpent && !overcharged) {
+            const refundChance = this.getClassPerkValue('spell_preserve')
+                + (this.getClassPerkValue('archmage') > 0 ? 0.25 : 0)
+                + this.getClassPerkValue('diviner_refund');
+            if (refundChance > 0 && this.rng() < refundChance) {
+                spellEntry.charges++;
+                this.showAchievement('🔮 Arcane Efficiency — charge preserved!', 'badge');
+            }
+        }
         this.spellsCast++; // Track for titles
         this.trackDaily('spellsCast');
 
-        // Apply spell effect
-        if (spell.duration > 0) {
-            this.activeSpells.push({
-                spellId: spell.id,
-                castedAt: Date.now(),
-                expiresAt: Date.now() + spell.duration
-            });
-        } else if (spell.duration === -1) {
-            // Spell stays active until triggered (like lucky_draw)
-            this.activeSpells.push({
-                spellId: spell.id,
-                castedAt: Date.now(),
-                expiresAt: -1 // Never expires naturally
-            });
+        // Apply spell effect. Wizard's Sustained Casting (linear) + Archmage
+        // (capstone) extend the active window of timed spells; instant
+        // (-1 / 0) spells are unaffected.
+        const durationMult = 1 + this.getClassPerkValue('spell_duration_mult') + this.getClassPerkValue('archmage');
+        const effectiveDuration = SPELL_LIFECYCLE.effectiveDuration(spell.duration, durationMult);
+        // castEntry returns null for an INSTANT (duration 0) spell, which never enters activeSpells.
+        const activeSpellEntry = SPELL_LIFECYCLE.castEntry(spell, {
+            now: Date.now(),
+            effectiveDuration,
+            overcharged,
+        });
+        if (activeSpellEntry) {
+            this.activeSpells.push(activeSpellEntry);
+        }
+        if (overcharged) {
+            this.showAchievement(`${spell.icon} OVERCHARGED — doubled power!`, 'badge');
         }
 
         // Celebration animation
@@ -9501,14 +10566,15 @@ class GoalManager {
         // Release casting lock
         this.isCastingSpell = false;
 
-        // Check for expired spells periodically
-        setTimeout(() => this.checkExpiredSpells(), spell.duration);
+        // Check for expired spells periodically (use the Wizard-extended window)
+        setTimeout(() => this.checkExpiredSpells(), effectiveDuration);
     }
 
     checkExpiredSpells() {
         const now = Date.now();
-        // Find expired spells (exclude -1 which means "until triggered")
-        const expiredSpells = this.activeSpells.filter(s => s.expiresAt !== -1 && s.expiresAt <= now);
+        // Split into survivors + just-expired (permanent -1 entries are never clock-expired).
+        const sweep = SPELL_LIFECYCLE.expirySweep(this.activeSpells, now);
+        const expiredSpells = sweep.expired;
         
         if (expiredSpells.length > 0) {
             // Batch into a single toast to avoid sound spam when many spells expire at once
@@ -9524,7 +10590,7 @@ class GoalManager {
             }
             
             // Remove expired spells (keep -1 and future expiry)
-            this.activeSpells = this.activeSpells.filter(s => s.expiresAt === -1 || s.expiresAt > now);
+            this.activeSpells = sweep.kept;
             this.saveData();
             this.renderSpellbook();
             // v2.6 Item 5 — sync the avatar orbit immediately so the
@@ -9535,21 +10601,13 @@ class GoalManager {
     }
 
     getActiveSpellMultiplier(effectType) {
-        let multiplier = 1;
-        const now = Date.now();
-        
-        this.activeSpells.forEach(activeSpell => {
-            // Check if spell is still active (not expired, or -1 means until triggered)
-            if (activeSpell.expiresAt === -1 || activeSpell.expiresAt > now) {
-                const spell = this.spellDefinitions[activeSpell.spellId];
-                // Skip if spell no longer exists in definitions
-                if (spell && spell.effect === effectType && spell.multiplier) {
-                    multiplier *= spell.multiplier;
-                }
-            }
+        // Active-spell reward multiplier (xp/gold economy buffs). The pure walk — expiry skip,
+        // effect match, and the Empowered-Magic × Overcharge bonus scaling — lives in
+        // buff-multipliers.js; Date.now() + the spell_power_mult perk lookup are injected here.
+        return BUFF_MULTIPLIERS.spellMultiplier(effectType, this.activeSpells, this.spellDefinitions, {
+            now: Date.now(),
+            powerMult: this.getClassPerkValue('spell_power_mult'),
         });
-        
-        return multiplier;
     }
 
     // Celebration Animations
@@ -9799,7 +10857,7 @@ class GoalManager {
         prompt.innerHTML = `
             <div class="bg-gradient-to-r from-amber-800/95 to-orange-900/95 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-2xl border-2 border-amber-500/60 flex items-center gap-3">
                 <span class="text-amber-200 fancy-font text-sm flex-1 min-w-0">${this.escapeHTML(text)}</span>
-                <button onclick="goalManager.showShareCardPreview(); document.getElementById('milestone-share-prompt')?.remove();"
+                <button data-action="share.previewDismiss" data-remove="milestone-share-prompt"
                     class="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-lg text-xs font-bold fancy-font transition-all hover:scale-105 whitespace-nowrap flex items-center gap-1.5 shrink-0">
                     <i class="ri-share-line"></i> Share
                 </button>
@@ -9865,6 +10923,24 @@ class GoalManager {
         }, 2000);
     }
 
+    // ── Activation funnel — fire-once first-task tracking ────────────
+    // Mirror the onboardingShareShown pattern: guard on the persisted
+    // flag, set-and-save, then emit the North-Star event exactly once
+    // per account. Pure instrumentation (no UI).
+    trackFirstTaskCreated() {
+        if (this.firstTaskCreatedTracked) return;
+        this.firstTaskCreatedTracked = true;
+        this.saveData();
+        if (typeof trackEvent === 'function') trackEvent('first_task_created');
+    }
+
+    trackFirstTaskCompleted() {
+        if (this.firstTaskCompletedTracked) return;
+        this.firstTaskCompletedTracked = true;
+        this.saveData();
+        if (typeof trackEvent === 'function') trackEvent('first_task_completed');
+    }
+
     // ── Onboarding Share Hook ────────────────────────────────────────
     checkOnboardingShareHook() {
         if (this.onboardingShareShown) return;
@@ -9902,7 +10978,7 @@ class GoalManager {
                         <button onclick="document.getElementById('onboarding-share-hook')?.remove();" style="color:#78716c;font-size:18px;background:none;border:none;cursor:pointer;padding:0;line-height:1;" aria-label="Dismiss">&times;</button>
                     </div>
                     <div style="display:flex;gap:8px;margin-top:12px;">
-                        <button onclick="goalManager.showShareCardPreview(); document.getElementById('onboarding-share-hook')?.remove();"
+                        <button data-action="share.previewDismiss" data-remove="onboarding-share-hook"
                             style="flex:1;background:linear-gradient(to right,#d97706,#b45309);color:#fff;font-family:'Cinzel',serif;font-weight:700;font-size:12px;padding:10px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
                             📊 Share Your Adventure
                         </button>
@@ -10018,7 +11094,7 @@ class GoalManager {
 
     playSpellSound() {
         if (window.audioManager) {
-            window.audioManager.playSpell();
+            window.audioManager.playSpellCast();
         }
     }
 
@@ -10027,106 +11103,11 @@ class GoalManager {
         this.applyColorTheme();
     }
 
-    // Color Theme System — Proposal B split (Jun 7, 2026)
-    // ========================================================
-    // Free (5): default, forest, ice, golden, shadow
-    //   - default + forest are level-gated free starters (lvl 0, 6)
-    //   - ice promoted from premium to free as a mid-game level
-    //     reward (lvl 15) — gives free users a real progression
-    //     journey beyond just unlocking forest at lvl 6
-    //   - golden + shadow are achievement-gated (effort-rewards):
-    //     promoted from premium to free Jun 7, 2026 to fix the
-    //     prior "double-gating" weirdness where free users could
-    //     hit the achievement criteria but still couldn't use the
-    //     reward. Achievement is now the only gate.
-    // Premium (9): desert, sunken, stormwatch, volcanic, verdant,
-    //   mystic, cathedral, crystal, aurora
-    //   - All 6 hybrid (WebM) themes stay premium since they carry
-    //     the highest production cost
-    //   - Plus 3 pure-CSS themes (desert, volcanic, mystic) kept
-    //     premium for revenue balance — these are the "prestige
-    //     palette" tier that distinguish premium users visually
-    // Achievement criteria (Jun 7, 2026):
-    //   - Golden Empire: 10,000 gold lifetime earned (NOT current
-    //     balance — see `totalGoldEarned` counter)
-    //   - Shadow Realm: 25 bosses defeated (lifetime)
-    // ========================================================
-    themeDefinitions = {
-        default: { name: 'Medieval Kingdom', icon: '🏰', color: '#b45309', unlockLevel: 0, premium: false },
-        forest: { name: 'Forest Kingdom', icon: '🌲', color: '#047857', unlockLevel: 6, premium: false, cardFrom: '#033026', cardTo: '#011812', border: '#059669' },
-        desert: { name: 'Desert Oasis', icon: '🏜️', color: '#c2410c', unlockLevel: 10, premium: true, cardFrom: '#431407', cardTo: '#1f0a04', border: '#ea580c' },
-        ice: { name: 'Ice Citadel', icon: '❄️', color: '#0369a1', unlockLevel: 15, premium: false, cardFrom: '#082f49', cardTo: '#041726', border: '#0ea5e9' },
-        volcanic: { name: 'Volcanic Forge', icon: '🌋', color: '#dc2626', unlockLevel: 20, premium: true, cardFrom: '#450a0a', cardTo: '#1f0505', border: '#ef4444' },
-        mystic: { name: 'Mystic Realm', icon: '✨', color: '#7c3aed', unlockLevel: 25, premium: true, cardFrom: '#2e1065', cardTo: '#140830', border: '#8b5cf6' },
-        golden: { name: 'Golden Empire', icon: '👑', color: '#ca8a04', unlockLevel: 0, special: 'Earn 10,000 gold', premium: false, cardFrom: '#402804', cardTo: '#1f0f03', border: '#eab308' },
-        shadow: { name: 'Shadow Realm', icon: '🌑', color: '#374151', unlockLevel: 0, special: 'Defeat 25 bosses', premium: false, cardFrom: '#1f2937', cardTo: '#0f1623', border: '#374151' },
-        // v2.8 marquee theme — hybrid (WebM atmosphere + CSS rain particles).
-        // Slotted at level 18 to fit cleanly between ice (15) and volcanic
-        // (20) in the existing 5-level cadence; premium tier matches every
-        // other non-default theme. See ROADMAP § 2.4 for the full design
-        // narrative (strategy D, lightning iteration history, palette tune).
-        stormwatch: { name: 'Stormwatch', icon: '⛈️', color: '#475569', unlockLevel: 18, premium: true, cardFrom: '#1e293b', cardTo: '#0f172a', border: '#60a5fa' },
-        // v2.8 pure-CSS theme — Verdant Grove. Wedged at level 22 between
-        // volcanic (20) and mystic (25), mirroring Stormwatch's 3-level
-        // wedge above ice. Differentiated from the existing free Forest
-        // Kingdom (level 6) by going darker/mossier/ancient-druid: deeper
-        // jade-into-near-black palette + slower leaf drift in the particle
-        // config + `.particle-leaf` CSS class instead of forest's
-        // `icons/leaf.gif`. No WebM (strategy D pure-CSS lane). ROADMAP § 2.4.
-        verdant: { name: 'Verdant Grove', icon: '🌿', color: '#15803d', unlockLevel: 22, premium: true, cardFrom: '#0c3a1f', cardTo: '#04150c', border: '#16a34a' },
-        // v2.8 round 2 (Jun 5, 2026) — three additional pure-CSS themes
-        // built on the strategy D pattern (palette + radial gradients +
-        // pure-CSS particles, no GIF runtime dep, optionally promotable
-        // to hybrid later if the user supplies a WebM). Unlock levels
-        // chosen to extend the existing cadence:
-        //   Sunken Library 13 — between desert (10) and ice (15)
-        //   Dark Cathedral 28 — above mystic (25), prestige tier
-        //   Aurora Spires  35 — top of ladder, ultimate prestige theme
-        // Card from/to/border match the body palette in themes.css; the
-        // `color` field drives the theme-transition flash and selector
-        // chip. Each theme has a corresponding particle config below
-        // and a `body.theme-X` block in themes.css. ROADMAP § 2.4.
-        sunken: { name: 'Sunken Library', icon: '🌊', color: '#0e7490', unlockLevel: 13, premium: true, cardFrom: '#0e3a52', cardTo: '#07182a', border: '#06b6d4' },
-        // Dark Cathedral — v2.8 round 3 background upgrade (Jun 5, 2026
-        // afternoon). Was originally a pure-CSS violet+amber gradient
-        // theme (round 2 morning); upgraded to a STATIC IMAGE BACKGROUND
-        // (icons/cathedral-bg.webp, user-supplied) plus a 4-candle CSS
-        // flicker overlay (see #theme-cathedral-candles in index.html
-        // and the candle-flicker class in animations.css). Palette
-        // retuned violet→crimson + amber→cold-slate to match the
-        // image's black-and-red gothic interior. color/cardFrom/cardTo/
-        // border below all updated to crimson palette so the Themes
-        // selector preview card matches the in-game theme. Icon ⛪
-        // unchanged — still reads as cathedral. ROADMAP § 2.4 round 3.
-        cathedral: { name: 'Dark Cathedral', icon: '⛪', color: '#991b1b', unlockLevel: 28, premium: true, cardFrom: '#292524', cardTo: '#0c0a09', border: '#991b1b' },
-        // Aurora Spires — top-tier prestige theme. 🌌 icon (Milky Way)
-        // signals the cosmic-night aesthetic. Promoted to hybrid Jun 6,
-        // 2026 (round 4) when user supplied `icons/aurora-spires-bg.webm`,
-        // and palette retuned same evening from indigo-primary →
-        // cyan-primary to match the WebM's saturated cyan-teal aurora
-        // bands + ice-spire foreground (the original indigo palette
-        // was a poor match against the actual video — see themes.css
-        // body.theme-aurora block for the full retune narrative).
-        // `color` is now cyan-500 to drive the theme-transition flash
-        // and selector chip in the saturated aurora hue rather than
-        // muted indigo. cardFrom/To preserve the indigo-950→slate-900
-        // night-sky base; border shifts to cyan-400 to mirror the
-        // ice-spire foreground.
-        aurora: { name: 'Aurora Spires', icon: '🌌', color: '#06b6d4', unlockLevel: 35, premium: true, cardFrom: '#1e1b4b', cardTo: '#0f172a', border: '#22d3ee' },
-        // Crystal Caves — v2.8 round 3, 6th theme (Jun 5, 2026).
-        // Slotted at level 31 specifically to even out the unlock
-        // ladder (previously had a 7-level gap between Cathedral 28
-        // and Aurora 35; now 28→31→35 gives two clean 3-4 level
-        // jumps). 💎 icon (gem stone) reads as the theme at a
-        // glance — chosen over 🔮 (crystal ball, too mystical) and
-        // 🌟 (star, too aurora-adjacent). cardFrom/To match
-        // themes.css's indigo-950→slate-950 cave gradient; border
-        // is fuchsia-600 to suggest the magenta crystal edges
-        // around card chrome. Pure-CSS for now (per the new
-        // informal "prefer pure-CSS, allow hybrids only with
-        // user-supplied WebM" rule from § 2.4).
-        crystal: { name: 'Crystal Caves', icon: '💎', color: '#c026d3', unlockLevel: 31, premium: true, cardFrom: '#1e1b4b', cardTo: '#020617', border: '#c026d3' }
-    };
+    // Color-palette themes (Engineering Roadmap #1 incremental split) live in
+    // theme-definitions.js; captured once into the module-scoped THEME_DEFINITIONS
+    // const at the top of this file. Assigned to the instance field here so
+    // this.themeDefinitions and every call site is unchanged.
+    themeDefinitions = THEME_DEFINITIONS;
 
     // ========================================================
     // Theme video asset registry (v2.8 N1 hoist, Jun 7, 2026)
@@ -10151,7 +11132,7 @@ class GoalManager {
     // in the consumer functions because those functions are now
     // map-agnostic — they just read `this.themeVideoAssets[id]`.
     //
-    // ROADMAP § 2.4 audit subsection (N1).
+    // docs/HISTORY.md \u00A7 2.4 audit subsection (N1).
     themeVideoAssets = {
         forest:   { webm: 'icons/forest-bg.webm' },
         desert:   { webm: 'icons/desert-bg.webm' },
@@ -10202,7 +11183,7 @@ class GoalManager {
         // `.particle-star` class remain wired as the no-decode
         // fallback. Star particles continue rendering ON TOP of the
         // WebM — video carries the aurora bands, particles carry the
-        // twinkle layer. ROADMAP § 2.4 round 4.
+        // twinkle layer. docs/HISTORY.md \u00A7 2.4 round 4.
         aurora:   { webm: 'icons/aurora-spires-bg.webm' }
     };
 
@@ -10295,7 +11276,7 @@ class GoalManager {
         // (the C1 fix earlier today flagged the duplication when the
         // preview map was missing 7 themes vs body). Pre-v2.7.1 GIF
         // fallbacks (~95MB) and the unreachable volcanic mp4 (~3.4MB)
-        // were deleted in the GIF-removal pass; ROADMAP § 1.6 / § 2.3.1.
+        // were deleted in the GIF-removal pass; docs/HISTORY.md \u00A7 1.6 / § 2.3.1.
         const bgConfig = this.themeVideoAssets[this.currentTheme];
 
         // Graceful no-animated-bg fallback. Previously this swapped the
@@ -10544,7 +11525,7 @@ class GoalManager {
     // Only ONE WebM decodes at a time (the active preview), versus the
     // earlier autoplay-per-tile approach which loaded all six hybrid
     // WebMs into the Themes panel and slowed initial load. User-driven
-    // revision Jun 6, 2026 evening — see ROADMAP § 2.4 final deliverable
+    // revision Jun 6, 2026 evening — see docs/HISTORY.md \u00A7 2.4 final deliverable
     // for the full rationale + before/after.
     //
     // Locked themes still preview (motivational): the modal shows the
@@ -10563,10 +11544,19 @@ class GoalManager {
 
         const isUnlocked = this.unlockedThemes.includes(themeId);
         const isPremiumLocked = theme.premium && !this.isPremium;
-        const isLocked = isPremiumLocked || !isUnlocked;
-        const lockReason = isPremiumLocked
-            ? '👑 Premium theme — upgrade to unlock'
-            : (!isUnlocked ? (theme.special ? `🔒 ${theme.special}` : `🔒 Reach Level ${theme.unlockLevel} to unlock`) : '');
+        // v2.9 Track 7 — featured theme bypass. When this week's
+        // rotation slot matches, the modal treats the theme as
+        // unlocked (Apply button shows) and the lock-reason copy is
+        // suppressed in favor of a "free trial this week" framing.
+        // Whether it's also a level/premium lock underneath is
+        // irrelevant for the duration of the feature week.
+        const isWeeklyFeatured = this.getWeeklyFeaturedThemeId() === themeId;
+        const isLocked = (isPremiumLocked || !isUnlocked) && !isWeeklyFeatured;
+        const lockReason = isLocked
+            ? (isPremiumLocked
+                ? '👑 Premium theme — upgrade to unlock'
+                : (theme.special ? `🔒 ${theme.special}` : `🔒 Reach Level ${theme.unlockLevel} to unlock`))
+            : '';
 
         // v2.8 N1 hoist (Jun 7, 2026 audit afternoon) — preview asset
         // path now reads from the shared `this.themeVideoAssets` map
@@ -10600,7 +11590,7 @@ class GoalManager {
         // hybrid theme and previewed another, both videos decoded
         // simultaneously (body + modal). Pausing the body video
         // eliminates the second decode stream and matches the
-        // ROADMAP's "only one WebM ever decodes at a time" claim. The
+        // HISTORY doc's "only one WebM ever decodes at a time" claim. The
         // body video resumes via `.play()` on close — wrapped in a
         // try/catch because some browsers throw if the play promise
         // overlaps with a queued pause.
@@ -10750,19 +11740,31 @@ class GoalManager {
 
     selectTheme(themeId) {
         const theme = this.themeDefinitions[themeId];
-        
+
+        // v2.9 Track 7 — Theme of the Week bypass.
+        // The current week's featured theme is freely applicable by ANY
+        // user regardless of premium status or unlock level. We compute
+        // the bypass once up-front so both gate checks below short-circuit
+        // off the same boolean. Crucially, `unlockedThemes` is NOT
+        // modified here — the trial is "temporary access via getter
+        // alongside the unlock list" (Q2 design decision), keeping the
+        // unlock set as the single source of truth for what the user
+        // permanently owns. When the week rolls over, the theme just
+        // re-locks naturally because this branch stops matching.
+        const isWeeklyFeatured = this.getWeeklyFeaturedThemeId() === themeId;
+
         // Check premium requirement first
-        if (theme && theme.premium && !this.isPremium) {
+        if (theme && theme.premium && !this.isPremium && !isWeeklyFeatured) {
             this.showPremiumPurchaseModal();
             return;
         }
-        
-        if (!this.unlockedThemes.includes(themeId)) {
+
+        if (!this.unlockedThemes.includes(themeId) && !isWeeklyFeatured) {
             // Show a toast notification instead of achievement
             this.showLockedNotification('Theme locked! Keep leveling up to unlock.');
             return;
         }
-        
+
         // Play theme transition animation
         this.playThemeTransition(theme.color, () => {
             this.currentTheme = themeId;
@@ -10771,9 +11773,25 @@ class GoalManager {
             this.renderThemeSelector();
             this.renderThemes();
         });
-        
+
+        // v2.9 Track 7 Q7 — analytics. Fired here (not inside the
+        // transition callback) so the event reflects user intent at
+        // the moment all gates passed; the transition is purely
+        // cosmetic and may be skipped if the overlay element is
+        // missing. The helper itself short-circuits when `themeId`
+        // isn't this week's featured slot, so it's cheap to call
+        // unconditionally for every theme application.
+        this.trackWeeklyThemeApplied(themeId);
+
         if (theme) {
-            this.showAchievement(`🎨 ${theme.name} theme activated!`, 'daily');
+            // Distinguish trial activations from permanent unlocks in the
+            // toast copy so users understand the time-limited nature.
+            // The reminder is non-alarming — the trial-end modal at week
+            // roll-over is where the actual conversion ask happens.
+            const msg = (isWeeklyFeatured && !this.unlockedThemes.includes(themeId))
+                ? `✨ ${theme.name} activated — free this week!`
+                : `🎨 ${theme.name} theme activated!`;
+            this.showAchievement(msg, 'daily');
         }
     }
     
@@ -10840,45 +11858,18 @@ class GoalManager {
         const bannerContainer = document.getElementById('theme-premium-banner');
         if (bannerContainer) bannerContainer.innerHTML = this.getPremiumBannerHTML('Unlock exclusive premium themes!');
         
-        container.innerHTML = Object.entries(this.themeDefinitions).map(([id, theme]) => {
-            const isUnlocked = this.unlockedThemes.includes(id);
-            const isSelected = this.currentTheme === id;
-            const isPremiumTheme = theme.premium && !this.isPremium;
-            
-            let lockReason = '';
-            if (isPremiumTheme) {
-                lockReason = '👑 Premium';
-            } else if (!isUnlocked) {
-                lockReason = theme.special ? theme.special : `Level ${theme.unlockLevel}`;
-            }
-            
-            const isLocked = isPremiumTheme || !isUnlocked;
+        // v2.9 Track 7 — featured id used by both surfaces; computed
+        // once outside the map for the same reason as renderThemes.
+        const featuredId = this.getWeeklyFeaturedThemeId();
 
-            // Compact selector tiles — unified Jun 6, 2026 late-evening
-            // with the full Themes view so BOTH surfaces open the
-            // preview modal on click (previously this compact selector
-            // was left at click=apply for "quick switching", but with
-            // no preview affordance the user couldn't see what locked
-            // / unlocked themes look like before switching). Now
-            // consistent: click any tile anywhere → preview modal →
-            // explicit Apply confirmation. Visual chrome of these
-            // compact tiles intentionally kept as the original flat
-            // 135°-gradient (not upgraded to the layered
-            // `.theme-tile-bg-X` structure used in the full view)
-            // because at p-3 / 3xl-icon size the simpler gradient
-            // reads cleaner — the modal carries the rich preview.
-            return `
-                <div onclick="goalManager.previewTheme('${id}')"
-                    class="theme-option p-3 rounded-lg text-center transition-all cursor-pointer ${isSelected ? 'selected ring-2 ring-yellow-400' : ''} ${isLocked ? 'opacity-70' : ''}"
-                    style="background: linear-gradient(135deg, ${theme.color}, ${this.darkenColor(theme.color, 30)})"
-                    title="${!isLocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview'}">
-                    <div class="text-3xl mb-1">${theme.icon}</div>
-                    <div class="text-xs font-bold text-white truncate">${theme.name}</div>
-                    ${isLocked ? `<div class="text-xs text-white/70 mt-1">🔒 ${lockReason}</div>` : ''}
-                    ${isSelected ? '<div class="text-xs text-yellow-300 mt-1">✓ Active</div>' : ''}
-                </div>
-            `;
-        }).join('');
+        container.innerHTML = THEME_RENDER.renderThemeSelectorHTML({
+            themeDefinitions: this.themeDefinitions,
+            unlockedThemes: this.unlockedThemes,
+            currentTheme: this.currentTheme,
+            isPremium: this.isPremium,
+            featuredId,
+            darkenColor: (hex, percent) => this.darkenColor(hex, percent),
+        });
     }
 
     darkenColor(hex, percent) {
@@ -10957,7 +11948,7 @@ class GoalManager {
         const avatarIcon = avatarIcons[Math.min(this.level - 1, avatarIcons.length - 1)];
         
         const ringColors = [
-            { from: 'from-gray-500', to: 'to-gray-700', border: 'border-gray-500' },      // 1 Peasant
+            { from: 'from-gray-500', to: 'to-gray-700', border: 'border-gray-500' },      // 1 Wanderer
             { from: 'from-gray-400', to: 'to-gray-600', border: 'border-gray-400' },      // 2 Squire
             { from: 'from-amber-700', to: 'to-amber-900', border: 'border-amber-600' },   // 3 Knight
             { from: 'from-amber-600', to: 'to-amber-800', border: 'border-amber-500' },   // 4 Baron
@@ -11011,54 +12002,14 @@ class GoalManager {
         if (companionEl) {
             const active = this.getActiveCompanion();
             if (active) {
-                const defs = this.getCompanionDefinitions();
-                const def = defs[active.type];
-                const icon = active.icon || (def ? def.icon : '🐾');
-                const name = active.name || (def ? def.name : 'Companion');
-                const desc = def ? def.description : '';
-                // v2.6 Item 4: companion rendered in a circular bubble
-                // portrait with a gentle idle bob (`.companion-bubble` in
-                // styles.css). The bubble's animation, gradient, and glow
-                // all respect prefers-reduced-motion / fx-minimal via the
-                // CSS-side gates. Mirrors the no-companion fallback markup
-                // in `index.html` so the visual is identical regardless
-                // of whether the player has an active companion.
-                companionEl.innerHTML = `
-                    <div class="companion-bubble">
-                        <span class="text-3xl">${icon}</span>
-                    </div>
-                    <div>
-                        <div class="text-green-200 fancy-font text-sm font-bold">${name}</div>
-                        <div class="text-green-400 text-xs fancy-font">${desc}</div>
-                    </div>
-                `;
+                companionEl.innerHTML = PLAYER_HUD_RENDER.renderPanelCompanionHTML(active, { companionDefinitions: this.getCompanionDefinitions() });
             }
         }
         
         // Update active buffs
         const buffsEl = document.getElementById('panel-active-buffs');
         if (buffsEl) {
-            const buffs = [];
-            
-            if (this.activeSpells && this.activeSpells.length > 0) {
-                this.activeSpells.forEach(active => {
-                    const spell = this.spellDefinitions ? this.spellDefinitions[active.spellId] : null;
-                    if (spell) {
-                        buffs.push(`<span class="inline-flex items-center gap-1 bg-purple-800/50 border border-purple-600/50 rounded-lg px-2 py-1 text-xs"><span>${spell.icon}</span><span class="text-purple-200 fancy-font">${spell.name}</span></span>`);
-                    }
-                });
-            }
-            
-            if (this.activeEnchantments && this.activeEnchantments.length > 0) {
-                this.activeEnchantments.forEach(active => {
-                    const remaining = Math.max(0, Math.ceil((new Date(active.expiresAt) - new Date()) / 60000));
-                    if (remaining > 0) {
-                        buffs.push(`<span class="inline-flex items-center gap-1 bg-pink-800/50 border border-pink-600/50 rounded-lg px-2 py-1 text-xs"><span>${active.icon || '🔮'}</span><span class="text-pink-200 fancy-font">${active.name}</span></span>`);
-                    }
-                });
-            }
-            
-            buffsEl.innerHTML = buffs.length > 0 ? buffs.join('') : '<span class="text-purple-500/60 fancy-font text-xs">No active buffs</span>';
+            buffsEl.innerHTML = PLAYER_HUD_RENDER.renderPanelActiveBuffsHTML(this.activeSpells, this.activeEnchantments, { spellDefinitions: this.spellDefinitions, now: Date.now() });
         }
         
         // Update inventory counts
@@ -11084,6 +12035,166 @@ class GoalManager {
         const panelRate = document.getElementById('panel-stat-rate');
         if (panelCompleted) panelCompleted.textContent = totalCompleted.toLocaleString();
         if (panelRate) panelRate.textContent = completionRate + '%';
+
+        // v3.0 §3.1 — Class System section
+        this.renderClassPanel();
+    }
+
+    // v3.0 §3.1 — Renders the Class / Skill Tree section of the player panel.
+    // Three states: (1) hidden until CLASS_UNLOCK_LEVEL, (2) class-selection
+    // cards when no class is chosen, (3) active class + linear skill tree with
+    // unlock / respec controls once a class is picked.
+    renderClassPanel() {
+        const section = document.getElementById('panel-class-section');
+        if (!section) return;
+
+        // State 1: locked — hide entirely until the unlock level.
+        if (!this.isClassSystemUnlocked()) {
+            section.classList.add('hidden');
+            section.innerHTML = '';
+            return;
+        }
+        section.classList.remove('hidden');
+
+        const available = this.getAvailableSkillPoints();
+
+        // State 2: no class chosen yet — show the four selection cards.
+        if (!this.playerClass) {
+            const cards = Object.values(this.classDefinitions).map(cls => CLASS_RENDER.renderClassSelectCardHTML(cls)).join('');
+            section.innerHTML = CLASS_RENDER.renderClassSelectPanelHTML(available, cards);
+            return;
+        }
+
+        // State 3: active class — show the linear skill tree.
+        const cls = this.getActiveClass();
+        const unlocked = this.classNodesUnlocked || 0;
+        const nextNode = this.getNextClassNode();
+        const nodeRows = cls.nodes.map((node, i) => {
+            const isUnlocked = i < unlocked;
+            const isNext = i === unlocked;
+            const canAfford = isNext && available >= node.cost;
+            return CLASS_RENDER.renderSkillNodeRowHTML(node, { isUnlocked, isNext, canAfford, color: cls.color, unlockAction: 'class.unlockNode' });
+        }).join('');
+
+        const maxed = !nextNode;                       // every linear node unlocked
+        const capstoneReady = this.isCapstoneReady();  // linear done, no capstone yet
+        const chosenCap = this.getChosenCapstone();
+        const fullyMastered = this.isClassMastered();
+        const activeSub = this.getActiveSubclass();
+
+        // State 4 (capstone choice) — only surfaces once every linear node is
+        // unlocked. While the choice is open both options are pickable; after
+        // one is chosen it shows as Mastered and the other greys out. Reaching
+        // here without picking is the Phase 0 gap this section closes.
+        let capstoneSection = '';
+        if (maxed && cls.capstones && cls.capstones.length) {
+            const capCards = cls.capstones.map(cap => CLASS_RENDER.renderCapstoneCardHTML(cap, {
+                isChosen: chosenCap && chosenCap.id === cap.id,
+                canAfford: capstoneReady && available >= cap.cost,
+                capstoneReady,
+                color: cls.color,
+            })).join('');
+            capstoneSection = CLASS_RENDER.renderCapstoneSectionHTML(capstoneReady, cls.capstones[0].cost, capCards);
+        }
+
+        // State 5 (subclass specialization, v3.1 §9) — only once the base class
+        // is mastered: a locked teaser pre-L40, two selection cards once
+        // unlocked, then the chosen subclass's 3-tier track with unlock + respec.
+        let subclassSection = '';
+        const subs = this.getClassSubclasses();
+        if (fullyMastered && subs && Object.keys(subs).length) {
+            let subBody = '';
+            if (!this.subclass) {
+                if (!this.isSubclassUnlocked()) {
+                    subBody = CLASS_RENDER.renderSubclassLockedTeaserHTML(this.SUBCLASS_UNLOCK_LEVEL || 40);
+                } else {
+                    const subCards = Object.values(subs).map(sub => CLASS_RENDER.renderSubclassSelectCardHTML(sub, { color: cls.color })).join('');
+                    subBody = CLASS_RENDER.renderSubclassSelectBodyHTML(subCards);
+                }
+            } else if (activeSub) {
+                const subUnlocked = this.subclassNodesUnlocked || 0;
+                const subMastered = this.isSubclassMastered();
+                const tierRows = activeSub.tiers.map((t, i) => {
+                    const isUnlocked = i < subUnlocked;
+                    const isNext = i === subUnlocked;
+                    const canAfford = isNext && available >= t.cost;
+                    return CLASS_RENDER.renderSkillNodeRowHTML(t, { isUnlocked, isNext, canAfford, color: cls.color, unlockAction: 'class.unlockSubclassTier' });
+                }).join('');
+                subBody = CLASS_RENDER.renderActiveSubclassBodyHTML(activeSub, { subMastered, color: cls.color, tierRowsHTML: tierRows });
+            }
+            subclassSection = CLASS_RENDER.renderSubclassSectionHTML(subBody);
+        }
+
+        section.innerHTML = CLASS_RENDER.renderActiveClassPanelHTML({
+            cls, activeSub, fullyMastered, available,
+            nodeRowsHTML: nodeRows, capstoneSectionHTML: capstoneSection, subclassSectionHTML: subclassSection,
+        });
+    }
+
+    // Thin UI wrappers around the class methods that re-render the panel after
+    // a successful state change so the tree reflects the new selection/unlock.
+    chooseClass(classId) {
+        if (this.selectClass(classId)) {
+            this.renderClassPanel();
+            this.renderPlayerPanel();
+        }
+    }
+
+    unlockClassNode() {
+        if (this.unlockNextClassNode()) {
+            this.renderClassPanel();
+        }
+    }
+
+    // Pick a capstone from the State 4 cards. Re-renders the player panel too
+    // since mastering a class can change displayed/active perk values.
+    selectCapstone(capstoneId) {
+        if (this.chooseCapstone(capstoneId)) {
+            this.renderClassPanel();
+            this.renderPlayerPanel();
+        }
+    }
+
+    confirmRespec() {
+        const cost = this.CLASS_RESPEC_COST || 5;
+        this.showConfirm(
+            `Change your class for ${cost} Focus Crystals? Your skill points are refunded (they re-derive from your level), but you'll re-pick your tree from scratch.`,
+            () => {
+                if (this.respecClass()) {
+                    this.renderClassPanel();
+                }
+            }
+        );
+    }
+
+    // Subclass UI wrappers (v3.1 §9) — mirror the base-class wrappers: run the
+    // underlying method, then re-render the panel and the player panel (a
+    // subclass changes active perk values).
+    chooseSubclass(subId) {
+        if (this.selectSubclass(subId)) {
+            this.renderClassPanel();
+            this.renderPlayerPanel();
+        }
+    }
+
+    unlockSubclassTier() {
+        if (this.unlockNextSubclassTier()) {
+            this.renderClassPanel();
+            this.renderPlayerPanel();
+        }
+    }
+
+    confirmSubclassRespec() {
+        const cost = this.SUBCLASS_RESPEC_COST || 8;
+        this.showConfirm(
+            `Re-specialize for ${cost} Focus Crystals? Your subclass points are refunded (they re-derive from your level), and you'll re-pick your specialization.`,
+            () => {
+                if (this.respecSubclass()) {
+                    this.renderClassPanel();
+                    this.renderPlayerPanel();
+                }
+            }
+        );
     }
 
     // Undo/Redo System
@@ -11261,6 +12372,115 @@ class GoalManager {
         }
     }
 
+    // ==================== ANDROID HARDWARE BACK BUTTON ====================
+    // v2.9.x UX audit fix — the hardware back button was previously
+    // unhandled: Capacitor's default rewound WebView hash history (which
+    // nothing listens to) and then minimized the app. Users pressing back
+    // to dismiss a modal backgrounded the app instead. The handler
+    // implements the standard Android hierarchy:
+    //   1. close the topmost open overlay/modal (back == Cancel/Dismiss)
+    //   2. otherwise navigate to the dashboard from any other view
+    //   3. otherwise report unhandled — CapBridge minimizes the app
+    setupHardwareBackButton() {
+        if (window.CapBridge && typeof window.CapBridge.registerBackButton === 'function') {
+            window.CapBridge.registerBackButton(() => this.handleHardwareBack());
+        }
+    }
+
+    /** @returns {boolean} true when the press was consumed in-app */
+    handleHardwareBack() {
+        if (this.closeTopOverlay()) return true;
+        if (this.currentView !== 'dashboard') {
+            this.switchView('dashboard');
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Close the topmost open overlay, routing through each modal's own
+     * cancel/dismiss path so cleanup side effects (focus restoration,
+     * scroll unlock, listener removal, onCancel callbacks) still run.
+     * Order mirrors stacking priority: transient prompts first, then
+     * dynamically-created dialogs, then static hidden-class modals.
+     * @returns {boolean} true when an overlay was found and closed
+     */
+    closeTopOverlay() {
+        // Login prompts (have dedicated decline/close routes)
+        if (document.getElementById('login-shield-prompt')) {
+            this._declineLoginShield();
+            return true;
+        }
+        if (document.getElementById('login-streak-modal')) {
+            this.closeLoginStreakModal();
+            return true;
+        }
+        
+        // Confirm/prompt dialog — back means Cancel, never Confirm
+        const confirmModal = document.getElementById('custom-confirm-modal');
+        if (confirmModal) {
+            const cancelBtn = confirmModal.querySelector('#confirm-cancel-btn, #prompt-cancel-btn');
+            if (cancelBtn) cancelBtn.click();
+            else confirmModal.remove();
+            return true;
+        }
+        
+        // Theme preview (close button runs full teardown: scroll unlock,
+        // body-video resume, focus restoration)
+        const themePreview = document.querySelector('.theme-preview-modal-overlay');
+        if (themePreview) {
+            const closeBtn = themePreview.querySelector('.theme-preview-close');
+            if (closeBtn) closeBtn.click();
+            else themePreview.remove();
+            return true;
+        }
+        
+        // Weekly featured theme spotlight / trial-ended modals
+        const spotlight = document.getElementById('theme-spotlight-modal');
+        if (spotlight) {
+            const dismiss = spotlight.querySelector('[data-action="dismiss"]');
+            if (dismiss) { dismiss.click(); return true; }
+        }
+        const trialEnded = document.getElementById('theme-trial-ended-modal');
+        if (trialEnded) {
+            const revert = trialEnded.querySelector('[data-action="revert"]');
+            if (revert) { revert.click(); return true; }
+        }
+        
+        // Search modal (dynamic; closeSearch also removes its Esc listener)
+        if (document.getElementById('search-modal')) {
+            this.closeSearch();
+            return true;
+        }
+        
+        // Dynamically-created standard modals (presence == open)
+        if (document.getElementById('input-modal')) { this.closeInputModal(); return true; }
+        if (document.getElementById('select-modal')) { this.closeSelectModal(); return true; }
+        if (document.getElementById('multiselect-modal')) { this.closeMultiSelectModal(); return true; }
+        if (document.getElementById('priority-modal')) { this.closePriorityModal(); return true; }
+        
+        // Static modals toggled via the `hidden` class
+        const quickAdd = document.getElementById('quick-add-modal');
+        if (quickAdd && !quickAdd.classList.contains('hidden')) { this.closeQuickAdd(); return true; }
+        const whatsNew = document.getElementById('whats-new-modal');
+        if (whatsNew && !whatsNew.classList.contains('hidden')) { this.closeWhatsNewModal(); return true; }
+        
+        // Player panel slide-over
+        if (this.playerPanelOpen) { this.togglePlayerPanel(); return true; }
+        
+        // Fallback: any other open dialog with a recognizable close control
+        const dialogs = document.querySelectorAll('[role="dialog"]');
+        for (const dialog of dialogs) {
+            if (dialog.classList.contains('hidden')) continue;
+            const closeCtl = dialog.querySelector(
+                '[data-action="close"], [data-action="dismiss"], [aria-label="Close"], [aria-label^="Close"]'
+            );
+            if (closeCtl) { closeCtl.click(); return true; }
+        }
+        
+        return false;
+    }
+
     // Keyboard Shortcuts
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
@@ -11417,6 +12637,88 @@ class GoalManager {
 
     getTimezoneOffset() {
         return this.timezone === 'auto' ? -new Date().getTimezoneOffset() / 60 : this.timezoneOffset;
+    }
+
+    // ── Boss reset countdowns ────────────────────────────────────────
+    //
+    // "Now" expressed in the user's selected timezone as a plain Date, so
+    // the period boundaries below (midnight / next Monday / 1st of next
+    // month) line up with how generateBosses() decides a period rolled
+    // over (getTodayDateString / getWeekString are timezone-aware too).
+    // Mirrors the offset math in scheduleMidnightReset().
+    _tzNow() {
+        const now = new Date();
+        const offset = this.getTimezoneOffset();
+        const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+        return new Date(utcTime + (offset * 3600000));
+    }
+
+    // Milliseconds until the given boss cadence's next reset boundary.
+    //   daily   → next midnight
+    //   weekly  → next Monday 00:00 (ISO week start, matches getWeekString)
+    //   monthly → 1st of next month 00:00
+    _bossResetMs(type) {
+        const tzNow = this._tzNow();
+        let boundary;
+        if (type === 'weekly') {
+            const day = tzNow.getDay();                 // 0 Sun .. 6 Sat
+            const daysUntilMonday = ((1 - day + 7) % 7) || 7;
+            boundary = new Date(tzNow);
+            boundary.setDate(boundary.getDate() + daysUntilMonday);
+            boundary.setHours(0, 0, 0, 0);
+        } else if (type === 'monthly') {
+            boundary = new Date(tzNow.getFullYear(), tzNow.getMonth() + 1, 1, 0, 0, 0, 0);
+        } else {
+            boundary = new Date(tzNow);
+            boundary.setHours(24, 0, 0, 0);             // next midnight
+        }
+        return boundary.getTime() - tzNow.getTime();
+    }
+
+    // Compact duration: "3d 5h" when >= 1 day, "5h 23m" when >= 1h,
+    // "12m" under an hour, "<1m" in the final minute.
+    _formatBossCountdown(ms) {
+        if (ms <= 0) return 'now';
+        const totalMin = Math.floor(ms / 60000);
+        const days = Math.floor(totalMin / 1440);
+        const hours = Math.floor((totalMin % 1440) / 60);
+        const mins = totalMin % 60;
+        if (days > 0) return `${days}d ${hours}h`;
+        if (hours > 0) return `${hours}h ${mins}m`;
+        if (mins > 0) return `${mins}m`;
+        return '<1m';
+    }
+
+    // Full label for a boss card's reset timer. Verb matches the cadence's
+    // flavor ("fled into the shadows" / "retreated to its lair" /
+    // "vanished as the new moon rose"); defeated bosses read as the
+    // respawn time for the next period.
+    _bossResetLabel(type, isDefeated) {
+        const t = this._formatBossCountdown(this._bossResetMs(type));
+        if (isDefeated) return `<i class="ri-loop-right-line mr-1"></i>Returns in ${t}`;
+        const verb = type === 'weekly' ? 'Retreats' : type === 'monthly' ? 'Vanishes' : 'Flees';
+        return `<i class="ri-time-line mr-1"></i>${verb} in ${t}`;
+    }
+
+    // Live-tick updater: rewrites every on-screen boss-reset timer in place
+    // (cheap no-op when none are mounted). Started by renderBossBattles and
+    // cleared in cleanup(). Recomputes the defeated/active verb from the
+    // current boss state each tick so a mid-session defeat flips the label.
+    _updateBossResetTimers() {
+        const els = document.querySelectorAll('.boss-reset-timer[data-boss-type]');
+        if (els.length === 0) return;
+        const bossByType = { daily: this.dailyBoss, weekly: this.weeklyBoss, monthly: this.monthlyBoss };
+        els.forEach(el => {
+            const type = el.getAttribute('data-boss-type');
+            const boss = bossByType[type];
+            if (!boss) return;
+            el.innerHTML = this._bossResetLabel(type, boss.defeated);
+        });
+    }
+
+    _startBossTimerTicker() {
+        if (this._bossTimerInterval) return;        // single shared ticker
+        this._bossTimerInterval = setInterval(() => this._updateBossResetTimers(), 30000);
     }
 
     getTodayDateString() {
@@ -11580,6 +12882,344 @@ class GoalManager {
         return false;
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // v2.9.1 §1.8 — Royal Bounty
+    //
+    // Periodically spotlights ONE incomplete higher-tier quest and offers
+    // a free bonus treasure chest for finishing it inside a tight window.
+    // Two cadences run concurrently:
+    //   • Weekly  → targets weeklyGoals; window = rest of the ISO week.
+    //   • Monthly → targets monthly/yearly/life goals; fixed 10-day window.
+    //
+    // Determinism note: unlike Theme of the Week (a fixed catalog we can
+    // recompute on every load), the eligible quest pool is user-specific
+    // and mutable, so we PICK ONCE and PERSIST the assignment, guarded by
+    // `periodKey`. The pick itself is still seeded by periodKey so a
+    // reload mid-period can't silently reroll for free.
+    // ════════════════════════════════════════════════════════════════
+
+    // Chest tier awarded per targeted quest tier.
+    get BOUNTY_CHEST_TIER() {
+        return { weekly: 'silver', sidequest: 'silver', monthly: 'gold', yearly: 'royal', epic: 'royal' };
+    }
+
+    // Feature gate: bounties only surface once the matching Quest Log tab
+    // is unlocked (weekly @ lvl 6, monthly @ lvl 7) so low-level players
+    // aren't nudged toward quest types they can't create yet.
+    _bountyUnlocked(cadence) {
+        if (cadence === 'weekly') return this.level >= (this.goalTabUnlockLevels?.weekly || 6);
+        return this.level >= (this.goalTabUnlockLevels?.monthly || 7);
+    }
+
+    _bountyPeriodKey(cadence, now = new Date()) {
+        if (cadence === 'weekly') {
+            return `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
+        }
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    // Start-of-period boundary used by the anti-stage rule. Weekly = this
+    // ISO week's Monday 00:00 local; Monthly = the 1st at 00:00 local.
+    _bountyPeriodStart(cadence, now = new Date()) {
+        if (cadence === 'weekly') {
+            const d = new Date(now);
+            d.setHours(0, 0, 0, 0);
+            const day = d.getDay();                 // 0 Sun .. 6 Sat
+            const daysFromMonday = day === 0 ? 6 : day - 1;
+            d.setDate(d.getDate() - daysFromMonday);
+            return d;
+        }
+        return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    }
+
+    // Fixed windows: weekly expires end of this ISO week (Sun 23:59:59.999
+    // local); monthly expires 10 days out at end-of-day (the assignment
+    // day counts, so "the 1st → end of the 10th").
+    _bountyDeadline(cadence, now = new Date()) {
+        if (cadence === 'weekly') {
+            const start = this._bountyPeriodStart('weekly', now);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            return end;
+        }
+        const end = new Date(now);
+        end.setDate(end.getDate() + 9);             // assignment day + 9 = 10-day span
+        end.setHours(23, 59, 59, 999);
+        return end;
+    }
+
+    _bountyTiers(cadence) {
+        return cadence === 'weekly'
+            ? [['weekly', this.weeklyGoals], ['sidequest', this.sideQuests]]
+            : [['monthly', this.monthlyGoals]];
+    }
+
+    // Eligible = incomplete Quest Log items of the cadence's tier(s) that
+    // existed BEFORE this period opened (anti-stage). Items missing the
+    // `created` stamp (legacy saves) are treated as pre-period = eligible.
+    _bountyEligibleQuests(cadence, periodStart) {
+        const out = [];
+        for (const [tier, list] of this._bountyTiers(cadence)) {
+            for (const q of (list || [])) {
+                if (!q || q.completed) continue;
+                if (q.created && new Date(q.created) >= periodStart) continue;
+                out.push({ id: q.id, tier });
+            }
+        }
+        return out;
+    }
+
+    // Deterministic index into a pool, seeded by periodKey (+ optional
+    // salt for the reroll so it lands on a different slot than the
+    // original pick). Same LCG family as the daily quest board.
+    _bountySeededIndex(periodKey, salt, length) {
+        if (length <= 0) return 0;
+        const str = `${periodKey}:${salt || ''}`;
+        let s = 0;
+        for (let i = 0; i < str.length; i++) s = (s * 31 + str.charCodeAt(i)) % 2147483647;
+        s = (s * 16807) % 2147483647;
+        return s % length;
+    }
+
+    // Assign this period's bounty for a cadence if not already done.
+    // No-ops when: feature locked for the level, already assigned/marked
+    // empty for this periodKey. Stores `{ ...empty:true }` when there's no
+    // eligible quest so the dashboard shows the "add a quest" nudge.
+    maybeAssignBounty(cadence = 'weekly', now = new Date()) {
+        if (!this.activeBounties) this.activeBounties = { weekly: null, monthly: null };
+        if (!this._bountyUnlocked(cadence)) return null;
+
+        const periodKey = this._bountyPeriodKey(cadence, now);
+        const cur = this.activeBounties[cadence];
+        if (cur && cur.periodKey === periodKey) return cur;   // already handled this period
+
+        const periodStart = this._bountyPeriodStart(cadence, now);
+        const pool = this._bountyEligibleQuests(cadence, periodStart);
+        if (pool.length === 0) {
+            this.activeBounties[cadence] = { periodKey, cadence, empty: true };
+            this.saveData();
+            return this.activeBounties[cadence];
+        }
+
+        const pick = pool[this._bountySeededIndex(periodKey, '', pool.length)];
+        this.activeBounties[cadence] = {
+            periodKey,
+            cadence,
+            questType: pick.tier,
+            questId: pick.id,
+            assignedAt: now.toISOString(),
+            expiresAt: this._bountyDeadline(cadence, now).toISOString(),
+            chestTier: this.BOUNTY_CHEST_TIER[pick.tier],
+            status: 'active',
+            rerolled: false,
+        };
+        this.saveData();
+        if (typeof trackEvent === 'function') {
+            trackEvent('bounty_assigned', { cadence, questType: pick.tier });
+        }
+        return this.activeBounties[cadence];
+    }
+
+    // Called from every Quest Log completion path. Awards the bonus chest
+    // exactly once per bounty: requires an ACTIVE bounty targeting this
+    // quest, still inside its window. Idempotent — a re-check after
+    // claim (uncheck→recheck) is a no-op since status is no longer
+    // 'active'. An expired-but-still-active record flips to 'expired'.
+    checkBountyCompletion(questId) {
+        if (!this.activeBounties) return;
+        let claimedTier = null;
+        let claimedCadence = null;
+        ['weekly', 'monthly'].forEach(cadence => {
+            const b = this.activeBounties[cadence];
+            if (!b || b.empty || b.status !== 'active' || b.questId !== questId) return;
+            if (Date.now() > new Date(b.expiresAt).getTime()) {
+                b.status = 'expired';
+                return;
+            }
+            b.status = 'claimed';
+            if (!this.lastBountyClaim) this.lastBountyClaim = {};
+            this.lastBountyClaim[cadence] = b.periodKey;
+            claimedTier = b.chestTier;
+            claimedCadence = cadence;
+            if (typeof trackEvent === 'function') {
+                trackEvent('bounty_claimed', { cadence, questType: b.questType, chestTier: b.chestTier });
+            }
+        });
+        if (claimedTier) {
+            this.saveData();
+            // Claiming removes a claimable bounty — cancel/re-arm the "ready"
+            // reminder so no stale nudge fires.
+            this.scheduleBountyReadyReminder();
+            // Defer the chest so it lands AFTER the quest-complete
+            // animation/toast rather than stacking on top of it.
+            const tier = claimedTier;
+            const label = claimedCadence === 'weekly' ? 'Weekly' : 'Monthly';
+            setTimeout(() => {
+                this.showAchievement(`👑 ${label} Royal Bounty complete! A free ${tier} chest is yours!`, 'monthly');
+                this.openTreasureChest(tier, true);
+            }, 900);
+        }
+    }
+
+    // Premium-only reroll (one per period). Free users are routed to the
+    // upsell. Re-picks from the eligible pool excluding the current
+    // target, keeps the same window (expiresAt unchanged).
+    rerollBounty(cadence) {
+        if (!this.isPremium) {
+            this.showPremiumPurchaseModal();
+            return;
+        }
+        const b = this.activeBounties && this.activeBounties[cadence];
+        if (!b || b.empty || b.status !== 'active' || b.rerolled) return;
+
+        const now = new Date();
+        const periodStart = this._bountyPeriodStart(cadence, now);
+        const pool = this._bountyEligibleQuests(cadence, periodStart).filter(q => q.id !== b.questId);
+        if (pool.length === 0) {
+            this.showAchievement('No other eligible quest to reroll into.', 'daily');
+            return;
+        }
+        const pick = pool[this._bountySeededIndex(b.periodKey, 'reroll', pool.length)];
+        b.questType = pick.tier;
+        b.questId = pick.id;
+        b.chestTier = this.BOUNTY_CHEST_TIER[pick.tier];
+        b.rerolled = true;
+        this.saveData();
+        if (typeof trackEvent === 'function') {
+            trackEvent('bounty_rerolled', { cadence, questType: pick.tier });
+        }
+        this.renderRoyalBounty();
+    }
+
+    // Boot + period-transition hook: expire any stale active bounty whose
+    // window has closed, then (re)assign for the current period. Safe to
+    // call repeatedly — assignment no-ops within the same period.
+    refreshBounties() {
+        if (!this.activeBounties) this.activeBounties = { weekly: null, monthly: null };
+        const newlyAssigned = [];
+        ['weekly', 'monthly'].forEach(cadence => {
+            const b = this.activeBounties[cadence];
+            const prevKey = b ? b.periodKey : null;
+            // Self-heal: if an active bounty targets a tier no longer eligible
+            // for its cadence (e.g. a legacy monthly bounty pointing at a
+            // yearly/life quest before the monthly-only narrowing), discard it
+            // so maybeAssignBounty re-picks from the current pool this period.
+            // prevKey is already captured above, so the reassignment stays
+            // silent (no spurious "new bounty" toast for a correction).
+            if (b && !b.empty && b.questType &&
+                !this._bountyTiers(cadence).some(([tier]) => tier === b.questType)) {
+                this.activeBounties[cadence] = null;
+            } else if (b && !b.empty && b.status === 'active' && Date.now() > new Date(b.expiresAt).getTime()) {
+                b.status = 'expired';
+            }
+            const assigned = this.maybeAssignBounty(cadence);
+            // Option A — announce on app open: a brand-new ACTIVE bounty for a
+            // period we hadn't handled before (periodKey changed). Empty-pool
+            // nudges and same-period re-renders are intentionally silent, and
+            // maybeAssignBounty no-ops within a period so this fires at most
+            // once per cadence per period.
+            if (assigned && !assigned.empty && assigned.status === 'active' && assigned.periodKey !== prevKey) {
+                newlyAssigned.push(assigned);
+            }
+        });
+        this.renderRoyalBounty();
+        this._announceNewBounties(newlyAssigned);
+        // Newly assigned / expired bounties change the claimable state — re-arm
+        // the native "ready" reminder (web is covered by the periodic SW sync).
+        this.scheduleBountyReadyReminder();
+    }
+
+    // In-app toast for freshly assigned bounties (Option A). Staggered so a
+    // simultaneous weekly+monthly rollover doesn't fully overlap, and DOM-safe
+    // since it routes through showAchievement's existing toast queue.
+    _announceNewBounties(bounties) {
+        if (!bounties || bounties.length === 0) return;
+        if (typeof this.showAchievement !== 'function') return;
+        const chestEmoji = { bronze: '🥉', silver: '🥈', gold: '🥇', royal: '👑' };
+        const cadenceLabel = { weekly: 'Weekly', monthly: 'Monthly' };
+        bounties.forEach((b, i) => {
+            const label = cadenceLabel[b.cadence] || 'New';
+            const emoji = chestEmoji[b.chestTier] || '🎁';
+            const msg = `👑 New ${label} Royal Bounty! Complete it for a free ${emoji} ${b.chestTier} chest.`;
+            setTimeout(() => this.showAchievement(msg, b.cadence), 600 + i * 500);
+        });
+    }
+
+    // Look up the live quest object the bounty targets (title may have
+    // changed; the quest may have been deleted → returns null).
+    _bountyQuest(b) {
+        if (!b || b.empty) return null;
+        const lists = {
+            weekly: this.weeklyGoals, sidequest: this.sideQuests,
+            monthly: this.monthlyGoals,
+            yearly: this.yearlyGoals, epic: this.lifeGoals,
+        };
+        return (lists[b.questType] || []).find(q => q && q.id === b.questId) || null;
+    }
+
+    // True when the given quest is the live target of an ACTIVE bounty —
+    // used to badge the quest card in the Quest Log.
+    isBountyTarget(questType, questId) {
+        if (!this.activeBounties) return false;
+        for (const cadence of ['weekly', 'monthly']) {
+            const b = this.activeBounties[cadence];
+            if (b && !b.empty && b.status === 'active' && b.questType === questType && b.questId === questId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    _bountyTimeLeftLabel(expiresAt) {
+        const ms = new Date(expiresAt).getTime() - Date.now();
+        if (ms <= 0) return 'expired';
+        const hours = Math.floor(ms / 3600000);
+        if (hours < 1) return 'less than 1h left';
+        if (hours < 24) return `${hours}h left`;
+        const days = Math.round(hours / 24);
+        return `${days} day${days === 1 ? '' : 's'} left`;
+    }
+
+    renderRoyalBounty() {
+        const wrap = document.getElementById('dashboard-royal-bounty');
+        if (!wrap) return;
+
+        const html = DASHBOARD_RENDER.renderRoyalBountyHTML(this.activeBounties, { bountyUnlocked: (c) => this._bountyUnlocked(c), bountyQuest: (b) => this._bountyQuest(b), bountyTimeLeftLabel: (e) => this._bountyTimeLeftLabel(e), isPremium: this.isPremium, escapeHTML: (s) => this.escapeHTML(s) });
+        if (!html) { wrap.classList.add('hidden'); wrap.innerHTML = ''; return; }
+        wrap.classList.remove('hidden');
+        wrap.innerHTML = html;
+    }
+
+    // Double XP Weekend banner. Shows while a limited-time XP event is
+    // live (see getActiveXPEvent), with a countdown; hides otherwise.
+    // DOM-guarded so the deferred boot render is safe pre-paint.
+    renderXPEvent() {
+        const wrap = document.getElementById('dashboard-xp-event');
+        if (!wrap) return;
+        const event = this.getActiveXPEvent();
+        if (!event) { wrap.classList.add('hidden'); wrap.innerHTML = ''; return; }
+        wrap.classList.remove('hidden');
+        wrap.innerHTML = DASHBOARD_RENDER.renderXPEventHTML(event, { escapeHTML: (s) => this.escapeHTML(s), xpEventTimeLeftLabel: (e) => this._xpEventTimeLeftLabel(e) });
+    }
+
+    // §1.7 Streak Repair card. Lists streaks broken within the last 48h that
+    // a premium player can restore by spending Focus Crystals (cost scales
+    // with the lost length). Free users see a single contextual upsell. The
+    // card hides itself when there's nothing repairable. DOM-guarded so the
+    // deferred boot render is safe pre-paint.
+    renderStreakRepair() {
+        const wrap = document.getElementById('dashboard-streak-repair');
+        if (!wrap) return;
+        const hide = () => { wrap.classList.add('hidden'); wrap.innerHTML = ''; };
+
+        const entries = this.getRepairableStreaks();
+        if (!entries.length) return hide();
+
+        wrap.classList.remove('hidden');
+        wrap.innerHTML = DASHBOARD_RENDER.renderStreakRepairHTML(entries, { isPremium: this.isPremium, hasFreeStreakRepair: () => this.hasFreeStreakRepair(), focusCrystals: this.focusCrystals, getStreakRepairCost: (n) => this.getStreakRepairCost(n), escapeHTML: (s) => this.escapeHTML(s), streakRepairTimeLeftLabel: (e) => this._streakRepairTimeLeftLabel(e) });
+    }
+
     renderDashboard() {
         document.getElementById('life-goals-count').textContent = this.lifeGoals.length;
         document.getElementById('monthly-goals-count').textContent = this.monthlyGoals.filter(g => !g.completed).length;
@@ -11655,7 +13295,7 @@ class GoalManager {
                 body: 'No quests scheduled for today. Begin your adventure and conquer new challenges!',
                 ctaLabel: "Add Today's Quest",
                 ctaIcon: 'ri-sword-line',
-                ctaOnclick: 'addDailyTask()',
+                ctaAction: 'task.addDaily',
                 ctaColor: 'amber',
                 btnExtraClass: 'btn-ripple'
             });
@@ -11667,7 +13307,7 @@ class GoalManager {
                         ${task.completed ? 'checked' : ''} 
                         onchange="goalManager.toggleTask(${task.id}, event)">
                     <span class="ml-4 flex-1 fancy-font font-semibold text-lg ${task.completed ? 'line-through text-amber-600 opacity-60' : 'text-amber-100'}">${this.escapeHTML(task.title)}</span>
-                    <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
+                    <button data-action="goal.delete" data-goal-type="daily" data-goal-id="${task.id}" class="text-red-400 hover:text-red-200 text-xl">
                         <i class="ri-delete-bin-line"></i>
                     </button>
                 </div>
@@ -11679,6 +13319,20 @@ class GoalManager {
         
         // Render Daily Wooden Chest
         this.renderWoodenChest();
+
+        // Limited-time events — Double XP Weekend banner (top of the cards).
+        this.renderXPEvent();
+
+        // v2.9 Track 7 — passive Theme-of-the-Week discovery card
+        this.renderWeeklyThemeCard();
+
+        // §1.7 Streak Repair — surface any recently-broken streaks the player
+        // can restore within 48h (premium action; free users see an upsell).
+        this.renderStreakRepair();
+
+        // v2.9.1 §1.8 — Royal Bounty card. refreshBounties() expires stale
+        // windows, (re)assigns for the current period, then renders.
+        this.refreshBounties();
     }
 
     /**
@@ -11694,12 +13348,13 @@ class GoalManager {
      * @param {string} opts.body                Body copy. May contain inline HTML.
      * @param {string} [opts.ctaLabel]          Button label. Omit for message-only states.
      * @param {string} [opts.ctaIcon]           Remix icon class. Default 'ri-add-line'.
-     * @param {string} [opts.ctaOnclick]        onclick handler string (e.g. "goalManager.addX()").
+     * @param {string} [opts.ctaAction]         Delegated data-action key (e.g. "quest.addLife").
+     * @param {Object<string,string|number>} [opts.ctaData]  Extra data-* attributes (e.g. { date }).
      * @param {string} [opts.ctaColor]          Color tier: amber|red|purple|blue|green|cyan.
      * @param {string} [opts.wrapClass]         Extra classes on the card (e.g. "col-span-2").
      * @param {string} [opts.btnExtraClass]     Extra classes on the button (e.g. "btn-ripple").
      */
-    _renderEmptyState({ icon, title, body, ctaLabel, ctaIcon = 'ri-add-line', ctaOnclick = '', ctaColor = 'amber', wrapClass = '', btnExtraClass = '' }) {
+    _renderEmptyState({ icon, title, body, ctaLabel, ctaIcon = 'ri-add-line', ctaAction = '', ctaData = {}, ctaColor = 'amber', wrapClass = '', btnExtraClass = '' }) {
         const colorMap = {
             amber:  'from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400',
             red:    'from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 border-red-400',
@@ -11709,8 +13364,11 @@ class GoalManager {
             cyan:   'from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 border-cyan-400'
         };
         const btnClasses = colorMap[ctaColor] || colorMap.amber;
+        const ctaAttrs = ctaAction
+            ? `data-action="${ctaAction}"` + Object.entries(ctaData).map(([k, v]) => ` data-${k}="${v}"`).join('')
+            : '';
         const ctaHtml = ctaLabel ? `
-            <button onclick="${ctaOnclick}"
+            <button ${ctaAttrs}
                 class="${btnExtraClass} bg-gradient-to-r ${btnClasses} text-white px-6 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2">
                 <i class="${ctaIcon} mr-2"></i>${ctaLabel}
             </button>
@@ -11738,73 +13396,19 @@ class GoalManager {
                 title: 'Your Kingdom Awaits',
                 body: 'Every great adventure begins with a dream. What legacy will you build?',
                 ctaLabel: 'Create Your First Life Goal',
-                ctaOnclick: 'goalManager.addLifeGoal()',
+                ctaAction: 'quest.addLife',
                 ctaColor: 'red',
                 wrapClass: 'col-span-2'
             });
         } else {
-            container.innerHTML = this.lifeGoals.map(goal => {
-                const linkedYearly = this.yearlyGoals.filter(y => {
+            container.innerHTML = this.lifeGoals.map(goal => TASK_RENDER.renderLifeGoalCardHTML(goal, {
+                linkedYearly: this.yearlyGoals.filter(y => {
                     // Support both legacy single parent (lifeGoalId) and new multi-parent (lifeGoalIds)
                     const ids = y.lifeGoalIds || (y.lifeGoalId ? [y.lifeGoalId] : []);
                     return ids.includes(goal.id);
-                });
-                const progress = linkedYearly.length > 0 ? goal.progress || 0 : 0;
-                return `
-                <div class="quest-card bg-gradient-to-br from-red-900 to-red-950 p-5 rounded-xl shadow-2xl border-4 border-red-700 goal-item">
-                    <div class="flex items-start space-x-4">
-                        <input 
-                            type="checkbox" 
-                            ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleLifeGoal(${goal.id}, event)"
-                            class="mt-1">
-                        <div class="flex-1">
-                            <h3 class="text-2xl font-bold text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h3>
-                            ${goal.description ? `<p class="text-sm text-red-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
-                            <p class="text-sm text-red-200 mb-3 fancy-font">Created: ${new Date(goal.created).toLocaleDateString()}</p>
-                            
-                            ${linkedYearly.length > 0 ? `
-                                <div class="progress-bar w-full bg-red-950/60 rounded-full h-4 mt-3 border border-red-700">
-                                    <div class="bg-gradient-to-r from-red-500 to-red-400 h-4 rounded-full shadow-lg transition-all duration-500" style="width: ${progress}%"></div>
-                                </div>
-                                <p class="text-xs text-red-200 mt-2 fancy-font">${progress}% complete (${linkedYearly.filter(y => y.completed).length}/${linkedYearly.length} yearly campaigns)</p>
-                                
-                                <div class="mt-3 pl-4 border-l-2 border-red-600/40 space-y-2">
-                                    <p class="text-xs text-red-300 font-semibold mb-2">🏆 Linked Yearly Campaigns:</p>
-                                    ${linkedYearly.map(yearly => `
-                                        <div class="flex items-center text-sm">
-                                            <input type="checkbox" ${yearly.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleYearlyGoal(${yearly.id}, event)"
-                                                class="mr-2">
-                                            <span class="${yearly.completed ? 'line-through text-red-400 opacity-60' : 'text-red-100'}">${this.escapeHTML(yearly.title)} (${yearly.progress}%)</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : `
-                                <div class="flex items-center space-x-2 mt-2">
-                                    <span class="text-xs bg-red-800/50 text-red-200 px-3 py-1 rounded-full border border-red-600 fancy-font">
-                                        ⚡ Legendary Quest
-                                    </span>
-                                </div>
-                            `}
-                            
-                            <button onclick="goalManager.addYearlyGoal(${goal.id})" 
-                                class="mt-3 text-xs bg-red-800/50 hover:bg-red-700/60 text-red-200 px-3 py-1 rounded border border-red-600 fancy-font">
-                                + Add Yearly Campaign
-                            </button>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('life', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit life goal">
-                                <i class="ri-edit-line" aria-hidden="true"></i>
-                            </button>
-                            <button onclick="goalManager.deleteGoal('life', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete life goal">
-                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            }).join('');
+                }),
+                escapeHTML: (s) => this.escapeHTML(s),
+            })).join('');
         }
     }
 
@@ -11816,7 +13420,7 @@ class GoalManager {
                 title: 'Write Your Legend',
                 body: "Great campaigns are written in scrolls. What will this year's chapter hold?",
                 ctaLabel: 'Create Yearly Campaign',
-                ctaOnclick: 'goalManager.addYearlyGoal()',
+                ctaAction: 'goal.addYearly',
                 ctaColor: 'purple'
             });
         } else {
@@ -11825,76 +13429,11 @@ class GoalManager {
                     const ids = m.yearlyGoalIds || (m.yearlyGoalId ? [m.yearlyGoalId] : []);
                     return ids.includes(goal.id);
                 });
-                const parentNames = this.getParentNames(goal, 'lifeGoalIds', this.lifeGoals);
-                const priority = goal.priority && ['low', 'medium', 'high'].includes(goal.priority) ? goal.priority : 'medium';
-                const priorityBadge = priority === 'high'
-                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
-                    : priority === 'low'
-                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
-                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
-                return `
-                <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 p-5 rounded-lg shadow-xl border-3 border-purple-700 goal-item">
-                    <div class="flex items-start space-x-4">
-                        <input 
-                            type="checkbox" 
-                            ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleYearlyGoal(${goal.id}, event)">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-xl text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h4>
-                            ${goal.description ? `<p class="text-sm text-purple-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
-                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
-                            
-                            ${parentNames.length > 0 ? `
-                                <div class="mb-2 flex flex-wrap gap-1">
-                                    ${parentNames.map(name => `
-                                        <span class="text-xs bg-red-700/40 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">
-                                            🎯 ${this.escapeHTML(name)}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            <p class="text-xs text-purple-200 mt-1 fancy-font">Campaign Progress: ${goal.progress}% (${linkedMonthly.filter(m => m.completed).length}/${linkedMonthly.length} monthly raids)</p>
-                            <div class="progress-bar w-full bg-purple-950/60 rounded-full h-3 mt-2 border border-purple-700">
-                                <div class="bg-gradient-to-r from-purple-500 to-purple-400 h-3 rounded-full shadow-lg transition-all duration-500" style="width: ${goal.progress}%"></div>
-                            </div>
-                            
-                            ${linkedMonthly.length > 0 ? `
-                                <div class="mt-3 pl-4 border-l-2 border-purple-600/40 space-y-2">
-                                    <p class="text-xs text-purple-300 font-semibold mb-2">👑 Linked Monthly Raids:</p>
-                                    ${linkedMonthly.map(monthly => `
-                                        <div class="flex items-center text-sm">
-                                            <input type="checkbox" ${monthly.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleMonthlyGoal(${monthly.id}, event)"
-                                                class="mr-2">
-                                            <span class="${monthly.completed ? 'line-through text-purple-400 opacity-60' : 'text-purple-100'}">${this.escapeHTML(monthly.title)} (${monthly.progress}%)</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            <div class="flex gap-2 mt-3">
-                                <button onclick="goalManager.addMonthlyGoal(${goal.id})" 
-                                    class="text-xs bg-purple-800/50 hover:bg-purple-700/60 text-purple-200 px-3 py-1 rounded border border-purple-600 fancy-font">
-                                    + Add Monthly Raid
-                                </button>
-                                <button onclick="goalManager.manageParentConnections('yearly', ${goal.id})" 
-                                    class="text-xs bg-red-800/50 hover:bg-red-700/60 text-red-200 px-3 py-1 rounded border border-red-600 fancy-font">
-                                    🔗 Connections
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('yearly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit yearly goal">
-                                <i class="ri-edit-line" aria-hidden="true"></i>
-                            </button>
-                            <button onclick="goalManager.deleteGoal('yearly', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete yearly goal">
-                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
+                return TASK_RENDER.renderYearlyGoalCardHTML(goal, {
+                    linkedMonthly,
+                    parentNames: this.getParentNames(goal, 'lifeGoalIds', this.lifeGoals),
+                    escapeHTML: (s) => this.escapeHTML(s),
+                });
             }).join('');
         }
     }
@@ -11913,7 +13452,7 @@ class GoalManager {
                 title: 'Open Your Tome',
                 body: 'Each month is a new chapter in your tome. What raids will you record?',
                 ctaLabel: 'Create Monthly Raid',
-                ctaOnclick: 'goalManager.addMonthlyGoal()',
+                ctaAction: 'goal.addMonthly',
                 ctaColor: 'blue',
                 wrapClass: 'col-span-2'
             });
@@ -11922,54 +13461,10 @@ class GoalManager {
             
             // Show scheduled tasks for this month
             if (thisMonthsTasks.length > 0) {
-                const weekGroups = {};
-                thisMonthsTasks.forEach(task => {
-                    // Parse date as local time to avoid timezone issues
-                    const [year, month, day] = task.dueDate.split('-').map(Number);
-                    const taskDate = new Date(year, month - 1, day);
-                    const startOfWeek = new Date(taskDate);
-                    startOfWeek.setDate(taskDate.getDate() - taskDate.getDay());
-                    const weekKey = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
-                    
-                    if (!weekGroups[weekKey]) {
-                        weekGroups[weekKey] = [];
-                    }
-                    weekGroups[weekKey].push(task);
+                html += TASK_RENDER.renderMonthlyScheduledTasksHTML(thisMonthsTasks, {
+                    todayStr: this._cachedToday || this.getTodayDateString(),
+                    escapeHTML: (s) => this.escapeHTML(s),
                 });
-                
-                html += `
-                <div class="col-span-2 quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-5 rounded-xl shadow-xl border-3 border-blue-700 goal-item mb-4">
-                    <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3"><i class="ri-calendar-line mr-2"></i>This Month's Scheduled Tasks</h4>
-                    <p class="text-xs text-blue-200 mb-3 fancy-font">${thisMonthsTasks.filter(t => t.completed).length}/${thisMonthsTasks.length} tasks complete</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${Object.keys(weekGroups).sort().map(weekKey => {
-                            const weekTasks = weekGroups[weekKey];
-                            const [wy, wm, wd] = weekKey.split('-').map(Number);
-                            const weekStart = new Date(wy, wm - 1, wd);
-                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                            return `
-                            <div class="bg-blue-950/40 p-3 rounded-lg border border-blue-700/30">
-                                <p class="text-sm text-blue-300 font-semibold mb-2">${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} Week</p>
-                                <div class="space-y-1">
-                                    ${(() => { const _todayStr = this._cachedToday || this.getTodayDateString(); const _todayDate = new Date(_todayStr + 'T00:00:00'); return weekTasks.map(task => {
-                                        const [ty, tm, td] = task.dueDate.split('-').map(Number);
-                                        const taskDate = new Date(ty, tm - 1, td);
-                                        const isOverdue = taskDate < _todayDate && task.dueDate !== _todayStr && !task.completed;
-                                        return `
-                                        <div class="flex items-center text-xs ${isOverdue ? 'bg-red-900/20 p-1 rounded' : ''}">
-                                            <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleTask(${task.id}, event)"
-                                                class="mr-2">
-                                            <span class="${task.completed ? 'line-through text-blue-400 opacity-60' : isOverdue ? 'text-red-300' : 'text-blue-100'}">${this.escapeHTML(task.title)}</span>
-                                        </div>
-                                    `;}).join(''); })()}
-                                </div>
-                            </div>
-                        `;}).join('')}
-                    </div>
-                </div>
-                `;
             }
             
             // Show monthly goals
@@ -11978,84 +13473,14 @@ class GoalManager {
                     const ids = w.monthlyGoalIds || (w.monthlyGoalId ? [w.monthlyGoalId] : []);
                     return ids.includes(goal.id);
                 });
-                const parentNames = this.getParentNames(goal, 'yearlyGoalIds', this.yearlyGoals);
-                const isSelected = this.selectedItems.has(`monthly-${goal.id}`);
-                const priority = goal.priority && ['low', 'medium', 'high'].includes(goal.priority) ? goal.priority : 'medium';
-                const priorityBadge = priority === 'high'
-                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
-                    : priority === 'low'
-                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
-                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
-                return `
-                <div class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-5 rounded-xl shadow-xl border-3 border-blue-700 goal-item ${isSelected ? 'ring-4 ring-purple-500' : ''}">
-                    <div class="flex items-start space-x-4">
-                        ${this.bulkSelectionMode ? `
-                            <input 
-                                type="checkbox" 
-                                ${isSelected ? 'checked' : ''}
-                                onchange="goalManager.toggleItemSelection(${goal.id}, 'monthly')"
-                                class="mt-1 mr-2 w-5 h-5 cursor-pointer">
-                        ` : ''}
-                        <input 
-                            type="checkbox" 
-                            ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleMonthlyGoal(${goal.id}, event)">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h4>
-                            ${goal.description ? `<p class="text-sm text-blue-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
-                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
-                            
-                            ${parentNames.length > 0 ? `
-                                <div class="mb-2 flex flex-wrap gap-1">
-                                    ${parentNames.map(name => `
-                                        <span class="text-xs bg-purple-700/40 text-purple-200 px-2 py-1 rounded border border-purple-600/40 fancy-font">
-                                            🎯 ${this.escapeHTML(name)}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            <div class="progress-bar w-full bg-blue-950/60 rounded-full h-3 mt-3 border border-blue-700">
-                                <div class="bg-gradient-to-r from-blue-500 to-blue-400 h-3 rounded-full shadow-lg transition-all duration-500" style="width: ${goal.progress}%"></div>
-                            </div>
-                            <p class="text-xs text-blue-200 mt-2 fancy-font">${goal.progress}% complete (${linkedWeekly.filter(w => w.completed).length}/${linkedWeekly.length} weekly goals)</p>
-                            
-                            ${linkedWeekly.length > 0 ? `
-                                <div class="mt-3 pl-4 border-l-2 border-blue-600/40 space-y-2">
-                                    <p class="text-xs text-blue-300 font-semibold mb-2">🛡️ Linked Weekly Goals:</p>
-                                    ${linkedWeekly.map(weekly => `
-                                        <div class="flex items-center text-sm">
-                                            <input type="checkbox" ${weekly.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleWeeklyGoal(${weekly.id}, event)"
-                                                class="mr-2">
-                                            <span class="${weekly.completed ? 'line-through text-blue-400 opacity-60' : 'text-blue-100'}">${this.escapeHTML(weekly.title)} (${weekly.progress}%)</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            <div class="flex gap-2 mt-3">
-                                <button onclick="goalManager.addWeeklyGoal(${goal.id})" 
-                                    class="text-xs bg-blue-800/50 hover:bg-blue-700/60 text-blue-200 px-3 py-1 rounded border border-blue-600 fancy-font">
-                                    + Add Weekly Goal
-                                </button>
-                                <button onclick="goalManager.manageParentConnections('monthly', ${goal.id})" 
-                                    class="text-xs bg-purple-800/50 hover:bg-purple-700/60 text-purple-200 px-3 py-1 rounded border border-purple-600 fancy-font">
-                                    🔗 Connections
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('monthly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit monthly goal">
-                                <i class="ri-edit-line" aria-hidden="true"></i>
-                            </button>
-                            <button onclick="goalManager.deleteGoal('monthly', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete monthly goal">
-                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
+                return TASK_RENDER.renderMonthlyGoalCardHTML(goal, {
+                    linkedWeekly,
+                    parentNames: this.getParentNames(goal, 'yearlyGoalIds', this.yearlyGoals),
+                    isSelected: this.selectedItems.has(`monthly-${goal.id}`),
+                    bulkSelectionMode: this.bulkSelectionMode,
+                    isBountyTarget: (type, id) => this.isBountyTarget(type, id),
+                    escapeHTML: (s) => this.escapeHTML(s),
+                });
             }).join('');
             
             container.innerHTML = html;
@@ -12076,7 +13501,7 @@ class GoalManager {
                 title: 'Plan Your Week',
                 body: 'A hero always has a plan. What battles will you fight this week?',
                 ctaLabel: 'Create Weekly Goal',
-                ctaOnclick: 'goalManager.addWeeklyGoal()',
+                ctaAction: 'goal.addWeekly',
                 ctaColor: 'green'
             });
         } else {
@@ -12084,34 +13509,10 @@ class GoalManager {
             
             // Show scheduled tasks for this week
             if (thisWeeksTasks.length > 0) {
-                html += `
-                <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-5 rounded-lg shadow-xl border-3 border-green-700 goal-item mb-4">
-                    <div class="flex items-start space-x-4">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2"><i class="ri-calendar-line mr-2"></i>This Week's Scheduled Tasks</h4>
-                            <p class="text-xs text-green-200 mb-3 fancy-font">${thisWeeksTasks.filter(t => t.completed).length}/${thisWeeksTasks.length} tasks complete</p>
-                            
-                            <div class="mt-3 pl-4 border-l-2 border-green-600/40 space-y-2">
-                                ${(() => { const _todayStr = this._cachedToday || this.getTodayDateString(); const _todayDate = new Date(_todayStr + 'T00:00:00'); return thisWeeksTasks.map(task => {
-                                    const [year, month, day] = task.dueDate.split('-').map(Number);
-                                    const taskDate = new Date(year, month - 1, day);
-                                    const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][taskDate.getDay()];
-                                    const isOverdue = taskDate < _todayDate && task.dueDate !== _todayStr && !task.completed;
-                                    return `
-                                    <div class="flex items-center text-sm ${isOverdue ? 'bg-red-900/20 p-2 rounded' : ''}">
-                                        <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                                            onchange="goalManager.toggleTask(${task.id}, event)"
-                                            class="mr-2">
-                                        <span class="text-xs text-green-300 mr-2 font-bold">${dayName}</span>
-                                        <span class="${task.completed ? 'line-through text-green-400 opacity-60' : isOverdue ? 'text-red-300 font-semibold' : 'text-green-100'}">${this.escapeHTML(task.title)}</span>
-                                        ${isOverdue ? '<span class="ml-2 text-xs text-red-400">⚠️ Overdue</span>' : ''}
-                                    </div>
-                                `;}).join(''); })()}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                `;
+                html += TASK_RENDER.renderWeeklyScheduledTasksHTML(thisWeeksTasks, {
+                    todayStr: this._cachedToday || this.getTodayDateString(),
+                    escapeHTML: (s) => this.escapeHTML(s),
+                });
             }
             
             // Show weekly goals
@@ -12120,86 +13521,13 @@ class GoalManager {
                     const ids = t.weeklyGoalIds || (t.weeklyGoalId ? [t.weeklyGoalId] : []);
                     return ids.includes(goal.id);
                 });
-                const parentNames = this.getParentNames(goal, 'monthlyGoalIds', this.monthlyGoals);
-                const isSelected = this.selectedItems.has(`weekly-${goal.id}`);
-                const priority = goal.priority && ['low', 'medium', 'high'].includes(goal.priority) ? goal.priority : 'medium';
-                const priorityBadge = priority === 'high'
-                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
-                    : priority === 'low'
-                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
-                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
-                return `
-                <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-5 rounded-lg shadow-xl border-3 border-green-700 goal-item mb-4 ${isSelected ? 'ring-4 ring-purple-500' : ''}">
-                    <div class="flex items-start space-x-4">
-                        ${this.bulkSelectionMode ? `
-                            <input 
-                                type="checkbox" 
-                                ${isSelected ? 'checked' : ''}
-                                onchange="goalManager.toggleItemSelection(${goal.id}, 'weekly')"
-                                class="mt-1 mr-2 w-5 h-5 cursor-pointer">
-                        ` : ''}
-                        <input 
-                            type="checkbox" 
-                            ${goal.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleWeeklyGoal(${goal.id}, event)">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${goal.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(goal.title)}</h4>
-                            ${goal.description ? `<p class="text-sm text-green-200/80 mb-2 fancy-font">${this.escapeHTML(goal.description)}</p>` : ''}
-                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
-                            
-                            ${parentNames.length > 0 ? `
-                                <div class="mb-2 flex flex-wrap gap-1">
-                                    ${parentNames.map(name => `
-                                        <span class="text-xs bg-blue-700/40 text-blue-200 px-2 py-1 rounded border border-blue-600/40 fancy-font">
-                                            🎯 ${this.escapeHTML(name)}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            <div class="progress-bar w-full bg-green-950/60 rounded-full h-3 mt-2 border border-green-700">
-                                <div class="bg-gradient-to-r from-green-500 to-green-400 h-3 rounded-full shadow-lg transition-all duration-500" style="width: ${goal.progress}%"></div>
-                            </div>
-                            <p class="text-xs text-green-200 mt-1 fancy-font">${goal.progress}% complete (${linkedTasks.filter(t => t.completed).length}/${linkedTasks.length} tasks)</p>
-                            
-                            ${linkedTasks.length > 0 ? `
-                                <div class="mt-3 pl-4 border-l-2 border-green-600/40 space-y-2">
-                                    <p class="text-xs text-green-300 font-semibold mb-2">⚔️ Linked Daily Tasks:</p>
-                                    ${linkedTasks.map(task => `
-                                        <div class="flex items-center text-sm">
-                                            <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                                                onchange="goalManager.toggleTask(${task.id}, event)"
-                                                class="mr-2">
-                                            <span class="${task.completed ? 'line-through text-green-400 opacity-60' : 'text-green-100'}">${this.escapeHTML(task.title)}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            ${this.renderChecklistHTML(goal, 'weekly')}
-                            
-                            <div class="flex gap-2 mt-3">
-                                <button onclick="goalManager.addDailyTask(${goal.id})" 
-                                    class="text-xs bg-green-800/50 hover:bg-green-700/60 text-green-200 px-3 py-1 rounded border border-green-600 fancy-font">
-                                    + Add Daily Task
-                                </button>
-                                <button onclick="goalManager.manageParentConnections('weekly', ${goal.id})" 
-                                    class="text-xs bg-blue-800/50 hover:bg-blue-700/60 text-blue-200 px-3 py-1 rounded border border-blue-600 fancy-font">
-                                    🔗 Connections
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('weekly', ${goal.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit weekly goal">
-                                <i class="ri-edit-line" aria-hidden="true"></i>
-                            </button>
-                            <button onclick="goalManager.deleteGoal('weekly', ${goal.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete weekly goal">
-                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
+                return TASK_RENDER.renderWeeklyGoalCardHTML(goal, {
+                    linkedTasks,
+                    parentNames: this.getParentNames(goal, 'monthlyGoalIds', this.monthlyGoals),
+                    isSelected: this.selectedItems.has(`weekly-${goal.id}`),
+                    bulkSelectionMode: this.bulkSelectionMode,
+                    escapeHTML: (s) => this.escapeHTML(s),
+                });
             }).join('');
             
             container.innerHTML = html;
@@ -12219,78 +13547,17 @@ class GoalManager {
                 body: 'Your battlefield is clear. What challenge will you conquer today?',
                 ctaLabel: "Add Today's Quest",
                 ctaIcon: 'ri-sword-line',
-                ctaOnclick: 'addDailyTask()',
+                ctaAction: 'task.addDaily',
                 ctaColor: 'amber',
                 btnExtraClass: 'btn-ripple'
             });
         } else {
-            container.innerHTML = todaysTasks.map(task => {
-                const parentNames = this.getParentNames(task, 'weeklyGoalIds', this.weeklyGoals);
-                const isSelected = this.selectedItems.has(`daily-${task.id}`);
-                const priority = task.priority && ['low', 'medium', 'high'].includes(task.priority) ? task.priority : 'medium';
-                const priorityBadge = priority === 'high'
-                    ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
-                    : priority === 'low'
-                        ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
-                        : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
-                return `
-                <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg shadow-xl border-2 border-amber-700/50 task-item mb-4 ${isSelected ? 'ring-4 ring-purple-500' : ''}"
-                    draggable="true"
-                    ondragstart="goalManager.handleDragStart('daily', ${task.id}, event)"
-                    ondragend="goalManager.handleDragEnd(event)"
-                    ondragover="goalManager.handleDragOver(event)"
-                    ondragenter="goalManager.handleDragEnter(event)"
-                    ondragleave="goalManager.handleDragLeave(event)"
-                    ondrop="goalManager.handleDrop('daily', ${task.id}, event)">
-                    <div class="flex items-start space-x-4">
-                        ${this.bulkSelectionMode ? `
-                            <input 
-                                type="checkbox" 
-                                ${isSelected ? 'checked' : ''}
-                                onchange="goalManager.toggleItemSelection(${task.id}, 'daily')"
-                                class="mt-1 mr-2 w-5 h-5 cursor-pointer">
-                        ` : ''}
-                        <input 
-                            type="checkbox" 
-                            ${task.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleTask(${task.id}, event)"
-                            class="mt-1">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title mb-2 ${task.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(task.title)}</h4>
-                            ${task.description ? `<p class="text-sm text-amber-200/80 mb-2 fancy-font">${this.escapeHTML(task.description)}</p>` : ''}
-                            <div class="mb-2 flex flex-wrap gap-1">${priorityBadge}</div>
-                            
-                            ${parentNames.length > 0 ? `
-                                <div class="mb-2 flex flex-wrap gap-1">
-                                    ${parentNames.map(name => `
-                                        <span class="text-xs bg-green-700/40 text-green-200 px-2 py-1 rounded border border-green-600/40 fancy-font">
-                                            🎯 ${this.escapeHTML(name)}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            ${this.renderChecklistHTML(task, 'daily')}
-                            
-                            <div class="flex gap-2 mt-3">
-                                <button onclick="goalManager.manageParentConnections('daily', ${task.id})" 
-                                    class="text-xs bg-green-800/50 hover:bg-green-700/60 text-green-200 px-3 py-1 rounded border border-green-600 fancy-font">
-                                    🔗 Connections
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button onclick="goalManager.editGoal('daily', ${task.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit daily task">
-                                <i class="ri-edit-line" aria-hidden="true"></i>
-                            </button>
-                            <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete daily task">
-                                <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            }).join('');
+            container.innerHTML = todaysTasks.map(task => TASK_RENDER.renderDailyTaskCardHTML(task, {
+                parentNames: this.getParentNames(task, 'weeklyGoalIds', this.weeklyGoals),
+                isSelected: this.selectedItems.has(`daily-${task.id}`),
+                bulkSelectionMode: this.bulkSelectionMode,
+                escapeHTML: (s) => this.escapeHTML(s),
+            })).join('');
         }
     }
 
@@ -12317,7 +13584,7 @@ class GoalManager {
                     : 'Side quests are optional adventures. Track ideas, errands, or things you want to explore!',
                 ctaLabel: isFiltered ? 'Show All Side Quests' : 'Add Side Quest',
                 ctaIcon: isFiltered ? 'ri-filter-off-line' : 'ri-compass-3-line',
-                ctaOnclick: isFiltered ? "goalManager.filterSideQuests('all')" : 'goalManager.addSideQuest()',
+                ctaAction: isFiltered ? 'sidequest.showAll' : 'sidequest.add',
                 ctaColor: 'cyan'
             });
         } else {
@@ -12381,7 +13648,17 @@ class GoalManager {
     unlockPremium() {
         this.isPremium = true;
         this.premiumPurchaseDate = new Date().toISOString();
-        
+
+        // v2.9 Track 7 Q7 — conversion analytics. Run BEFORE the
+        // welcome-gift unlock and saveData so the funnel event
+        // captures the moment-of-conversion state (isPremium just
+        // flipped true, apply-dates not yet stale). The helper emits
+        // one `weekly_theme_subscribe` per trial-applied theme within
+        // the 14-day attribution window; entries outside the window
+        // are silently ignored. No-op when the user never trialed a
+        // featured theme.
+        this.maybeTrackWeeklyThemeSubscribe();
+
         // Welcome gift: Unlock Mystic Realm theme
         if (!this.unlockedThemes.includes('mystic')) {
             this.unlockedThemes.push('mystic');
@@ -12398,101 +13675,14 @@ class GoalManager {
         const container = document.getElementById('premium-content');
         if (!container) return;
 
-        if (this.isPremium) {
-            // Premium user view
-            const purchaseDate = this.premiumPurchaseDate 
-                ? new Date(this.premiumPurchaseDate).toLocaleDateString() 
-                : 'Unknown';
-            
-            container.innerHTML = `
-                <div class="text-center">
-                    <div class="text-6xl mb-4">👑</div>
-                    <h3 class="text-2xl font-bold text-yellow-200 medieval-title mb-2">Premium Adventurer</h3>
-                    <p class="text-yellow-100 fancy-font mb-4">Thank you for your support!</p>
-                    <div class="bg-black/20 rounded-lg p-4 mb-4">
-                        <p class="text-yellow-200 text-sm fancy-font">Member since: ${purchaseDate}</p>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                        <div class="bg-black/20 rounded-lg p-3">
-                            <div class="text-2xl mb-1">🐉</div>
-                            <div class="text-xs text-yellow-200">Boss Battles</div>
-                        </div>
-                        <div class="bg-black/20 rounded-lg p-3">
-                            <div class="text-2xl mb-1">🎨</div>
-                            <div class="text-xs text-yellow-200">All Themes</div>
-                        </div>
-                        <div class="bg-black/20 rounded-lg p-3">
-                            <div class="text-2xl mb-1">🏆</div>
-                            <div class="text-xs text-yellow-200">Achievements</div>
-                        </div>
-                        <div class="bg-black/20 rounded-lg p-3">
-                            <div class="text-2xl mb-1">📊</div>
-                            <div class="text-xs text-yellow-200">Stats</div>
-                        </div>
-                    </div>
-                    
-                </div>
-            `;
-        } else {
-            // Free user view - show upgrade prompt
-            container.innerHTML = `
-                <div class="flex flex-col md:flex-row gap-6 items-center">
-                    <div class="flex-1">
-                        <h3 class="text-2xl font-bold text-yellow-200 medieval-title mb-2 flex items-center">
-                            <i class="ri-vip-crown-2-line mr-2"></i> Upgrade to Premium
-                        </h3>
-                        <p class="text-yellow-100 fancy-font mb-4 text-sm">Unlock the full power of your Life Quest Journal!</p>
-                        
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
-                                <span class="text-lg">🐉</span> Boss Battles
-                            </div>
-                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
-                                <span class="text-lg">🎨</span> 8+ Themes
-                            </div>
-                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
-                                <span class="text-lg">🏆</span> Achievements
-                            </div>
-                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
-                                <span class="text-lg">📖</span> Full Spellbook
-                            </div>
-                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
-                                <span class="text-lg">✨</span> Enchantments
-                            </div>
-                            <div class="flex items-center gap-2 text-yellow-100 text-sm">
-                                <span class="text-lg">📊</span> Advanced Stats
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="text-center">
-                        <div class="text-5xl mb-2">👑</div>
-                        <div class="text-3xl font-bold text-yellow-200 medieval-title mb-1">$4.99</div>
-                        <div class="text-yellow-300 text-sm fancy-font mb-3">One-time purchase</div>
-                        <button onclick="goalManager.showPremiumPurchaseModal()" 
-                            class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-8 py-3 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400">
-                            <i class="ri-vip-crown-2-fill mr-2"></i> Go Premium
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
+        const purchaseDate = this.premiumPurchaseDate
+            ? new Date(this.premiumPurchaseDate).toLocaleDateString()
+            : 'Unknown';
+        container.innerHTML = PREMIUM_RENDER.renderPremiumCardHTML({ isPremium: this.isPremium, purchaseDate });
     }
 
     getPremiumBannerHTML(message) {
-        if (this.isPremium) return '';
-        return `
-            <div class="bg-gradient-to-r from-yellow-900/60 to-amber-900/60 border border-yellow-600/50 rounded-xl p-3 mb-4 flex items-center justify-between gap-3 cursor-pointer hover:border-yellow-500/70 transition-colors"
-                 onclick="goalManager.showPremiumPurchaseModal()">
-                <div class="flex items-center gap-2 min-w-0">
-                    <span class="text-xl flex-shrink-0">👑</span>
-                    <span class="text-yellow-200 text-sm fancy-font truncate">${message}</span>
-                </div>
-                <button class="bg-gradient-to-r from-yellow-500 to-amber-600 text-black px-3 py-1.5 rounded-lg font-bold text-xs fancy-font flex-shrink-0 shadow-lg hover:from-yellow-400 hover:to-amber-500 transition-all">
-                    Go Premium
-                </button>
-            </div>
-        `;
+        return PREMIUM_RENDER.renderPremiumBannerHTML(message, this.isPremium);
     }
 
     showPremiumPurchaseModal() {
@@ -12562,7 +13752,7 @@ class GoalManager {
                         <div class="text-yellow-300 text-sm fancy-font">One-time purchase • Lifetime access</div>
                     </div>
                     
-                    <button onclick="goalManager.initiatePremiumPurchase()" 
+                    <button data-action="premium.purchase" 
                         class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-6 py-4 rounded-lg font-bold text-lg shadow-lg transition-all hover:scale-105 border-2 border-yellow-400 mb-3">
                         <i class="ri-shopping-cart-2-fill mr-2"></i> Purchase Premium
                     </button>
@@ -12602,6 +13792,11 @@ class GoalManager {
                 const result = await Billing.purchase({ productId: 'quest_journal_premium' });
                 if (result && result.success) {
                     this.onPremiumPurchaseSuccess(result.purchaseToken);
+                } else if (result && result.pending) {
+                    // Play Billing 8+ requires pending one-time products to be enabled, so a cash /
+                    // bank-transfer payment can settle the promise while still awaiting payment.
+                    // Entitlement is granted later, on the next restore or onPurchasesUpdated callback.
+                    this.showAchievement('⏳ Payment pending — premium unlocks once Google Play confirms it.', 'daily');
                 }
             } catch (error) {
                 console.error('[Billing] Native purchase error:', error);
@@ -12829,6 +14024,11 @@ class GoalManager {
                 goldCoins: this.goldCoins,
                 unlockedThemes: this.unlockedThemes,
                 currentTheme: this.currentTheme,
+                weeklyTrialPromptShown: this.weeklyTrialPromptShown,
+                weeklyTrialEndPromptShown: this.weeklyTrialEndPromptShown,
+                weeklyThemeCardDismissed: this.weeklyThemeCardDismissed,
+                lastFeaturedWeekTracked: this.lastFeaturedWeekTracked,
+                weeklyTrialApplyDates: this.weeklyTrialApplyDates,
                 unlockedTitles: this.unlockedTitles,
                 currentTitle: this.currentTitle,
                 treasureChests: this.treasureChests,
@@ -12836,19 +14036,32 @@ class GoalManager {
                 activeCompanionId: this.activeCompanionId,
                 spellbook: this.spellbook,
                 activeSpells: this.activeSpells,
+                classSchemaVersion: this.CLASS_SCHEMA_VERSION,
+                playerClass: this.playerClass,
+                classNodesUnlocked: this.classNodesUnlocked,
+                classCapstone: this.classCapstone,
+                skillPointsSpent: this.skillPointsSpent,
+                classSelectedAtLevel: this.classSelectedAtLevel,
+                subclass: this.subclass,
+                subclassNodesUnlocked: this.subclassNodesUnlocked,
                 activeQuestChains: this.activeQuestChains,
                 completedQuestChains: this.completedQuestChains,
                 focusCrystals: this.focusCrystals,
                 focusCrystalShards: this.focusCrystalShards,
+                repairableStreaks: this.repairableStreaks,
+                freeStreakRepairUsed: this.freeStreakRepairUsed,
                 totalFocusTime: this.totalFocusTime,
                 activeEnchantments: this.activeEnchantments,
                 focusEndTime: this.focusEndTime,
                 focusSessionLength: this.focusSessionLength,
+                deepWorkStack: this.deepWorkStack,
+                lastFocusSessionEndTime: this.lastFocusSessionEndTime,
                 pomodoroChain: this.pomodoroChain,
                 pomodoroChainSettings: this.pomodoroChainSettings,
                 timezone: this.timezone,
                 timezoneOffset: this.timezoneOffset,
                 tutorialCompleted: this.tutorialCompleted,
+                onboardingPath: this.onboardingPath,
                 isPremium: this.isPremium,
                 premiumPurchaseDate: this.premiumPurchaseDate,
                 premiumPurchaseToken: this.premiumPurchaseToken || null,
@@ -12859,6 +14072,8 @@ class GoalManager {
                 referralRewardClaimed: this.referralRewardClaimed,
                 referralsSent: this.referralsSent,
                 onboardingShareShown: this.onboardingShareShown,
+                firstTaskCreatedTracked: this.firstTaskCreatedTracked,
+                firstTaskCompletedTracked: this.firstTaskCompletedTracked,
                 reviewPromptCount: this.reviewPromptCount,
                 reviewPromptLastDate: this.reviewPromptLastDate,
                 reviewLeft: this.reviewLeft,
@@ -12871,6 +14086,15 @@ class GoalManager {
                 weeklyBoss: this.weeklyBoss,
                 monthlyBoss: this.monthlyBoss,
                 attackCharges: this.attackCharges,
+                rageComboCounter: this.rageComboCounter,
+                activeCompanionId2: this.activeCompanionId2,
+                rangerProtectionsUsedThisWeek: this.rangerProtectionsUsedThisWeek,
+                rangerProtectionResetWeek: this.rangerProtectionResetWeek,
+                guardianProtectionsUsedThisWeek: this.guardianProtectionsUsedThisWeek,
+                guardianProtectionResetWeek: this.guardianProtectionResetWeek,
+                freeCastUsedDate: this.freeCastUsedDate,
+                highPriorityTasksToday: this.highPriorityTasksToday,
+                highPriorityXpDate: this._highPriorityXpDate,
                 bossLog: this.bossLog,
                 defeatedBossList: this.defeatedBossList,
                 dailyBossStreak: this.dailyBossStreak,
@@ -12892,7 +14116,7 @@ class GoalManager {
                 completedChallenges: this.completedChallenges,
                 accountCreatedDate: this.accountCreatedDate,
                 exportDate: new Date().toISOString(),
-                version: '2.7.1'
+                version: '3.0.0'
             };
             
             const dataStr = JSON.stringify(data, null, 2);
@@ -13077,19 +14301,34 @@ class GoalManager {
                     this.activeCompanionId = data.activeCompanionId || this.activeCompanionId;
                     this.spellbook = arr(data.spellbook, this.spellbook);
                     this.activeSpells = arr(data.activeSpells, this.activeSpells);
+                    this.playerClass = data.playerClass ?? this.playerClass;
+                    this.classNodesUnlocked = data.classNodesUnlocked ?? this.classNodesUnlocked;
+                    this.classCapstone = data.classCapstone ?? this.classCapstone;
+                    this.skillPointsSpent = data.skillPointsSpent ?? this.skillPointsSpent;
+                    this.classSelectedAtLevel = data.classSelectedAtLevel ?? this.classSelectedAtLevel;
+                    this.subclass = data.subclass ?? this.subclass;
+                    this.subclassNodesUnlocked = data.subclassNodesUnlocked ?? this.subclassNodesUnlocked;
                     this.activeQuestChains = arr(data.activeQuestChains, this.activeQuestChains);
                     this.completedQuestChains = arr(data.completedQuestChains, this.completedQuestChains);
                     this.focusCrystals = data.focusCrystals ?? this.focusCrystals;
                     this.focusCrystalShards = data.focusCrystalShards ?? this.focusCrystalShards;
+                    this.repairableStreaks = arr(data.repairableStreaks, this.repairableStreaks);
+                    this.freeStreakRepairUsed = data.freeStreakRepairUsed ?? this.freeStreakRepairUsed;
                     this.totalFocusTime = data.totalFocusTime ?? this.totalFocusTime;
+                    this.highPriorityTasksToday = data.highPriorityTasksToday ?? this.highPriorityTasksToday;
+                    this._highPriorityXpDate = data.highPriorityXpDate ?? this._highPriorityXpDate;
                     this.activeEnchantments = data.activeEnchantments || this.activeEnchantments;
                     this.focusEndTime = data.focusEndTime || null;
                     this.focusSessionLength = data.focusSessionLength ?? this.focusSessionLength;
+                    this.deepWorkStack = data.deepWorkStack ?? this.deepWorkStack;
+                    this.lastFocusSessionEndTime = data.lastFocusSessionEndTime ?? this.lastFocusSessionEndTime;
                     this.pomodoroChain = data.pomodoroChain || null;
                     if (data.pomodoroChainSettings) this.pomodoroChainSettings = data.pomodoroChainSettings;
                     this.timezone = data.timezone || this.timezone;
                     this.timezoneOffset = data.timezoneOffset ?? this.timezoneOffset;
                     this.tutorialCompleted = data.tutorialCompleted || this.tutorialCompleted;
+                    this.onboardingPath = data.onboardingPath || this.onboardingPath;
+                    this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(this.onboardingPath);
                     this.isPremium = data.isPremium || this.isPremium;
                     this.premiumPurchaseDate = data.premiumPurchaseDate || this.premiumPurchaseDate;
                     this.premiumPurchaseToken = data.premiumPurchaseToken || this.premiumPurchaseToken;
@@ -13100,6 +14339,8 @@ class GoalManager {
                     this.referralRewardClaimed = data.referralRewardClaimed || this.referralRewardClaimed;
                     this.referralsSent = data.referralsSent ?? this.referralsSent;
                     this.onboardingShareShown = data.onboardingShareShown ?? this.onboardingShareShown;
+                    this.firstTaskCreatedTracked = data.firstTaskCreatedTracked ?? this.firstTaskCreatedTracked;
+                    this.firstTaskCompletedTracked = data.firstTaskCompletedTracked ?? this.firstTaskCompletedTracked;
                     this.reviewPromptCount = data.reviewPromptCount ?? this.reviewPromptCount;
                     this.reviewPromptLastDate = data.reviewPromptLastDate || this.reviewPromptLastDate;
                     this.reviewLeft = data.reviewLeft ?? this.reviewLeft;
@@ -13121,6 +14362,12 @@ class GoalManager {
                     this.weeklyBoss = data.weeklyBoss || this.weeklyBoss;
                     this.monthlyBoss = data.monthlyBoss || this.monthlyBoss;
                     this.attackCharges = data.attackCharges ?? this.attackCharges;
+                    this.rageComboCounter = data.rageComboCounter ?? this.rageComboCounter;
+                    this.activeCompanionId2 = data.activeCompanionId2 ?? this.activeCompanionId2;
+                    this.rangerProtectionsUsedThisWeek = data.rangerProtectionsUsedThisWeek ?? this.rangerProtectionsUsedThisWeek;
+                    this.rangerProtectionResetWeek = data.rangerProtectionResetWeek ?? this.rangerProtectionResetWeek;
+                    this.guardianProtectionsUsedThisWeek = data.guardianProtectionsUsedThisWeek ?? this.guardianProtectionsUsedThisWeek;
+                    this.guardianProtectionResetWeek = data.guardianProtectionResetWeek ?? this.guardianProtectionResetWeek;
                     this.bossLog = data.bossLog || this.bossLog;
                     this.defeatedBossList = data.defeatedBossList || this.defeatedBossList;
                     this.dailyBossStreak = data.dailyBossStreak ?? this.dailyBossStreak;
@@ -13197,77 +14444,38 @@ class GoalManager {
 
     _deleteAllDataFinalCheck() {
         this.showPrompt('To confirm deletion, type DELETE below:', 'DELETE', () => {
-            // Clear all app data from localStorage
-            localStorage.removeItem('lifeOrganizeData');
-            localStorage.removeItem('lifeOrganizeData_pre_import_backup');
-            localStorage.removeItem('audioEnabled');
-            localStorage.removeItem('audioVolume');
-            localStorage.removeItem('questTheme');
-            localStorage.removeItem('reminderSettings');
-            localStorage.removeItem('remindersSentToday');
-            localStorage.removeItem('notificationsConfirmedWorking');
-            localStorage.removeItem('notificationPromptDismissed');
-            localStorage.removeItem('mobileNavCollapsed');
-            // Remove any timestamped corruption backups
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('lifeOrganizeData_backup_')) {
-                    localStorage.removeItem(key);
-                }
-            });
-
-            // Reload the app fresh
-            window.location.reload();
+            this._wipeAllLocalData();
+            this._reloadApp();
         }, () => {
             this.showAchievement('Data deletion cancelled.', 'daily');
         });
     }
 
+    // Destructive: wipes EVERY localStorage key for this origin. We use
+    // localStorage.clear() rather than an explicit remove-list because the
+    // old list silently went stale — it missed `lifeOrganizeData_backup` (the
+    // single corruption backup; the cleanup loop only matched the timestamped
+    // `..._backup_` keys), plus `lastSeenChangelogVersion` and
+    // `day2NotificationScheduled`. So "Delete All Data" left copies of the
+    // user's data + state behind. localStorage is per-origin, so clear() only
+    // ever touches this app's keys and can never go stale as new keys are
+    // added. Extracted from the delete flow so the wipe is unit-testable
+    // without the page reload that follows it in normal use.
+    _wipeAllLocalData() {
+        localStorage.clear();
+    }
+
+    // Thin seam over the browser reload so the delete flow stays testable
+    // (jsdom doesn't implement navigation).
+    _reloadApp() {
+        window.location.reload();
+    }
+
     renderSideQuestCard(quest, color) {
-        const priorityIcons = {
-            high: '⚡',
-            medium: '⭐',
-            low: '💫'
-        };
-        
-        return `
-            <div class="quest-card goal-item bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700 hover:shadow-2xl transition-all draggable-item"
-                data-side-quest-id="${quest.id}"
-                draggable="true"
-                ondragstart="goalManager.handleDragStart('side', ${quest.id}, event)"
-                ondragend="goalManager.handleDragEnd(event)"
-                ondragover="goalManager.handleDragOver(event)"
-                ondragenter="goalManager.handleDragEnter(event)"
-                ondragleave="goalManager.handleDragLeave(event)"
-                ondrop="goalManager.handleDrop('side', ${quest.id}, event)">
-                <div class="flex items-start space-x-4">
-                    <i class="ri-draggable drag-handle text-${color}-400 mr-1"></i>
-                    <input 
-                        type="checkbox" 
-                        ${quest.completed ? 'checked' : ''} 
-                        onchange="goalManager.toggleSideQuest(${quest.id})">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-lg">${priorityIcons[quest.priority]}</span>
-                            <h4 class="font-bold text-lg text-amber-300 medieval-title ${quest.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(quest.title)}</h4>
-                        </div>
-                        ${quest.description ? `<p class="text-sm text-${color}-100 mb-2 fancy-font italic">${this.escapeHTML(quest.description)}</p>` : ''}
-                        <div class="flex items-center gap-2 text-xs text-${color}-200">
-                            <span class="bg-${color}-800/50 px-2 py-1 rounded fancy-font capitalize">${quest.priority} Priority</span>
-                            <span class="fancy-font">Added: ${new Date(quest.created).toLocaleDateString()}</span>
-                        </div>
-                        ${this.renderChecklistHTML(quest, 'sidequest')}
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button onclick="goalManager.editGoal('side', ${quest.id})" class="text-blue-400 hover:text-blue-200 text-xl" title="Edit quest" aria-label="Edit side quest">
-                            <i class="ri-edit-line" aria-hidden="true"></i>
-                        </button>
-                        <button onclick="goalManager.deleteGoal('side', ${quest.id})" class="text-red-400 hover:text-red-200 text-xl" title="Delete quest" aria-label="Delete side quest">
-                            <i class="ri-delete-bin-line" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
+        return TASK_RENDER.renderSideQuestCardHTML(quest, color, {
+            escapeHTML: (s) => this.escapeHTML(s),
+            isBountyTarget: (type, id) => this.isBountyTarget(type, id),
+        });
     }
 
     updateProgress() {
@@ -13389,18 +14597,7 @@ class GoalManager {
             dayElement.setAttribute('data-date', dateString);
             dayElement.onclick = () => this.selectDate(dateString);
             
-            dayElement.innerHTML = `
-                <div class="text-center">
-                    <div class="text-lg font-bold ${isToday ? 'text-white' : 'text-amber-200'}">${day}</div>
-                    ${totalTasks > 0 ? `
-                        <div class="mt-1">
-                            <div class="text-xs ${isToday ? 'text-amber-100' : 'text-amber-300'} font-semibold">
-                                ${completedTasks}/${totalTasks} ⚔️
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
+            dayElement.innerHTML = CALENDAR_RENDER.renderCalendarDayHTML({ day, isToday, completedTasks, totalTasks });
             
             calendarDays.appendChild(dayElement);
         }
@@ -13429,51 +14626,21 @@ class GoalManager {
         
         if (tasksForDay.length === 0) {
             // v2.7 — illustrated empty-state with date-bound CTA. The
-            // ctaOnclick threads the selected `dateString` through so the
-            // new quest lands on the day the user is viewing rather than
-            // defaulting to today.
+            // ctaData threads the selected `dateString` through (as a
+            // data-date attribute) so the delegated handler lands the new
+            // quest on the day the user is viewing rather than today.
             container.innerHTML = this._renderEmptyState({
                 icon: '🗓️',
                 title: 'A Clear Day',
                 body: 'No quests scheduled for this date yet. Plan ahead and forge your path.',
                 ctaLabel: 'Add Quest',
                 ctaIcon: 'ri-add-line',
-                ctaOnclick: `addDailyTask(null, '${dateString}')`,
+                ctaAction: 'task.addDaily',
+                ctaData: { date: dateString },
                 btnExtraClass: 'btn-ripple'
             });
         } else {
-            container.innerHTML = tasksForDay.map(task => `
-                <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg shadow-lg border-2 border-amber-700/50 task-item hover:shadow-xl transition-all">
-                    <div class="flex items-center">
-                        <input 
-                            type="checkbox" 
-                            ${task.completed ? 'checked' : ''} 
-                            onchange="goalManager.toggleTask(${task.id}, event)">
-                        <span class="ml-4 flex-1 text-lg font-semibold fancy-font ${task.completed ? 'line-through text-amber-600 opacity-60' : 'text-amber-100'}">${this.escapeHTML(task.title)}</span>
-                        <button onclick="goalManager.deleteGoal('daily', ${task.id})" class="text-red-400 hover:text-red-200 text-xl">
-                            <i class="ri-delete-bin-line"></i>
-                        </button>
-                    </div>
-                    ${task.description ? `<p class="text-sm text-amber-200/70 mt-2 ml-8 fancy-font italic">${this.escapeHTML(task.description)}</p>` : ''}
-                    ${task.checklist && task.checklist.length > 0 ? `
-                        <div class="ml-8 mt-2 space-y-1">
-                            ${task.checklist.map((item, i) => `
-                                <div class="flex items-center gap-2 text-sm text-amber-200/80">
-                                    <span>${item.completed ? '☑' : '☐'}</span>
-                                    <span class="${item.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(item.text)}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('') + `
-                <div class="text-center mt-4">
-                    <button onclick="goalManager.addDailyTask(null, '${dateString}')" 
-                        class="btn-ripple bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all fancy-font">
-                        <i class="ri-add-line mr-2"></i>Add Another Quest
-                    </button>
-                </div>
-            `;
+            container.innerHTML = CALENDAR_RENDER.renderCalendarTasksHTML({ tasksForDay, dateString, escapeHTML: (s) => this.escapeHTML(s) });
         }
     }
 
@@ -13569,16 +14736,16 @@ class GoalManager {
         };
     }
 
-    // Get the ISO week number
+    // Get the ISO week number. Thin delegator: the math is pure and lives in
+    // period-summary-logic.js (Roadmap #1, 71st slice).
     getWeekNumber(date) {
-        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-        const dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return PERIOD_SUMMARY_LOGIC.isoWeekNumber(date);
     }
 
-    // Check for period transitions (new week/month/year)
+    // Check for period transitions (new week/month/year).
+    // Thin wrapper: the detection + priority pick are pure and live in period-summary-logic.js
+    // (Roadmap #1, 71st slice). This method keeps only the impure parts — reading "today", the
+    // first-time-user guard, showing the slideshow, and writing/persisting the tracking fields.
     checkPeriodTransitions() {
         // Don't show for first-time users
         if (!this.tutorialCompleted && this.lastVisitDate === null) {
@@ -13589,33 +14756,23 @@ class GoalManager {
         // Use timezone-aware date for consistency with rest of app
         const todayString = this.getTodayDateString();
         const today = new Date(todayString + 'T12:00:00'); // Use noon to avoid timezone edge cases
-        const currentWeek = this.getWeekNumber(today);
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
 
-        const transitions = [];
+        const transitions = PERIOD_SUMMARY_LOGIC.detectTransitions(
+            {
+                lastWeekNumber: this.lastWeekNumber,
+                lastMonth: this.lastMonth,
+                lastYear: this.lastYear
+            },
+            {
+                currentWeek: PERIOD_SUMMARY_LOGIC.isoWeekNumber(today),
+                currentMonth: today.getMonth(),
+                currentYear: today.getFullYear()
+            }
+        );
 
-        // Check for year transition
-        if (this.lastYear !== null && this.lastYear < currentYear) {
-            transitions.push('year');
-        }
-        
-        // Check for month transition
-        if (this.lastMonth !== null && (this.lastMonth !== currentMonth || this.lastYear !== currentYear)) {
-            transitions.push('month');
-        }
-        
-        // Check for week transition
-        if (this.lastWeekNumber !== null && (this.lastWeekNumber !== currentWeek || this.lastYear !== currentYear)) {
-            transitions.push('week');
-        }
-
-        // Show slideshow for the most significant transition
+        // Show slideshow for the most significant transition (year > month > week)
         if (transitions.length > 0) {
-            // Prioritize: year > month > week
-            const priority = ['year', 'month', 'week'];
-            const mainTransition = priority.find(p => transitions.includes(p));
-            this.showPeriodTransitionSlideshow(mainTransition, transitions);
+            this.showPeriodTransitionSlideshow(PERIOD_SUMMARY_LOGIC.mainTransition(transitions), transitions);
         }
 
         // Update tracking
@@ -13626,115 +14783,36 @@ class GoalManager {
         // Use timezone-aware date for consistency
         const todayString = this.getTodayDateString();
         const today = new Date(todayString + 'T12:00:00');
-        this.lastVisitDate = todayString;
-        this.lastWeekNumber = this.getWeekNumber(today);
-        this.lastMonth = today.getMonth();
-        this.lastYear = today.getFullYear();
+        const stamp = PERIOD_SUMMARY_LOGIC.periodStamp(todayString, today);
+        this.lastVisitDate = stamp.lastVisitDate;
+        this.lastWeekNumber = stamp.lastWeekNumber;
+        this.lastMonth = stamp.lastMonth;
+        this.lastYear = stamp.lastYear;
         this.saveData();
     }
 
-    // Generate previous period summary (for transition slideshow)
+    // Generate previous period summary (for transition slideshow).
+    // Thin wrapper: the date ranges, stat blocks, habit count and XP estimate are pure and live in
+    // period-summary-logic.js (Roadmap #1, 70th slice). This method keeps only the impure parts —
+    // reading "today", picking the goal array off the instance, and the timezone-aware date formatter.
     generatePreviousPeriodSummary(period) {
         // Use noon to avoid timezone edge cases when parsing date string
         const today = new Date(this.getTodayDateString() + 'T12:00:00');
-        let startDate, endDate, periodName;
-        
-        if (period === 'week') {
-            // Get last week (Monday to Sunday)
-            const dayOfWeek = today.getDay();
-            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            // This Monday
-            const thisMonday = new Date(today);
-            thisMonday.setDate(today.getDate() - daysFromMonday);
-            // Last week's Monday and Sunday
-            startDate = new Date(thisMonday);
-            startDate.setDate(thisMonday.getDate() - 7);
-            endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 6);
-            periodName = 'Last Week';
-        } else if (period === 'month') {
-            // Get last month
-            startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            endDate = new Date(today.getFullYear(), today.getMonth(), 0);
-            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                               'July', 'August', 'September', 'October', 'November', 'December'];
-            periodName = monthNames[startDate.getMonth()] + ' ' + startDate.getFullYear();
-        } else if (period === 'year') {
-            // Get last year
-            startDate = new Date(today.getFullYear() - 1, 0, 1);
-            endDate = new Date(today.getFullYear() - 1, 11, 31);
-            periodName = (today.getFullYear() - 1).toString();
-        }
-        
-        const startISO = this.dateToLocalString(startDate);
-        const endISO = this.dateToLocalString(endDate);
-        
-        // Format dates for display
-        const formatDate = (d) => {
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const year = d.getFullYear();
-            return `${month}/${day}/${year}`;
-        };
-        
-        // Calculate stats for daily tasks in that period
-        const periodTasks = this.dailyTasks.filter(t => t.dueDate >= startISO && t.dueDate <= endISO);
-        const completedTasks = periodTasks.filter(t => t.completed);
-        const incompleteTasks = periodTasks.filter(t => !t.completed);
-        
-        // Calculate habit completions in the period from completion history
-        const habitsCompleted = this.habits.reduce((total, h) => {
-            if (!h.completionHistory) return total;
-            return total + h.completionHistory.filter(d => d >= startISO && d <= endISO).length;
-        }, 0);
-        
-        // Calculate goals
-        let periodGoals = [];
-        let completedGoals = [];
-        let incompleteGoals = [];
-        
-        if (period === 'week') {
-            periodGoals = this.weeklyGoals;
-            completedGoals = this.weeklyGoals.filter(g => g.completed);
-            incompleteGoals = this.weeklyGoals.filter(g => !g.completed);
-        } else if (period === 'month') {
-            periodGoals = this.monthlyGoals;
-            completedGoals = this.monthlyGoals.filter(g => g.completed);
-            incompleteGoals = this.monthlyGoals.filter(g => !g.completed);
-        } else if (period === 'year') {
-            periodGoals = this.yearlyGoals;
-            completedGoals = this.yearlyGoals.filter(g => g.completed);
-            incompleteGoals = this.yearlyGoals.filter(g => !g.completed);
-        }
-        
-        const xpPerTask = 10;
-        const xpPerGoal = period === 'week' ? 50 : period === 'month' ? 200 : 1000;
-        const totalXP = (completedTasks.length * xpPerTask) + (completedGoals.length * xpPerGoal);
-        
-        return {
+
+        // Goal array by period; an unrecognised period yields [] exactly as before.
+        const periodGoals = period === 'week' ? this.weeklyGoals
+            : period === 'month' ? this.monthlyGoals
+            : period === 'year' ? this.yearlyGoals
+            : [];
+
+        return PERIOD_SUMMARY_LOGIC.summarize({
             period,
-            periodName,
-            startDate: formatDate(startDate),
-            endDate: formatDate(endDate),
-            endDateISO: endISO,
-            tasks: {
-                total: periodTasks.length,
-                completed: completedTasks.length,
-                incomplete: incompleteTasks,
-                completionRate: periodTasks.length > 0 ? Math.round((completedTasks.length / periodTasks.length) * 100) : 0
-            },
-            goals: {
-                total: periodGoals.length,
-                completed: completedGoals.length,
-                incomplete: incompleteGoals,
-                completionRate: periodGoals.length > 0 ? Math.round((completedGoals.length / periodGoals.length) * 100) : 0
-            },
-            habits: {
-                total: this.habits.length,
-                completions: habitsCompleted
-            },
-            xpEarned: totalXP
-        };
+            today,
+            dateToLocalString: (d) => this.dateToLocalString(d),
+            dailyTasks: this.dailyTasks,
+            habits: this.habits,
+            periodGoals
+        });
     }
 
     // Animated Period Transition Slideshow
@@ -13813,11 +14891,11 @@ class GoalManager {
                     ${summary.goals.incomplete.length > 0 ? `
                     <p class="text-orange-200 mb-4"><i class="${config.icon} mr-2"></i>${summary.goals.incomplete.length} incomplete ${mainPeriod}ly goal${summary.goals.incomplete.length !== 1 ? 's' : ''}</p>
                     ` : ''}
-                    <button onclick="goalManager.rolloverFromSlideshow('${mainPeriod}', '${summary.endDateISO}'); goalManager.nextSlide();" 
+                    <button data-action="slideshow.rolloverNext" data-period="${mainPeriod}" data-end="${summary.endDateISO}" 
                         class="w-full bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font mb-2">
                         <i class="ri-arrow-right-line mr-2"></i>Move to ${nextPeriodLabel}
                     </button>
-                    <button onclick="goalManager.nextSlide();" 
+                    <button data-action="slideshow.next" 
                         class="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg transition-all fancy-font text-sm">
                         Skip - Leave as is
                     </button>
@@ -13830,7 +14908,7 @@ class GoalManager {
                 </div>
                 `}
                 ${mainPeriod === 'week' ? `
-                <button onclick="goalManager.closeSlideshow(); goalManager.showWeeklyRecapPreview();" 
+                <button data-action="slideshow.shareWeekly" 
                     class="w-full bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font mb-3 border-2 border-green-500">
                     <i class="ri-share-line mr-2"></i>Share Weekly Recap
                 </button>
@@ -13861,7 +14939,7 @@ class GoalManager {
                 <!-- Navigation -->
                 <div class="bg-black/30 p-4 border-t-2 ${config.border}">
                     <div class="flex justify-between items-center">
-                        <button id="prev-slide-btn" onclick="goalManager.prevSlide()" 
+                        <button id="prev-slide-btn" data-action="slideshow.prev" 
                             class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold transition-all opacity-50 pointer-events-none">
                             <i class="ri-arrow-left-line mr-1"></i>Back
                         </button>
@@ -13871,7 +14949,7 @@ class GoalManager {
                             ${slides.map((_, i) => `<div class="slide-dot w-3 h-3 rounded-full ${i === 0 ? 'bg-amber-400' : 'bg-gray-600'} transition-all"></div>`).join('')}
                         </div>
                         
-                        <button id="next-slide-btn" onclick="goalManager.nextSlide()" 
+                        <button id="next-slide-btn" data-action="slideshow.next" 
                             class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-bold transition-all">
                             Next<i class="ri-arrow-right-line ml-1"></i>
                         </button>
@@ -13989,12 +15067,12 @@ class GoalManager {
                         
                         <!-- Stats Grid -->
                         <div class="grid grid-cols-2 gap-4 mb-6">
-                            <div onclick="event.stopPropagation(); goalManager.switchView('daily'); this.closest('.fixed').remove();" class="bg-blue-900/40 p-4 rounded-lg border-2 border-blue-600 cursor-pointer hover:bg-blue-800/50 hover:border-blue-500 transition-all">
+                            <div data-action="recap.gotoView" data-view="daily" class="bg-blue-900/40 p-4 rounded-lg border-2 border-blue-600 cursor-pointer hover:bg-blue-800/50 hover:border-blue-500 transition-all">
                                 <div class="text-4xl font-bold text-blue-300 medieval-title pointer-events-none">${summary.tasks.completed}/${summary.tasks.total}</div>
                                 <div class="text-blue-200 fancy-font pointer-events-none">Daily Tasks</div>
                                 <div class="text-blue-100 text-sm mt-2 pointer-events-none">${summary.tasks.completionRate}% Complete</div>
                             </div>
-                            <div onclick="event.stopPropagation(); goalManager.switchView('${period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly'}'); this.closest('.fixed').remove();" class="bg-green-900/40 p-4 rounded-lg border-2 border-green-600 cursor-pointer hover:bg-green-800/50 hover:border-green-500 transition-all">
+                            <div data-action="recap.gotoView" data-view="${period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly'}" class="bg-green-900/40 p-4 rounded-lg border-2 border-green-600 cursor-pointer hover:bg-green-800/50 hover:border-green-500 transition-all">
                                 <div class="text-4xl font-bold text-green-300 medieval-title pointer-events-none">${summary.goals.completed}/${summary.goals.total}</div>
                                 <div class="text-green-200 fancy-font pointer-events-none">${period.charAt(0).toUpperCase() + period.slice(1)}ly Goals</div>
                                 <div class="text-green-100 text-sm mt-2 pointer-events-none">${summary.goals.completionRate}% Complete</div>
@@ -14016,7 +15094,7 @@ class GoalManager {
                                 ${summary.goals.incomplete.length > 0 ? `
                                     <p class="text-orange-200 mb-3">${summary.goals.incomplete.length} ${period}ly goal${summary.goals.incomplete.length !== 1 ? 's' : ''}</p>
                                 ` : ''}
-                                <button onclick="goalManager.rolloverIncompleteTasks('${period}', '${summary.endDateISO}'); this.closest('.fixed').remove();" 
+                                <button data-action="recap.rollover" data-period="${period}" data-end="${summary.endDateISO}" 
                                     class="w-full bg-orange-700 hover:bg-orange-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font">
                                     ➡️ Move to Next ${period.charAt(0).toUpperCase() + period.slice(1)}
                                 </button>
@@ -14030,7 +15108,7 @@ class GoalManager {
                         `}
                         
                         ${period === 'week' ? `
-                        <button onclick="this.closest('.fixed').remove(); goalManager.showWeeklyRecapPreview();" 
+                        <button data-action="recap.shareWeekly" 
                             class="w-full bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font mb-2 border-2 border-green-500">
                             <i class="ri-share-line mr-2"></i>Share Weekly Recap
                         </button>
@@ -14170,7 +15248,7 @@ class GoalManager {
                         }).join('')}
                     </div>
                     
-                    <button onclick="document.getElementById('connection-modal').remove(); goalManager.render();" 
+                    <button data-action="connections.done" 
                         class="w-full bg-amber-700 hover:bg-amber-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg transition-all fancy-font">
                         Done
                     </button>
@@ -14250,7 +15328,7 @@ class GoalManager {
                         <div class="text-6xl mb-4">📊</div>
                         <h3 class="text-xl font-bold text-emerald-300 medieval-title mb-2">Activity Heatmap</h3>
                         <p class="text-emerald-200/70 text-sm mb-4 fancy-font">See your daily activity patterns</p>
-                        <button onclick="goalManager.showPremiumPurchaseModal()" 
+                        <button data-action="premium.showModal" 
                             class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black px-4 py-2 rounded-lg font-bold shadow-lg transition-all hover:scale-105 border-2 border-yellow-400 text-sm">
                             <i class="ri-vip-crown-2-fill mr-1"></i> Premium
                         </button>
@@ -14335,53 +15413,45 @@ class GoalManager {
         const todayStr = this.getTodayDateString();
         const weeksToShow = 12;
         
-        // Create completion data map
+        // Create completion data map. Key by the SAME canonical YYYY-MM-DD
+        // pipeline the cell lookup below uses (`new Date(dueDate+'T12:00:00')`
+        // → dateToLocalString). Keying by the raw `task.dueDate` here while
+        // looking up by `dateToLocalString` silently dropped any task whose
+        // stored dueDate wasn't already byte-identical canonical form (legacy
+        // ISO timestamps / TZ-normalized strings) — the same bucket-key bug
+        // already fixed in renderXPTimeline.
         const completionData = {};
         this.dailyTasks.filter(t => t.completed).forEach(task => {
-            const date = task.dueDate;
-            completionData[date] = (completionData[date] || 0) + 1;
+            if (!task.dueDate) return;
+            const parsed = new Date(task.dueDate + 'T12:00:00');
+            if (isNaN(parsed.getTime())) {
+                completionData[task.dueDate] = (completionData[task.dueDate] || 0) + 1;
+                return;
+            }
+            const key = this.dateToLocalString(parsed);
+            completionData[key] = (completionData[key] || 0) + 1;
         });
         
-        // Find the Sunday that starts the oldest week
-        const startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - (weeksToShow * 7 - 1) - today.getDay());
+        // Calendar-aligned start: the Sunday that begins the oldest visible
+        // week (grid ends on THIS week's Saturday so today is always shown).
+        const startDate = this._heatmapStartSunday(weeksToShow, today);
         
-        let html = '<div class="flex flex-col gap-1">';
-        
-        // Day labels at top
-        html += '<div class="flex gap-1 mb-1">';
-        ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
-            html += `<div class="text-xs text-amber-300 text-center" style="flex:1;">${day}</div>`;
-        });
-        html += '</div>';
-        
-        // Week rows (oldest at top, newest at bottom)
+        // Precompute the week/day cell matrix — all date math + the completion lookup stay here;
+        // the pure builder (ANALYTICS_RENDER) just paints the cells and owns the colour thresholds.
+        const weeks = [];
         for (let w = 0; w < weeksToShow; w++) {
-            html += '<div class="flex gap-1">';
+            const week = [];
             for (let d = 0; d < 7; d++) {
                 const date = new Date(startDate);
                 date.setDate(date.getDate() + w * 7 + d);
                 const dateStr = this.dateToLocalString(date);
-                
-                if (dateStr > todayStr) {
-                    html += '<div class="rounded border border-stone-700/30" style="flex:1;aspect-ratio:1;max-height:28px;opacity:0.15;"></div>';
-                } else {
-                    const count = completionData[dateStr] || 0;
-                    let color = 'bg-stone-700';
-                    if (count > 0) color = 'bg-green-900';
-                    if (count > 2) color = 'bg-green-700';
-                    if (count > 5) color = 'bg-green-500';
-                    if (count > 10) color = 'bg-green-300';
-                    
-                    html += `<div class="${color} rounded border border-stone-600 hover:border-amber-500 transition-all cursor-pointer" 
-                                 style="flex:1;aspect-ratio:1;max-height:28px;" title="${dateStr}: ${count} tasks"></div>`;
-                }
+                const isFuture = dateStr > todayStr;
+                week.push({ dateStr, count: isFuture ? 0 : (completionData[dateStr] || 0), isFuture });
             }
-            html += '</div>';
+            weeks.push(week);
         }
-        html += '</div>';
-        
-        container.innerHTML = html;
+
+        container.innerHTML = ANALYTICS_RENDER.renderActivityHeatmapHTML(weeks);
     }
 
     renderXPTimeline() {
@@ -14430,54 +15500,18 @@ class GoalManager {
             dailyCount[key] = (dailyCount[key] || 0) + 1;
         });
 
-        const totalInWindow = Object.keys(dailyCount).reduce((sum, key) => {
-            // Only count keys that fall inside the visible 30-day window
-            // so the empty-state below is honest about *visible* data.
-            const cutoff = new Date(today);
-            cutoff.setDate(cutoff.getDate() - (days - 1));
-            const cutoffStr = this.dateToLocalString(cutoff);
-            return key >= cutoffStr ? sum + dailyCount[key] : sum;
-        }, 0);
-
-        if (totalInWindow === 0) {
-            container.innerHTML = '<div class="flex items-center justify-center h-full text-amber-300 fancy-font text-sm text-center px-4">Complete daily quests to see your XP timeline fill in over the last 30 days.</div>';
-            return;
-        }
-
-        const maxCount = Math.max(...Object.values(dailyCount), 1);
-
-        // v2.7 layout fix — same auto-height-parent bug as the Productivity
-        // Pattern chart had: the bar's `height: X%` was resolving against
-        // a parent flex column whose height was determined by its content
-        // (`flex flex-col items-center` with no `h-full`), so the
-        // percentage collapsed to 0px and no bars rendered. Each column
-        // now declares `h-full` and the bar lives inside a `flex-1`
-        // wrapper that consumes the remaining vertical space, giving
-        // the bar a concrete pixel basis for its percentage height.
-        let html = '<div class="flex items-stretch justify-between h-full gap-1">';
-
+        // Precompute the 30-day bar array (oldest→newest) — the date math + completion lookup stay
+        // here; the pure builder derives the bar scale (max, floored at 1) + the empty-state.
+        const bars = [];
         for (let i = days - 1; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
             const dateStr = this.dateToLocalString(date);
-            const count = dailyCount[dateStr] || 0;
-            const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
             const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
-
-            html += `
-                <div class="flex-1 flex flex-col items-center h-full group">
-                    <div class="flex-1 w-full flex items-end min-h-0">
-                        <div class="w-full bg-gradient-to-t from-purple-600 to-purple-400 rounded-t transition-all hover:from-purple-500 hover:to-purple-300"
-                             style="height: ${height}%"
-                             title="${dateStr}: ${count} task${count === 1 ? '' : 's'} completed"></div>
-                    </div>
-                    <div class="text-xs text-amber-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">${dayName[0]}</div>
-                </div>
-            `;
+            bars.push({ dateStr, count: dailyCount[dateStr] || 0, dayLetter: dayName[0] });
         }
 
-        html += '</div>';
-        container.innerHTML = html;
+        container.innerHTML = ANALYTICS_RENDER.renderXPTimelineHTML(bars);
     }
 
     renderTaskBreakdown() {
@@ -14493,50 +15527,7 @@ class GoalManager {
             side: this.sideQuests.filter(q => q.completed).length
         };
         
-        const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
-        
-        if (total === 0) {
-            container.innerHTML = '<div class="text-center text-amber-300 py-12 fancy-font">Complete some quests to see breakdown!</div>';
-            return;
-        }
-        
-        const colors = {
-            daily: { bg: 'bg-orange-500', text: 'Daily' },
-            weekly: { bg: 'bg-green-500', text: 'Weekly' },
-            monthly: { bg: 'bg-blue-500', text: 'Monthly' },
-            yearly: { bg: 'bg-purple-500', text: 'Yearly' },
-            life: { bg: 'bg-red-500', text: 'Life' },
-            side: { bg: 'bg-cyan-500', text: 'Side' }
-        };
-        
-        // v2.7 layout fix — previously the "count (percent%)" label sat
-        // INSIDE the colored fill (`justify-end px-3` + `overflow-hidden`
-        // on the track). At low percentages on a narrow viewport (e.g.,
-        // three categories each at 33.3% on a phone), the fill was too
-        // short to contain "1 (33.3%)" and the leading characters got
-        // clipped, leaving "3.3%)" jutting out the right edge. Moved the
-        // label OUT of the bar into its own fixed-width column so it
-        // never overflows regardless of bar width.
-        let html = '<div class="w-full flex flex-col gap-3">';
-
-        Object.entries(breakdown).forEach(([type, count]) => {
-            if (count > 0) {
-                const percent = ((count / total) * 100).toFixed(1);
-                html += `
-                    <div class="flex items-center gap-3">
-                        <div class="w-16 text-right text-amber-200 text-sm fancy-font shrink-0">${colors[type].text}</div>
-                        <div class="progress-bar flex-1 min-w-0 bg-stone-800 rounded-full h-6 overflow-hidden border border-amber-700/30">
-                            <div class="${colors[type].bg} h-full rounded-full transition-all duration-500"
-                                 style="width: ${percent}%"></div>
-                        </div>
-                        <div class="w-20 text-left text-amber-100 text-xs font-bold fancy-font shrink-0">${count} <span class="text-amber-300/70">(${percent}%)</span></div>
-                    </div>
-                `;
-            }
-        });
-
-        html += '</div>';
-        container.innerHTML = html;
+        container.innerHTML = ANALYTICS_RENDER.renderTaskBreakdownHTML(breakdown);
     }
 
     renderProductivityPattern() {
@@ -14561,65 +15552,45 @@ class GoalManager {
             dayCount[date.getDay()]++;
         });
         
-        const maxCount = Math.max(...dayCount, 1);
-        
-        // v2.7 layout fix — previous markup put the count label, bar, and
-        // day label as siblings inside an auto-height flex column, so
-        // `height: X%` on the bar resolved against an auto-height parent
-        // and collapsed to 0px in every browser. The bars never rendered
-        // even when there was real data (e.g., Saturday=1, others=0 still
-        // showed an empty chart). Now the column itself is `h-full`, the
-        // count + label rows are fixed-height, and the bar lives inside a
-        // `flex-1` wrapper that consumes the remaining vertical space —
-        // giving `height: X%` a concrete pixel basis to resolve against.
-        let html = '<div class="flex items-stretch justify-between h-full gap-2">';
+        container.innerHTML = ANALYTICS_RENDER.renderProductivityPatternHTML(dayCount);
+    }
 
-        dayCount.forEach((count, index) => {
-            const height = (count / maxCount) * 100;
-            const color = index === 0 || index === 6 ? 'from-blue-600 to-blue-400' : 'from-green-600 to-green-400';
-
-            html += `
-                <div class="flex-1 flex flex-col items-center h-full group">
-                    <div class="text-sm text-amber-300 mb-2 font-bold shrink-0">${count}</div>
-                    <div class="flex-1 w-full flex items-end min-h-0">
-                        <div class="w-full bg-gradient-to-t ${color} rounded-t transition-all hover:scale-105"
-                             style="height: ${height}%"
-                             title="${dayNames[index]}: ${count} tasks"></div>
-                    </div>
-                    <div class="text-xs text-amber-400 mt-2 shrink-0">${dayNames[index].slice(0, 3)}</div>
-                </div>
-            `;
-        });
-
-        html += '</div>';
-        container.innerHTML = html;
+    // Longest run of consecutive calendar days present in a completion history
+    // (array of YYYY-MM-DD). The source of truth is completionHistory itself,
+    // so this stays accurate even after a streak breaks — unlike the live
+    // `habit.streak` field, which resets to 0 on a miss. Used by the "Longest
+    // Streak" personal record. Parses at local noon to avoid UTC off-by-one.
+    _longestRunInHistory(history) {
+        if (!Array.isArray(history) || history.length === 0) return 0;
+        const days = [...new Set(history)].sort();   // unique, ascending (YYYY-MM-DD sorts lexically = chronologically)
+        let longest = 1, run = 1;
+        for (let i = 1; i < days.length; i++) {
+            const prev = new Date(days[i - 1] + 'T12:00:00');
+            const cur = new Date(days[i] + 'T12:00:00');
+            if (isNaN(prev.getTime()) || isNaN(cur.getTime())) { run = 1; continue; }
+            const gap = Math.round((cur - prev) / 86400000);
+            if (gap === 1) { run++; if (run > longest) longest = run; }
+            else if (gap !== 0) { run = 1; }         // gap>1 breaks the run; gap===0 (dup) ignored
+        }
+        return longest;
     }
 
     renderPersonalRecords() {
         const container = document.getElementById('personal-records');
         if (!container) return;
 
-        // v2.6.x analytics audit fix — the previous renderer built Tailwind
-        // class names by string interpolation (e.g.
-        // `from-${record.color}-900`). Even though the Play CDN's
-        // MutationObserver does re-scan injected markup, dynamic class
-        // strings are fragile against any future build-time PostCSS pass
-        // and surprise the next dev reading the file ("why is the orange
-        // card sometimes unstyled after a hot reload?"). Switched to a
-        // static lookup table so every concrete class string
-        // (`from-orange-900`, `text-orange-300`, etc.) appears as a literal
-        // somewhere in source. Same fix applied in
-        // `renderGoalsProgressOverview`.
-        const palette = {
-            orange: { gradient: 'from-orange-900 to-orange-950', border: 'border-orange-600', title: 'text-orange-300', sub: 'text-orange-200' },
-            purple: { gradient: 'from-purple-900 to-purple-950', border: 'border-purple-600', title: 'text-purple-300', sub: 'text-purple-200' },
-            blue: { gradient: 'from-blue-900 to-blue-950', border: 'border-blue-600', title: 'text-blue-300', sub: 'text-blue-200' },
-            green: { gradient: 'from-green-900 to-green-950', border: 'border-green-600', title: 'text-green-300', sub: 'text-green-200' },
-            yellow: { gradient: 'from-yellow-900 to-yellow-950', border: 'border-yellow-600', title: 'text-yellow-300', sub: 'text-yellow-200' },
-            red: { gradient: 'from-red-900 to-red-950', border: 'border-red-600', title: 'text-red-300', sub: 'text-red-200' }
-        };
-
-        const longestStreak = Math.max(...this.habits.map(h => h.longestStreak || h.streak || 0), 0);
+        // "Longest Streak" is a RECORD — it must never decrease when a streak
+        // breaks. The live `habit.streak` resets to 0 on a miss and
+        // `longestStreak` is never persisted, so the old `Math.max(streak)`
+        // actually surfaced the current best streak. Derive the true record
+        // from each habit's completionHistory (append-only source of truth),
+        // keeping the live streak / any persisted high-water mark as floors.
+        const longestStreak = this.habits.reduce((max, h) => Math.max(
+            max,
+            this._longestRunInHistory(h.completionHistory),
+            h.longestStreak || 0,
+            h.streak || 0
+        ), 0);
         const completedDates = this.dailyTasks.filter(t => t.completed).map(t => t.dueDate).filter(Boolean);
         const tasksPerDay = completedDates.reduce((acc, d) => { acc[d] = (acc[d] || 0) + 1; return acc; }, {});
         const mostTasksInDay = Object.values(tasksPerDay).reduce((max, c) => Math.max(max, c), 0);
@@ -14634,34 +15605,12 @@ class GoalManager {
             { icon: '🎁', label: 'Chests Opened', value: this.treasureChests.length, color: 'red' }
         ];
 
-        const html = records.map(record => {
-            const p = palette[record.color] || palette.orange;
-            return `
-            <div class="bg-gradient-to-br ${p.gradient} p-4 rounded-lg border-2 ${p.border} text-center">
-                <div class="text-3xl mb-2">${record.icon}</div>
-                <div class="text-2xl font-bold ${p.title} medieval-title">${record.value}</div>
-                <div class="text-xs ${p.sub} fancy-font mt-1">${record.label}</div>
-            </div>
-        `;
-        }).join('');
-
-        container.innerHTML = html;
+        container.innerHTML = ANALYTICS_RENDER.renderPersonalRecordsHTML(records);
     }
 
     renderGoalsProgressOverview() {
         const container = document.getElementById('goals-progress-overview');
         if (!container) return;
-
-        // v2.6.x analytics audit fix — static class lookup table per goal
-        // tier (see `renderPersonalRecords` for the full rationale on why
-        // dynamic Tailwind class interpolation was replaced with literal
-        // class strings).
-        const palette = {
-            Life:    { card: 'bg-red-900/30 border-red-700/50',       chip: 'bg-red-700/50 text-red-200',       pct: 'text-red-300',       track: 'bg-red-950 border-red-700',       fill: 'from-red-600 to-red-400' },
-            Yearly:  { card: 'bg-purple-900/30 border-purple-700/50', chip: 'bg-purple-700/50 text-purple-200', pct: 'text-purple-300', track: 'bg-purple-950 border-purple-700', fill: 'from-purple-600 to-purple-400' },
-            Monthly: { card: 'bg-blue-900/30 border-blue-700/50',     chip: 'bg-blue-700/50 text-blue-200',     pct: 'text-blue-300',     track: 'bg-blue-950 border-blue-700',     fill: 'from-blue-600 to-blue-400' },
-            Weekly:  { card: 'bg-green-900/30 border-green-700/50',   chip: 'bg-green-700/50 text-green-200',   pct: 'text-green-300',   track: 'bg-green-950 border-green-700',   fill: 'from-green-600 to-green-400' }
-        };
 
         const allGoals = [
             ...this.lifeGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Life' })),
@@ -14670,32 +15619,7 @@ class GoalManager {
             ...this.weeklyGoals.filter(g => !g.completed).map(g => ({ ...g, type: 'Weekly' }))
         ];
 
-        if (allGoals.length === 0) {
-            container.innerHTML = '<div class="text-center text-amber-300 py-8 fancy-font">All goals completed! Time to set new ones! 🎉</div>';
-            return;
-        }
-
-        const html = allGoals.map(goal => {
-            const progress = Math.max(0, Math.min(100, goal.progress || 0));
-            const p = palette[goal.type] || palette.Weekly;
-            return `
-                <div class="${p.card} border-2 rounded-lg p-4">
-                    <div class="flex items-center justify-between gap-3 mb-2">
-                        <div class="flex items-center gap-3 flex-1 min-w-0">
-                            <span class="text-xs ${p.chip} px-2 py-1 rounded fancy-font shrink-0">${goal.type}</span>
-                            <h4 class="text-lg font-bold text-amber-300 medieval-title break-words min-w-0">${this.escapeHTML(goal.title)}</h4>
-                        </div>
-                        <span class="${p.pct} font-bold shrink-0">${progress}%</span>
-                    </div>
-                    <div class="w-full ${p.track} rounded-full h-3 border">
-                        <div class="bg-gradient-to-r ${p.fill} h-3 rounded-full transition-all duration-500"
-                             style="width: ${progress}%"></div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        container.innerHTML = html;
+        container.innerHTML = ANALYTICS_RENDER.renderGoalsProgressOverviewHTML(allGoals, { escapeHTML: (s) => this.escapeHTML(s) });
     }
 
     // Boss Battles System (New: Auto-generated daily/weekly bosses)
@@ -14725,6 +15649,7 @@ class GoalManager {
         this.renderBossLog();
         this.renderDefeatedBosses();
         this.applyThemeToCards();
+        this._startBossTimerTicker();
     }
 
     renderBossArena() {
@@ -14754,180 +15679,40 @@ class GoalManager {
     
     renderMonthlyBossChallenge() {
         const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
-        const themes = this.bossThemes.monthly;
-        const seed = this.hashDateString(currentMonth);
-        const theme = themes[seed % themes.length];
-        const maxHP = 100 + this.level * 10;
+        // Preview the EXACT boss challengeMonthlyBoss() will summon so these numbers
+        // (HP / level / rewards) can't drift from the real thing (Engineering Roadmap
+        // #1, 13th slice — both now flow through BOSS_GENERATOR.buildBoss).
+        const preview = BOSS_GENERATOR.buildBoss({
+            cadence: 'monthly',
+            themes: this.bossThemes.monthly,
+            seedKey: currentMonth,
+            level: this.level
+        });
         
-        return `
-            <div class="bg-gradient-to-br from-red-950 via-purple-950 to-stone-950 p-6 rounded-xl border-2 border-red-500/70 shadow-2xl relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-t from-red-900/20 to-transparent animate-pulse pointer-events-none"></div>
-                <div class="relative z-10 text-center">
-                    <div class="text-6xl mb-3 animate-bounce">${theme.icon}</div>
-                    <div class="text-xs bg-red-700 text-white px-3 py-1 rounded inline-block fancy-font mb-2">MONTHLY CHAMPION</div>
-                    <h3 class="text-2xl font-bold text-red-300 medieval-title mb-2">${theme.name}</h3>
-                    <p class="text-sm text-amber-200/60 italic fancy-font mb-4">${theme.flavor}</p>
-                    <div class="flex items-center justify-center gap-4 mb-4 text-sm text-amber-300 fancy-font">
-                        <span>HP: ${maxHP}</span>
-                        <span>•</span>
-                        <span>Lv.${Math.max(1, this.level)}</span>
-                    </div>
-                    <div class="bg-stone-900/60 rounded-lg p-3 mb-4 border border-amber-700/30">
-                        <div class="text-xs text-amber-200/70 fancy-font mb-1">Champion Rewards</div>
-                        <div class="flex items-center justify-center gap-3 text-sm">
-                            <span class="text-yellow-300">${500 + Math.max(1, this.level) * 50} XP</span>
-                            <span class="text-amber-400">${400 + Math.max(1, this.level) * 40} Gold</span>
-                            <span class="text-purple-300">+ Bonus Loot</span>
-                        </div>
-                    </div>
-                    <button onclick="goalManager.challengeMonthlyBoss()" 
-                        class="bg-gradient-to-r from-red-600 via-purple-600 to-red-600 hover:from-red-500 hover:via-purple-500 hover:to-red-500 text-white px-8 py-4 rounded-xl font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400/50 text-lg animate-pulse">
-                        <i class="ri-skull-2-fill mr-2"></i>CHALLENGE THE CHAMPION!
-                    </button>
-                </div>
-            </div>
-        `;
+        return BOSS_RENDER.renderMonthlyBossChallengeHTML(preview);
     }
     
     renderMonthlyBossProgress() {
-        const kills = this.bossKillsThisMonth;
-        const threshold = this.monthlyBossUnlockThreshold;
-        const progress = Math.min((kills / threshold) * 100, 100);
-        const remaining = Math.max(0, threshold - kills);
-        
-        return `
-            <div class="bg-gradient-to-br from-stone-900/60 to-stone-950/60 p-5 rounded-xl border-2 border-stone-700/50 text-center">
-                <div class="text-4xl mb-2 opacity-40">🏴</div>
-                <h3 class="text-lg font-bold text-amber-300/60 medieval-title mb-2">Monthly Champion</h3>
-                <p class="text-sm text-amber-200/40 fancy-font mb-3">
-                    ${remaining > 0 
-                        ? `Defeat ${remaining} more boss${remaining !== 1 ? 'es' : ''} this month to unlock the challenge!` 
-                        : 'Challenge available!'}
-                </p>
-                <div class="progress-bar w-full bg-stone-800 rounded-full h-4 border border-stone-600/50 mb-2">
-                    <div class="bg-gradient-to-r from-red-600 to-purple-600 h-4 rounded-full transition-all duration-500" 
-                         style="width: ${progress}%"></div>
-                </div>
-                <div class="text-xs text-amber-400/50 fancy-font">${kills} / ${threshold} bosses defeated</div>
-            </div>
-        `;
+        return BOSS_RENDER.renderMonthlyBossProgressHTML(this.bossKillsThisMonth, this.monthlyBossUnlockThreshold);
     }
     
     renderBossCard(boss, type) {
-        const hpPercent = boss.maxHP > 0 ? (boss.currentHP / boss.maxHP) * 100 : 0;
-        const isDefeated = boss.defeated;
-        
-        // Phase colors — v2.9 Track 3 factored this into `getBossPhase()` so
-        // `updateBossHPBar` can cross-fade the chunk track to the new phase
-        // without a full re-render.
-        const { color: phaseColor, text: phaseText } = this.getBossPhase(boss.currentHP, boss.maxHP);
-        
-        const typeLabel = type === 'daily' ? 'DAILY FOE' : type === 'weekly' ? 'WEEKLY NEMESIS' : 'MONTHLY CHAMPION';
-        const typeColor = type === 'daily' ? 'amber' : type === 'weekly' ? 'purple' : 'red';
-        
-        // Check if Execute spell is usable
-        const executeSpell = this.activeSpells.find(s => s.spellId === 'execute');
-        const canExecute = executeSpell && hpPercent > 0 && hpPercent <= 25;
-        
-        // Active boss spell buffs
-        const bossSpells = this.activeSpells.filter(s => 
-            ['berserker_rage', 'critical_strike', 'boss_slayer'].includes(s.spellId)
-        );
-        const spellBuffsHtml = bossSpells.length > 0 ? `
-            <div class="flex gap-2 mt-3 justify-center flex-wrap">
-                ${bossSpells.map(s => {
-                    const def = this.spellDefinitions[s.spellId];
-                    return `<span class="bg-purple-900/60 text-purple-200 px-2 py-1 rounded text-xs border border-purple-600/50">${def ? def.icon : '🔮'} ${def ? def.name : s.spellId}</span>`;
-                }).join('')}
-            </div>
-        ` : '';
-        
-        return `
-            <div id="boss-card-${type}" class="boss-card bg-gradient-to-br ${isDefeated ? 'from-green-950 to-stone-950 border-green-600/50' : `from-${phaseColor}-950 via-red-950 to-stone-950 border-${phaseColor}-600`} p-5 rounded-xl border-2 shadow-2xl relative overflow-hidden">
-                ${!isDefeated ? `<div class="absolute inset-0 bg-gradient-to-t from-${phaseColor}-900/20 to-transparent animate-pulse pointer-events-none"></div>` : ''}
-                
-                <div class="relative z-10">
-                    <!-- Boss Header -->
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="boss-portrait text-5xl ${isDefeated ? 'grayscale opacity-50' : 'animate-bounce'}">${boss.icon}</div>
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1 flex-wrap">
-                                <span class="text-xs bg-${typeColor}-700 text-white px-2 py-0.5 rounded fancy-font">${typeLabel}</span>
-                                <span class="text-xs bg-${phaseColor}-700 text-white px-2 py-0.5 rounded fancy-font ${!isDefeated && hpPercent <= 25 ? 'animate-pulse' : ''}">${phaseText}</span>
-                                <span class="text-xs text-amber-400 fancy-font">Lv.${boss.level}</span>
-                            </div>
-                            <h3 class="text-xl font-bold text-amber-300 medieval-title">${boss.name}</h3>
-                            <p class="text-xs text-amber-200/60 italic fancy-font">${boss.flavor}</p>
-                        </div>
-                    </div>
-                    
-                    <!-- HP Bar (v2.9 Track 3 — two-layer damage-trail bar; see
-                         renderBossHPBar() for markup and updateBossHPBar() for
-                         the per-hit white-flash drain logic). -->
-                    <div class="mb-4">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-sm text-amber-200 font-bold fancy-font">HP</span>
-                            <span class="text-sm text-${phaseColor}-300 font-bold">${boss.currentHP} / ${boss.maxHP}</span>
-                        </div>
-                        ${this.renderBossHPBar(boss, phaseColor)}
-                    </div>
-                    
-                    ${boss.totalDamage > 0 ? `<div class="text-center text-sm text-amber-300 mb-3 fancy-font">${boss.totalDamage} total damage dealt</div>` : ''}
-                    
-                    ${spellBuffsHtml}
-                    
-                    <!-- Action Buttons -->
-                    ${!isDefeated ? `
-                        <div class="flex gap-3 mt-4">
-                            <button onclick="goalManager.attackBoss('${type}')" 
-                                class="btn-ripple flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-red-400/50 text-lg"
-                                ${this.attackCharges <= 0 ? 'disabled' : ''}>
-                                <i class="ri-sword-fill mr-2"></i>ATTACK!${this.attackCharges > 0 ? ` (${this.attackCharges})` : ''}
-                            </button>
-                            ${canExecute ? `
-                                <button onclick="goalManager.executeBossBySpell('${type}')"
-                                    class="bg-gradient-to-r from-purple-600 to-red-600 hover:from-purple-500 hover:to-red-500 text-white px-4 py-3 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105 border-2 border-purple-400/50 animate-pulse">
-                                    <i class="ri-skull-2-fill mr-1"></i>EXECUTE!
-                                </button>
-                            ` : ''}
-                        </div>
-                    ` : `
-                        <div class="mt-4 text-center">
-                            <div class="text-2xl font-bold text-green-300 medieval-title">DEFEATED!</div>
-                            <div class="text-sm text-green-200 fancy-font">+${boss.rewards.xp} XP, +${boss.rewards.gold} Gold</div>
-                        </div>
-                    `}
-                    
-                    <!-- Rewards Preview -->
-                    ${!isDefeated ? `
-                        <div class="mt-3 text-center text-xs text-amber-200/50 fancy-font">
-                            Rewards: ${boss.rewards.xp} XP, ${boss.rewards.gold} Gold, + Loot
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
+        return BOSS_RENDER.renderBossCard(boss, type, {
+            activeSpells: this.activeSpells,
+            spellDefinitions: this.spellDefinitions,
+            attackCharges: this.attackCharges,
+            bossResetLabel: (t, d) => this._bossResetLabel(t, d),
+        });
     }
     
     renderBossLog() {
         const container = document.getElementById('boss-battle-log');
         if (!container) return;
-        
-        if (this.bossLog.length === 0) {
-            container.innerHTML = '<div class="text-amber-200/50 text-sm fancy-font text-center py-4">No battles yet. Complete tasks to earn attacks!</div>';
-            return;
-        }
-        
-        container.innerHTML = this.bossLog.map(entry => {
-            const timeAgo = this.getTimeAgo(entry.time);
-            // Sanitize at render time so imported / legacy entries can
-            // never inject script even though they're displayed via
-            // innerHTML to preserve the embedded `<i class="ri-...">`
-            // icon chrome. See `_sanitizeBossLogMessage` for the
-            // allowlist details.
-            const safeMessage = this._sanitizeBossLogMessage(entry.message);
-            return `<div class="text-sm text-amber-200/80 fancy-font flex justify-between"><span>${safeMessage}</span><span class="text-amber-400/40 text-xs ml-2 shrink-0">${this.escapeHTML(timeAgo)}</span></div>`;
-        }).join('');
+        container.innerHTML = BOSS_RENDER.renderBossLogHTML(this.bossLog, {
+            getTimeAgo: (t) => this.getTimeAgo(t),
+            sanitizeMessage: (m) => this._sanitizeBossLogMessage(m),
+            escapeHTML: (s) => this.escapeHTML(s),
+        });
     }
     
     getTimeAgo(timestamp) {
@@ -14942,110 +15727,7 @@ class GoalManager {
     renderDefeatedBosses() {
         const container = document.getElementById('defeated-bosses-container');
         if (!container) return;
-        
-        if (this.defeatedBossList.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-3 text-center py-8 text-amber-200">
-                    <div class="text-6xl mb-3 opacity-30">🏆</div>
-                    <p class="fancy-font">No victories yet. Defeat your first boss to start your legend!</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Time period boundaries
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const dayOfWeek = startOfToday.getDay(); // 0=Sun
-        const startOfWeek = new Date(startOfToday);
-        startOfWeek.setDate(startOfToday.getDate() - dayOfWeek);
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        // Bucket bosses into time periods
-        const periods = [
-            { key: 'week', label: 'This Week', icon: '⚔️', color: 'green', bosses: [] },
-            { key: 'month', label: 'This Month', icon: '🗓️', color: 'blue', bosses: [] },
-            { key: 'older', label: 'Older Victories', icon: '📜', color: 'stone', bosses: [] },
-        ];
-
-        this.defeatedBossList.forEach(boss => {
-            const d = new Date(boss.defeatedAt);
-            if (d >= startOfWeek) periods[0].bosses.push(boss);
-            else if (d >= startOfMonth) periods[1].bosses.push(boss);
-            else periods[2].bosses.push(boss);
-        });
-
-        // Summary stats
-        const totalXP = this.defeatedBossList.reduce((s, b) => s + (b.rewards?.xp || 0), 0);
-        const totalGold = this.defeatedBossList.reduce((s, b) => s + (b.rewards?.gold || 0), 0);
-
-        let html = `
-            <div class="col-span-full mb-4 p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <span class="text-amber-300 fancy-font text-sm font-bold">Total Victories: ${this.defeatedBossList.length}</span>
-                    <div class="flex gap-4 text-xs text-amber-200/70 fancy-font">
-                        <span>⚡ ${totalXP.toLocaleString()} XP earned</span>
-                        <span>💰 ${totalGold.toLocaleString()} Gold plundered</span>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Render each time period as a collapsible section
-        periods.forEach(period => {
-            if (period.bosses.length === 0) return;
-            const periodXP = period.bosses.reduce((s, b) => s + (b.rewards?.xp || 0), 0);
-            const periodGold = period.bosses.reduce((s, b) => s + (b.rewards?.gold || 0), 0);
-            // This Week starts open, others collapsed
-            const defaultOpen = period.key === 'week';
-
-            html += `
-                <div class="col-span-full mb-3">
-                    <button onclick="this.parentElement.querySelector('.boss-period-body').classList.toggle('hidden');this.querySelector('.boss-period-arrow').classList.toggle('rotate-90')"
-                        class="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/40 transition-all cursor-pointer text-left">
-                        <span class="text-2xl">${period.icon}</span>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span class="text-${period.color}-300 font-bold fancy-font text-sm">${period.label}</span>
-                                <span class="text-xs px-1.5 py-0.5 rounded bg-${period.color}-700/30 text-${period.color}-300/80 font-bold">${period.bosses.length} ${period.bosses.length === 1 ? 'boss' : 'bosses'}</span>
-                            </div>
-                            <div class="flex gap-3 mt-1 text-xs text-gray-400 fancy-font">
-                                <span>⚡ ${periodXP.toLocaleString()} XP</span>
-                                <span>💰 ${periodGold.toLocaleString()} Gold</span>
-                            </div>
-                        </div>
-                        <i class="ri-arrow-right-s-line text-gray-400 text-lg boss-period-arrow transition-transform ${defaultOpen ? 'rotate-90' : ''}"></i>
-                    </button>
-                    <div class="boss-period-body ${defaultOpen ? '' : 'hidden'} mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            `;
-
-            period.bosses.forEach(boss => {
-                const date = new Date(boss.defeatedAt).toLocaleDateString();
-                const typeLabel = boss.type === 'daily' ? 'Daily' : boss.type === 'weekly' ? 'Weekly' : 'Monthly';
-                html += `
-                    <div class="bg-gradient-to-br from-green-900/30 to-stone-900/30 p-4 rounded-lg border border-green-600/30 relative overflow-hidden">
-                        <div class="absolute inset-0 bg-gradient-to-t from-green-500/5 to-transparent"></div>
-                        <div class="relative z-10">
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="text-3xl grayscale opacity-60">${boss.icon}</span>
-                                <div>
-                                    <h4 class="text-sm font-bold text-green-300 medieval-title">${boss.name}</h4>
-                                    <span class="text-xs text-green-200/60 fancy-font">${typeLabel} Lv.${boss.level} (${boss.maxHP} HP)</span>
-                                </div>
-                            </div>
-                            <div class="flex justify-between text-xs text-amber-300/60 fancy-font">
-                                <span>+${boss.rewards.xp} XP, +${boss.rewards.gold} Gold</span>
-                                <span>${date}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += `</div></div>`;
-        });
-
-        container.innerHTML = html;
+        container.innerHTML = BOSS_RENDER.renderDefeatedBossesHTML(this.defeatedBossList, new Date());
     }
 
     // Legacy boss methods kept for backward compatibility with old save data
@@ -15179,190 +15861,21 @@ class GoalManager {
         const container = document.getElementById('active-questchains-container');
         if (!container) return;
 
-        if (this.activeQuestChains.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-12 text-cyan-200">
-                    <div class="text-8xl mb-4 opacity-30">⛓️</div>
-                    <p class="fancy-font text-lg">No active quest chains. Start an adventure below!</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Filter out chains with missing templates
-        const validChains = this.activeQuestChains.filter(chain => 
-            this.questChainTemplates[chain.templateId] !== undefined
-        );
-        
-        const html = validChains.map(chain => {
-            const template = this.questChainTemplates[chain.templateId];
-            const currentChapter = chain.chapters[chain.currentChapterIndex];
-            const progress = Math.round((chain.currentChapterIndex / template.chapters.length) * 100);
-            
-            return `
-                <div class="bg-gradient-to-br from-cyan-900 to-cyan-950 p-6 rounded-xl border-3 border-cyan-600 shadow-2xl">
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex items-center gap-4">
-                            <div class="text-6xl">${template.icon}</div>
-                            <div>
-                                <h3 class="text-2xl font-bold text-cyan-300 medieval-title">${template.name}</h3>
-                                <p class="text-sm text-cyan-200">${template.description}</p>
-                                <div class="flex items-center gap-2 mt-2">
-                                    <span class="text-xs bg-cyan-700 text-white px-2 py-1 rounded">${template.category}</span>
-                                    <span class="text-xs bg-${template.difficulty === 'easy' ? 'green' : template.difficulty === 'medium' ? 'yellow' : 'red'}-700 text-white px-2 py-1 rounded">
-                                        ${template.difficulty.toUpperCase()}
-                                    </span>
-                                    <span class="text-xs text-cyan-300">Chapter ${chain.currentChapterIndex + 1}/${template.chapters.length}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <button onclick="goalManager.abandonQuestChain('${chain.id}')" 
-                            class="text-red-400 hover:text-red-200" title="Abandon Quest Chain">
-                            <i class="ri-close-circle-line text-2xl"></i>
-                        </button>
-                    </div>
-
-                    <!-- Progress Bar -->
-                    <div class="mb-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-cyan-200 font-bold">Overall Progress</span>
-                            <span class="text-sm text-cyan-300">${progress}%</span>
-                        </div>
-                        <div class="w-full bg-cyan-950 rounded-full h-3 border border-cyan-700">
-                            <div class="bg-gradient-to-r from-cyan-600 to-cyan-400 h-3 rounded-full transition-all duration-500" 
-                                 style="width: ${progress}%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Current Chapter -->
-                    <div class="bg-stone-900/60 rounded-lg p-4 border border-cyan-700/50">
-                        <h4 class="text-lg font-bold text-cyan-300 mb-2"><i class="ri-book-open-line mr-2"></i>${currentChapter.title}</h4>
-                        <p class="text-sm text-cyan-200 mb-3">${currentChapter.description}</p>
-                        
-                        <!-- Chapter Tasks -->
-                        <div class="space-y-2">
-                            ${currentChapter.tasks.map((task, index) => {
-                                const isCompleted = chain.completedTasks.includes(index);
-                                return `
-                                    <div class="flex items-center gap-2">
-                                        <input type="checkbox" ${isCompleted ? 'checked' : ''} 
-                                            onchange="goalManager.toggleChainTask('${chain.id}', ${index})"
-                                            class="cursor-pointer">
-                                        <span class="${isCompleted ? 'line-through text-green-400' : 'text-cyan-100'} text-sm">
-                                            ${task}
-                                        </span>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-
-                        <!-- Chapter Reward Preview -->
-                        <div class="mt-4 p-3 bg-amber-900/30 rounded border border-amber-700/50">
-                            <div class="text-xs text-amber-300 mb-1">🏆 Chapter Reward:</div>
-                            <div class="text-sm text-amber-200">
-                                +${currentChapter.reward.xp} XP, 
-                                +${currentChapter.reward.gold} Gold, 
-                                ${this.spellDefinitions[currentChapter.reward.spell]?.name} x${currentChapter.reward.charges}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        container.innerHTML = html;
+        container.innerHTML = QUEST_CHAIN_RENDER.renderActiveQuestChainsHTML(this.activeQuestChains, { templates: this.questChainTemplates, spellDefinitions: this.spellDefinitions });
     }
 
     renderAvailableQuestChains() {
         const container = document.getElementById('available-questchains-container');
         if (!container) return;
 
-        // Get templates that aren't currently active or completed
-        const activeIds = this.activeQuestChains.map(c => c.templateId);
-        const completedIds = this.completedQuestChains.map(c => c.templateId);
-        const availableTemplates = Object.values(this.questChainTemplates)
-            .filter(t => !activeIds.includes(t.id) && !completedIds.includes(t.id));
-
-        if (availableTemplates.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-3 text-center py-8 text-cyan-200">
-                    <p class="fancy-font">All quest chains completed or in progress! More coming soon...</p>
-                </div>
-            `;
-            return;
-        }
-
-        const html = availableTemplates.map(template => {
-            const difficultyColor = template.difficulty === 'easy' ? 'green' : template.difficulty === 'medium' ? 'yellow' : 'red';
-            
-            return `
-                <div class="bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg border-2 border-cyan-700/50 hover:border-cyan-500 transition-all cursor-pointer group">
-                    <div class="text-5xl mb-3 text-center group-hover:scale-110 transition-transform">${template.icon}</div>
-                    <h4 class="text-lg font-bold text-cyan-300 medieval-title mb-2 text-center">${template.name}</h4>
-                    <p class="text-sm text-cyan-200 mb-3 text-center">${template.description}</p>
-                    
-                    <div class="flex flex-wrap justify-center gap-2 mb-3">
-                        <span class="text-xs bg-cyan-700 text-white px-2 py-1 rounded">${template.category}</span>
-                        <span class="text-xs bg-${difficultyColor}-700 text-white px-2 py-1 rounded">${template.difficulty.toUpperCase()}</span>
-                        <span class="text-xs bg-purple-700 text-white px-2 py-1 rounded">${template.chapters.length} Chapters</span>
-                        <span class="text-xs bg-blue-700 text-white px-2 py-1 rounded">~${template.estimatedWeeks} weeks</span>
-                    </div>
-
-                    <button onclick="goalManager.startQuestChain('${template.id}')"
-                        class="w-full bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white px-4 py-2 rounded-lg font-bold fancy-font shadow-lg transition-all hover:scale-105">
-                        🗺️ Begin Adventure
-                    </button>
-                </div>
-            `;
-        }).join('');
-
-        container.innerHTML = html;
+        container.innerHTML = QUEST_CHAIN_RENDER.renderAvailableQuestChainsHTML(this.activeQuestChains, this.completedQuestChains, { templates: this.questChainTemplates });
     }
 
     renderCompletedQuestChains() {
         const container = document.getElementById('completed-questchains-container');
         if (!container) return;
 
-        if (this.completedQuestChains.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-3 text-center py-8 text-cyan-200">
-                    <div class="text-6xl mb-3 opacity-30">🏆</div>
-                    <p class="fancy-font">No completed quest chains yet. Finish your first saga!</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Filter out chains with missing templates
-        const validChains = this.completedQuestChains.filter(chain => 
-            this.questChainTemplates[chain.templateId] !== undefined
-        );
-        
-        const html = validChains.map(chain => {
-            const template = this.questChainTemplates[chain.templateId];
-            const completedDate = chain.completedAt ? new Date(chain.completedAt).toLocaleDateString() : '';
-
-            return `
-                <div class="bg-gradient-to-br from-green-900/40 to-stone-900/40 p-4 rounded-lg border-2 border-green-600/50">
-                    <div class="text-4xl mb-2 text-center grayscale opacity-75">${template.icon}</div>
-                    <h4 class="text-lg font-bold text-green-300 medieval-title mb-1 text-center">${template.name}</h4>
-                    <div class="text-xs text-green-200 mb-2 text-center">
-                        <span class="bg-green-700/50 px-2 py-1 rounded">${template.category}</span>
-                    </div>
-                    <div class="text-xs text-amber-300 fancy-font text-center">
-                        <i class="ri-checkbox-circle-fill text-green-400 mr-1"></i>Completed: ${completedDate}
-                    </div>
-                    <div class="text-xs text-cyan-300 mt-1 text-center">
-                        ${template.chapters.length} Chapters Conquered
-                    </div>
-                    <div class="mt-2 text-center">
-                        <span class="text-2xl">🏆</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        container.innerHTML = html;
+        container.innerHTML = QUEST_CHAIN_RENDER.renderCompletedQuestChainsHTML(this.completedQuestChains, { templates: this.questChainTemplates });
     }
 
     // Focus Timer Rendering
@@ -15401,56 +15914,15 @@ class GoalManager {
         const container = document.getElementById('focus-timer-controls');
         if (!container) return;
         
-        const btnBase = 'py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg flex items-center justify-center gap-2';
-        const chainBtnBase = 'py-3 rounded-lg font-bold fancy-font shadow-lg transition-all text-sm flex items-center justify-center gap-2 border border-amber-500/50';
-        const isBreak = this.pomodoroChain && this.pomodoroChain.isBreak;
-        
-        if (this.focusTimerRunning) {
-            if (isBreak) {
-                // Break running: only Stop (no pause during breaks)
-                container.className = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
-                container.innerHTML = `
-                    <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
-                        <i class="ri-stop-fill text-xl" aria-hidden="true"></i> Stop Chain
-                    </button>
-                `;
-            } else {
-                // Running: Pause + Stop
-                const stopLabel = this.pomodoroChain ? 'Stop Chain' : 'Stop';
-                container.className = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
-                container.innerHTML = `
-                    <button onclick="goalManager.pauseFocusTimer()" class="bg-yellow-600 hover:bg-yellow-500 text-white ${btnBase}">
-                        <i class="ri-pause-fill text-xl" aria-hidden="true"></i> Pause
-                    </button>
-                    <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
-                        <i class="ri-stop-fill text-xl" aria-hidden="true"></i> ${stopLabel}
-                    </button>
-                `;
-            }
-        } else if (this.focusTimeRemaining > 0) {
-            // Paused: Resume + Stop
-            const stopLabel = this.pomodoroChain ? 'Stop Chain' : 'Stop';
-            container.className = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
-            container.innerHTML = `
-                <button onclick="goalManager.resumeFocusTimer()" class="btn-themed-primary ${btnBase}">
-                    <i class="ri-play-fill text-xl" aria-hidden="true"></i> Resume
-                </button>
-                <button onclick="goalManager.stopFocusTimer()" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
-                    <i class="ri-stop-fill text-xl" aria-hidden="true"></i> ${stopLabel}
-                </button>
-            `;
-        } else {
-            // Idle: Start + Chain
-            container.className = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
-            container.innerHTML = `
-                <button onclick="goalManager.startFocusTimer()" class="bg-green-600 hover:bg-green-500 text-white ${btnBase}">
-                    <i class="ri-play-fill text-xl" aria-hidden="true"></i> Start Focus
-                </button>
-                <button onclick="goalManager.startPomodoroChain()" class="bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white ${chainBtnBase}">
-                    <i class="ri-links-fill text-lg" aria-hidden="true"></i> Start Pomodoro Chain (${this.pomodoroChainSettings.sessionsPerChain}x)
-                </button>
-            `;
-        }
+        const { containerClass, buttonsHTML } = FOCUS_TIMER_RENDER.renderFocusTimerControls({
+            focusTimerRunning: this.focusTimerRunning,
+            isBreak: this.pomodoroChain && this.pomodoroChain.isBreak,
+            hasPomodoroChain: !!this.pomodoroChain,
+            focusTimeRemaining: this.focusTimeRemaining,
+            sessionsPerChain: this.pomodoroChainSettings.sessionsPerChain,
+        });
+        container.className = containerClass;
+        container.innerHTML = buttonsHTML;
         
         // Always update chain progress indicator
         this._updateChainProgressIndicator();
@@ -15477,241 +15949,33 @@ class GoalManager {
         
         this.checkExpiredEnchantments();
         
-        if (this.activeEnchantments.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-3 text-center py-8 text-pink-200">
-                    <div class="text-6xl mb-3 opacity-30">✨</div>
-                    <p class="fancy-font">No active enchantments. Purchase some below!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        const html = this.activeEnchantments.map(ench => {
-            const timeRemaining = ench.expiresAt - Date.now();
-            const minutesRemaining = Math.ceil(timeRemaining / (60 * 1000));
-            const hoursRemaining = Math.floor(minutesRemaining / 60);
-            const mins = minutesRemaining % 60;
-            
-            let timeDisplay = '';
-            if (hoursRemaining > 0) {
-                timeDisplay = `${hoursRemaining}h ${mins}m remaining`;
-            } else {
-                timeDisplay = `${mins}m remaining`;
-            }
-            
-            return `
-                <div class="bg-gradient-to-br from-pink-900 to-purple-900 p-4 rounded-lg border-3 border-pink-600 shadow-xl animate-pulse-slow">
-                    <div class="text-4xl text-center mb-2">${ench.icon}</div>
-                    <h4 class="text-lg font-bold text-pink-200 medieval-title text-center mb-2">${ench.name}</h4>
-                    <div class="text-xs text-pink-300 fancy-font text-center">
-                        ⏱️ ${timeDisplay}
-                    </div>
-                    <div class="mt-2 w-full bg-pink-950 rounded-full h-2">
-                        <div class="bg-gradient-to-r from-pink-500 to-purple-400 h-2 rounded-full transition-all" 
-                            style="width: ${Math.max(0, Math.min(100, (timeRemaining / ((this.enchantmentDefinitions[ench.id]?.duration || 180) * 60000)) * 100))}%"></div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        container.innerHTML = html;
+        container.innerHTML = ENCHANTMENT_RENDER.renderActiveEnchantmentsHTML(this.activeEnchantments, { now: Date.now(), enchantmentDefinitions: this.enchantmentDefinitions });
     }
 
     renderEnchantmentShop() {
         const container = document.getElementById('enchantments-shop-container');
         if (!container) return;
         
-        const enchantments = Object.values(this.enchantmentDefinitions);
-        
-        // Sort: free enchantments first, then premium
-        const sorted = [...enchantments].sort((a, b) => (a.premium === b.premium) ? 0 : a.premium ? 1 : -1);
-        
-        const html = sorted.map(ench => {
-            const isActive = this.hasActiveEnchantment(ench.effect);
-            const canAfford = this.focusCrystals >= ench.cost;
-            const isLocked = ench.premium && !this.isPremium;
-            
-            if (isLocked) {
-                return `
-                    <div class="bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border-3 border-gray-600/50 shadow-xl relative overflow-hidden opacity-60">
-                        <div class="absolute top-2 right-2 bg-yellow-600/90 text-black text-xs font-bold px-2 py-1 rounded-full fancy-font">
-                            <i class="ri-vip-crown-2-fill mr-1"></i>Premium
-                        </div>
-                        <div class="text-5xl text-center mb-3 grayscale">${ench.icon}</div>
-                        <h4 class="text-xl font-bold text-gray-400 medieval-title text-center mb-2">${ench.name}</h4>
-                        <p class="text-sm text-gray-500 fancy-font text-center mb-4">${ench.description}</p>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="text-sm text-gray-500 fancy-font">
-                                💎 ${ench.cost} Crystals
-                            </div>
-                            <div class="text-sm text-gray-500 fancy-font">
-                                ⏱️ ${ench.duration >= 60 ? Math.floor(ench.duration / 60) + 'h' : ench.duration + 'm'}
-                            </div>
-                        </div>
-                        
-                        <button onclick="goalManager.showPremiumPurchaseModal()" 
-                            class="bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-black w-full py-3 rounded-lg font-bold fancy-font shadow-lg transition-all">
-                            <i class="ri-vip-crown-2-fill mr-1"></i> Unlock
-                        </button>
-                    </div>
-                `;
-            }
-            
-            return `
-                <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl border-3 ${isActive ? 'border-green-600' : 'border-amber-600'} shadow-xl ${isActive ? 'opacity-50' : ''}">
-                    <div class="text-5xl text-center mb-3">${ench.icon}</div>
-                    <h4 class="text-xl font-bold text-amber-300 medieval-title text-center mb-2">${ench.name}</h4>
-                    <p class="text-sm text-amber-200 fancy-font text-center mb-4">${ench.description}</p>
-                    
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="text-sm text-cyan-300 fancy-font">
-                            💎 ${ench.cost} Crystals
-                        </div>
-                        <div class="text-sm text-purple-300 fancy-font">
-                            ⏱️ ${ench.duration >= 60 ? Math.floor(ench.duration / 60) + 'h' : ench.duration + 'm'}
-                        </div>
-                    </div>
-                    
-                    <button 
-                        onclick="goalManager.purchaseEnchantment('${ench.id}')" 
-                        class="${isActive ? 'bg-gray-600 cursor-not-allowed' : (canAfford ? 'bg-pink-600 hover:bg-pink-500' : 'bg-gray-600 cursor-not-allowed')} text-white w-full py-3 rounded-lg font-bold fancy-font shadow-lg transition-all"
-                        ${isActive || !canAfford ? 'disabled' : ''}>
-                        ${isActive ? '✓ Active' : (canAfford ? '✨ Purchase' : '🔒 Need ' + ench.cost + ' 💎')}
-                    </button>
-                </div>
-            `;
-        }).join('');
-        
-        container.innerHTML = this.getPremiumBannerHTML('Unlock powerful enchantments with Premium!') + html;
+        container.innerHTML = this.getPremiumBannerHTML('Unlock powerful enchantments with Premium!') + ENCHANTMENT_RENDER.renderEnchantmentShopHTML(this.enchantmentDefinitions, { focusCrystals: this.focusCrystals, isPremium: this.isPremium, hasActiveEnchantment: (effect) => this.hasActiveEnchantment(effect) });
     }
 
     // Global Search
-    openSearch() {
-        const modal = document.getElementById('search-modal');
-        const input = document.getElementById('global-search-input');
-        if (modal && input) {
-            modal.classList.remove('hidden');
-            input.focus();
-            input.value = '';
-            this.performSearch('');
-        }
-    }
-
+    // v2.9.x UX audit fix — the legacy static `#search-modal` (and its
+    // `openSearch()` / first `performSearch()` pair) was removed. Two
+    // implementations coexisted with COLLIDING element ids: the static
+    // index.html modal held the first `#search-results` in the DOM, so
+    // the dynamic Ctrl+K / player-panel search rendered its results into
+    // an invisible container. `openSearchModal()` below is now the single
+    // search implementation; `closeSearch()` is its single close route
+    // (also removes the document-level Escape listener that previously
+    // leaked when the modal was dismissed via backdrop or ✕ button).
     closeSearch() {
         const modal = document.getElementById('search-modal');
-        if (modal) {
-            modal.classList.add('hidden');
+        if (modal) modal.remove();
+        if (this._searchEscapeHandler) {
+            document.removeEventListener('keydown', this._searchEscapeHandler);
+            this._searchEscapeHandler = null;
         }
-    }
-
-    performSearch(query) {
-        const resultsContainer = document.getElementById('search-results');
-        if (!resultsContainer) return;
-        
-        if (!query || query.trim() === '') {
-            resultsContainer.innerHTML = `
-                <div class="text-center text-amber-300 fancy-font py-8">
-                    <i class="ri-search-2-line text-5xl mb-3 opacity-50"></i>
-                    <p>Start typing to search...</p>
-                </div>
-            `;
-            return;
-        }
-        
-        const searchLower = query.toLowerCase();
-        const results = [];
-        
-        // Search Life Goals
-        this.lifeGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchLower) || 
-                (goal.description && goal.description.toLowerCase().includes(searchLower))) {
-                results.push({ type: 'Epic Quest', icon: '🏰', item: goal, view: 'life-goals' });
-            }
-        });
-        
-        // Search Yearly Goals
-        this.yearlyGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchLower) || 
-                (goal.description && goal.description.toLowerCase().includes(searchLower))) {
-                results.push({ type: 'Yearly Campaign', icon: '📅', item: goal, view: 'yearly' });
-            }
-        });
-        
-        // Search Monthly Goals
-        this.monthlyGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchLower) || 
-                (goal.description && goal.description.toLowerCase().includes(searchLower))) {
-                results.push({ type: 'Monthly Raid', icon: '🗓️', item: goal, view: 'monthly' });
-            }
-        });
-        
-        // Search Weekly Goals
-        this.weeklyGoals.forEach(goal => {
-            if (goal.title.toLowerCase().includes(searchLower) || 
-                (goal.description && goal.description.toLowerCase().includes(searchLower))) {
-                results.push({ type: 'Weekly Battle', icon: '⚔️', item: goal, view: 'weekly' });
-            }
-        });
-        
-        // Search Daily Tasks
-        this.dailyTasks.forEach(task => {
-            if (task.title.toLowerCase().includes(searchLower) || 
-                (task.description && task.description.toLowerCase().includes(searchLower))) {
-                results.push({ type: 'Daily Task', icon: '🗡️', item: task, view: 'daily' });
-            }
-        });
-        
-        // Search Side Quests
-        this.sideQuests.forEach(quest => {
-            if (quest.title.toLowerCase().includes(searchLower) || 
-                (quest.description && quest.description.toLowerCase().includes(searchLower))) {
-                results.push({ type: 'Side Quest', icon: '🧭', item: quest, view: 'sidequests' });
-            }
-        });
-        
-        // Search Habits
-        this.habits.forEach(habit => {
-            if (habit.title.toLowerCase().includes(searchLower) || 
-                (habit.description && habit.description.toLowerCase().includes(searchLower))) {
-                results.push({ type: 'Daily Ritual', icon: '🕯️', item: habit, view: 'habits' });
-            }
-        });
-        
-        if (results.length === 0) {
-            resultsContainer.innerHTML = `
-                <div class="text-center text-amber-300 fancy-font py-8">
-                    <i class="ri-search-off-line text-5xl mb-3 opacity-50"></i>
-                    <p>No results found for "${query}"</p>
-                </div>
-            `;
-            return;
-        }
-        
-        const html = `
-            <div class="mb-4 text-sm text-amber-400 fancy-font">
-                Found ${results.length} result${results.length !== 1 ? 's' : ''}
-            </div>
-            <div class="space-y-3">
-                ${results.map(result => `
-                    <div class="bg-gradient-to-br from-gray-800 to-stone-900 p-4 rounded-lg border-2 border-amber-700 hover:border-amber-500 cursor-pointer transition-all" 
-                        onclick="goalManager.closeSearch(); goalManager.switchView('${result.view}');">
-                        <div class="flex items-center gap-3">
-                            <div class="text-3xl">${result.icon}</div>
-                            <div class="flex-1">
-                                <div class="text-xs text-amber-400 fancy-font mb-1">${result.type}</div>
-                                <div class="text-lg font-bold text-amber-200 medieval-title ${result.item.completed ? 'line-through opacity-60' : ''}">${this.escapeHTML(result.item.title)}</div>
-                                ${result.item.description ? `<div class="text-sm text-amber-300 fancy-font mt-1">${this.escapeHTML(result.item.description)}</div>` : ''}
-                            </div>
-                            ${result.item.completed ? '<div class="text-green-400 text-2xl">✓</div>' : ''}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        
-        resultsContainer.innerHTML = html;
     }
 
     // ==================== PRIORITY SELECTION MODAL ====================
@@ -15731,7 +15995,7 @@ class GoalManager {
                     <i class="ri-flag-line mr-2"></i>Select Priority
                 </h3>
                 <div class="space-y-3">
-                    <button onclick="goalManager.selectPriority('high')" 
+                    <button data-action="modal.selectPriority" data-priority="high" 
                         class="w-full p-4 rounded-lg border-2 transition-all hover:scale-105 flex items-center gap-3
                         ${currentPriority === 'high' ? 'bg-red-700 border-red-500 ring-2 ring-red-400' : 'bg-red-900/50 border-red-700 hover:bg-red-800'}">
                         <span class="text-2xl">🔥</span>
@@ -15740,7 +16004,7 @@ class GoalManager {
                             <div class="text-xs text-red-300/70">Urgent and important</div>
                         </div>
                     </button>
-                    <button onclick="goalManager.selectPriority('medium')" 
+                    <button data-action="modal.selectPriority" data-priority="medium" 
                         class="w-full p-4 rounded-lg border-2 transition-all hover:scale-105 flex items-center gap-3
                         ${currentPriority === 'medium' ? 'bg-yellow-700 border-yellow-500 ring-2 ring-yellow-400' : 'bg-yellow-900/50 border-yellow-700 hover:bg-yellow-800'}">
                         <span class="text-2xl">⭐</span>
@@ -15749,7 +16013,7 @@ class GoalManager {
                             <div class="text-xs text-yellow-300/70">Normal importance</div>
                         </div>
                     </button>
-                    <button onclick="goalManager.selectPriority('low')" 
+                    <button data-action="modal.selectPriority" data-priority="low" 
                         class="w-full p-4 rounded-lg border-2 transition-all hover:scale-105 flex items-center gap-3
                         ${currentPriority === 'low' ? 'bg-gray-600 border-gray-400 ring-2 ring-gray-300' : 'bg-gray-700/50 border-gray-600 hover:bg-gray-600'}">
                         <span class="text-2xl">🪶</span>
@@ -15759,7 +16023,7 @@ class GoalManager {
                         </div>
                     </button>
                 </div>
-                <button onclick="goalManager.closePriorityModal()" 
+                <button data-action="modal.closePriority" 
                     class="w-full mt-4 p-2 text-gray-400 hover:text-white text-sm fancy-font">
                     Cancel
                 </button>
@@ -15837,22 +16101,22 @@ class GoalManager {
                     })() : inputType === 'textarea' ? `
                         <textarea id="modal-input" 
                             class="w-full p-3 rounded-lg bg-gray-700/50 border-2 border-amber-600/50 text-white placeholder-gray-400 focus:border-amber-500 focus:outline-none fancy-font resize-none"
-                            placeholder="${placeholder}"
+                            placeholder="${this.escapeHTML(placeholder)}"
                             maxlength="1000"
-                            rows="3">${defaultValue}</textarea>
+                            rows="3">${this.escapeHTML(defaultValue)}</textarea>
                     ` : `
                         <input type="${inputType}" id="modal-input" 
                             class="w-full p-3 rounded-lg bg-gray-700/50 border-2 border-amber-600/50 text-white placeholder-gray-400 focus:border-amber-500 focus:outline-none fancy-font"
-                            placeholder="${placeholder}"
+                            placeholder="${this.escapeHTML(placeholder)}"
                             maxlength="200"
-                            value="${defaultValue}">
+                            value="${this.escapeHTML(defaultValue)}">
                     `}
                     <div class="flex gap-3">
-                        <button onclick="goalManager.closeInputModal()" 
+                        <button data-action="modal.closeInput" 
                             class="flex-1 p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold transition-all fancy-font">
                             Cancel
                         </button>
-                        <button onclick="goalManager.submitInputModal()" 
+                        <button data-action="modal.submitInput" 
                             class="flex-1 p-3 rounded-lg bg-amber-700 hover:bg-amber-600 text-amber-100 font-semibold transition-all fancy-font">
                             ${buttonText}
                         </button>
@@ -15965,7 +16229,7 @@ class GoalManager {
         modal.style.cssText = 'display: flex; align-items: center; justify-content: center; padding: 24px;';
         
         const choicesHtml = choices.map(c => `
-            <button onclick="goalManager.selectOption('${c.value}')" 
+            <button data-action="modal.selectOption" data-value="${c.value}" 
                 class="w-full p-3 rounded-lg border-2 transition-all hover:scale-102 flex items-center gap-3 bg-gray-700/50 border-gray-600 hover:bg-gray-600 hover:border-amber-500">
                 ${c.icon ? `<span class="text-xl">${c.icon}</span>` : ''}
                 <div class="text-left flex-1">
@@ -15983,7 +16247,7 @@ class GoalManager {
                 <div class="space-y-2">
                     ${choicesHtml}
                 </div>
-                <button onclick="goalManager.closeSelectModal()" 
+                <button data-action="modal.closeSelect" 
                     class="w-full mt-4 p-2 text-gray-400 hover:text-white text-sm fancy-font">
                     Cancel
                 </button>
@@ -16133,8 +16397,6 @@ class GoalManager {
             
             if (this.notificationsEnabled) {
                 localStorage.setItem('notificationsConfirmedWorking', 'true');
-                this.syncReminderSettingsToSW();
-                this.subscribeToPush();
                 this.sendConfirmationNotification();
             }
         } catch (err) {
@@ -16143,23 +16405,11 @@ class GoalManager {
     }
     
     async _tryTestNotification() {
-        // Attempt to send a notification via the service worker regardless of reported permission.
-        // Returns true if it succeeded, false otherwise.
+        // Attempt to send a notification regardless of reported permission.
+        // Returns true if it succeeded, false otherwise. Native delivers via the
+        // LocalNotifications plugin; this is the browser Notification path (the
+        // PWA/service-worker shell was retired — Capacitor/Android only now).
         try {
-            if ('serviceWorker' in navigator) {
-                const registration = await navigator.serviceWorker.ready;
-                await registration.showNotification('⚔️ Quest Reminders Active!', {
-                    body: 'Notifications are working! You will receive quest reminders.',
-                    icon: './icons/icon-192.png',
-                    badge: './icons/badge-96.png',
-                    tag: 'quest-journal-test-' + Date.now(),
-                    renotify: true,
-                    vibrate: [200, 100, 200],
-                    data: { url: './' }
-                });
-                return true;
-            }
-            // Desktop fallback
             new Notification('⚔️ Quest Reminders Active!', {
                 body: 'Notifications are working!',
                 icon: './icons/icon-192.png'
@@ -16193,24 +16443,9 @@ class GoalManager {
             data: { url: './' }
         };
         
-        // Try service worker notification first (required for Android PWAs/TWAs)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(registration => {
-                console.log('[Notifications] Sending via ServiceWorker showNotification');
-                return registration.showNotification('⚔️ Quest Reminders Active!', notifOptions);
-            }).then(() => {
-                console.log('[Notifications] ServiceWorker notification dispatched successfully');
-                localStorage.setItem('notificationsConfirmedWorking', 'true');
-                this.notificationsEnabled = true;
-                this.showAchievement('🔔 Test notification sent! Check your notification shade.', 'daily');
-            }).catch(err => {
-                console.error('[Notifications] ServiceWorker showNotification failed:', err);
-                this._fallbackNotification(notifOptions);
-            });
-        } else {
-            console.log('[Notifications] No service worker, using fallback');
-            this._fallbackNotification(notifOptions);
-        }
+        // Browser path (the PWA/service-worker shell was retired) — deliver
+        // directly via the Notification API.
+        this._fallbackNotification(notifOptions);
     }
     
     _fallbackNotification(options) {
@@ -16360,7 +16595,7 @@ class GoalManager {
                         <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                         <span class="text-red-300 fancy-font">Waiting for permission...</span>
                     </div>
-                    <button onclick="document.getElementById('notification-settings-guide')?.remove(); goalManager._stopPermissionWatch();"
+                    <button data-action="reminder.closeGuide"
                         class="w-full bg-stone-700 hover:bg-stone-600 text-amber-200 px-4 py-2.5 rounded-lg text-sm font-bold fancy-font transition-all">
                         Close
                     </button>
@@ -16451,8 +16686,6 @@ class GoalManager {
             }, 1500);
         }
 
-        this.syncReminderSettingsToSW();
-        this.subscribeToPush();
         this.renderReminderSettings();
         this.showAchievement('🔔 Notifications enabled! Quest reminders are active.', 'daily');
         this.sendConfirmationNotification();
@@ -16461,6 +16694,18 @@ class GoalManager {
     showNotificationPrompt() {
         // Don't show if already granted or if user is in the middle of tutorial
         if (this.notificationsEnabled || !this.tutorialCompleted) return;
+
+        // v3.2 friction audit P1a — this prompt is now also fired at the end of
+        // the onboarding chain (closeStarterTasksModal), so it can race the
+        // boot-time (+3s) call. Bail if a card is already up, and honor the same
+        // 7-day dismissal window the boot paths use so the extra ask never nags
+        // a user who already tapped "Not Now". Centralized here so every caller
+        // gets the guard.
+        if (document.getElementById('notification-prompt')) return;
+        try {
+            const dismissedAt = localStorage.getItem('notificationPromptDismissed');
+            if (dismissedAt && (Date.now() - parseInt(dismissedAt)) <= 7 * 24 * 60 * 60 * 1000) return;
+        } catch (e) { /* localStorage unavailable — fail open and show */ }
         
         const prompt = document.createElement('div');
         prompt.id = 'notification-prompt';
@@ -16472,11 +16717,11 @@ class GoalManager {
                     <h4 class="text-amber-200 font-bold text-sm">Enable Quest Reminders?</h4>
                     <p class="text-amber-100/70 text-xs mt-1">Get notified about your daily quests, overdue tasks, and morning/evening reminders.</p>
                     <div class="flex gap-2 mt-3">
-                        <button onclick="goalManager.requestNotificationPermission().then(() => { document.getElementById('notification-prompt')?.remove(); goalManager.renderReminderSettings(); })"
+                        <button data-action="reminder.enableFromPrompt"
                             class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold">
                             Enable Notifications
                         </button>
-                        <button onclick="document.getElementById('notification-prompt')?.remove(); localStorage.setItem('notificationPromptDismissed', Date.now().toString());"
+                        <button data-action="reminder.dismissPrompt"
                             class="bg-stone-700 hover:bg-stone-600 text-amber-200 px-4 py-1.5 rounded-lg text-xs">
                             Not Now
                         </button>
@@ -16512,32 +16757,13 @@ class GoalManager {
             return;
         }
 
-        const notifOptions = {
-            body: body,
-            icon: './icons/icon-192.png',
-            badge: './icons/badge-96.png',
-            tag: tag || ('quest-journal-' + Date.now()),
-            renotify: true,
-            vibrate: [200, 100, 200],
-            data: { url: './' }
-        };
-
-        // Use Service Worker notification API (required for Android PWAs)
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.ready.then(registration => {
-                return registration.showNotification(title, notifOptions);
-            }).catch(err => {
-                console.error('[Notifications] SW showNotification failed:', err);
-                // Fallback to basic Notification for desktop
-                try { new Notification(title, { body: body, icon: './icons/icon-192.png' }); } catch (e) { console.error('[Notifications] Fallback also failed:', e); }
-            });
-        } else {
-            // Fallback for browsers without active service worker
-            try {
-                new Notification(title, { body: body, icon: './icons/icon-192.png' });
-            } catch (err) {
-                console.error('[Notifications] Direct Notification failed:', err);
-            }
+        // Browser path (the PWA/service-worker shell was retired) — deliver
+        // directly via the Notification API. The plain Notification constructor
+        // ignores badge/vibrate/renotify, so pass a minimal options object.
+        try {
+            new Notification(title, { body: body, icon: './icons/icon-192.png' });
+        } catch (err) {
+            console.error('[Notifications] Direct Notification failed:', err);
         }
     }
 
@@ -16550,26 +16776,19 @@ class GoalManager {
             try { this.reminderSettings = JSON.parse(savedSettings); } catch (e) { console.error('Corrupt reminderSettings, using defaults', e); }
         }
         if (!this.reminderSettings) {
-            this.reminderSettings = {
-                enabled: true,
-                morningReminder: true,
-                morningTime: '09:00',
-                eveningReminder: true,
-                eveningTime: '18:00',
-                overdueAlert: true
-            };
+            this.reminderSettings = REMINDER_SCHEDULE_LOGIC.defaultSettings();
         }
+        // Backfill fields added after a user's settings were first saved. The boolean-vs-time
+        // asymmetry (`=== undefined` for toggles so an explicit false survives, falsiness for time
+        // strings so '' is replaced) is deliberate — see reminder-schedule-logic.js.
+        REMINDER_SCHEDULE_LOGIC.backfillSettings(this.reminderSettings);
         
-        const isNative = window.CapBridge && window.CapBridge.isNative;
-
         // Schedule daily reminders (in-page timers as primary)
         this.scheduleDailyReminders();
-        
-        // Service worker and push are only relevant for web PWA
-        if (!isNative) {
-            this.syncReminderSettingsToSW();
-            this.subscribeToPush();
-        }
+        // Arm the proactive streak-risk reminder (native pre-schedule)
+        this.scheduleStreakRiskReminder();
+        // Arm the Royal Bounty "ready" reminder (native pre-schedule)
+        this.scheduleBountyReadyReminder();
         
         // Check for missed reminders on app open (catch-up)
         this.checkMissedReminders();
@@ -16578,20 +16797,12 @@ class GoalManager {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 this.scheduleDailyReminders();
-                if (!isNative) {
-                    this.syncReminderSettingsToSW();
-                    this.subscribeToPush();
-                }
+                this.scheduleStreakRiskReminder();
+                this.scheduleBountyReadyReminder();
                 this.checkOverdueTasks();
                 this.checkMissedReminders();
             }
         });
-        
-        // Periodic background sync and SW task-count re-sync are web-only
-        if (!isNative) {
-            this.registerPeriodicSync();
-            this._swSyncInterval = setInterval(() => this.syncReminderSettingsToSW(), 15 * 60 * 1000);
-        }
         
         // Check for overdue tasks periodically
         this.checkOverdueTasks();
@@ -16602,178 +16813,44 @@ class GoalManager {
         if (!this.reminderSettings.enabled || !this.notificationsEnabled) return;
         
         const now = new Date();
-        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const currentMins = REMINDER_SCHEDULE_LOGIC.minutesSinceMidnight(now);
         const today = this.getTodayDateString();
+        const DEF = REMINDER_SCHEDULE_LOGIC.DEFAULT_SETTINGS;
         
         // Check what was already sent today (stored in localStorage)
         let sentData;
         try { sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}'); } catch (e) { sentData = {}; }
-        if (sentData._date !== today) {
-            sentData._date = today;
-            sentData.morning = false;
-            sentData.evening = false;
-        }
+        sentData = REMINDER_SCHEDULE_LOGIC.rolloverSentToday(sentData, today);
         
-        // Morning catch-up: if it's past morning time but within 2 hours, and not yet sent
-        if (this.reminderSettings.morningReminder && !sentData.morning) {
-            const [th, tm] = this.reminderSettings.morningTime.split(':').map(Number);
-            const targetMins = th * 60 + tm;
-            if (currentMins >= targetMins && currentMins < targetMins + 120) {
-                console.log('[Reminders] Catch-up: sending missed morning reminder');
-                this.sendMorningReminder();
-                sentData.morning = true;
-                localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
-            }
+        // Morning catch-up: past the slot but still inside the grace window, and not yet sent
+        if (REMINDER_SCHEDULE_LOGIC.shouldCatchUp({
+            toggleOn: this.reminderSettings.morningReminder,
+            alreadySent: sentData.morning,
+            slotTime: this.reminderSettings.morningTime,
+            fallback: DEF.morningTime,
+            nowMins: currentMins
+        })) {
+            console.log('[Reminders] Catch-up: sending missed morning reminder');
+            this.sendMorningReminder();
+            sentData.morning = true;
+            localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
         }
         
         // Evening catch-up
-        if (this.reminderSettings.eveningReminder && !sentData.evening) {
-            const [th, tm] = this.reminderSettings.eveningTime.split(':').map(Number);
-            const targetMins = th * 60 + tm;
-            if (currentMins >= targetMins && currentMins < targetMins + 120) {
-                console.log('[Reminders] Catch-up: sending missed evening reminder');
-                this.sendEveningReminder();
-                sentData.evening = true;
-                localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
-            }
+        if (REMINDER_SCHEDULE_LOGIC.shouldCatchUp({
+            toggleOn: this.reminderSettings.eveningReminder,
+            alreadySent: sentData.evening,
+            slotTime: this.reminderSettings.eveningTime,
+            fallback: DEF.eveningTime,
+            nowMins: currentMins
+        })) {
+            console.log('[Reminders] Catch-up: sending missed evening reminder');
+            this.sendEveningReminder();
+            sentData.evening = true;
+            localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
         }
     }
     
-    syncReminderSettingsToSW() {
-        // Send current reminder settings and task counts to the service worker
-        // so it can fire notifications even when the page is not active
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(registration => {
-                const todayStr = this.getTodayDateString();
-                const todayTasks = this.dailyTasks.filter(t => t.dueDate === todayStr && !t.completed);
-                const incompleteHabits = this.habits.filter(h => !h.completedToday);
-                const overdueTasks = this.dailyTasks.filter(t => !t.completed && t.dueDate < todayStr);
-                
-                registration.active?.postMessage({
-                    type: 'SYNC_REMINDERS',
-                    settings: this.reminderSettings,
-                    taskCounts: {
-                        todayTasks: todayTasks.length,
-                        incompleteHabits: incompleteHabits.length,
-                        overdueTasks: overdueTasks.length
-                    }
-                });
-            }).catch(() => {});
-        }
-    }
-    
-    async registerPeriodicSync() {
-        // Periodic Background Sync lets the service worker wake up periodically
-        // even when the app is closed - fallback for when Web Push is unavailable
-        if (!('serviceWorker' in navigator)) return;
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            if (!registration.periodicSync) return;
-            const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-            if (status.state === 'granted') {
-                await registration.periodicSync.register('check-reminders', {
-                    minInterval: 60 * 60 * 1000 // Check at least every hour
-                });
-                console.log('[Reminders] Periodic background sync registered');
-            }
-        } catch (e) {
-            // Periodic sync not supported - fall back to page-based timers
-            console.log('[Reminders] Periodic sync not available:', e.message);
-        }
-    }
-
-    // ==================== WEB PUSH SUBSCRIPTION ====================
-
-    async subscribeToPush() {
-        if (!this.notificationsEnabled || !this.PUSH_WORKER_URL) {
-            if (!this.PUSH_WORKER_URL) {
-                console.log('[Push] No worker URL configured, skipping push subscription');
-            }
-            return;
-        }
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-
-            // Check for existing subscription
-            let subscription = await registration.pushManager.getSubscription();
-
-            if (!subscription) {
-                const applicationServerKey = this._urlBase64ToUint8Array(this.VAPID_PUBLIC_KEY);
-                subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey
-                });
-                console.log('[Push] New push subscription created');
-            }
-
-            // Send subscription + schedule to the push worker
-            await this._syncPushSubscription(subscription);
-            console.log('[Push] Successfully subscribed to push notifications');
-        } catch (err) {
-            console.error('[Push] Failed to subscribe:', err);
-        }
-    }
-
-    async _syncPushSubscription(subscription) {
-        if (!this.PUSH_WORKER_URL || !subscription) return;
-
-        try {
-            const response = await fetch(`${this.PUSH_WORKER_URL}/api/subscribe`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subscription: subscription.toJSON(),
-                    timezoneOffset: this.getTimezoneOffset() * 60, // minutes east of UTC
-                    timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone, // e.g. 'America/Los_Angeles' (DST-aware)
-                    reminderSettings: this.reminderSettings
-                })
-            });
-
-            if (response.ok) {
-                console.log('[Push] Subscription synced with push worker');
-            } else {
-                console.warn('[Push] Sync failed:', response.status);
-            }
-        } catch (err) {
-            console.error('[Push] Failed to sync subscription:', err);
-        }
-    }
-
-    async _unsubscribeFromPush() {
-        if (!this.PUSH_WORKER_URL) return;
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            const subscription = await registration.pushManager.getSubscription();
-            if (subscription) {
-                // Notify server to remove subscription
-                await fetch(`${this.PUSH_WORKER_URL}/api/unsubscribe`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint: subscription.endpoint })
-                }).catch(() => {});
-
-                // Unsubscribe locally
-                await subscription.unsubscribe();
-                console.log('[Push] Unsubscribed from push notifications');
-            }
-        } catch (err) {
-            console.error('[Push] Failed to unsubscribe:', err);
-        }
-    }
-
-    _urlBase64ToUint8Array(base64String) {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; i++) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-    }
-
     scheduleDailyReminders() {
         // Clear any existing reminder timers
         if (this._morningTimer) clearTimeout(this._morningTimer);
@@ -16782,15 +16859,14 @@ class GoalManager {
         if (!this.reminderSettings.enabled) return;
         
         const now = new Date();
+        const DEF = REMINDER_SCHEDULE_LOGIC.DEFAULT_SETTINGS;
         
-        // Schedule morning reminder
+        // Schedule morning reminder. msUntilTodaySlot returns null when the slot is NOT still ahead
+        // — including at the exact slot minute — and no timer is armed then; the catch-up path on
+        // next app open is what covers that window.
         if (this.reminderSettings.morningReminder) {
-            const [hours, mins] = this.reminderSettings.morningTime.split(':').map(Number);
-            const morningTime = new Date(now);
-            morningTime.setHours(hours, mins, 0, 0);
-            
-            if (morningTime > now) {
-                const delay = morningTime - now;
+            const delay = REMINDER_SCHEDULE_LOGIC.msUntilTodaySlot(this.reminderSettings.morningTime, now, DEF.morningTime);
+            if (delay !== null) {
                 console.log('[Reminders] Morning reminder scheduled in', Math.round(delay / 60000), 'minutes');
                 this._morningTimer = setTimeout(() => {
                     this.sendMorningReminder();
@@ -16803,12 +16879,8 @@ class GoalManager {
         
         // Schedule evening reminder
         if (this.reminderSettings.eveningReminder) {
-            const [hours, mins] = this.reminderSettings.eveningTime.split(':').map(Number);
-            const eveningTime = new Date(now);
-            eveningTime.setHours(hours, mins, 0, 0);
-            
-            if (eveningTime > now) {
-                const delay = eveningTime - now;
+            const delay = REMINDER_SCHEDULE_LOGIC.msUntilTodaySlot(this.reminderSettings.eveningTime, now, DEF.eveningTime);
+            if (delay !== null) {
                 console.log('[Reminders] Evening reminder scheduled in', Math.round(delay / 60000), 'minutes');
                 this._eveningTimer = setTimeout(() => {
                     this.sendEveningReminder();
@@ -16820,15 +16892,129 @@ class GoalManager {
         }
     }
     
+    // Fixed native-notification id so a pending streak-risk reminder can be
+    // reliably canceled/replaced. Streaks shorter than this aren't worth a
+    // loss-aversion nudge (and avoid spamming brand-new users).
+    STREAK_RISK_NOTIF_ID = REMINDER_SCHEDULE_LOGIC.STREAK_RISK_NOTIF_ID;
+    STREAK_RISK_MIN_STREAK = REMINDER_SCHEDULE_LOGIC.STREAK_RISK_MIN_STREAK;
+    // Fixed id for the Royal Bounty "ready" native reminder (§1.9) so a
+    // pending one can be reliably canceled/replaced on claim or app open.
+    BOUNTY_READY_NOTIF_ID = REMINDER_SCHEDULE_LOGIC.BOUNTY_READY_NOTIF_ID;
+
+    // Proactive "your login streak is about to break" reminder.
+    //
+    // Because opening the app auto-claims the day's login bonus, a streak is
+    // only ever at risk on a day the user HASN'T opened the app. An in-page
+    // timer is therefore useless here — the only reliable delivery is a native
+    // pre-scheduled notification (survives app closure) for the next reminder
+    // slot, canceled the moment the user next opens the app. Idempotent: always
+    // cancels the previously scheduled reminder before (maybe) re-scheduling.
+    scheduleStreakRiskReminder() {
+        const isNative = window.CapBridge && window.CapBridge.isNative;
+
+        // Cancel any previously scheduled reminder first (idempotent re-arm)
+        if (isNative) window.CapBridge.cancelNotification(this.STREAK_RISK_NOTIF_ID);
+
+        if (!this.reminderSettings || !this.reminderSettings.enabled || !this.reminderSettings.streakReminder) return;
+        if (!this.notificationsEnabled) return;
+
+        const streak = this.loginStreak || 0;
+        if (!REMINDER_SCHEDULE_LOGIC.isStreakWorthProtecting(streak)) return; // nothing worth protecting yet
+
+        if (!isNative) return; // web/PWA retired — native pre-schedule only
+
+        const now = new Date();
+        // Today is already claimed once the app is open (or the slot has passed)
+        // → target the next day's reminder slot, the soonest genuinely at-risk day.
+        const claimedToday = this.lastLoginBonusDate === this.getTodayDateString();
+        const fireAt = REMINDER_SCHEDULE_LOGIC.nextDailySlot(
+            this.reminderSettings.streakReminderTime,
+            now,
+            REMINDER_SCHEDULE_LOGIC.DEFAULT_SETTINGS.streakReminderTime,
+            claimedToday
+        );
+
+        window.CapBridge.scheduleNotification({
+            id: this.STREAK_RISK_NOTIF_ID,
+            title: '🔥 Streak in Danger!',
+            body: REMINDER_SCHEDULE_LOGIC.streakRiskBody(streak),
+            scheduleAt: fireAt
+        });
+        console.log('[Reminders] Streak-risk reminder scheduled for', fireAt.toLocaleString());
+    }
+
+    // ── Royal Bounty "ready" reminder (§1.9) ─────────────────────────
+    // Loss-aversion nudge mirroring the streak-risk reminder: when the player
+    // has an active, unclaimed bounty whose window is still open (and whose
+    // target quest is still incomplete), remind them to finish it for the free
+    // chest before it expires. Native pre-schedules a notification (canceled /
+    // re-armed on app open, claim, or settings change). Idempotent: always
+    // cancels before re-arming.
+    scheduleBountyReadyReminder() {
+        const isNative = window.CapBridge && window.CapBridge.isNative;
+        if (isNative) window.CapBridge.cancelNotification(this.BOUNTY_READY_NOTIF_ID);
+
+        if (!this.reminderSettings || !this.reminderSettings.enabled || !this.reminderSettings.bountyReminder) return;
+        if (!this.notificationsEnabled) return;
+
+        const claim = this._soonestClaimableBounty();
+        if (!claim) return;                 // nothing claimable → no nudge
+
+        if (!isNative) return;              // web/PWA retired — native pre-schedule only
+
+        const now = new Date();
+        // Today's slot if it's still ahead, otherwise tomorrow's.
+        const fireAt = REMINDER_SCHEDULE_LOGIC.nextDailySlot(
+            this.reminderSettings.bountyReminderTime,
+            now,
+            REMINDER_SCHEDULE_LOGIC.DEFAULT_SETTINGS.bountyReminderTime
+        );
+        // Never schedule past the bounty's own deadline.
+        if (fireAt.getTime() > new Date(claim.expiresAt).getTime()) return;
+
+        window.CapBridge.scheduleNotification({
+            id: this.BOUNTY_READY_NOTIF_ID,
+            title: '👑 Royal Bounty Awaiting!',
+            body: REMINDER_SCHEDULE_LOGIC.bountyReadyBody(claim.label, claim.chestTier),
+            scheduleAt: fireAt
+        });
+        console.log('[Reminders] Bounty-ready reminder scheduled for', fireAt.toLocaleString());
+    }
+
+    // Soonest-expiring active, unclaimed bounty still inside its window whose
+    // target quest is still incomplete — or null. Drives the native
+    // bounty-ready pre-scheduled reminder.
+    _soonestClaimableBounty(now = new Date()) {
+        if (!this.activeBounties) return null;
+        const nowMs = now.getTime();
+        let best = null;
+        ['weekly', 'monthly'].forEach(cadence => {
+            const b = this.activeBounties[cadence];
+            if (!b || b.empty || b.status !== 'active') return;
+            const expMs = new Date(b.expiresAt).getTime();
+            if (!(expMs > nowMs)) return;                 // already expired
+            // Reuse the canonical target resolver: a missing (deleted) or
+            // already-completed target means there's nothing left to nudge.
+            const q = this._bountyQuest(b);
+            if (!q || q.completed) return;
+            if (!best || expMs < best._expMs) {
+                best = {
+                    cadence,
+                    label: cadence === 'weekly' ? 'Weekly' : 'Monthly',
+                    chestTier: b.chestTier,
+                    expiresAt: b.expiresAt,
+                    _expMs: expMs
+                };
+            }
+        });
+        return best;
+    }
+
     _markReminderSent(type) {
         const today = this.getTodayDateString();
         let sentData;
         try { sentData = JSON.parse(localStorage.getItem('remindersSentToday') || '{}'); } catch (e) { sentData = {}; }
-        if (sentData._date !== today) {
-            sentData._date = today;
-            sentData.morning = false;
-            sentData.evening = false;
-        }
+        sentData = REMINDER_SCHEDULE_LOGIC.rolloverSentToday(sentData, today);
         sentData[type] = true;
         localStorage.setItem('remindersSentToday', JSON.stringify(sentData));
     }
@@ -16838,15 +17024,10 @@ class GoalManager {
         const todayTasks = this.dailyTasks.filter(t => t.dueDate === todayStr && !t.completed);
         const incompleteHabits = this.habits.filter(h => !h.completedToday);
         
-        if (todayTasks.length > 0 || incompleteHabits.length > 0) {
-            let body = '';
-            if (todayTasks.length > 0) {
-                body += `📋 ${todayTasks.length} task${todayTasks.length !== 1 ? 's' : ''} for today`;
-            }
-            if (incompleteHabits.length > 0) {
-                body += (body ? ' • ' : '') + `🔄 ${incompleteHabits.length} habit${incompleteHabits.length !== 1 ? 's' : ''} to complete`;
-            }
-            
+        // null → nothing pending, and the morning nudge stays SILENT (unlike the evening report,
+        // which always notifies with an all-done celebration).
+        const body = REMINDER_SCHEDULE_LOGIC.morningReminderBody(todayTasks.length, incompleteHabits.length);
+        if (body) {
             this.showNotification('🌅 Good Morning, Adventurer!', body, '⚔️', 'quest-reminder-morning');
         }
     }
@@ -16856,19 +17037,9 @@ class GoalManager {
         const incompleteTasks = this.dailyTasks.filter(t => t.dueDate === todayStr && !t.completed);
         const incompleteHabits = this.habits.filter(h => !h.completedToday);
         
-        if (incompleteTasks.length > 0 || incompleteHabits.length > 0) {
-            let body = 'Before the day ends: ';
-            if (incompleteTasks.length > 0) {
-                body += `${incompleteTasks.length} task${incompleteTasks.length !== 1 ? 's' : ''} remaining`;
-            }
-            if (incompleteHabits.length > 0) {
-                body += (incompleteTasks.length > 0 ? ', ' : '') + `${incompleteHabits.length} habit${incompleteHabits.length !== 1 ? 's' : ''} to complete`;
-            }
-            
-            this.showNotification('🌙 Evening Quest Report', body, '⚔️', 'quest-reminder-evening');
-        } else {
-            this.showNotification('🏆 Quest Complete!', 'Amazing! All tasks and habits done for today!', '⚔️', 'quest-reminder-evening');
-        }
+        // Always notifies — the title switches to an all-done celebration when nothing is left.
+        const { title, body } = REMINDER_SCHEDULE_LOGIC.eveningReminderBody(incompleteTasks.length, incompleteHabits.length);
+        this.showNotification(title, body, '⚔️', 'quest-reminder-evening');
     }
 
     checkOverdueTasks() {
@@ -16886,7 +17057,7 @@ class GoalManager {
         if (overdueTasks.length > 0 && !this.overdueNotificationSent) {
             this.showNotification(
                 '⚠️ Overdue Quests!',
-                `You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} that need attention`,
+                REMINDER_SCHEDULE_LOGIC.overdueReminderBody(overdueTasks.length),
                 '⚔️',
                 'quest-overdue'
             );
@@ -16904,14 +17075,14 @@ class GoalManager {
             this.scheduleDailyReminders();
         }
         
-        // Service worker sync and push are web-only
-        const isNative = window.CapBridge && window.CapBridge.isNative;
-        if (!isNative) {
-            this.syncReminderSettingsToSW();
-            this.subscribeToPush();
-            if (setting === 'enabled' && !value) {
-                this._unsubscribeFromPush();
-            }
+        // Re-arm the streak-risk reminder if its toggle/time or master switch changed
+        if (setting === 'streakReminder' || setting === 'streakReminderTime' || setting === 'enabled') {
+            this.scheduleStreakRiskReminder();
+        }
+
+        // Re-arm the Royal Bounty reminder on its toggle/time or master switch
+        if (setting === 'bountyReminder' || setting === 'bountyReminderTime' || setting === 'enabled') {
+            this.scheduleBountyReadyReminder();
         }
     }
 
@@ -16933,133 +17104,16 @@ class GoalManager {
             }
         }
         
-        const settings = this.reminderSettings;
-        
-        // Build notification status section based on native vs web
-        let notifStatusLabel = '';
-        if (this.notificationsEnabled) {
-            notifStatusLabel = '<span class="text-green-400">✓ Enabled</span>';
-        } else if (isNative) {
-            notifStatusLabel = '<span class="text-red-400">○ Not Enabled</span>';
-        } else if ('Notification' in window) {
-            notifStatusLabel = Notification.permission === 'denied' 
-                ? '<span class="text-red-400">✗ Blocked</span>' 
-                : '<span class="text-red-400">○ Not Enabled</span>';
-        } else {
-            notifStatusLabel = '<span class="text-red-400">✗ Not Supported</span>';
-        }
-        
-        // Delivery method row: Native vs Service Worker
-        const deliveryRow = isNative 
-            ? `<div class="flex items-center justify-between text-sm mt-1">
-                    <span class="text-amber-300/70">Delivery:</span>
-                    <span class="text-green-400">✓ Native</span>
-               </div>`
-            : `<div class="flex items-center justify-between text-sm mt-1">
-                    <span class="text-amber-300/70">Service Worker:</span>
-                    <span class="${navigator.serviceWorker?.controller ? 'text-green-400' : 'text-yellow-400'}">
-                        ${navigator.serviceWorker?.controller ? '✓ Active' : '○ Not controlling (reload page)'}
-                    </span>
-               </div>`;
-        
-        // Enable button section when not enabled
-        let enableSection = '';
-        if (!this.notificationsEnabled) {
-            if (isNative) {
-                enableSection = `
-                    <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
-                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
-                        Enable Notifications
-                    </button>
-                    <p class="text-amber-400/60 text-xs mt-2 text-center">If the prompt doesn't appear, open your device's Settings > Apps > Life Quest Journal > Notifications and enable them.</p>
-                `;
-            } else if ('Notification' in window && Notification.permission === 'denied') {
-                enableSection = `
-                    <button onclick="goalManager.showNotificationSettingsGuide()"
-                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2.5 rounded-lg text-sm fancy-font flex items-center justify-center gap-2">
-                        <i class="ri-settings-3-line"></i> How to Enable Notifications
-                    </button>
-                    <p class="text-red-400/80 text-xs mt-2 text-center">Notifications are blocked. Tap above for step-by-step instructions.</p>
-                `;
-            } else {
-                enableSection = `
-                    <button onclick="goalManager.requestNotificationPermission().then(() => goalManager.renderReminderSettings())"
-                        class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
-                        Enable Notifications
-                    </button>
-                `;
-            }
-        } else {
-            enableSection = `
-                <button onclick="goalManager.sendConfirmationNotification()"
-                    class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
-                    🔔 Send Test Notification
-                </button>
-                <p class="text-amber-400/60 text-xs mt-1 text-center">If no notification appears, check that notifications are enabled in your device's app settings.</p>
-            `;
-        }
-        
-        container.innerHTML = `
-            <div class="space-y-4">
-                <!-- Master Toggle -->
-                <div class="flex items-center justify-between">
-                    <span class="text-amber-200 fancy-font">Enable Reminders</span>
-                    <button onclick="goalManager.updateReminderSettings('enabled', ${!settings.enabled}); goalManager.renderReminderSettings();"
-                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.enabled ? 'bg-green-600' : 'bg-gray-600'} relative">
-                        <span style="width:24px;height:24px;top:4px;${settings.enabled ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
-                    </button>
-                </div>
-                
-                ${settings.enabled ? `
-                <!-- Morning Reminder -->
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <span class="text-amber-200 fancy-font text-sm whitespace-nowrap">🌅 Morning</span>
-                        <input type="time" value="${settings.morningTime}" 
-                            onchange="goalManager.updateReminderSettings('morningTime', this.value)"
-                            class="bg-amber-900/50 text-white rounded border border-amber-600" style="padding:2px 6px;font-size:12px;width:5.5rem">
-                    </div>
-                    <button onclick="goalManager.updateReminderSettings('morningReminder', ${!settings.morningReminder}); goalManager.renderReminderSettings();"
-                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.morningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
-                        <span style="width:24px;height:24px;top:4px;${settings.morningReminder ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
-                    </button>
-                </div>
-                
-                <!-- Evening Reminder -->
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <span class="text-amber-200 fancy-font text-sm whitespace-nowrap">🌆 Evening</span>
-                        <input type="time" value="${settings.eveningTime}" 
-                            onchange="goalManager.updateReminderSettings('eveningTime', this.value)"
-                            class="bg-amber-900/50 text-white rounded border border-amber-600" style="padding:2px 6px;font-size:12px;width:5.5rem">
-                    </div>
-                    <button onclick="goalManager.updateReminderSettings('eveningReminder', ${!settings.eveningReminder}); goalManager.renderReminderSettings();"
-                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.eveningReminder ? 'bg-green-600' : 'bg-gray-600'} relative">
-                        <span style="width:24px;height:24px;top:4px;${settings.eveningReminder ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
-                    </button>
-                </div>
-                
-                <!-- Overdue Alert -->
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-amber-200 fancy-font text-sm">⚠️ Overdue Alerts</span>
-                    <button onclick="goalManager.updateReminderSettings('overdueAlert', ${!settings.overdueAlert}); goalManager.renderReminderSettings();"
-                        style="width:56px;height:32px;flex-shrink:0" class="rounded-full transition-all duration-200 ${settings.overdueAlert ? 'bg-green-600' : 'bg-gray-600'} relative">
-                        <span style="width:24px;height:24px;top:4px;${settings.overdueAlert ? 'left:28px' : 'left:4px'}" class="absolute bg-white rounded-full transition-all duration-200 shadow"></span>
-                    </button>
-                </div>
-                ` : '<p class="text-gray-400 text-sm text-center">Enable reminders to configure notification times</p>'}
-                
-                <!-- Notification Status -->
-                <div class="mt-4 pt-4 border-t border-amber-700/50">
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-amber-300/70">Notifications:</span>
-                        ${notifStatusLabel}
-                    </div>
-                    ${deliveryRow}
-                    ${enableSection}
-                </div>
-            </div>
-        `;
+        // Pure markup (Engineering Roadmap #1 - 22nd render module, reminder-render.js). The wrapper keeps the
+        // lookup + guard + the permission re-check above (which mutates this.notificationsEnabled); the builder
+        // gets the resolved flags. The time <input>s' inline onchange handlers live verbatim in the module.
+        container.innerHTML = REMINDER_RENDER.renderReminderSettingsHTML({
+            settings: this.reminderSettings,
+            notificationsEnabled: this.notificationsEnabled,
+            isNative: !!isNative,
+            notificationSupported: 'Notification' in window,
+            permissionDenied: 'Notification' in window && Notification.permission === 'denied',
+        });
     }
 
     showErrorNotification(message) {
@@ -17176,8 +17230,11 @@ class GoalManager {
         modal.setAttribute('aria-label', 'Confirmation');
         modal.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;z-index:99999;';
         
-        // Support multi-line messages (convert \n to <br>)
-        const formattedMsg = message.replace(/\n/g, '<br>');
+        // Support multi-line messages (convert \n to <br>). Escape FIRST so a
+        // user-controlled message (e.g. the custom-challenge title in the
+        // "Mark challenge ...?" confirm) can't inject HTML; escapeHTML leaves
+        // \n intact so the <br> conversion still works.
+        const formattedMsg = this.escapeHTML(message).replace(/\n/g, '<br>');
         
         modal.innerHTML = `
             <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-xl shadow-2xl border-4 border-amber-600 w-full max-w-sm p-6 text-center" style="max-width: min(400px, 100%);">
@@ -17227,8 +17284,12 @@ class GoalManager {
             }
         });
         
-        // Focus the confirm button
-        setTimeout(() => modal.querySelector('#confirm-ok-btn')?.focus(), 50);
+        // Focus the CANCEL button, not Confirm (v2.9.x UX audit fix).
+        // showConfirm guards destructive actions ("Permanently delete?",
+        // data-import overwrite). Focusing Confirm meant a stray Enter
+        // press or fast double-tap landed on the destructive action;
+        // defaulting to Cancel makes the dangerous path opt-in.
+        setTimeout(() => modal.querySelector('#confirm-cancel-btn')?.focus(), 50);
     }
 
     showPrompt(message, expectedValue, onMatch, onCancel) {
@@ -17305,6 +17366,9 @@ class GoalManager {
     // ==================== SEARCH FUNCTIONALITY ====================
     
     openSearchModal() {
+        // Close any previous instance (and its Escape listener) first so
+        // repeated opens can never stack modals or leak listeners.
+        this.closeSearch();
         const modal = document.createElement('div');
         modal.id = 'search-modal';
         modal.className = 'bg-black/70';
@@ -17312,7 +17376,7 @@ class GoalManager {
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-label', 'Search quests');
         modal.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:3rem 1rem 1rem;';
-        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        modal.onclick = (e) => { if (e.target === modal) this.closeSearch(); };
         
         modal.innerHTML = `
             <div class="bg-gradient-to-br from-indigo-900 to-indigo-950 rounded-xl shadow-2xl border-4 border-indigo-600 w-full max-w-2xl max-h-[70vh] flex flex-col" style="max-width: min(672px, 100%); box-sizing: border-box;">
@@ -17324,17 +17388,17 @@ class GoalManager {
                             class="flex-1 bg-indigo-800/50 text-white px-4 py-3 rounded-lg border-2 border-indigo-500 focus:border-indigo-400 outline-none fancy-font text-lg"
                             oninput="goalManager.performSearch(this.value)"
                             autofocus>
-                        <button onclick="document.getElementById('search-modal').remove()" class="text-indigo-300 hover:text-white p-2" aria-label="Close search">
+                        <button data-action="search.close" class="text-indigo-300 hover:text-white p-2" aria-label="Close search">
                             <i class="ri-close-line text-2xl" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="flex flex-wrap gap-2 mt-3">
-                        <button onclick="goalManager.filterSearchResults('all')" class="search-filter-btn active btn-themed-primary px-3 py-1 rounded-lg text-sm fancy-font" data-filter="all">All</button>
-                        <button onclick="goalManager.filterSearchResults('tasks')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="tasks">Tasks</button>
-                        <button onclick="goalManager.filterSearchResults('goals')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="goals">Goals</button>
-                        <button onclick="goalManager.filterSearchResults('habits')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="habits">Habits</button>
-                        <button onclick="goalManager.filterSearchResults('sidequests')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="sidequests">Side Quests</button>
-                        <button onclick="goalManager.filterSearchResults('recurring')" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="recurring">Recurring</button>
+                        <button data-action="search.filter" class="search-filter-btn active btn-themed-primary px-3 py-1 rounded-lg text-sm fancy-font" data-filter="all">All</button>
+                        <button data-action="search.filter" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="tasks">Tasks</button>
+                        <button data-action="search.filter" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="goals">Goals</button>
+                        <button data-action="search.filter" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="habits">Habits</button>
+                        <button data-action="search.filter" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="sidequests">Side Quests</button>
+                        <button data-action="search.filter" class="search-filter-btn px-3 py-1 rounded-lg text-sm fancy-font bg-indigo-800 text-indigo-300 hover:bg-indigo-700" data-filter="recurring">Recurring</button>
                     </div>
                 </div>
                 <div id="search-results" class="flex-1 overflow-y-auto p-4">
@@ -17352,14 +17416,15 @@ class GoalManager {
         // Focus the input
         setTimeout(() => document.getElementById('search-input')?.focus(), 100);
         
-        // Add keyboard shortcut to close
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                modal.remove();
-                document.removeEventListener('keydown', handleEscape);
-            }
+        // Escape closes the modal. The handler reference is stored on the
+        // instance so `closeSearch()` can remove it no matter which close
+        // route fired (Esc, backdrop, ✕ button, result click, hardware
+        // back) — previously only the Esc path removed it, leaking one
+        // document-level listener per backdrop/✕ dismissal.
+        this._searchEscapeHandler = (e) => {
+            if (e.key === 'Escape') this.closeSearch();
         };
-        document.addEventListener('keydown', handleEscape);
+        document.addEventListener('keydown', this._searchEscapeHandler);
     }
 
     filterSearchResults(filter) {
@@ -17554,7 +17619,7 @@ class GoalManager {
         resultsContainer.innerHTML = `
             <div class="text-indigo-300 text-sm mb-3 fancy-font">${results.length} result${results.length !== 1 ? 's' : ''} found</div>
             ${results.map(r => `
-                <div onclick="goalManager.goToSearchResult('${r.view}', '${r.id}'); document.getElementById('search-modal').remove();" 
+                <div data-action="search.goto" data-view="${r.view}" data-result-id="${r.id}" 
                     class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-indigo-800/50 mb-2 ${r.completed ? 'opacity-60' : ''}">
                     <i class="${r.icon} text-2xl text-${r.color}-400"></i>
                     <div class="flex-1">
@@ -17641,14 +17706,18 @@ class GoalManager {
                 
                 // Quick-add routes to `quickAddX(title)` helpers which push
                 // the record directly with defaults — no modal chain. Avoids
-                // the parentId-corruption bug that existed when the typed
-                // text was passed to the regular `addX(parentId)` overloads.
+                // the parentId-corruption / discarded-text bug that existed
+                // when the typed text was passed to the regular `addX(parentId)`
+                // overloads (which ignore it and open their own modal).
+                // Recurring tasks are the one exception: they genuinely need a
+                // schedule, so the text is passed as a title *prefill* into the
+                // (required) recurrence modal rather than being created blind.
                 if (currentView === 'daily' && this.activeDailyTab === 'rituals') {
-                    this.addHabit(text);
+                    this.quickAddHabit(text);
                 } else if (currentView === 'daily' && this.activeDailyTab === 'recurring') {
                     this.addRecurringTask(text);
                 } else if (currentView === 'habits-view') {
-                    this.addHabit(text);
+                    this.quickAddHabit(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'sidequests') {
                     this.quickAddSideQuest(text);
                 } else if (currentView === 'goals' && this.activeGoalTab === 'weekly') {
@@ -17849,6 +17918,40 @@ class GoalManager {
         this.showTutorialStep();
     }
 
+    // Onboarding fork — invoked by the two play-style cards rendered on the
+    // fork tutorial step (see _renderOnboardingForkHTML). Persists the choice,
+    // refreshes any on-screen goal tabs, then advances past the fork step.
+    chooseOnboardingPath(path) {
+        this.applyOnboardingPath(path);
+        if (typeof this.saveData === 'function') this.saveData();
+        if (typeof document !== 'undefined' && typeof this.updateGoalTabVisibility === 'function') {
+            try { this.updateGoalTabVisibility(); } catch (e) { /* DOM not ready yet */ }
+        }
+        this.nextTutorialStep();
+    }
+
+    // HTML for the two play-style choice cards shown on the fork tutorial step.
+    _renderOnboardingForkHTML() {
+        const card = (path, emoji, title, desc, payoff) => `
+            <button type="button" data-action="onboarding.choosePath" data-path="${path}"
+                class="flex-1 text-left bg-gradient-to-br from-stone-800 to-stone-900 hover:from-amber-900 hover:to-stone-900 border-2 border-amber-700/60 hover:border-amber-300 focus:border-amber-300 focus:outline-none rounded-xl p-5 transition-all hover:scale-[1.03] shadow-lg">
+                <div class="text-4xl mb-2">${emoji}</div>
+                <h3 class="text-xl font-bold text-amber-300 medieval-title mb-2">${title}</h3>
+                <p class="text-amber-100/80 text-sm mb-3 leading-snug">${desc}</p>
+                <p class="text-amber-400 text-xs italic leading-snug">${payoff}</p>
+            </button>`;
+        return `
+            <p class="text-amber-200/90 mb-5 text-base">How do you want to start? Pick the style that fits you — you can change it later by restarting the tutorial in Tools &amp; Settings.</p>
+            <div class="flex flex-col sm:flex-row gap-4">
+                ${card('habits', '🔥', 'Daily Focus',
+                    'Build habits and routines first. Start with daily quests and rituals, then grow into bigger plans.',
+                    '→ Weekly, monthly &amp; yearly goals unlock quickly as you level up.')}
+                ${card('goals', '🗺️', 'Grand Planner',
+                    'Map the big picture now. Plan weekly, monthly, yearly and life goals from the very start.',
+                    '→ Every goal tier is unlocked immediately — nothing to wait for.')}
+            </div>`;
+    }
+
     getAllTutorialSteps() {
         return [
             {
@@ -17860,6 +17963,17 @@ class GoalManager {
                 // to. Centered welcome tooltip with no spotlight reads cleaner.
                 element: null,
                 action: () => this.switchView('dashboard')
+            },
+            {
+                title: "Choose Your Path 🧭",
+                // Onboarding fork — the player picks a play-style. The choice
+                // (chooseOnboardingPath) sets goal-tab unlock thresholds AND is
+                // what advances this step, so showTutorialStep() renders the cards
+                // itself and hides the Next button while `fork` is true.
+                fork: true,
+                content: "",
+                element: null,
+                action: null
             },
             {
                 title: "Level Up & Unlock 📊",
@@ -17886,7 +18000,9 @@ class GoalManager {
             },
             {
                 title: "Ready to Begin! 🎉",
-                content: "Start by adding your first daily task! New features unlock as you level up — you'll be notified each time. Good luck, hero!",
+                content: this.onboardingPath === 'goals'
+                    ? "Your full Quest Log is unlocked — weekly, monthly, yearly, and life goals are ready to fill. Start mapping your ambitions, hero!"
+                    : "Start by adding your first daily task! New goal types and features unlock fast as you level up — you'll be notified each time. Good luck, hero!",
                 element: null,
                 action: () => this.switchView('daily')
             }
@@ -17918,13 +18034,21 @@ class GoalManager {
         
         // Update tooltip content
         document.getElementById('tutorial-title').textContent = step.title;
-        document.getElementById('tutorial-content').innerHTML = step.content.replace(/\n/g, '<br>');
+        document.getElementById('tutorial-content').innerHTML = step.fork
+            ? this._renderOnboardingForkHTML()
+            : step.content.replace(/\n/g, '<br>');
         document.getElementById('tutorial-step-number').textContent = `${this.currentTutorialStep + 1} / ${this.tutorialSteps.length}`;
         
-        // Update button text and visibility
+        // Update button text and visibility. The fork step has no Next button —
+        // picking a play-style card is what advances it (chooseOnboardingPath).
         const nextBtn = document.getElementById('tutorial-next-btn');
         if (nextBtn) {
-            nextBtn.textContent = this.currentTutorialStep === this.tutorialSteps.length - 1 ? '🎉 Start My Adventure!' : 'Next →';
+            if (step.fork) {
+                nextBtn.style.display = 'none';
+            } else {
+                nextBtn.style.display = '';
+                nextBtn.textContent = this.currentTutorialStep === this.tutorialSteps.length - 1 ? '🎉 Start My Adventure!' : 'Next →';
+            }
         }
         const backBtn = document.getElementById('tutorial-back-btn');
         if (backBtn) {
@@ -18163,45 +18287,20 @@ class GoalManager {
         this.startTutorial();
     }
 
-    // Preset Starter Tasks System
-    starterTaskPresets = {
-        daily: [
-            { name: '💧 Drink 8 glasses of water', icon: '💧', category: 'Health' },
-            { name: '🏃 Exercise for 30 minutes', icon: '🏃', category: 'Fitness' },
-            { name: '📖 Read for 20 minutes', icon: '📖', category: 'Learning' },
-            { name: '🧘 Meditate for 10 minutes', icon: '🧘', category: 'Wellness' },
-            { name: '🛏️ Make your bed', icon: '🛏️', category: 'Home' },
-            { name: '📝 Write a journal entry', icon: '📝', category: 'Reflection' },
-            { name: '🥗 Eat a healthy meal', icon: '🥗', category: 'Health' },
-            { name: '😴 Get 8 hours of sleep', icon: '😴', category: 'Health' },
-            { name: '🚶 Take a 15 minute walk', icon: '🚶', category: 'Fitness' },
-            { name: '📵 1 hour screen-free time', icon: '📵', category: 'Wellness' }
-        ],
-        weekly: [
-            { name: '🧹 Clean room/house', icon: '🧹', category: 'Home' },
-            { name: '📞 Call a friend or family', icon: '📞', category: 'Social' },
-            { name: '🛒 Meal prep for the week', icon: '🛒', category: 'Health' },
-            { name: '📊 Review weekly goals', icon: '📊', category: 'Planning' },
-            { name: '🧺 Do laundry', icon: '🧺', category: 'Home' },
-            { name: '💪 Complete 3 workouts', icon: '💪', category: 'Fitness' },
-            { name: '📚 Finish a book chapter', icon: '📚', category: 'Learning' },
-            { name: '🎨 Practice a hobby', icon: '🎨', category: 'Personal' }
-        ],
-        monthly: [
-            { name: '💰 Review budget/finances', icon: '💰', category: 'Finance' },
-            { name: '🎯 Set new monthly goals', icon: '🎯', category: 'Planning' },
-            { name: '📸 Take progress photos', icon: '📸', category: 'Tracking' },
-            { name: '🧹 Deep clean one area', icon: '🧹', category: 'Home' },
-            { name: '👥 Meet up with friends', icon: '👥', category: 'Social' },
-            { name: '📋 Review subscriptions', icon: '📋', category: 'Finance' },
-            { name: '🏥 Schedule health checkup', icon: '🏥', category: 'Health' },
-            { name: '🌱 Learn something new', icon: '🌱', category: 'Learning' }
-        ]
-    };
+    // Preset Starter Tasks System — the catalog lives in starter-task-presets.js
+    // (Engineering Roadmap #1 incremental split), captured into the module-scoped
+    // STARTER_TASK_PRESETS const at the top of this file. Consumers read it / build
+    // fresh task objects from it, so the shared frozen const is safe.
+    starterTaskPresets = STARTER_TASK_PRESETS;
 
     showStarterTasksModal() {
         const weeklyUnlocked = this.isGoalTabUnlocked('weekly');
         const monthlyUnlocked = this.isGoalTabUnlocked('monthly');
+        // v3.2 friction audit N1 — surface the big-goal tiers when they're
+        // unlocked (always true for the Grand Planner path, which opens them at
+        // level 1) so those tabs don't sit empty after onboarding.
+        const yearlyUnlocked = this.isGoalTabUnlocked('yearly');
+        const lifeGoalsUnlocked = this.isGoalTabUnlocked('life-goals');
         
         // Build quick-start packs — only show packs whose content is accessible
         const packs = [
@@ -18212,7 +18311,7 @@ class GoalManager {
         ];
         
         const packsHTML = packs.filter(p => p.show).map(p => `
-            <button onclick="goalManager.addStarterPack('${p.id}')" class="bg-${p.color}-800/50 hover:bg-${p.color}-700/50 border border-${p.color}-600 rounded-lg p-4 text-left transition-all">
+            <button data-action="premium.starterPack" data-id="${p.id}" class="bg-${p.color}-800/50 hover:bg-${p.color}-700/50 border border-${p.color}-600 rounded-lg p-4 text-left transition-all">
                 <div class="text-${p.color}-300 font-bold">${p.icon} ${p.name}</div>
                 <div class="text-${p.color}-200/70 text-xs mt-1">${p.desc}</div>
             </button>
@@ -18265,6 +18364,38 @@ class GoalManager {
             `;
         }
         
+        if (yearlyUnlocked) {
+            individualHTML += `
+                <div class="mb-4">
+                    <div class="text-amber-400 font-semibold mb-2 text-sm">Yearly Campaigns</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-yearly-tasks">
+                        ${this.starterTaskPresets.yearly.map((task, i) => `
+                            <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
+                                <input type="checkbox" class="starter-task-checkbox" data-type="yearly" data-index="${i}" class="rounded">
+                                <span class="text-stone-200 text-xs">${task.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (lifeGoalsUnlocked) {
+            individualHTML += `
+                <div class="mb-4">
+                    <div class="text-amber-400 font-semibold mb-2 text-sm">Life Goals</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="starter-life-goals-tasks">
+                        ${this.starterTaskPresets['life-goals'].map((task, i) => `
+                            <label class="flex items-center gap-2 bg-stone-800/50 rounded p-2 cursor-pointer hover:bg-stone-700/50 transition-all">
+                                <input type="checkbox" class="starter-task-checkbox" data-type="life-goals" data-index="${i}" class="rounded">
+                                <span class="text-stone-200 text-xs">${task.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
         const modal = document.createElement('div');
         modal.id = 'starter-tasks-modal';
         modal.className = 'bg-black/80';
@@ -18293,10 +18424,10 @@ class GoalManager {
                 </div>
                 
                 <div class="p-4 border-t border-amber-700 flex flex-wrap gap-3 justify-center bg-stone-900/50">
-                    <button onclick="goalManager.addSelectedStarterTasks()" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
+                    <button data-action="modal.addStarterTasks" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
                         <i class="ri-add-circle-line mr-1"></i>Add Selected Tasks
                     </button>
-                    <button onclick="goalManager.closeStarterTasksModal()" class="bg-gradient-to-r from-stone-600 to-stone-700 hover:from-stone-500 hover:to-stone-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
+                    <button data-action="modal.closeStarterTasks" class="bg-gradient-to-r from-stone-600 to-stone-700 hover:from-stone-500 hover:to-stone-600 text-white px-4 py-2 rounded-lg font-bold transition-all">
                         🚀 Start Fresh
                     </button>
                 </div>
@@ -18320,7 +18451,14 @@ class GoalManager {
             setTimeout(() => {
                 this.showFeatureUnlockPopup(
                     '✨ Beginner\'s Blessing!',
-                    `The gods smile upon new adventurers! You have <b>2x XP & Gold</b> for your first <b>${this.BEGINNER_BLESSING_DAYS} days</b>. Complete quests to level up fast and unlock powerful features!`
+                    `The gods smile upon new adventurers! You have <b>2x XP & Gold</b> for your first <b>${this.BEGINNER_BLESSING_DAYS} days</b>. Complete quests to level up fast and unlock powerful features!`,
+                    // v3.2 friction audit P1a — fire the notification ask when the
+                    // user dismisses the final onboarding popup. The boot-time
+                    // (+3s) prompt is swallowed because it runs while the tutorial
+                    // is still active; this re-asks at the real end of onboarding
+                    // so first-session users actually see it (notifications are the
+                    // top return driver). showNotificationPrompt() self-guards.
+                    () => this._maybePromptPostOnboardingNotifications()
                 );
             }, 350);
         }
@@ -18329,14 +18467,35 @@ class GoalManager {
         // When this fires as part of the post-tutorial chain we delay the
         // nudge until after the Blessing popup is up so the toast doesn't
         // collide with the popup's slide-in animation.
+        //
+        // v3.2 friction audit N1 — the nudge is now path-aware. A Grand Planner
+        // came to map big goals and has the yearly/life tabs open at L1; nudging
+        // them to "add a daily quest" misses their intent and those tabs would
+        // otherwise sit empty. If they added no big goals, point them at the
+        // Quest Log instead. Daily-focus / default users keep the daily nudge.
+        const nudgeDelay = wasPostTutorial ? 4500 : 500;
+        const hasBigGoals = this.yearlyGoals.length > 0 || this.lifeGoals.length > 0;
         const todaysTasks = this.dailyTasks.filter(task => this.isToday(task.dueDate));
-        if (todaysTasks.length === 0) {
+        if (this.onboardingPath === 'goals' && !hasBigGoals) {
+            this.switchView('life-goals');
+            setTimeout(() => {
+                this.showAchievement('🗺️ Tap the + button to map your first big goal!', 'daily');
+            }, nudgeDelay);
+        } else if (todaysTasks.length === 0) {
             this.switchView('daily');
-            const nudgeDelay = wasPostTutorial ? 4500 : 500;
             setTimeout(() => {
                 this.showAchievement('💡 Tap the + button below to add your first daily quest!', 'daily');
             }, nudgeDelay);
         }
+    }
+
+    // v3.2 friction audit P1a — single, testable entry point for the deferred
+    // notification ask at the end of onboarding. The short delay lets the
+    // Beginner's Blessing popup finish unmounting before the prompt slides in.
+    // showNotificationPrompt() self-guards (already-enabled / tutorial-incomplete
+    // / card-already-up / recently-dismissed), so calling it here is safe.
+    _maybePromptPostOnboardingNotifications() {
+        setTimeout(() => this.showNotificationPrompt(), 600);
     }
 
     addStarterPack(packType) {
@@ -18445,7 +18604,9 @@ class GoalManager {
             if (task) {
                 // Skip locked task types as a safety check
                 if ((type === 'weekly' && !this.isGoalTabUnlocked('weekly')) ||
-                    (type === 'monthly' && !this.isGoalTabUnlocked('monthly'))) return;
+                    (type === 'monthly' && !this.isGoalTabUnlocked('monthly')) ||
+                    (type === 'yearly' && !this.isGoalTabUnlocked('yearly')) ||
+                    (type === 'life-goals' && !this.isGoalTabUnlocked('life-goals'))) return;
                 
                 const baseTask = {
                     id: this.uniqueId(),
@@ -18461,6 +18622,13 @@ class GoalManager {
                     this.weeklyGoals.push({ ...baseTask, monthlyGoalIds: [], progress: 0, checklist: [], priority: 'medium' });
                 } else if (type === 'monthly') {
                     this.monthlyGoals.push({ ...baseTask, yearlyGoalIds: [], progress: 0, priority: 'medium' });
+                } else if (type === 'yearly') {
+                    // v3.2 friction audit N1 — mirrors quickAddYearlyGoal's shape.
+                    this.yearlyGoals.push({ ...baseTask, lifeGoalIds: [], progress: 0, priority: 'medium' });
+                } else if (type === 'life-goals') {
+                    // v3.2 friction audit N1 — mirrors quickAddLifeGoal's shape
+                    // (top-level; no parent-link array, no progress/priority).
+                    this.lifeGoals.push({ ...baseTask });
                 }
                 added++;
             }
@@ -18737,11 +18905,8 @@ class GoalManager {
 
         // XP Progress bar
         const barY = statsY + statsH + 20;
-        const currentLevelXP = this.getTotalXPForLevel(this.level);
-        const nextLevelXP = this.getTotalXPForLevel(this.level + 1);
-        const xpIntoLevel = this.xp - currentLevelXP;
-        const xpNeededForLevel = nextLevelXP - currentLevelXP;
-        const xpProgress = Math.max(0, Math.min(100, (xpIntoLevel / xpNeededForLevel) * 100));
+        // XP-into-level math (leveling-logic.js).
+        const { xpIntoLevel, xpNeededForLevel, pct: xpProgress } = LEVELING_LOGIC.levelProgress(this.xp, this.level);
         
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = '12px Georgia, serif';
@@ -18860,27 +19025,27 @@ class GoalManager {
                     </div>
                     <!-- Platform share buttons -->
                     <div class="grid grid-cols-5 gap-2 mb-3">
-                        <button onclick="goalManager.shareToPlatform('twitter')" 
+                        <button data-action="share.toPlatform" data-platform="twitter" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-sky-900/50 border border-gray-700/50 hover:border-sky-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-twitter-x-line text-lg text-white"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">X</span>
                         </button>
-                        <button onclick="goalManager.shareToPlatform('instagram')" 
+                        <button data-action="share.toPlatform" data-platform="instagram" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-pink-900/50 border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-instagram-line text-lg text-pink-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Instagram</span>
                         </button>
-                        <button onclick="goalManager.shareToPlatform('facebook')" 
+                        <button data-action="share.toPlatform" data-platform="facebook" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-blue-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-facebook-fill text-lg text-blue-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Facebook</span>
                         </button>
-                        <button onclick="goalManager.shareToPlatform('reddit')" 
+                        <button data-action="share.toPlatform" data-platform="reddit" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-orange-900/50 border border-gray-700/50 hover:border-orange-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-reddit-line text-lg text-orange-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Reddit</span>
                         </button>
-                        <button onclick="goalManager.shareToPlatform('copy')" 
+                        <button data-action="share.toPlatform" data-platform="copy" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-green-900/50 border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105 active:scale-95" id="share-copy-btn">
                             <i class="ri-file-copy-line text-lg text-green-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Copy</span>
@@ -18891,7 +19056,7 @@ class GoalManager {
                     </div>
                     <!-- Native share / download -->
                     <div class="flex gap-2">
-                        <button onclick="goalManager.shareStatCard(); document.getElementById('share-card-modal')?.remove();"
+                        <button data-action="share.statCardClose"
                             class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 text-sm">
                             <i class="ri-share-line mr-1"></i> ${navigator.canShare ? 'Share' : 'Download'} Image
                         </button>
@@ -19206,7 +19371,7 @@ class GoalManager {
                 const summary = this.generatePreviousPeriodSummary('week');
                 await navigator.share({
                     title: 'My Weekly Quest Recap',
-                    text: `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`,
+                    text: PERIOD_SUMMARY_LOGIC.recapShareText(summary),
                     url: this.getShareUrl(),
                     files: [file]
                 });
@@ -19244,7 +19409,7 @@ class GoalManager {
         if (existing) existing.remove();
 
         const summary = this.generatePreviousPeriodSummary('week');
-        const shareText = `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`;
+        const shareText = PERIOD_SUMMARY_LOGIC.recapShareText(summary);
 
         const modal = document.createElement('div');
         modal.id = 'weekly-recap-modal';
@@ -19267,27 +19432,27 @@ class GoalManager {
                     </div>
                     <!-- Platform share buttons -->
                     <div class="grid grid-cols-5 gap-2 mb-3">
-                        <button onclick="goalManager.shareRecapToPlatform('twitter')" 
+                        <button data-action="share.recapToPlatform" data-platform="twitter" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-sky-900/50 border border-gray-700/50 hover:border-sky-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-twitter-x-line text-lg text-white"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">X</span>
                         </button>
-                        <button onclick="goalManager.shareRecapToPlatform('instagram')" 
+                        <button data-action="share.recapToPlatform" data-platform="instagram" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-pink-900/50 border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-instagram-line text-lg text-pink-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Instagram</span>
                         </button>
-                        <button onclick="goalManager.shareRecapToPlatform('facebook')" 
+                        <button data-action="share.recapToPlatform" data-platform="facebook" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-blue-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-facebook-fill text-lg text-blue-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Facebook</span>
                         </button>
-                        <button onclick="goalManager.shareRecapToPlatform('reddit')" 
+                        <button data-action="share.recapToPlatform" data-platform="reddit" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-orange-900/50 border border-gray-700/50 hover:border-orange-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-reddit-line text-lg text-orange-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Reddit</span>
                         </button>
-                        <button onclick="goalManager.shareRecapToPlatform('copy')" 
+                        <button data-action="share.recapToPlatform" data-platform="copy" 
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-green-900/50 border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105 active:scale-95" id="recap-copy-btn">
                             <i class="ri-file-copy-line text-lg text-green-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Copy</span>
@@ -19297,7 +19462,7 @@ class GoalManager {
                         <span class="text-green-300/70 text-xs fancy-font"><i class="ri-download-2-line mr-1"></i>Image downloaded — attach it to your post!</span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="goalManager.shareWeeklyRecap(); document.getElementById('weekly-recap-modal')?.remove();"
+                        <button data-action="share.weeklyRecapClose"
                             class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 text-sm">
                             <i class="ri-share-line mr-1"></i> ${navigator.canShare ? 'Share' : 'Download'} Recap
                         </button>
@@ -19335,7 +19500,7 @@ class GoalManager {
 
     async shareRecapToPlatform(platform) {
         const summary = this.generatePreviousPeriodSummary('week');
-        const shareText = `Completed ${summary.tasks.completed} tasks this week with a ${summary.tasks.completionRate}% completion rate! #LifeQuestJournal`;
+        const shareText = PERIOD_SUMMARY_LOGIC.recapShareText(summary);
         const shareUrl = this.getShareUrl();
 
         if (platform === 'copy') {
@@ -19431,7 +19596,7 @@ class GoalManager {
         modal.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:16px;';
 
         const presetHTML = this.challengePresets.map(p => `
-            <button onclick="goalManager.showPresetOptions('${p.id}')"
+            <button data-action="preset.showOptions" data-preset-id="${p.id}"
                 class="flex items-center gap-3 p-3 rounded-xl bg-black/40 hover:bg-orange-900/40 border border-gray-700/50 hover:border-orange-500/50 transition-all text-left w-full">
                 <span class="text-2xl">${p.icon}</span>
                 <div class="flex-1 min-w-0">
@@ -19460,7 +19625,7 @@ class GoalManager {
                         <div class="text-xs text-orange-300/70 font-bold uppercase tracking-wider mb-2 fancy-font">Auto-Tracked Presets</div>
                         <div class="space-y-2 mb-4">${presetHTML}</div>
                         <div class="text-xs text-orange-300/70 font-bold uppercase tracking-wider mb-2 fancy-font">Custom Challenge</div>
-                        <button onclick="goalManager.showCustomChallengeForm()"
+                        <button data-action="challenge.customForm"
                             class="flex items-center gap-3 p-3 rounded-xl bg-black/40 hover:bg-purple-900/40 border border-gray-700/50 hover:border-purple-500/50 transition-all text-left w-full">
                             <span class="text-2xl">✏️</span>
                             <div class="flex-1 min-w-0">
@@ -19485,14 +19650,14 @@ class GoalManager {
         if (!container) return;
 
         const optionsHTML = preset.options.map(n => `
-            <button onclick="goalManager.showChallengeDifficulty('${presetId}', ${n})"
+            <button data-action="challenge.pickTarget" data-preset="${presetId}" data-n="${n}"
                 class="px-4 py-3 rounded-xl bg-black/40 hover:bg-orange-900/40 border border-gray-700/50 hover:border-orange-500/50 transition-all text-white font-bold text-lg">
                 ${n}
             </button>
         `).join('');
 
         container.innerHTML = `
-            <button onclick="goalManager.showCreateChallenge()" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
+            <button data-action="challenge.create" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
                 <i class="ri-arrow-left-line"></i> Back to presets
             </button>
             <div class="text-center mb-4">
@@ -19516,13 +19681,13 @@ class GoalManager {
         ];
 
         container.innerHTML = `
-            <button onclick="goalManager.showCreateChallenge()" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
+            <button data-action="challenge.create" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
                 <i class="ri-arrow-left-line"></i> Back to presets
             </button>
             <div class="text-xs text-orange-300/70 font-bold uppercase tracking-wider mb-3 fancy-font text-center">Select Difficulty & Deadline</div>
             <div class="space-y-2">
                 ${difficulties.map(d => `
-                    <button onclick="goalManager.finishCreateChallenge('${presetId || ''}', ${targetValue || 0}, '${d.id}', ${d.days}, '')"
+                    <button data-action="challenge.finish" data-preset="${presetId || ''}" data-target="${targetValue || 0}" data-difficulty="${d.id}" data-days="${d.days}"
                         class="flex items-center gap-3 p-3 rounded-xl bg-black/40 hover:bg-${d.color}-900/40 border border-gray-700/50 hover:border-${d.color}-500/50 transition-all text-left w-full">
                         <span class="text-2xl">${d.icon}</span>
                         <div class="flex-1">
@@ -19551,7 +19716,7 @@ class GoalManager {
         ];
 
         container.innerHTML = `
-            <button onclick="goalManager.showCreateChallenge()" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
+            <button data-action="challenge.create" class="text-orange-300/70 text-xs fancy-font mb-4 flex items-center gap-1 hover:text-orange-200 transition-all">
                 <i class="ri-arrow-left-line"></i> Back
             </button>
             <div class="text-center mb-3">
@@ -19590,7 +19755,7 @@ class GoalManager {
                     </div>
                     <input type="hidden" id="custom-deadline" value="3">
                 </div>
-                <button onclick="goalManager.submitCustomChallenge()"
+                <button data-action="challenge.submitCustom"
                     class="w-full py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm mt-2">
                     <i class="ri-send-plane-line mr-1"></i> Create Challenge
                 </button>
@@ -19715,27 +19880,27 @@ class GoalManager {
                     </div>
                     <!-- Share buttons -->
                     <div class="grid grid-cols-5 gap-2 mb-3">
-                        <button onclick="goalManager.shareChallengeToPlatform('twitter')"
+                        <button data-action="share.challengeToPlatform" data-platform="twitter"
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-sky-900/50 border border-gray-700/50 hover:border-sky-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-twitter-x-line text-lg text-white"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">X</span>
                         </button>
-                        <button onclick="goalManager.shareChallengeToPlatform('instagram')"
+                        <button data-action="share.challengeToPlatform" data-platform="instagram"
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-pink-900/50 border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-instagram-line text-lg text-pink-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Instagram</span>
                         </button>
-                        <button onclick="goalManager.shareChallengeToPlatform('facebook')"
+                        <button data-action="share.challengeToPlatform" data-platform="facebook"
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-blue-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-facebook-fill text-lg text-blue-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Facebook</span>
                         </button>
-                        <button onclick="goalManager.shareChallengeToPlatform('reddit')"
+                        <button data-action="share.challengeToPlatform" data-platform="reddit"
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-orange-900/50 border border-gray-700/50 hover:border-orange-500/50 transition-all hover:scale-105 active:scale-95">
                             <i class="ri-reddit-line text-lg text-orange-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Reddit</span>
                         </button>
-                        <button onclick="goalManager.shareChallengeToPlatform('copy')"
+                        <button data-action="share.challengeToPlatform" data-platform="copy"
                             class="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-black/40 hover:bg-green-900/50 border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105 active:scale-95" id="challenge-copy-btn">
                             <i class="ri-file-copy-line text-lg text-green-400"></i>
                             <span class="text-[10px] text-gray-400 fancy-font">Copy</span>
@@ -19749,7 +19914,7 @@ class GoalManager {
                         <div class="text-xs text-gray-400 fancy-font mb-1">Challenge Link:</div>
                         <div class="text-orange-300 text-xs break-all font-mono">${this.escapeHTML(shareUrl)}</div>
                     </div>
-                    <button onclick="goalManager.copyChallengeLinkDirect()"
+                    <button data-action="share.copyChallengeLink"
                         class="w-full py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm">
                         <i class="ri-links-line mr-1"></i> Copy Challenge Link
                     </button>
@@ -19899,11 +20064,11 @@ class GoalManager {
                         <div class="text-xs text-gray-500 mt-2 fancy-font">${safeType === 'preset' ? 'Auto-tracked — progress updates automatically' : 'Honor system — mark complete when done'}</div>
                     </div>
                     <div class="flex gap-3">
-                        <button onclick="document.getElementById('accept-challenge-modal')?.remove()"
+                        <button data-action="challenge.declineAccept"
                             class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gray-700 hover:bg-gray-600 text-gray-300 transition-all text-sm">
                             Decline
                         </button>
-                        <button onclick="goalManager.acceptChallenge(); document.getElementById('accept-challenge-modal')?.remove();"
+                        <button data-action="challenge.accept"
                             class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm">
                             <i class="ri-sword-line mr-1"></i> Accept!
                         </button>
@@ -20088,7 +20253,7 @@ class GoalManager {
                 <div class="text-center py-8">
                     <div class="text-5xl mb-3">⚔️</div>
                     <div class="text-gray-400 fancy-font text-sm mb-4">No active challenges</div>
-                    <button onclick="document.getElementById('active-challenges-modal')?.remove(); goalManager.showCreateChallenge();"
+                    <button data-action="challenge.createFromList"
                         class="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white px-5 py-2.5 rounded-lg font-bold fancy-font text-sm shadow-lg transition-all">
                         <i class="ri-send-plane-line mr-1"></i> Send a Challenge
                     </button>
@@ -20122,12 +20287,12 @@ class GoalManager {
                             <span class="text-xs text-gray-400 fancy-font">${progress.current}/${progress.target} (${progress.pct}%)</span>
                             <div class="flex gap-2">
                                 ${ch.type === 'custom' ? `
-                                    <button onclick="goalManager.manualCompleteChallenge(${ch.id})"
+                                    <button data-action="challenge.manualComplete" data-id="${ch.id}"
                                         class="text-xs px-3 py-1 rounded-lg bg-green-700/60 hover:bg-green-600 text-green-200 font-bold fancy-font transition-all">
                                         <i class="ri-check-line mr-1"></i>Complete
                                     </button>
                                 ` : ''}
-                                <button onclick="goalManager.abandonChallenge(${ch.id})"
+                                <button data-action="challenge.abandon" data-id="${ch.id}"
                                     class="text-xs px-3 py-1 rounded-lg bg-red-900/40 hover:bg-red-800 text-red-300 font-bold fancy-font transition-all">
                                     Abandon
                                 </button>
@@ -20154,7 +20319,7 @@ class GoalManager {
                         ${content}
                     </div>
                     <div class="p-5 pt-2 border-t border-gray-700/50">
-                        <button onclick="document.getElementById('active-challenges-modal')?.remove(); goalManager.showCreateChallenge();"
+                        <button data-action="challenge.createFromList"
                             class="w-full py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white shadow-lg transition-all text-sm">
                             <i class="ri-send-plane-line mr-1"></i> Send a New Challenge
                         </button>

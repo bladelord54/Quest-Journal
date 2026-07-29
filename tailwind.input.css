@@ -1,0 +1,6 @@
+/* Tailwind CLI entry point — compiled to tailwind.css by `npm run
+   build:css` (see tailwind.config.js for why this replaced the Play
+   CDN). Do not link this file directly; link the built tailwind.css. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

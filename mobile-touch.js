@@ -1,3 +1,4 @@
+// @ts-check
 // Mobile Touch Enhancements for Life Quest Journal
 // Handles swipe gestures, haptic feedback, and mobile-specific interactions
 
@@ -8,6 +9,8 @@ class MobileTouchHandler {
         this.touchEndX = 0;
         this.touchEndY = 0;
         this.swipeThreshold = 50; // Minimum distance for swipe
+        /** @type {HTMLElement | null} — element currently being swiped (set on touchstart) */
+        this.swipeTarget = null;
         this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         
         if (this.isMobile) {
@@ -25,7 +28,9 @@ class MobileTouchHandler {
     // Touch ripple effect for quest cards
     setupTouchRipple() {
         document.addEventListener('touchstart', (e) => {
-            const card = e.target.closest('.quest-card');
+            const card = /** @type {HTMLElement | null} */ (
+                /** @type {Element | null} */ (e.target)?.closest('.quest-card') ?? null
+            );
             if (!card) return;
             
             // Get touch position relative to card
@@ -88,7 +93,9 @@ class MobileTouchHandler {
     // Setup swipe gestures for task completion
     setupSwipeGestures() {
         document.addEventListener('touchstart', (e) => {
-            const target = e.target.closest('[data-task-id], [data-goal-id]');
+            const target = /** @type {HTMLElement | null} */ (
+                /** @type {Element | null} */ (e.target)?.closest('[data-task-id], [data-goal-id]') ?? null
+            );
             if (!target) return;
 
             this.touchStartX = e.touches[0].clientX;
@@ -97,20 +104,22 @@ class MobileTouchHandler {
         }, { passive: true });
 
         document.addEventListener('touchmove', (e) => {
-            if (!this.swipeTarget) return;
+            const el = this.swipeTarget;
+            if (!el) return;
 
             const currentX = e.touches[0].clientX;
             const diffX = this.touchStartX - currentX;
 
             // Visual feedback during swipe
             if (Math.abs(diffX) > 10) {
-                this.swipeTarget.style.transform = `translateX(${-diffX}px)`;
-                this.swipeTarget.style.opacity = 1 - (Math.abs(diffX) / 200);
+                el.style.transform = `translateX(${-diffX}px)`;
+                el.style.opacity = String(1 - (Math.abs(diffX) / 200));
             }
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            if (!this.swipeTarget) return;
+            const el = this.swipeTarget;
+            if (!el) return;
 
             this.touchEndX = e.changedTouches[0].clientX;
             this.touchEndY = e.changedTouches[0].clientY;
@@ -119,17 +128,17 @@ class MobileTouchHandler {
             const verticalDistance = Math.abs(this.touchStartY - this.touchEndY);
 
             // Reset visual state
-            this.swipeTarget.style.transform = '';
-            this.swipeTarget.style.opacity = '';
+            el.style.transform = '';
+            el.style.opacity = '';
 
             // Only trigger if swipe is mostly horizontal
             if (verticalDistance < 50 && Math.abs(swipeDistance) > this.swipeThreshold) {
                 if (swipeDistance > 0) {
                     // Swipe left to complete
-                    this.handleSwipeLeft(this.swipeTarget);
+                    this.handleSwipeLeft(el);
                 } else {
                     // Swipe right to undo/archive
-                    this.handleSwipeRight(this.swipeTarget);
+                    this.handleSwipeRight(el);
                 }
             }
 
@@ -137,13 +146,14 @@ class MobileTouchHandler {
         });
     }
 
+    /** @param {HTMLElement} element */
     handleSwipeLeft(element) {
         const taskId = element.dataset.taskId;
         const goalId = element.dataset.goalId;
 
         if (taskId && typeof goalManager !== 'undefined') {
             // Complete task
-            const task = goalManager.dailyTasks.find(t => t.id === Number(taskId));
+            const task = goalManager.dailyTasks.find((/** @type {any} */ t) => t.id === Number(taskId));
             if (task && !task.completed) {
                 this.vibrateSuccess();
                 goalManager.toggleTask(Number(taskId));
@@ -155,6 +165,7 @@ class MobileTouchHandler {
         }
     }
 
+    /** @param {HTMLElement} element */
     handleSwipeRight(element) {
         const taskId = element.dataset.taskId;
         
@@ -171,11 +182,14 @@ class MobileTouchHandler {
 
     // Long press for quick actions
     setupLongPress() {
+        /** @type {ReturnType<typeof setTimeout> | undefined} */
         let pressTimer;
         const longPressDuration = 500; // 500ms for long press
 
         document.addEventListener('touchstart', (e) => {
-            const target = e.target.closest('button, .quest-card, [data-task-id]');
+            const target = /** @type {HTMLElement | null} */ (
+                /** @type {Element | null} */ (e.target)?.closest('button, .quest-card, [data-task-id]') ?? null
+            );
             if (!target) return;
 
             pressTimer = setTimeout(() => {
@@ -197,6 +211,7 @@ class MobileTouchHandler {
         });
     }
 
+    /** @param {HTMLElement} element */
     handleLongPress(element) {
         
         // Add a visual pulse effect
@@ -210,6 +225,7 @@ class MobileTouchHandler {
         }
     }
 
+    /** @param {HTMLElement} element */
     showTaskQuickActions(element) {
         const taskId = element.dataset.taskId;
         if (!taskId || typeof goalManager === 'undefined') return;
@@ -271,6 +287,7 @@ const mobileTouchHandler = new MobileTouchHandler();
 if (typeof goalManager !== 'undefined' && mobileTouchHandler.isMobile) {
     // Override achievement showing to add haptic feedback
     const originalShowAchievement = goalManager.showAchievement;
+    /** @this {any} @param {string} text @param {string} [type] */
     goalManager.showAchievement = function(text, type) {
         mobileTouchHandler.vibrateSuccess();
         originalShowAchievement.call(this, text, type);
@@ -278,8 +295,9 @@ if (typeof goalManager !== 'undefined' && mobileTouchHandler.isMobile) {
 
     // Add haptic feedback to task completion
     const originalToggleTask = goalManager.toggleTask;
+    /** @this {any} @param {any} taskId */
     goalManager.toggleTask = function(taskId) {
-        const task = this.dailyTasks.find(t => t.id === taskId);
+        const task = this.dailyTasks.find((/** @type {any} */ t) => t.id === taskId);
         if (task && !task.completed) {
             mobileTouchHandler.vibrateSuccess();
         }
@@ -289,6 +307,7 @@ if (typeof goalManager !== 'undefined' && mobileTouchHandler.isMobile) {
     // Add haptic feedback to level up
     const originalLevelUp = goalManager.levelUp;
     if (originalLevelUp) {
+        /** @this {any} */
         goalManager.levelUp = function() {
             const oldLevel = this.level;
             originalLevelUp.call(this);
@@ -303,4 +322,4 @@ if (typeof goalManager !== 'undefined' && mobileTouchHandler.isMobile) {
 }
 
 // Export for use in other modules
-window.mobileTouchHandler = mobileTouchHandler;
+/** @type {any} */ (window).mobileTouchHandler = mobileTouchHandler;

@@ -177,8 +177,10 @@
         transform: rotate(180deg);
     }
 
-    /* Main Content Area */
-    body > .flex > div:last-child {
+    /* Main Content Area (v2.7.1 audit L10 — #main-content id replaced
+       the fragile body > .flex > div:last-child position selector, same
+       hardening the sidebar got in v2.7.1) */
+    #main-content {
         width: 100%;
         padding-bottom: 80px; /* Space for bottom nav */
     }
@@ -286,6 +288,17 @@
         font-size: 2rem !important;
     }
 
+    /* Level Ranks grid — these compact tiles intentionally use a small
+       (text-xs) label, but the blanket `.medieval-title { 1.5rem }` rule
+       above forces them to 24px, which overflows the short `py-1.5` tile
+       and clips the glyph descenders (e.g. "Conqueror", "Juggernaut").
+       Restore the intended size; the compound selector outranks the
+       single-class rule above so no !important is required. */
+    .medieval-title.title-rank-name {
+        font-size: 0.75rem !important;
+        line-height: 1.3;
+    }
+
     /* Player Panel - Mobile positioning */
     #player-panel-toggle {
         top: 0.5rem !important;
@@ -331,13 +344,23 @@
         font-size: 16px !important; /* Prevent zoom on iOS */
     }
 
-    /* PWA Install Button - Adjust for mobile nav */
+    /* PWA Install Button - Adjust for mobile nav (v2.7.1 audit L8 —
+       safe-area inset so the button clears the Android gesture bar,
+       matching the other bottom-pinned overlays) */
     #pwa-install-button {
-        bottom: 90px !important; /* Above bottom nav */
+        bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important; /* Above bottom nav */
     }
 
     /* Hide desktop-only features on mobile */
     .desktop-only {
+        display: none !important;
+    }
+
+    /* L6 (UX audit) — the "More" sidebar disclosure is desktop-only. The mobile
+       bottom tab bar shows every destination via horizontal scroll, so the
+       toggle (and the per-link collapse, which is scoped to >=769px in
+       styles.css) has no place here. */
+    #nav-more-toggle {
         display: none !important;
     }
 
@@ -495,12 +518,12 @@
         padding: 0.5rem 0.25rem;
     }
 
-    body > .flex > div:last-child {
+    #main-content {
         padding-bottom: 70px;
     }
 
     #pwa-install-button {
-        bottom: 70px !important;
+        bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
     }
 }
 

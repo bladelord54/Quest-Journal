@@ -46,6 +46,26 @@ body {
     transition: all 0.2s ease;
 }
 
+/* L6 (UX audit) — desktop sidebar "More" disclosure. updateNavVisibility()
+   tags far-off locked nav items with `.nav-more-hidden`; we only collapse them
+   on the desktop/tablet vertical sidebar. The mobile bottom bar (<=768px) shows
+   every destination via horizontal scroll, so this hide is scoped to >=769px
+   and the toggle is hidden outright on mobile (see mobile.css). */
+@media (min-width: 769px) {
+    .nav-link.nav-more-hidden {
+        display: none;
+    }
+}
+
+.nav-more-toggle {
+    cursor: pointer;
+    background: transparent;
+    text-align: left;
+}
+.nav-more-toggle:hover {
+    color: #fcd34d;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

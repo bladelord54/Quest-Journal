@@ -1,16 +1,23 @@
+// @ts-check
 // Lightweight Analytics — local event tracking for key user actions
 // All data stays in localStorage; nothing is sent externally.
+/**
+ * @typedef {{ n: string, t: number, d: any }} AnalyticsEvent
+ * @typedef {{ events: AnalyticsEvent[], summary: Record<string, number> }} AnalyticsStore
+ */
 
 const _analyticsKey = 'lqj_analytics';
 const _analyticsSessionKey = 'lqj_session';
 const _MAX_EVENTS = 500; // Rolling cap to keep storage lean
 
+/** @returns {AnalyticsStore} */
 function _getAnalyticsStore() {
     try {
-        return JSON.parse(localStorage.getItem(_analyticsKey)) || { events: [], summary: {} };
+        return JSON.parse(localStorage.getItem(_analyticsKey) || 'null') || { events: [], summary: {} };
     } catch { return { events: [], summary: {} }; }
 }
 
+/** @param {AnalyticsStore} store */
 function _saveAnalyticsStore(store) {
     try {
         // Trim oldest events if over cap
@@ -25,7 +32,7 @@ function _saveAnalyticsStore(store) {
 function _initSession() {
     const now = Date.now();
     let session = null;
-    try { session = JSON.parse(sessionStorage.getItem(_analyticsSessionKey)); } catch {}
+    try { session = JSON.parse(sessionStorage.getItem(_analyticsSessionKey) || 'null'); } catch {}
     if (!session) {
         session = { id: now.toString(36), start: now, pageviews: 0 };
         sessionStorage.setItem(_analyticsSessionKey, JSON.stringify(session));
@@ -36,8 +43,10 @@ function _initSession() {
 }
 
 // ── Core tracking function ───────────────────────────────────────
+/** @param {string} name @param {any} [data] */
 function trackEvent(name, data) {
     const store = _getAnalyticsStore();
+    /** @type {AnalyticsEvent} */
     const evt = {
         n: name,
         t: Date.now(),
@@ -56,11 +65,13 @@ function getAnalyticsSummary() {
     return _getAnalyticsStore().summary;
 }
 
+/** @param {number} [count] */
 function getRecentEvents(count) {
     const store = _getAnalyticsStore();
     return store.events.slice(-(count || 50));
 }
 
+/** @param {string} name */
 function getEventCount(name) {
     return _getAnalyticsStore().summary[name] || 0;
 }
@@ -101,11 +112,13 @@ function getEngagementScore() {
 // Initialize session on load
 _initSession();
 
-// Export for global use
-window.trackEvent = trackEvent;
-window.getAnalyticsSummary = getAnalyticsSummary;
-window.getRecentEvents = getRecentEvents;
-window.getEventCount = getEventCount;
-window.getEventsToday = getEventsToday;
-window.clearAnalytics = clearAnalytics;
-window.getEngagementScore = getEngagementScore;
+// Export for global use. Cast to `any` so checkJs doesn't flag these dynamic
+// properties on the Window type (mirrors the pattern in balance.js).
+const _w = /** @type {any} */ (window);
+_w.trackEvent = trackEvent;
+_w.getAnalyticsSummary = getAnalyticsSummary;
+_w.getRecentEvents = getRecentEvents;
+_w.getEventCount = getEventCount;
+_w.getEventsToday = getEventsToday;
+_w.clearAnalytics = clearAnalytics;
+_w.getEngagementScore = getEngagementScore;

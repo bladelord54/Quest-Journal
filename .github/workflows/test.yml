@@ -1,0 +1,23 @@
+# CI (Engineering Roadmap #2 + #3): run the type-check and the jest suite on
+# every push and PR. jest is the primary gate — the app has no build step for
+# its game logic, so a green run means goal-manager.js is safe to ship. The
+# `tsc --noEmit` step enforces the // @ts-check'd modules (Roadmap #3) so a
+# mistyped id/effect key fails the build instead of silently no-op'ing.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx jest --ci --colors

@@ -6,7 +6,71 @@ Place your custom sound files in this `/sounds/` folder. The app will automatica
 
 ---
 
-## 🎵 Sound Files List
+## � v2.9 code-first contract (§2.6 sound expansion)
+
+`audio-manager.js` is already wired for the v2.10 asset drop. Drop files
+matching these names into `/sounds/` and they activate with **zero code
+changes**:
+
+### Shipped (files on disk, active — v628 cache)
+
+| File | Plays for | Notes |
+|---|---|---|
+| `chest-open-wooden.mp3` | Daily free wooden chest open | id `chest-open-wooden`; falls back to `chest-open.mp3` |
+| `chest-open-bronze.mp3` | Bronze chest open | falls back to `chest-open.mp3` |
+| `chest-open-silver.mp3` | Silver chest open | falls back to `chest-open.mp3` |
+| `chest-open-gold.mp3` | Gold chest open | falls back to `chest-open.mp3` |
+| `chest-open-royal.mp3` | Royal chest open | falls back to `chest-open.mp3` |
+| `boss-crit.mp3` | Boss critical hits | id `boss-crit`; played via `playSlash(isCrit)` at full volume; falls back to `sword-slice.mp3` |
+| `habit-completion.mp3` | Habit checked off (distinct from task completion) | id `habit-completion`; played from `toggleHabit`; falls back to `daily-achievement.mp3` |
+| `streak-freeze-used.mp3` | Streak freeze consumed | §1.7; falls back to `achievement-life.mp3` |
+| `task-complete.mp3` | Routine task / side-quest / ritual completion | id `task-complete` (§2.6 R6); via `showAchievement(…,'task')`; falls back to `daily-achievement.mp3` |
+| `spell-cast.mp3` | Spellbook cast (Tools → Spells) | id `spell-cast` (§2.6 R1; renamed from `spells.mp3`); the legacy `spell` id points at this same file |
+| `enchantment-activate.mp3` | Enchantment activation (focus buffs) | id `enchantment-activate` (§2.6 R1); falls back to `spell` (`spell-cast.mp3`) |
+| `prestige-ascension.mp3` | Prestige/ascension ceremony | **Registered + precached but silent** — no call site (and no fallback) until the prestige feature ships |
+| `arrow-attack-boss.mp3` | Non-crit boss hit (weapon variety) | Part of `playSlash`'s random boss-attack pool; falls back to `sword-slice.mp3` |
+| `spell-attack-boss.mp3` | Non-crit boss hit (weapon variety) | Part of `playSlash`'s random boss-attack pool; falls back to `sword-slice.mp3` |
+| `focus-start.mp3` | Focus/Pomodoro session start | id `focus-start` (§2.6 Pass 2); via `showAchievement(…,'focus-start')`; falls back to `achievement-daily.mp3` |
+| `focus-break-start.mp3` | Pomodoro break begins | id `focus-break-start`; falls back to `notification.wav` |
+| `focus-break-end.mp3` | Pomodoro break ends (resume) | id `focus-break-end`; falls back to `notification.wav` |
+| `badge-unlock.mp3` | Badge earned | id `badge-unlock`; via `showAchievement(…,'badge')`; falls back to `achievement-monthly.wav` |
+| `error-blocked.mp3` | Blocked / invalid action | id `error-blocked`; plays at 0.5× master; falls back to `notification.wav` |
+
+> **Boss-attack pool:** a non-crit boss hit randomly plays one of
+> `sword-slice` / `arrow-attack-boss` / `spell-attack-boss` (see
+> `_bossAttackPool` in `audio-manager.js`). The `sword-slice` pick is
+> further randomized with its `-N` variants (below). Crits always play
+> `boss-crit`. Add more weapon sounds by extending `_bossAttackPool`.
+
+### Optional event sounds (silently skipped until the file exists)
+
+Remaining gaps are **feature-gated** — their mechanics aren't built yet, so
+they have no call site and stay silent (no fallback) until both the feature
+and its asset ship.
+
+| File | Plays for | Notes |
+|---|---|---|
+| `boss-enrage.mp3` | Boss entering enrage phase | enrage mechanic not implemented |
+| `companion-evolve.mp3` | Companion evolution | evolution mechanic not implemented |
+
+### Anti-habituation variants (§2.6 Pass 3)
+
+High-frequency sounds may ship 2–3 alternates named `<id>-1.mp3`,
+`<id>-2.mp3`, `<id>-3.mp3`. The app probes for them at audio warm-up
+and picks randomly among base + found variants per play. Supported
+base ids: `task-complete`, `gold-earned`, `sword-slice`, `loot-coin`,
+`notification`.
+
+**On disk:** `sword-slice-2.mp3` (mixed into every `sword-slice` play).
+
+### Volume table (§2.6 Pass 4)
+
+Per-event loudness lives in the `_eventVolumes` map in
+`audio-manager.js` (constructor) — adjust mix there, not at call sites.
+
+---
+
+## �🎵 Sound Files List
 
 ### Achievement Sounds (5 files)
 These play when you unlock achievements of different tiers:
@@ -58,17 +122,12 @@ These play when you unlock achievements of different tiers:
    - Suggested length: 1-2 seconds
    - Example: Success jingle
 
-10. **`boss-damage.wav`** - Attacking boss
-    - Plays for: Damaging a boss in boss battles
-    - Suggested length: 0.3-0.5 seconds
-    - Example: Sword slash or impact sound
-
-11. **`boss-defeated.wav`** - Boss defeated!
+10. **`boss-defeated.wav`** - Boss defeated!
     - Plays for: Defeating a boss battle
     - Suggested length: 3-4 seconds
     - Example: Epic victory fanfare
 
-12. **`crystal-earn.wav`** - Focus crystal earned
+11. **`crystal-earn.wav`** - Focus crystal earned
     - Plays for: Earning focus crystals from Pomodoro
     - Suggested length: 1-2 seconds
     - Example: Crystalline chime or sparkle
@@ -140,13 +199,12 @@ notification.wav
 spell.wav
 level-up.wav
 quest-complete.wav
-boss-damage.wav
 boss-defeated.wav
 crystal-earn.wav
 ```
 
 ### Step 4: Place in This Folder
-Copy all 12 files into this `/sounds/` folder.
+Copy all 11 files into this `/sounds/` folder.
 
 ### Step 5: Test in App
 1. Open Quest Journal
@@ -224,7 +282,6 @@ Place an ✅ next to sounds you've added:
 - [ ] spell.wav
 - [ ] level-up.wav
 - [ ] quest-complete.wav
-- [ ] boss-damage.wav
 - [ ] boss-defeated.wav
 - [ ] crystal-earn.wav
 

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * v2.7 Phase 4 — Parallax Tilt for Epic+ Items
  * ──────────────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@
     if (isTouch || prefersReducedMotion) return;
 
     // Pending state coalesced into a single rAF flush per frame.
+    /** @type {HTMLElement | null} */
     let pendingCard = null;
     let pendingX = 0;       // normalized 0..1 within card rect
     let pendingY = 0;
@@ -84,6 +86,7 @@
         card.style.setProperty('--my', my);
     }
 
+    /** @param {HTMLElement} card */
     function clearCard(card) {
         // Remove BOTH the class and the inline custom properties — leaving
         // properties around would let the next pointermove inherit stale
@@ -102,7 +105,9 @@
         // pointermoves — those should NOT tilt the card.
         if (e.pointerType === 'touch') return;
 
-        const card = e.target.closest(SELECTOR);
+        const card = /** @type {HTMLElement | null} */ (
+            /** @type {Element | null} */ (e.target)?.closest(SELECTOR) ?? null
+        );
         if (!card) {
             // Pointer left an epic+ card without entering another one.
             // Reset whatever was last active so it springs back to rest.

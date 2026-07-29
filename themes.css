@@ -222,7 +222,7 @@ body.theme-shadow {
      - Slow leaf drift particles (12-18s)
    This makes v2.8 the first release with TWO hybrid themes
    (Stormwatch + Verdant Grove) — strategy D's "at most ONE marquee
-   per release" clause is being revisited. ROADMAP § 2.4. */
+   per release" clause is being revisited. docs/HISTORY.md \u00A7 2.4. */
 body.theme-verdant {
     /* Jun 4, 2026 — WebM-driven palette tune. Original pure-CSS palette
        used cool jade/mint tones (`#15803d` / `#86efac`) which clashed
@@ -378,7 +378,7 @@ body.theme-cathedral .particle-mote {
 /* (Original pure-CSS violet+amber Cathedral palette removed Jun 5
    afternoon when the static cathedral-bg.webp image landed. Restore
    via `git show HEAD~1:themes.css` if reverting the image direction.
-   ROADMAP § 2.4 documents the round 2 → round 3 timeline.) */
+   docs/HISTORY.md \u00A7 2.4 documents the round 2 → round 3 timeline.) */
 
 /* ===== AURORA SPIRES (v2.8 round 2, Jun 5, 2026, pure-CSS) =====
    Nighttime aurora-over-mountain-peaks aesthetic: deep indigo
@@ -391,7 +391,7 @@ body.theme-cathedral .particle-mote {
    mid) rather than an animated band, keeping this in the pure-
    CSS lane; if promoted to hybrid later, an animated aurora
    keyframe via `mix-blend-mode: screen` becomes the natural
-   upgrade path (ROADMAP § 2.4 sketch). Three+ radials:
+   upgrade path (docs/HISTORY.md \u00A7 2.4 sketch). Three+ radials:
      - top: deep night-sky vignette
      - upper-mid: green aurora cast (#22c55e at low alpha)
      - lower-mid: magenta aurora tail (#ec4899 at low alpha)
@@ -414,7 +414,7 @@ body.theme-aurora {
        line-each (mirrors the Stormwatch Jun 3 + Verdant Jun 4
        palette-tune commenting pattern). Radial gradients also
        retuned: top green→cyan, bottom pink→violet to match WebM
-       aurora-band hues. ROADMAP § 2.4 round 4. */
+       aurora-band hues. docs/HISTORY.md \u00A7 2.4 round 4. */
     --theme-primary: #06b6d4;        /* cyan-500 — aurora dominant + ice spires, was #4f46e5 indigo-600 */
     --theme-primary-light: #22d3ee;  /* cyan-400 — bright ice highlight, was #818cf8 indigo-400 */
     --theme-primary-dark: #1e1b4b;   /* indigo-950 — deep night base (unchanged) */
@@ -510,7 +510,7 @@ body.theme-crystal {
    preserved in git history (commit before this change). To restore:
    git checkout the prior themes.css version of this section, or ask
    for the moss to be reintroduced and I'll rewrite it tuned for the
-   new warm-olive palette. ROADMAP § 2.4. */
+   new warm-olive palette. docs/HISTORY.md \u00A7 2.4. */
 
 body.theme-stormwatch {
     /* Jun 3, 2026 — Option A palette tune: shifted accents from
@@ -606,6 +606,34 @@ body[class*="theme-"] [class*="text-yellow-200"] {
 body[class*="theme-"] [class*="text-amber-100"],
 body[class*="theme-"] [class*="text-yellow-100"] {
     color: var(--theme-text-muted) !important;
+}
+
+/* Legibility halo (v2.9, Jun 15 2026) — fix for the user-reported
+   "text matches the theme background" issue. A WCAG contrast audit
+   showed every theme's text already clears AA against its solid card
+   surface (min 4.87:1), so this is NOT a base-palette problem. The
+   clash is layering: text that sits DIRECTLY on the theme background
+   (transparent view headers + the title banner, see the transparency
+   rules further down) is painted over the body gradient's bright
+   radial highlight glows — which each theme tints to its OWN accent
+   hue (golden = yellow glow under yellow titles, desert = orange
+   sun-ray under orange text, etc.) — and, on the hybrid themes, over
+   the WebM/image background where bright regions share the text hue.
+   A subtle dark text-shadow gives every themed text element a halo so
+   it stays readable over any of those backgrounds without changing
+   the on-palette color. It's negligible on the opaque .quest-card
+   panels (text there is already high-contrast) and decisive over the
+   bright background regions. Default (unthemed) body is untouched. */
+body[class*="theme-"] .medieval-title,
+body[class*="theme-"] [class*="text-amber-100"],
+body[class*="theme-"] [class*="text-amber-200"],
+body[class*="theme-"] [class*="text-amber-300"],
+body[class*="theme-"] [class*="text-amber-400"],
+body[class*="theme-"] [class*="text-yellow-100"],
+body[class*="theme-"] [class*="text-yellow-200"],
+body[class*="theme-"] [class*="text-yellow-300"],
+body[class*="theme-"] [class*="text-yellow-400"] {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 7px rgba(0, 0, 0, 0.4);
 }
 
 /* Primary buttons */
@@ -803,7 +831,7 @@ body[class*="theme-"] .border-amber-200 {
    tile size, body radials at 0.10-0.15 alpha read as nearly invisible,
    so each preview block bumps alpha by ~50-100% to keep the chromatic
    identity legible while the tile is shrunken. The linear-gradient
-   base layers stay 1:1 with body for clean color match. ROADMAP § 2.4
+   base layers stay 1:1 with body for clean color match. docs/HISTORY.md \u00A7 2.4
    "Other v2.8 deliverables" final item. */
 
 .theme-option {
@@ -1561,7 +1589,7 @@ body.theme-crystal *::-webkit-scrollbar-thumb:hover {
 
 /* ============================================================
    v2.8 ROUND 2 — PER-THEME ACCENT MICRO-STYLING (Jun 5, 2026)
-   ROADMAP § 2.4 deliverable. The audit (see ROADMAP) showed
+   docs/HISTORY.md \u00A7 2.4 deliverable. The audit (see docs/HISTORY.md) showed
    that most "primary" surfaces in the app are already styled
    with intentional semantic / brand colors that should NOT be
    theme-tinted:
@@ -1606,7 +1634,7 @@ body[class*="theme-"] #achievement-toast {
      - Search Quests sidebar CTA (index.html ~728)
    NOT used on branded buttons (Streak Shield, Save-to-Phone,
    Equip Title, etc.) — those keep their semantic colors per
-   the ROADMAP § 2.4 audit. The fallback values inside each
+   the docs/HISTORY.md \u00A7 2.4 audit. The fallback values inside each
    var() keep this looking sensible in the default Medieval
    Kingdom theme (which doesn't define theme palette vars) —
    default falls back to a tasteful indigo that reads as a

@@ -51,22 +51,12 @@
     <meta name="theme-color" content="#1c1917">
 
     <!-- Fonts & Styles -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        cinzel: ['Cinzel', 'serif'],
-                        inter: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- v2.9 deferred audit fix — Tailwind/icons/fonts bundled locally
+         (see index.html head note). The old inline tailwind.config
+         (cinzel/inter fontFamily) lives in tailwind.config.js now. -->
+    <link rel="stylesheet" href="tailwind.css">
+    <link href="vendor/remixicon/remixicon.css" rel="stylesheet">
+    <link href="vendor/fonts/fonts.css" rel="stylesheet">
 
     <style>
         * { box-sizing: border-box; }

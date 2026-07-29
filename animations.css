@@ -1083,13 +1083,20 @@ body.fx-minimal .crit-shockwave { display: none; }
 
 /* ── Loot fountain sprite ──
    JS drives left/top/transform on every rAF tick; CSS just provides the
-   base presentation (size, glow, layering). */
+   base presentation (size, glow, layering).
+   z-index 10001 (Jun 15 2026): the chest-open layers sit at 9999
+   (.chest-open-video-overlay + .chest-open-icon), so the original 9100
+   painted the arcing loot BEHIND the chest — it read as falling from
+   nowhere rather than erupting out of the chest. Bumped above the chest
+   band (and above the boss-defeat shatter band at 10000, which always
+   finishes well before the fountain fires at 3500ms+) so the loot is the
+   topmost layer as it streams into the avatar ring. */
 .loot-fountain-sprite {
     position: fixed;
     font-size: 1.9rem;
     line-height: 1;
     pointer-events: none;
-    z-index: 9100;
+    z-index: 10001;
     transform: translate(-50%, -50%) scale(0.4);
     filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.85))
             drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
@@ -1469,10 +1476,69 @@ body.fx-minimal .killing-blow-text { display: none; }
 /* ===== ENHANCED CHEST OPENING ANIMATIONS ===== */
 
 /* Chest tier colors */
+.chest-tier-wooden { --chest-color: 146, 109, 64; --chest-glow: #8b5a2b; }
 .chest-tier-bronze { --chest-color: 205, 133, 63; --chest-glow: #cd853f; }
 .chest-tier-silver { --chest-color: 192, 192, 192; --chest-glow: #c0c0c0; }
 .chest-tier-gold { --chest-color: 251, 191, 36; --chest-glow: #fbbf24; }
 .chest-tier-royal { --chest-color: 147, 51, 234; --chest-glow: #9333ea; }
+
+/* ===== v2.9 Track 1 — chest art (asset-gated) ===== */
+
+/* Fullscreen container for the chest-open WebM. The shipped cinematics
+   carry a baked-in dark gradient background (yuv420p, no alpha), so
+   the video is framed as a rounded cinematic card over a dimmed
+   backdrop rather than a bare transparent sprite. If alpha (yuva420p)
+   assets ever replace them, drop the backdrop + radius — the JS path
+   is format-agnostic. Fades in fast; the JS removes the overlay at
+   video end / the 2200ms loot-panel mark. */
+.chest-open-video-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.65);
+    animation: chest-video-fade-in 0.15s ease-out;
+}
+
+@keyframes chest-video-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.chest-open-video {
+    width: min(70vw, 420px);
+    height: auto;
+    border-radius: 16px;
+    border: 2px solid var(--chest-glow, rgba(251, 191, 36, 0.6));
+    box-shadow: 0 0 40px var(--chest-glow, rgba(251, 191, 36, 0.6)),
+                0 12px 48px rgba(0, 0, 0, 0.6);
+}
+
+.chest-open-video.wooden { --chest-glow: rgba(146, 109, 64, 0.6); }
+.chest-open-video.bronze { --chest-glow: rgba(205, 133, 63, 0.6); }
+.chest-open-video.silver { --chest-glow: rgba(192, 192, 192, 0.6); }
+.chest-open-video.gold   { --chest-glow: rgba(251, 191, 36, 0.7); }
+.chest-open-video.royal  { --chest-glow: rgba(147, 51, 234, 0.7); }
+
+/* Static chest art in treasury tiles — sized to the box the text-6xl
+   emoji occupied (~60px line) so swapping art in doesn't shift layout. */
+.chest-static-img {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    display: block;
+}
+
+/* Static art inside the bursting celebration icon */
+.chest-open-icon-img {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    display: block;
+}
 
 /* Full-screen chest flash */
 .chest-open-flash {
@@ -1486,6 +1552,7 @@ body.fx-minimal .killing-blow-text { display: none; }
     animation: chest-flash 1s ease-out forwards;
 }
 
+.chest-open-flash.wooden { background: radial-gradient(circle at 50% 50%, rgba(146, 109, 64, 0.4), rgba(101, 67, 33, 0.15), transparent 70%); }
 .chest-open-flash.bronze { background: radial-gradient(circle at 50% 50%, rgba(205, 133, 63, 0.4), rgba(139, 90, 43, 0.15), transparent 70%); }
 .chest-open-flash.silver { background: radial-gradient(circle at 50% 50%, rgba(192, 192, 192, 0.5), rgba(148, 163, 184, 0.2), transparent 70%); }
 .chest-open-flash.gold { background: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.5), rgba(180, 83, 9, 0.2), transparent 70%); }
@@ -1538,6 +1605,7 @@ body.fx-minimal .killing-blow-text { display: none; }
     opacity: 0;
 }
 
+.chest-light-beam.wooden { background: linear-gradient(to top, rgba(146, 109, 64, 0.6), rgba(146, 109, 64, 0.1), transparent); }
 .chest-light-beam.bronze { background: linear-gradient(to top, rgba(205, 133, 63, 0.6), rgba(205, 133, 63, 0.1), transparent); }
 .chest-light-beam.silver { background: linear-gradient(to top, rgba(192, 192, 192, 0.7), rgba(192, 192, 192, 0.1), transparent); }
 .chest-light-beam.gold { background: linear-gradient(to top, rgba(251, 191, 36, 0.7), rgba(251, 191, 36, 0.1), transparent); }
@@ -1566,6 +1634,7 @@ body.fx-minimal .killing-blow-text { display: none; }
     opacity: 0;
 }
 
+.chest-aura.wooden { box-shadow: 0 0 40px rgba(146, 109, 64, 0.6), 0 0 80px rgba(146, 109, 64, 0.3), inset 0 0 40px rgba(146, 109, 64, 0.2); }
 .chest-aura.bronze { box-shadow: 0 0 40px rgba(205, 133, 63, 0.6), 0 0 80px rgba(205, 133, 63, 0.3), inset 0 0 40px rgba(205, 133, 63, 0.2); }
 .chest-aura.silver { box-shadow: 0 0 40px rgba(192, 192, 192, 0.6), 0 0 80px rgba(192, 192, 192, 0.3), inset 0 0 40px rgba(192, 192, 192, 0.2); }
 .chest-aura.gold { box-shadow: 0 0 50px rgba(251, 191, 36, 0.7), 0 0 100px rgba(251, 191, 36, 0.3), inset 0 0 50px rgba(251, 191, 36, 0.2); }
@@ -2190,7 +2259,7 @@ input[type="checkbox"]:checked {
    live. All three are spawned by goal-manager.js's
    spawnParticle (themed by `currentTheme`) and registered in
    the `risingParticles` list there if they rise from bottom.
-   ROADMAP § 2.4. */
+   docs/HISTORY.md \u00A7 2.4. */
 
 /* Sunken Library bubbles — small luminous spheres rising slowly
    from the bottom with a sideways sway, fading near the surface.
@@ -2431,7 +2500,7 @@ input[type="checkbox"]:checked {
    and the #theme-cathedral-candles container in index.html are
    all stripped. To revert: `git show HEAD~1:animations.css` for
    the keyframes/class and `git show HEAD~1:index.html` for the
-   container div. ROADMAP § 2.4 round 3.5 documents the rationale. */
+   container div. docs/HISTORY.md \u00A7 2.4 round 3.5 documents the rationale. */
 
 /* Theme Video Background - LOWEST layer */
 #theme-video-bg {
@@ -2459,7 +2528,7 @@ input[type="checkbox"]:checked {
 }
 
 /* v2.7.1: GIF background layer removed (the GIF fallbacks themselves were
-   deleted from the bundle; see ROADMAP § 1.6 / § 2.3.1 patch notes and
+   deleted from the bundle; see docs/HISTORY.md \u00A7 1.6 / § 2.3.1 patch notes and
    goal-manager.js `videoBackgrounds` comment). The animated layer is now
    entirely the <video> element; on hardware-decode failure we degrade to
    the static themed sidebar/quest-card gradients below. The previous rule
@@ -3824,6 +3893,20 @@ body.fx-minimal .xp-ring__comet {
     box-shadow: 0 0 11px rgba(234, 179, 8, 0.85), 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+/* Enchantments — a single distinct cool "crystal" treatment, NOT the
+   rarity ramp the spell sigils use, so players can tell focus-crystal
+   enchantments apart from cast spells at a glance. The cyan/teal tint
+   mirrors the Focus Crystal economy color (💎), and the brighter
+   double-ring (solid border + inset highlight) reads as a faceted
+   gem versus the spells' smooth glassy gradient. */
+.avatar-sigil--enchantment {
+    background: radial-gradient(circle at 30% 30%, rgba(165, 243, 252, 0.97), rgba(13, 148, 136, 0.92));
+    border-color: rgba(103, 232, 249, 0.85);
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.85),
+                inset 0 0 4px rgba(255, 255, 255, 0.55),
+                0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 /* Overflow badge — replaces the 8th sigil when there are >7 active
    spells. Shows "+N" in a muted purple bubble so it reads as a
    summary count rather than a real spell. */
@@ -4667,4 +4750,485 @@ body.fx-minimal .rarity-frame[data-rarity="legendary"] {
 body.fx-minimal .rarity-frame[data-rarity="epic"]::after,
 body.fx-minimal .rarity-frame[data-rarity="legendary"]::after {
     display: none;
+}
+
+/* ── v2.9 Track 7 — Theme of the Week ─────────────────────────────
+   Three surfaces share visuals here:
+     1. The banner above the Themes grid (`.theme-featured-banner*`)
+     2. The featured TILE in both the full grid AND the compact picker
+        (`.theme-featured` + `.theme-featured-badge*`)
+     3. The first-of-week spotlight modal (`.theme-spotlight-*`)
+   All three derive their accent from a single `--featured-accent`
+   custom property so a future palette tweak is one line. */
+
+:root {
+    --featured-accent: #fde047;       /* yellow-300 */
+    --featured-accent-glow: #fbbf24;  /* amber-400 */
+}
+
+/* 1. Banner ─ the wide pill above the grid. Background gradient is
+   intentionally low-saturation so the tile gradients underneath
+   (which carry the actual theme colors) read as the focal point. */
+.theme-featured-banner {
+    background: linear-gradient(135deg, rgba(253, 224, 71, 0.18), rgba(251, 191, 36, 0.10));
+    border: 2px solid rgba(253, 224, 71, 0.55);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.25), 0 8px 24px -12px rgba(251, 191, 36, 0.45);
+}
+.theme-featured-banner-icon {
+    font-size: 2.25rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.55));
+    animation: theme-featured-pulse 2.4s ease-in-out infinite;
+}
+.theme-featured-banner-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--featured-accent);
+    font-weight: 700;
+}
+.theme-featured-banner-title {
+    color: #fef3c7;
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.25;
+}
+
+/* 2. Tile flag ─ a soft glow ring + animated badge in the top-right
+   corner. Applied additively to whatever tile chrome the surface
+   already uses, so the underlying gradient stays untouched. */
+.theme-featured {
+    position: relative;
+    box-shadow:
+        0 0 0 2px var(--featured-accent),
+        0 0 18px -2px var(--featured-accent-glow),
+        0 0 32px -8px var(--featured-accent-glow);
+    animation: theme-featured-ring 2.8s ease-in-out infinite;
+}
+.theme-featured-badge {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background: var(--featured-accent);
+    color: #422006;
+    font-size: 0.875rem;
+    font-weight: 800;
+    line-height: 1.5rem;
+    text-align: center;
+    box-shadow: 0 0 12px rgba(253, 224, 71, 0.75);
+    animation: theme-featured-pulse 2.4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 2;
+}
+.theme-featured-badge-sm {
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    top: 0.25rem;
+    right: 0.25rem;
+}
+
+@keyframes theme-featured-pulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.55)); }
+    50%      { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(253, 224, 71, 0.85)); }
+}
+@keyframes theme-featured-ring {
+    0%, 100% { box-shadow: 0 0 0 2px var(--featured-accent), 0 0 18px -2px var(--featured-accent-glow), 0 0 32px -8px var(--featured-accent-glow); }
+    50%      { box-shadow: 0 0 0 2px var(--featured-accent), 0 0 26px 0px var(--featured-accent-glow), 0 0 48px -4px var(--featured-accent-glow); }
+}
+
+/* 3. Spotlight modal ─ shown once per ISO week from
+   `maybeShowFeaturedThemeSpotlight()`. Backdrop is the standard
+   dark scrim, card is a vertical hero with the theme's preview bg
+   on top and a body card below. Z-index sits above player panel
+   (z-50) but below toast/achievement (z-100+) so achievements still
+   land on top if the user manages to trigger one. */
+.theme-spotlight-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: theme-spotlight-fade-in 220ms ease-out;
+}
+.theme-spotlight-backdrop.theme-spotlight-leaving {
+    animation: theme-spotlight-fade-out 200ms ease-in forwards;
+}
+.theme-spotlight-card {
+    width: 100%;
+    max-width: 26rem;
+    background: linear-gradient(180deg, #1f2937, #111827);
+    border: 2px solid var(--featured-accent);
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 24px 64px -12px rgba(251, 191, 36, 0.45), 0 0 0 1px rgba(253, 224, 71, 0.4);
+    animation: theme-spotlight-rise 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.theme-spotlight-stage {
+    height: 9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    /* `.theme-tile-bg-<id>` from themes.css supplies the actual
+       background; the gradient below is a fallback for unknown ids. */
+    background: linear-gradient(135deg, #4c1d95, #1e1b4b);
+}
+.theme-spotlight-stage::after {
+    /* Soft top-down vignette so the icon pops off the busy preview. */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%);
+    pointer-events: none;
+}
+.theme-spotlight-icon {
+    font-size: 4.5rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 16px rgba(253, 224, 71, 0.4));
+    animation: theme-featured-pulse 3s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+}
+.theme-spotlight-body {
+    padding: 1.25rem 1.25rem 1rem;
+    text-align: center;
+}
+.theme-spotlight-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--featured-accent);
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+.theme-spotlight-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fef3c7;
+    margin: 0 0 0.65rem 0;
+}
+.theme-spotlight-copy {
+    color: #d1d5db;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    margin: 0 0 1.1rem 0;
+}
+.theme-spotlight-copy strong {
+    color: var(--featured-accent);
+}
+.theme-spotlight-actions {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+}
+.theme-spotlight-primary,
+.theme-spotlight-secondary {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out, background 120ms ease-out;
+    border: 2px solid transparent;
+}
+.theme-spotlight-primary {
+    background: linear-gradient(135deg, var(--featured-accent), var(--featured-accent-glow));
+    color: #422006;
+    box-shadow: 0 4px 14px -4px rgba(251, 191, 36, 0.6);
+}
+.theme-spotlight-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px -4px rgba(251, 191, 36, 0.75);
+}
+.theme-spotlight-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e5e7eb;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+.theme-spotlight-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes theme-spotlight-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes theme-spotlight-fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+@keyframes theme-spotlight-rise {
+    from { opacity: 0; transform: translateY(18px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Reduced-motion / minimal-fx fallbacks — no pulse, no rise, just
+   a static reveal. Achievements path (fx-minimal) gets the same
+   treatment. */
+@media (prefers-reduced-motion: reduce) {
+    .theme-featured-banner-icon,
+    .theme-featured-badge,
+    .theme-spotlight-icon,
+    .theme-featured {
+        animation: none;
+    }
+    .theme-spotlight-backdrop,
+    .theme-spotlight-card {
+        animation: none;
+    }
+}
+body.fx-minimal .theme-featured,
+body.fx-minimal .theme-featured-badge,
+body.fx-minimal .theme-featured-banner-icon,
+body.fx-minimal .theme-spotlight-icon {
+    animation: none;
+}
+
+/* 4. Dashboard discovery card ─ rendered by `renderWeeklyThemeCard()`
+   into `#dashboard-weekly-theme`. Non-interruptive horizontal card
+   that surfaces the weekly trial theme for users who never open the
+   Themes panel. Per-theme accent comes from the inline `--wt-border`
+   custom property set by the renderer (the theme's own border color). */
+.weekly-theme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.875rem;
+    background: linear-gradient(135deg, rgba(253, 224, 71, 0.12), rgba(251, 191, 36, 0.05));
+    border: 2px solid var(--wt-border, rgba(253, 224, 71, 0.55));
+    box-shadow: 0 8px 24px -14px rgba(251, 191, 36, 0.5);
+    animation: theme-spotlight-fade-in 260ms ease-out;
+}
+.weekly-theme-swatch {
+    flex: 0 0 auto;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 0.75rem;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.45);
+}
+.weekly-theme-swatch-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+.weekly-theme-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.weekly-theme-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--featured-accent);
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+}
+.weekly-theme-copy {
+    color: #d6d3d1;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0;
+}
+.weekly-theme-copy strong {
+    color: #fef3c7;
+}
+.weekly-theme-actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.4rem;
+}
+.weekly-theme-cta {
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: linear-gradient(135deg, var(--featured-accent), var(--featured-accent-glow));
+    color: #422006;
+    box-shadow: 0 4px 14px -4px rgba(251, 191, 36, 0.6);
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+    white-space: nowrap;
+}
+.weekly-theme-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px -4px rgba(251, 191, 36, 0.75);
+}
+.weekly-theme-dismiss {
+    padding: 0.35rem 0.9rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+    background: transparent;
+    color: #a8a29e;
+    border: none;
+    transition: color 120ms ease-out;
+    white-space: nowrap;
+}
+.weekly-theme-dismiss:hover {
+    color: #e7e5e4;
+}
+@media (max-width: 640px) {
+    .weekly-theme-actions {
+        width: 100%;
+    }
+    .weekly-theme-cta {
+        flex: 1;
+        text-align: center;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .weekly-theme-card { animation: none; }
+}
+
+/* ===== Royal Bounty (v2.9.1 §1.8) ============================================
+   Dashboard cards spotlighting one weekly + one monthly quest per period, plus
+   the matching `.bounty-badge` pill rendered on the target quest in the Quest
+   Log. Tier accents (bronze/silver/gold/royal) match the chest reward. */
+.royal-bounty-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.65rem;
+    padding: 1rem 1.1rem;
+    border-radius: 0.875rem;
+    background: linear-gradient(135deg, rgba(146, 64, 14, 0.22), rgba(120, 53, 15, 0.08));
+    border: 2px solid rgba(251, 191, 36, 0.45);
+    box-shadow: 0 8px 24px -14px rgba(251, 191, 36, 0.5);
+    animation: theme-spotlight-fade-in 260ms ease-out;
+}
+.royal-bounty-bronze { border-color: rgba(180, 120, 70, 0.6); }
+.royal-bounty-silver { border-color: rgba(203, 213, 225, 0.55); }
+.royal-bounty-gold   { border-color: rgba(250, 204, 21, 0.65); }
+.royal-bounty-royal {
+    border-color: rgba(192, 132, 252, 0.7);
+    box-shadow: 0 8px 26px -12px rgba(168, 85, 247, 0.65);
+}
+.royal-bounty-empty {
+    background: linear-gradient(135deg, rgba(68, 64, 60, 0.35), rgba(41, 37, 36, 0.15));
+    border-style: dashed;
+    border-color: rgba(168, 162, 158, 0.4);
+}
+.royal-bounty-claimed { opacity: 0.85; }
+.royal-bounty-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem 0.6rem;
+    width: 100%;
+}
+.royal-bounty-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #fcd34d;
+    font-weight: 800;
+}
+.royal-bounty-timer,
+.royal-bounty-done {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fde68a;
+    white-space: nowrap;
+}
+.royal-bounty-done { color: #86efac; }
+.royal-bounty-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    width: 100%;
+}
+.royal-bounty-quest {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fef3c7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.royal-bounty-reward {
+    font-size: 0.8rem;
+    color: #d6d3d1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+.royal-bounty-chest { font-size: 1.1rem; }
+.royal-bounty-copy {
+    color: #d6d3d1;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    margin: 0;
+}
+.royal-bounty-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+}
+.royal-bounty-cta,
+.royal-bounty-reroll {
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 0.78rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.royal-bounty-cta {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #422006;
+    box-shadow: 0 4px 14px -4px rgba(251, 191, 36, 0.6);
+}
+.royal-bounty-reroll {
+    background: rgba(120, 53, 15, 0.4);
+    color: #fde68a;
+    border-color: rgba(251, 191, 36, 0.4);
+}
+.royal-bounty-cta:hover,
+.royal-bounty-reroll:hover {
+    transform: translateY(-1px);
+}
+.royal-bounty-reroll-locked { opacity: 0.85; }
+
+/* Quest Log pill marking the active bounty target. */
+.bounty-badge {
+    background: linear-gradient(135deg, rgba(250, 204, 21, 0.28), rgba(168, 85, 247, 0.22));
+    color: #fef3c7;
+    border: 1px solid rgba(251, 191, 36, 0.55);
+    box-shadow: 0 0 10px -2px rgba(251, 191, 36, 0.5);
+}
+@media (prefers-reduced-motion: reduce) {
+    .royal-bounty-card { animation: none; }
 }
