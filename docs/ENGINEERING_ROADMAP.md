@@ -18,16 +18,17 @@ copies of the pool-builder block too.
 `classes.js`, `bosses.js`, `persistence.js`), leaning on the jest suite as the
 safety net. Never a big-bang rewrite.
 
-**Progress:** seventy-one slices across fifty-one modules — eleven are deep-frozen dual-env data
-modules, eighteen (`loot-engine.js`, `boss-generator.js`, `persistence-migrations.js`, `streak-logic.js`,
+**Progress:** seventy-two slices across fifty-two modules — eleven are deep-frozen dual-env data
+modules, nineteen (`loot-engine.js`, `boss-generator.js`, `persistence-migrations.js`, `streak-logic.js`,
 `leveling-logic.js`, `effort-xp-logic.js`, `buff-multipliers.js`, `companion-logic.js`, `class-perks.js`,
 `class-progression.js`, `skill-points.js`, `crystal-economy.js`, `charge-rules.js`, `combat-damage.js`,
-`reward-economy.js`, `focus-session-logic.js`, `spell-lifecycle.js`, `period-summary-logic.js`) are LOGIC modules
+`reward-economy.js`, `focus-session-logic.js`, `spell-lifecycle.js`, `period-summary-logic.js`,
+`reminder-schedule-logic.js`) are LOGIC modules
 (`persistence-migrations.js` covers BOTH load-side normalizers AND the save-side list pruning;
 `streak-logic.js` + `leveling-logic.js` + `effort-xp-logic.js` + `buff-multipliers.js` + `companion-logic.js`
 + `class-perks.js` + `class-progression.js` + `skill-points.js` + `crystal-economy.js` + `charge-rules.js` +
 `combat-damage.js` + `reward-economy.js` + `focus-session-logic.js` + `spell-lifecycle.js` +
-`period-summary-logic.js` are the FIFTEEN
+`period-summary-logic.js` + `reminder-schedule-logic.js` are the SIXTEEN
 logic slices AFTER the render burn-down closed — daily-login-streak + streak-repair math, the XP curve +
 level-progress band math, the
 effort-based-XP priority scaling, the active-buff (spell + enchantment) reward multipliers, the companion slot
@@ -37,7 +38,9 @@ supply math, the attack-charge earn/spend rules, and the boss-damage pipeline th
 the addXP/addGold reward-stack math every reward in the game routes through, the focus-timer +
 Pomodoro-chain mechanics, the active-spell lifecycle, and finally BOTH halves of period tracking —
 the previous-period recap math and, in a 71st slice on the same module, the transition DETECTION that
-decides whether that recap is shown at all),
+decides whether that recap is shown at all, and — in a 72nd slice — the reminder clock math in
+`reminder-schedule-logic.js`: the daily morning/evening slot scheduling, the missed-reminder catch-up
+window, and the streak-risk + bounty-ready timers that six thin delegators now consume),
 and TWENTY-TWO (`boss-render.js`, `task-render.js`, `companion-render.js`,
 `spell-render.js`, `class-render.js`, `analytics-render.js`, `quest-chain-render.js`, `enchantment-render.js`,
 `dashboard-render.js`, `player-hud-render.js`, `title-render.js`, `reward-render.js`, `theme-render.js`,

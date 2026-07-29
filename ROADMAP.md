@@ -1,8 +1,9 @@
 # Life Quest Journal — Feature Roadmap
 
-> **Current Released Version:** 2.9.0 (Build 27) — Play Store
-> **In Development:** v2.9.1 (§1.8 Royal Bounty — see § 1.8); Track 2 boss portraits still deferred (see § v2.9)
-> **Last Updated:** Jun 21, 2026
+> **Current Released Version:** 3.0.0 (Build 32) — Play Store
+> **In Development:** §3.2 Crafting System (deferred out of 3.0.0); §3.8 Prestige — which the
+> re-scoped §N2 late-game unlock hook blocks on; Track 2 boss portraits still deferred (see § v2.9)
+> **Last Updated:** Jul 29, 2026
 
 This document is the **forward-looking plan only**. Shipped-work
 narratives live in two places:

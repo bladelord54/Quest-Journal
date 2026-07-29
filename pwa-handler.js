@@ -33,7 +33,7 @@ if (_isCapacitorNative && 'serviceWorker' in navigator) {
 // Persists installed app version; if it changes, optionally trigger one-time cleanups.
 if (_isCapacitorNative) {
   try {
-    const APP_VERSION = '2.5.0';
+    const APP_VERSION = '3.0.0';
     const lastVer = localStorage.getItem('appVersion');
     if (lastVer !== APP_VERSION) {
       console.log('[Native] App version changed:', lastVer, '->', APP_VERSION);

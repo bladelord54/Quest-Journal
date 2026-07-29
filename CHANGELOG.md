@@ -24,38 +24,15 @@ with an `Android versionCode` bump on every release.
 
 ## [Unreleased]
 
-### Fixed
-
-- **January visitors lost their "new month" recap** — `loadData` read
-  `this.lastMonth = data.lastMonth || null`, but `lastMonth` is **0-indexed**,
-  so a stored **January (0)** was coerced to `null` on load. The period-transition
-  check skips any tracking field that is `null`, so the month boundary was never
-  detected: anyone whose last visit was in January got no month recap when they
-  came back in February. `saveData` and `importData` had always stored the value
-  correctly (`importData` already used `??`) — only the load path dropped it. All
-  four period-tracking fields now use `??`, and a regression test asserts the
-  `|| null` form appears for none of them. (Same `??` vs `||` trap as the v2.8
-  `totalGoldEarned` migration below — second occurrence of this bug class.)
-
-### Internal
-
-- **Period-transition detection extracted (Roadmap #1, 71st slice)** —
-  `checkPeriodTransitions` / `updatePeriodTracking` / `getWeekNumber` were inline
-  on the God class with **zero** test coverage. Their pure parts moved into
-  `period-summary-logic.js` (which already held the recap math from the 70th
-  slice) as `isoWeekNumber`, `periodStamp`, `detectTransitions` and
-  `mainTransition`; the class keeps only the impure work — the first-time-user
-  guard, the clock read, the slideshow call and the save. **29 new tests** (suite
-  1220 → 1249), including a lock on the reason the detector compares the calendar
-  year: ISO week *numbers* collide across a New Year (`2025-12-29` and
-  `2026-01-01` are both week 1), so week number alone cannot detect the boundary.
+_Nothing yet._
 
 ---
 
-## [3.0.0] — 2026-06-29 (Build 30)
+## [3.0.0] — 2026-07-29 (Build 32)
 
 > **Theme:** The Class System & Subclass Specialization — the largest gameplay
-> update since launch. A full skill-tree progression layer for every player.
+> update since launch. A full skill-tree progression layer for every player,
+> plus the new-user onboarding overhaul and effort-based XP.
 
 ### Added
 
@@ -83,7 +60,43 @@ with an `Android versionCode` bump on every release.
   unlock buttons, the capstone choice at full mastery, subclass cards at L40,
   and Focus-Crystal respec / re-specialize confirmations.
 
+- **Effort-based XP (N3)** — the existing low/medium/high `priority` field now
+  doubles as an effort proxy: **high pays 1.5×**, **low 0.75×**, and **medium stays
+  at the historical 1.0× baseline**, so nothing you already earn changes. Applied to
+  daily tasks, side quests and habits. The high-priority bonus on **daily tasks is
+  capped per day** — a date-stamped counter that self-resets at midnight and survives
+  reloads — so self-reported effort cannot be farmed; past the cap, high-priority
+  tasks pay the medium rate.
+
+- **Day-one goal creation — onboarding play-style fork (P0)** — progressive unlock
+  gated the weekly / side / monthly / yearly / life goal tabs behind levels 6–9, so
+  a new user who arrived to map out real goals *couldn't create them*. The
+  onboarding fork now derives the unlock map from the play style the player picks,
+  opening the tiers they actually came for on day one.
+
+- **Starter content for the Grand Planner path (N1)** — that path opens the yearly
+  and life-goal tabs at Level 1, which previously landed unlocked-but-empty with no
+  guidance. Those tiers are now seeded with starter quests like the others.
+
+- **First-session notification ask (P1a)** — reminders are the single biggest
+  return driver, but the permission prompt never landed in session 1. It now
+  follows the tutorial.
+
+- **Wider free reward loop (P1b)** — chest loot drew spells from a hardcoded pool
+  of six, so the free reward loop narrowed almost immediately. The free pool is
+  now broader.
+
+- **First streak repair is free (P2b)** — losing a long streak is the sharpest
+  churn moment in the app, and recovery was entirely paywalled. Every player's
+  first repair is now free, sitting behind the proactive streak-at-risk
+  notification as a second safety net.
+
 ### Changed
+
+- **Lock feedback explains itself (P2a)** — every bare `🔒 Unlocks at Level X!`
+  dead-end toast now routes through shared builders that add the feature name, a
+  **"N levels to go"** progress affordance and a value teaser. No bare form remains
+  in the gating paths.
 
 - **Class selection unlocks at Level 8 (was 10)** — the class system is a
   flagship feature, so it now surfaces earlier with its own "Choose Your Class!"
@@ -94,12 +107,61 @@ with an `Android versionCode` bump on every release.
   before Level 10** (no points are committed yet), then reverts to the normal
   5 Focus Crystal fee.
 
+### Fixed
+
+- **January visitors lost their "new month" recap** — `loadData` read
+  `this.lastMonth = data.lastMonth || null`, but `lastMonth` is **0-indexed**,
+  so a stored **January (0)** was coerced to `null` on load. The period-transition
+  check skips any tracking field that is `null`, so the month boundary was never
+  detected: anyone whose last visit was in January got no month recap when they
+  came back in February. `saveData` and `importData` had always stored the value
+  correctly (`importData` already used `??`) — only the load path dropped it. All
+  four period-tracking fields now use `??`, and a regression test asserts the
+  `|| null` form appears for none of them. (Same `??` vs `||` trap as the v2.8
+  `totalGoldEarned` migration below — second occurrence of this bug class.)
+
+### Removed
+
+- **The PWA / service-worker shell** — `manifest.json`, `service-worker.js` and
+  the `beforeinstallprompt` install flow are gone now that the web/PWA target is
+  retired. Update delivery runs through the Google Play in-app update flow, and a
+  native-side cleanup unregisters any service worker (and purges caches) left
+  behind by an older PWA install, which could otherwise keep serving stale assets
+  after an APK update. Notifications deliver via Capacitor `LocalNotifications`
+  with a plain `Notification` fallback in the browser.
+
 ### Internal
 
-- **Version bumps** — Android `versionCode 29 → 30`, `versionName 2.10.0 →
-  3.0.0`; `package.json` + the in-app version string + data-export version to
-  `3.0.0`; `CHANGELOG_VERSION` to `3.0.0` (re-arms the What's New modal);
-  `CACHE_NAME` to `v631`. Full suite green (**599 tests**).
+- **Version bumps** — Android `versionCode 29 → 32`, `versionName 2.10.0 →
+  3.0.0`; `package.json`, the in-app footer string and the data-export version to
+  `3.0.0`; `CHANGELOG_VERSION` to `3.0.0`, which re-arms the What's New modal —
+  whose copy was rewritten from the stale v2.10 sound/chest announcement to the
+  class system. Codes 30 and 31 were prepared locally but never uploaded, so the
+  Play sequence skips them. Full suite green (**1255 tests**, up from 599 when
+  this entry was first drafted).
+
+- **`goal-manager.js` split into 52 modules (Engineering Roadmap #1)** — 72
+  incremental slices took the God class from ~22.5k lines down into deep-frozen
+  data catalogs, **19 pure LOGIC modules** and **22 RENDER modules**, each wired as
+  a `<script>` before `goal-manager.js` plus `module.exports` for jest. The trigger
+  was a drift bug: three spells missing from chests and bosses because the loot
+  spell list existed in two hand-maintained copies. Behaviour-preserving
+  throughout, with the suite growing **599 → 1255 tests**. Last two slices:
+  `period-summary-logic.js` (70th + 71st — the recap math, then the transition
+  DETECTION deciding whether a recap shows at all) and `reminder-schedule-logic.js`
+  (72nd — the reminder clock math, previously untested).
+
+- **Release tooling** — `scripts/release.js` replaces hand-editing five version
+  strings across five files (`npm run release -- x.y.z` runs jest → version bumps →
+  `cap:sync`, aborting unless each pattern matches exactly once). This release also
+  repaired a real instance of that drift: `pwa-handler.js` had been left at
+  `APP_VERSION = '2.5.0'`. `scripts/fetch-vendor.js` vendors Remix Icons and Google
+  Fonts locally so a cold start is fully styled without CDN latency.
+
+- **Repo history repaired** — the work behind builds 27–30 had been cut from an
+  uncommitted working tree, leaving `HEAD` stranded at `v2.8.0` while ~90
+  runtime-required modules (every logic and render module `index.html` loads)
+  existed only on one machine. All of it is now committed and pushed.
 
 - **Deferred to §3.2 (Crafting System)** — the four class `[large]` crafting
   subsystems (Warrior weapon forging, Ranger arrow crafting, Wizard spell

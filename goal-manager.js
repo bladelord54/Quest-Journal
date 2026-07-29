@@ -3306,7 +3306,7 @@ class GoalManager {
 
     // v2.7+ — One-time "What's New" modal logic. Re-armed each release
     // by bumping `CHANGELOG_VERSION` below to match the modal's headline
-    // (v2.10 = Sound Design Expansion + chest open animations). Shows for
+    // (v3.0 = the Class System & Subclass Specialization). Shows for
     // existing users upgrading;
     // suppressed for brand-new installs (those users have never seen
     // anything else, so a "what's new" would be confusing). State
