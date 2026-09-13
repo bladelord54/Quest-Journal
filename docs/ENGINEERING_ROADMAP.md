@@ -6,7 +6,7 @@
 >
 > Status: ✅ done · 🔄 in progress · ⬜ not started
 
-## 1. 🔄 Split `goal-manager.js` incrementally
+## 1. ✅ Split `goal-manager.js` incrementally (July–Sep 2026)
 
 **Problem:** ~22.5k lines at the outset, one God class holding game rules,
 rendering, persistence, audio and analytics. Duplicated knowledge drifts — the July 2026
@@ -2270,7 +2270,7 @@ then runs `cap:sync`. Fail-loud: aborts if any expected version string is
 missing or ambiguous. CI at `.github/workflows/test.yml` runs the type-check
 (#3) and jest on every push and pull request.
 
-## 3. 🔄 Gradual type safety — JSDoc + `// @ts-check`
+## 3. ✅ Gradual type safety — JSDoc + `// @ts-check` (July–Sep 2026)
 
 **Problem:** the game is wired with magic strings (spell ids, effect keys,
 reward types). Typos fail *silently* — `getClassPerkValue('typo')` returns 0,
@@ -2292,12 +2292,14 @@ a mistyped `spellId` simply never drops.
   `mobile-touch.js`, `stat-tooltip.js`, `audio-manager.js`, `effects-manager.js`).
   The typed surface grows one slice at a time as #1 proceeds.
 
-**Remaining (blocked on #1 criterion 3) — the plan (Sep 7, 2026):** `goal-manager.js`
-itself under `// @ts-check`. Its imports are 44 `const X = window.X ? window.X : {}`
-capture consts, all typed `any`, so the check is meaningless until they are real
-imports. The conversion is structural, so steps 2–5 land as ONE atomic change, not
-per-module slices (a mixed shim/ESM state means two test harnesses). Step 1 (tooling)
-and step 6 (triage) are separable and land on their own — staged, agreed Sep 9, 2026.
+- **`goal-manager.js` itself is `// @ts-check`'d and tsc-clean** *(Sep 12, 2026)* — the
+  whole codebase is now under the gate. Record of how it got there below.
+
+**Closing plan (Sep 7–12, 2026), kept as the record:** `goal-manager.js` under `// @ts-check`
+was blocked on its imports being 44 `const X = window.X ? window.X : {}` capture consts,
+all typed `any`. The conversion was structural, so steps 2–5 landed as ONE atomic change,
+not per-module slices (a mixed shim/ESM state means two test harnesses). Step 1 (tooling)
+and step 6 (triage) landed on their own.
 
 1. ✅ **Tooling** *(landed Sep 9, 2026)* — `babel-jest` + `@babel/core` + `@babel/preset-env`
    (devDeps), `babel.config.js` (`targets: node current`, jest-only — the browser build is
@@ -2477,6 +2479,55 @@ sites are gone, removed in verifiable chunks (jest green after each):
 The ONE deliberate survivor is the native-only legacy-SW unregister + cache-purge
 in `pwa-handler.js` (guarded by `_isCapacitorNative`), which clears workers left
 behind by pre-native PWA installs. Verified at 605/605 jest + `npm run typecheck`.
+
+## 9. ⬜ Shrink `goal-manager.js` for navigability (deferred — added Sep 12, 2026)
+
+**Problem:** with #1 closed, `goal-manager.js` is still **19,653 lines / 586 methods**. That is
+no longer a *correctness* risk — every rule is in a tested module, the type-check covers the
+whole file, and duplicated knowledge has a parity test — but it is a *navigation* cost: the
+file cannot be held in one's head, and reviews of unrelated features touch the same 20k-line
+diff surface. Line count was explicitly NOT a criterion of #1; this item makes it one.
+
+**Composition (Sep 12 measurement):** 2,076 blank · 3,759 comment (19%, mostly slice-history
+narration duplicated in this document) · ~1,435 inline HTML template literal · ~12,400 code.
+Longest methods: `previewTheme` 200, `_buildActionHandlers` 198, `importData` 189,
+`generateWeeklyRecapCard` 187, `performSearch` 186, `attackBoss` 186, `generateStatCard` 183,
+`renderXPDisplay` 182, `onBossDefeated` 179, `_processToastQueue` 177.
+
+**Decision (Sep 12, 2026): deferred in favour of the product roadmap.** No concern with waiting —
+the safety net (#1–#3) does not depend on file length, the work is incremental and reversible,
+and shipping more features first tells us which domains most deserve extraction. What must NOT
+wait is the guard-rail below.
+
+**Guard-rail (in force now):** new work lands as new modules, not new class bulk. A new rule →
+a `*-logic.js` with tests; a new surface → a `*-render.js` builder; the class gets only the
+orchestration call. Slice-history comments belong in this document, not in the source. Target:
+the file does not grow past ~19.7k while #9 is deferred.
+
+**Scope when picked up — two tiers, in order:**
+
+1. **Tier 1 — cheap, ~3–4k lines, near-zero risk.**
+   - Prune slice-history comments whose content already lives in this document (keep
+     WHY-comments that explain a non-obvious decision at the call site).
+   - Extract the remaining ~1,435 template-literal lines into render modules using the
+     established byte-faithful recipe (23rd+ render module). Candidates: `showLoginStreakModal`,
+     `showNotificationSettingsGuide`, `showActiveChallenges`, `showStarterTasksModal`,
+     `showInputModal`, `generateStatCard` / `generateWeeklyRecapCard`, `previewTheme`.
+2. **Tier 2 — medium, ~5–7k lines, moderate risk.** Prototype mixins by domain, one file
+   each, applied via `Object.assign(GoalManager.prototype, {...})` (or a `mixin(Class)` helper):
+   boss combat (~1.5k), focus timer / pomodoro, reminders / notifications, tutorial /
+   onboarding, sharing / stat cards, billing / premium. Runtime behaviour is unchanged (same
+   class, same instance) so the existing suite is the regression net; the cost is
+   `@this {GoalManager}` JSDoc on every moved method to keep `// @ts-check` clean. Expected
+   result: a ~6–8k-line core (state, persistence sequencing, `render()`, event dispatch).
+
+**Explicitly out of scope (see Non-goals):** real controller objects with their own state
+(`BossController`, `FocusTimer`, …). The domains share `this.*` state freely — boss defeat →
+XP → level-up → feature unlock → nav → toast queue — and untangling that is an architecture
+change that only a product need (cloud sync, multi-user) would justify.
+
+**Gate:** each slice `1686+/1686+` jest + `npm run typecheck` clean; Android `cap:build`
+device check at the end of each tier.
 
 ## Non-goals (decided — do not revisit casually)
 
