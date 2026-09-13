@@ -3,7 +3,7 @@
 > **Current Released Version:** 3.0.0 (Build 32) — Play Store
 > **In Development:** §3.2 Crafting System (deferred out of 3.0.0); §3.8 Prestige — which the
 > re-scoped §N2 late-game unlock hook blocks on; Track 2 boss portraits still deferred (see § v2.9)
-> **Last Updated:** Jul 29, 2026
+> **Last Updated:** Sep 12, 2026 (Differentiation Review — see the section before the Priority Matrix)
 
 This document is the **forward-looking plan only**. Shipped-work
 narratives live in two places:
@@ -717,7 +717,7 @@ Two paired additions that give long-term players agency over the boss cadence an
   - **Apex / Epic boss** — enrage shifts the fight itself: each unkilled day adds a permanent HP buff to the boss for that encounter (+5% per day) and unlocks a damage-reflect mechanic at 50% HP. Kills that happen post-enrage still award loot but at one rarity tier lower.
 - **Penalty visibility** — debuffs surface on the Character Sheet under a new "Active Effects" pill row (red/orange treatment to distinguish from positive title perks). Each active curse links back to the boss that applied it so the player knows exactly how to clear it.
 - **Escalating notifications** — §1.2's boss expiration warnings escalate copy from informational ("Boss expires in 1 hour!") through warning ("Boss enraged — debuff active!") to critical ("Final 24h — defeat the boss to lift the curse!"). Honors the existing notification settings so users who muted boss reminders stay muted.
-- **Opt-out for casual players** — Settings toggle (default ON) to disable enrage penalties for users who want the original positive-only boss loop. Toggle is one-way per period (can't re-enable mid-period to dodge an active debuff).
+- ~~**Opt-out for casual players** — Settings toggle (default ON) to disable enrage penalties~~ **Revised Sep 12, 2026 (Differentiation Review): enrage penalties are opt-IN, default OFF.** The positive-only loop is a core differentiator from damage-on-miss competitors and default-on debuffs punish the sick/travelling users §1.7 protects. Settings toggle enables enrage for players who want the threat; still one-way per period (can't disable mid-period to dodge an active debuff).
 - **Cross-link to §3.1 Guardian subclass** — the Guardian subclass perk includes partial enrage resistance (debuff stacks cap one tier lower), giving subclass picks a defensive use-case beyond pure damage scaling.
 
 ### 3.10 — Quest Chain Mastery
@@ -738,6 +738,11 @@ Expands the existing quest-chain concept (currently scoped to §3.3 Seasonal Eve
 ---
 
 ## Phase 4 — Social & Multiplayer (v4.0)
+
+> ⬇️ **Deprioritized behind Phase 5 (Sep 12, 2026 Differentiation Review)** — guilds/parties/
+> shared-HP raids are the incumbent's home turf, need the server the no-server pillar avoids,
+> and compete with a decade-old network. The live share-link friend challenges are the right
+> no-server form. If co-op is built, an **async raid via share codes** is the only on-brand shape.
 
 Features that connect players and drive organic growth.
 
@@ -819,6 +824,14 @@ the Personal Records longest-streak record. Result: a known-good baseline that
 - Celebrate improvements, gently flag declining metrics
 
 ### 5.3 — Goal Dependency Mapping
+
+> ⬆️ **Pulled forward (Sep 12, 2026 Differentiation Review)** — scheduled directly after §3.8
+> Prestige, ahead of the rest of Phase 3. The goal hierarchy is the app's primary structural
+> differentiator and this is the feature that makes it *visible*. `parentIds` links already
+> exist on every goal tier, so the data side is done. Scope additions: (a) an onboarding path
+> that starts from "what is your Epic quest?" so the difference lands in the first minute;
+> (b) shipped together with **Android home-screen widgets** (promoted from Backlog).
+
 - Visual graph linking life goals → yearly → monthly → weekly → daily tasks
 - See which daily actions feed into long-term objectives
 - Identify "orphan" tasks with no strategic purpose
@@ -967,13 +980,70 @@ the deferred findings below remain open unless marked resolved.
 | **Accessibility Deep Pass** | Full screen reader audit, high-contrast themes, reduced motion mode (basic ARIA already in place) |
 | **Localization / i18n** | Multi-language support starting with Spanish, Portuguese, Japanese |
 | **Offline-First Improvements** | Better PWA offline experience, background sync queue |
-| **Widget Support** | Android home screen widgets (today's quests, streak counter, focus timer) |
+| **Widget Support** | Android home screen widgets (today's quests, streak counter, focus timer). **Promoted Sep 12, 2026 — scheduled with §5.3** (Differentiation Review: the widget is what a user sees 20× a day; the incumbent's is weak). |
 | **New loot item ideas** *(merged from future-updates.md, Jun 11, 2026)* | Consumables: Shield Charge (blocks 1 boss attack reset), Lucky Coin (next chest +1 rarity tier). Spells: Mirror Image (duplicate next task XP), Treasure Hunter (+25% gold 24h), Chain Lightning (3-task combo → bonus boss damage), Second Wind (habit completion restores attack charge), Alchemist's Touch (crystal↔gold conversion), Phoenix Rebirth (legendary — revive expired boss at 25% HP). Companions: Raven (+10% boss gold), Golem (+1 attack charge daily), Kraken (splash damage). Boss Trophies — cosmetic per-boss collectibles in a Trophy Case. Slots naturally into §3.7 Rotating Market stock. |
 | ~~**Extended title tiers**~~ *(merged from future-updates.md)* | ✅ **Shipped (v2.9.x balance pass)** — `LEVEL_TITLES` extended from 10 to 50 entries per style (Hero → … → Paragon), clamping at 'Paragon' for level 50+. §3.8 post-prestige title perks remain open. |
 | **Duplicate companions → evolution shards** *(v2.9.x balance audit)* | Duplicate companion drops currently convert to flat gold. Convert to per-companion "evolution shards" instead, feeding the §3 companion-evolution system — makes late-game chest opens exciting again. Design-level: needs shard economy + evolution UI. |
 | ~~**Task XP scaling by effort**~~ *(v2.9.x balance audit)* | ✅ **Shipped (effort-XP pass)** — the existing low/medium/high `priority` field doubles as the effort proxy via a shared `getPriorityXPMultiplier` (high 1.5× / medium 1.0× baseline / low 0.75×). Applied to daily tasks (`_dailyTaskXP`), side quests (refactored off the old hard-coded switch, same 30/20/15 values), and manual weekly/monthly/yearly goal completions; auto-complete roll-ups + life goals stay flat by design. Self-reported-effort gaming is blunted by a per-day cap on the high-priority bonus (`HIGH_PRIORITY_XP_DAILY_CAP`, date-stamped + reload-safe). Covered by the "Effort-based XP" Jest suite. |
 | **XP curve review past level 20** *(v2.9.x balance audit; re-scoped after the class-system audit)* | The L10–L40 band is now covered by the **class skill tree** (1 skill point/level via `getEarnedSkillPoints = level − 10`; the main class maxes at *exactly* L40) plus the **L6→L35 theme cadence**, so the old "unlocks stop at L9" concern is largely addressed mid-game. Remaining late-game gaps: **post-L40 skill-point overflow** — `getEarnedSkillPoints` is uncapped but a maxed class absorbs only 30 points, so it **needs prestige built** to absorb the surplus (the "maxed, nothing to spend" dead zone); the XP-ring tier cap at L10 (`xpTierIndex = Math.min(level, 10)`); the free-user cosmetic drought after L15 (only forest/ice are free level themes); and no themes/titles between L35 (aurora) and L50+. `getXPForLevel = 150 + (level−1)×250` stretches each gap over weeks. **Most of this blocks on building prestige (§3.8).** |
 | **Boss streak freeze item** *(v2.9.x balance audit)* | Boss-defeat streaks reset to 0 on a single missed day. Add a purchasable/lootable "streak freeze" (mirrors habit Streak Shield) so one bad day doesn't wipe a month of boss streaks. Slots into §3.7 Rotating Market stock. |
+
+---
+
+## Differentiation Review (Sep 12, 2026)
+
+A pass over every unshipped item asking one question: *does this make Life Quest
+Journal stand out among RPG habit trackers, or does it just keep pace?* Basis: the
+genre as known through mid-2026 — Habitica as the incumbent (pets/mounts, classes,
+parties, shared-HP bosses, guilds, galas, damage-on-miss), the LifeRPG / Do It Now /
+Level Up Life / Habit Hunter long tail, and adjacent gamified trackers (Finch,
+Forest). Re-run this review when new entrants appear.
+
+**Genre table stakes (parity, not differentiation):** XP/levels, gold, evolving
+pets, class perk trees, streaks, cosmetics, a shop, seasonal events, guilds/parties,
+party boss HP pools, leaderboards. Roadmap items in this list are credibility
+maintenance — necessary, but not why anyone switches.
+
+**What LQJ already has that the genre mostly does not — the five pillars every
+standout item should amplify:**
+
+1. **A goal hierarchy** (Epic → Yearly → Monthly → Weekly → Daily). Competitors are
+   flat habit lists. "Life *Quest*" vs "habit" is the positioning.
+2. **Focus timer + Pomodoro chains fused into the economy** (Focus Crystals).
+   Habitica has no timer.
+3. **Solo boss cadence with real combat feel** (daily/weekly/monthly, crits,
+   dissolves, FINAL BLOW). The genre's bosses are party-dependent HP sponges.
+4. **Positive-only loop** — no HP loss for a missed day. Damage-on-miss is
+   Habitica's most-cited churn reason.
+5. **No server** — private, offline, no account. A distinct trust story.
+
+### Tier A — genuinely differentiating (build these)
+
+| Item | Why it stands out | Adjustment |
+|---|---|---|
+| **§5.3 Goal Dependency Mapping** | Nobody in the genre shows daily actions feeding long-term goals. Turns pillar 1 — the unique data model — into a *visible* feature and answers "why am I doing this task", which habit apps structurally cannot. `parentIds` links already exist, so cost is low relative to impact. | **Pulled forward from Phase 5 to directly after §3.8.** The single most on-brand item in this document. Also the natural first-minute onboarding hook ("what is your Epic quest?"). |
+| **§3.10 Quest Chain Mastery** | Permanent buffs for *sustained arcs* (30 focus sessions in 30 days) rather than per-task payouts. Rewards consistency — the actual product promise. No competitor does this. | Keep as specified (no respec, survives prestige). |
+| **§3.9 Apex Boss + Re-summon** | A solo multi-phase fight whose mechanics reward loadout choice is rare; amplifies pillar 3. | **Enrage penalties become opt-IN (default OFF).** Default-on debuffs contradict pillar 4 and punish the sick/travelling users §1.7 exists to protect. |
+| **§5.1 Smart Scheduling / §5.2 Weekly Digest** | "The game learns you" is absent from the genre; the §5.0 analytics baseline is already stronger than Habitica's (none). | Must stay on-device heuristics — a server would spend pillar 5. |
+| **§3.8 Prestige** | Uncommon in habit RPGs; also unblocks the documented post-L40 dead zone. | Medium uniqueness, structurally overdue. Unchanged position. |
+
+### Tier B — credibility, not a reason to switch
+
+- **§3.7 Rotating Market** — economic sink the game needs; Habitica has a shop. Build for the economy, not the pitch.
+- **§3.4 Companion Evolution** — Habitica's *signature* feature (pets → mounts). Parity at best; the backlog "duplicate companions → evolution shards" angle is the more distinctive half.
+- **§3.3 Seasonal Events** — Habitica runs four galas a year. A content treadmill that is expensive for a small team to keep fresh; Double XP Weekend already covers the lightweight version.
+- **§3.2 Crafting** — moderate uniqueness, but inventory chores for productivity users. Justified by the sink, not by standing out.
+- **§3.5 Achievement Gallery / §3.6 Bestiary** — polish.
+
+### Tier C — high cost, low differentiation
+
+- **Phase 4 Social (guilds, raids, feed)** — Habitica's home turf, requires the server pillar 5 avoids, and competes with a decade-old network. The live no-server friend challenges are the right form. **Deprioritized behind Phase 5.** If co-op is ever built, an async raid via share codes is the only on-brand shape.
+- **§6.6 / §6.7 Monetization + Cosmetics** — revenue infrastructure, not differentiation.
+
+### Two additions
+
+- **Android home-screen widgets** *(promoted from Backlog)* — habit trackers live or die on the widget; Habitica's is weak. Today's quests / streak / focus timer on the home screen is what a user sees 20× a day, and it is cheap on Capacitor. Scheduled alongside §5.3.
+- **Goal hierarchy as the onboarding hook** — a new user currently sees a habit tracker with a sword. §5.3 plus an onboarding path that starts from the Epic quest communicates the difference in the first minute. Folded into §5.3's scope.
 
 ---
 
@@ -996,7 +1066,15 @@ the deferred findings below remain open unless marked resolved.
 
 *(Phase 1 shipped in v2.4. Phase 2 is nearly complete — v2.9 in flight, v2.10 sound pass remaining. Phase 5 — Intelligence & Insights — spans mid-impact / mid-effort and slots after Phase 4.)*
 
-**Recommended execution order:** finish Phase 2 (v2.9 → v2.10) → Phase 3 (v3.0 depth) → Phase 6.1 cloud sync (foundation for social) → Phase 4 (v4.0 social) → Phase 5 (v5.0 intel) → rest of Phase 6
+**Recommended execution order (revised Sep 12, 2026 — Differentiation Review):**
+finish Phase 2 (v2.10 sound pass) → §3.8 Prestige → **§5.3 Goal Dependency Mapping + Android
+widgets** (pulled forward) → §3.10 Quest Chain Mastery → §3.9 Boss Loop (enrage opt-in) → rest of
+Phase 3 (§3.7, §3.4, §3.2, §3.3, §3.5/3.6) → Phase 5 (§5.1 / §5.2 on-device) → Phase 6.1 cloud
+sync → Phase 4 social → rest of Phase 6.
+
+*Previous order (Jul 29):* Phase 2 → Phase 3 → 6.1 → Phase 4 → Phase 5 → rest of 6. The change
+moves the two items that amplify the goal-hierarchy pillar ahead of parity features, and
+social behind intelligence.
 
 ---
 
