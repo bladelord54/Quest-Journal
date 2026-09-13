@@ -24,56 +24,49 @@
  *   - Jest/Node: `require('./level-titles.js')` returns the object via
  *     module.exports (and also sets window.LEVEL_TITLES under jsdom).
  */
-(function () {
-    /**
-     * Recursively freeze the catalog so it is a true constant — no call site
-     * (or test) can accidentally mutate the shared title chains at runtime.
-     * @param {any} obj
-     * @returns {any}
-     */
-    function deepFreeze(obj) {
-        Object.getOwnPropertyNames(obj).forEach((key) => {
-            const value = obj[key];
-            if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-                deepFreeze(value);
-            }
-        });
-        return Object.freeze(obj);
-    }
 
-    const LEVEL_TITLES = deepFreeze({
-        masculine: [
-            'Wanderer', 'Squire', 'Knight', 'Baron',    'Earl',     'Duke',    'Prince',   'King',  'Emperor', 'Legend',
-            'Hero',        'Champion',  'Vanquisher', 'Warlord',     'Conqueror',
-            'Highlord',    'Archon',    'Sovereign',  'Overlord',    'Mythic',
-            'Titan',       'Colossus',  'Juggernaut', 'Dragonheart', 'Dragonlord',
-            'Stormcaller', 'Stormlord', 'Worldwalker','Realmshaper', 'Demigod',
-            'Starborn',    'Starforger','Moonsage',   'Sunblade',    'Lightbringer',
-            'Voidwalker',  'Fatebinder','Timekeeper', 'Oracle',      'Ascendant',
-            'Celestial',   'Seraph',    'Archangel',  'Worldforger', 'Godslayer',
-            'Immortal',    'Eternal',   'Transcendent','Infinite',   'Paragon'
-        ],
-        feminine: [
-            'Wanderer', 'Squire', 'Dame',   'Baroness', 'Countess', 'Duchess', 'Princess', 'Queen', 'Empress', 'Legend',
-            'Heroine',     'Champion',  'Vanquisher', 'Warlady',     'Conqueror',
-            'Highlady',    'Archon',    'Sovereign',  'Overlady',    'Mythic',
-            'Titaness',    'Colossus',  'Juggernaut', 'Dragonheart', 'Dragonqueen',
-            'Stormcaller', 'Stormqueen','Worldwalker','Realmshaper', 'Demigoddess',
-            'Starborn',    'Starforger','Moonsage',   'Sunblade',    'Lightbringer',
-            'Voidwalker',  'Fatebinder','Timekeeper', 'Oracle',      'Ascendant',
-            'Celestial',   'Seraph',    'Archangel',  'Worldforger', 'Godslayer',
-            'Immortal',    'Eternal',   'Transcendent','Infinite',   'Paragon'
-        ]
+/**
+ * Recursively freeze the catalog so it is a true constant — no call site
+ * (or test) can accidentally mutate the shared title chains at runtime.
+ * @param {any} obj
+ * @returns {any}
+ */
+function deepFreeze(obj) {
+    Object.getOwnPropertyNames(obj).forEach((key) => {
+        const value = obj[key];
+        if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+            deepFreeze(value);
+        }
     });
+    return Object.freeze(obj);
+}
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic LEVEL_TITLES property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.LEVEL_TITLES = LEVEL_TITLES;
+const LEVEL_TITLES = deepFreeze({
+    masculine: [
+        'Wanderer', 'Squire', 'Knight', 'Baron',    'Earl',     'Duke',    'Prince',   'King',  'Emperor', 'Legend',
+        'Hero',        'Champion',  'Vanquisher', 'Warlord',     'Conqueror',
+        'Highlord',    'Archon',    'Sovereign',  'Overlord',    'Mythic',
+        'Titan',       'Colossus',  'Juggernaut', 'Dragonheart', 'Dragonlord',
+        'Stormcaller', 'Stormlord', 'Worldwalker','Realmshaper', 'Demigod',
+        'Starborn',    'Starforger','Moonsage',   'Sunblade',    'Lightbringer',
+        'Voidwalker',  'Fatebinder','Timekeeper', 'Oracle',      'Ascendant',
+        'Celestial',   'Seraph',    'Archangel',  'Worldforger', 'Godslayer',
+        'Immortal',    'Eternal',   'Transcendent','Infinite',   'Paragon'
+    ],
+    feminine: [
+        'Wanderer', 'Squire', 'Dame',   'Baroness', 'Countess', 'Duchess', 'Princess', 'Queen', 'Empress', 'Legend',
+        'Heroine',     'Champion',  'Vanquisher', 'Warlady',     'Conqueror',
+        'Highlady',    'Archon',    'Sovereign',  'Overlady',    'Mythic',
+        'Titaness',    'Colossus',  'Juggernaut', 'Dragonheart', 'Dragonqueen',
+        'Stormcaller', 'Stormqueen','Worldwalker','Realmshaper', 'Demigoddess',
+        'Starborn',    'Starforger','Moonsage',   'Sunblade',    'Lightbringer',
+        'Voidwalker',  'Fatebinder','Timekeeper', 'Oracle',      'Ascendant',
+        'Celestial',   'Seraph',    'Archangel',  'Worldforger', 'Godslayer',
+        'Immortal',    'Eternal',   'Transcendent','Infinite',   'Paragon'
+    ]
+});
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = LEVEL_TITLES;
-})();
+
+// Node / Jest
+
+export default LEVEL_TITLES;

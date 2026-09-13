@@ -18,17 +18,150 @@ copies of the pool-builder block too.
 `classes.js`, `bosses.js`, `persistence.js`), leaning on the jest suite as the
 safety net. Never a big-bang rewrite.
 
-**Progress:** seventy-two slices across fifty-two modules — eleven are deep-frozen dual-env data
-modules, nineteen (`loot-engine.js`, `boss-generator.js`, `persistence-migrations.js`, `streak-logic.js`,
+**Definition of done (added Sep 2026 — this item previously had no finish line):** #1 is complete when
+ALL of the following hold; each is checkable, and the last one is what unblocks #3.
+
+1. ✅ **Every game RULE lives in a unit-tested module.** *(Closed Sep 9, 2026 by the audit queue, slices
+   86–90.)* `goal-manager.js` keeps only orchestration:
+   DOM writes, event wiring, timers, audio/effects, toasts, modals, `saveData`/`render` sequencing.
+   Test: no method on the class contains a branch whose outcome is a reward amount, threshold,
+   schedule, eligibility or state transition — those are delegated calls.
+2. ✅ **No duplicated knowledge across files.** *(Closed Sep 9, 2026 by the five single-source items.)*
+   Every table of defaults/thresholds/ids has ONE source with a parity test where a second consumer
+   exists (save↔load, init↔load, badge/title catalogs, quest gates↔unlock ladder, theme gates↔catalog).
+3. **The extracted modules are real ES modules** — `import`/`export` and `<script type="module">`,
+   replacing the `window.X` + `module.exports` shims, the module-scoped capture consts, and the
+   hand-maintained load order in `index.html` / `scripts/copy-web.js`. Not a framework; not a
+   TypeScript conversion.
+4. **`goal-manager.js` itself passes `// @ts-check`** once (3) makes its imports typed.
+
+Line count is a *consequence*, not a criterion — bulk that is genuinely orchestration may stay, or be
+moved to prototype-mixin files without pretending it is pure. Slices that only relocate lines without
+satisfying (1) or (2) are not progress against this item.
+
+**Progress (status page):** **90 slices → 68 modules** (13 data · 33 logic · 22 render).
+`goal-manager.js` is **~19.5k lines**, down from ~22.5k at the outset (24.5k peak) — roughly 6k lines
+now live in pure, tested siblings. Render burn-down **complete**; the Sep 7 criterion (1)/(2) audit queue
+is **complete** (slices 86–90 + the five single-source items); criterion (3) — the ES-module conversion —
+and criterion (4) — `// @ts-check` on `goal-manager.js` — landed Sep 9–12, 2026 (steps under item #3), so
+**all four Definition-of-done criteria are ✅**. Suite: **1686/1686 jest + `npm run typecheck` clean
+(0 errors)**. Every module follows one wiring recipe: `// @ts-check`, `export default X`, imported
+directly by `goal-manager.js` (no `{}` fallbacks), copied by `scripts/copy-web.js`, imported in the jest
+harness. Android `cap:build` device check passed Sep 12, 2026 — no open items under #3. Current tally,
+then the archive.
+
+**Data catalogs (13)** — deep-frozen literals the God class used to inline.
+
+| Module | Owns |
+|---|---|
+| `level-titles.js` | the 100-string player level-title chain |
+| `companion-definitions.js` | the 14-entry companion catalog |
+| `spell-definitions.js` | the 23-entry spellbook catalog |
+| `theme-definitions.js` | the 14-entry color-palette theme catalog (free/premium split, rotation) |
+| `achievement-definitions.js` | the 16-entry badge catalog (ordered list; `checkBadges` derives from it) |
+| `boss-themes.js` | 36 daily/weekly/monthly boss themes |
+| `class-definitions.js` | raw class/subclass skill-tree data (costs still injected from `balance.js`) |
+| `enchantment-definitions.js` | the 13-entry enchantment shop catalog |
+| `starter-task-presets.js` | onboarding starter-task seed catalog |
+| `quest-chain-templates.js` | the 5 multi-chapter quest chains (biggest single lift) |
+| `loot-pool.js` | the rarity-keyed master loot table |
+| `title-definitions.js` | the achievement-title catalog + `computeUnlockableTitles` (de-dup of `checkTitleUnlocks`) |
+| `daily-quest-definitions.js` | the 20-quest Daily Board pool (gates DEFINED as `FEATURE_UNLOCKS` levels) + `BOARD_SWEEP_BONUS` |
+
+**Logic modules (33)** — pure, unit-tested rules; the class keeps only side-effects.
+
+| Slice | Module | Owns |
+|---|---|---|
+| — | `loot-engine.js` | weighted pick, `buildLootReward`, `rollLootTable` (de-duped chest/boss roll) |
+| — | `boss-generator.js` | date-seed hash + `buildBoss` spawn/scaling engine |
+| — | `persistence-migrations.js` | legacy-save normalizers + save-side list pruning |
+| 56 | `streak-logic.js` | daily-LOGIN streak classification, login rewards, streak-repair math |
+| 57 | `leveling-logic.js` | XP curve, cumulative XP, level-progress band |
+| 58 | `effort-xp-logic.js` | priority → XP multiplier scaling |
+| 59 | `buff-multipliers.js` | active spell/enchantment reward multipliers |
+| 60 | `companion-logic.js` | companion slot + bonus resolution |
+| 61 | `class-perks.js` | class/subclass perk-value resolution |
+| 62 | `class-progression.js` | skill-tree progression-state predicates |
+| 63 | `skill-points.js` | skill-point economy |
+| 64 | `crystal-economy.js` | Focus Crystal supply math |
+| 65 | `charge-rules.js` | attack-charge earn/spend rules |
+| 66 | `combat-damage.js` | boss-damage pipeline |
+| 67 | `reward-economy.js` | `addXP`/`addGold` reward-stack math |
+| 68 | `focus-session-logic.js` | focus-timer + Pomodoro-chain mechanics |
+| 69 | `spell-lifecycle.js` | active-spell lifecycle |
+| 70–71 | `period-summary-logic.js` | previous-period recap math + period-transition detection |
+| 72 | `reminder-schedule-logic.js` | reminder slot scheduling, catch-up window, streak-risk/bounty timers |
+| 73 | `enchantment-lifecycle.js` | active-enchantment state math (spell/enchantment asymmetry made explicit) |
+| 74 | `bounty-logic.js` | Royal Bounty level gate, period windows, eligibility, seeded pick |
+| 75 | `recurring-logic.js` | one day vocabulary, four-branch `dueToday`, pre-schedule guards |
+| 76 | `save-serializer.js` | `buildSaveData` — the 90-field `_doSave` object |
+| 77–78 | `load-deserializer.js` | `buildLoadState` — the ~150-field `loadData` map; 78 = save↔load round-trip parity suite |
+| 79 | *(in `title-definitions.js`)* | `computeUnlockableTitles` — title de-drift twin of the badge fix |
+| 80 | `daily-quest-logic.js` | date-seeded daily board pick + `check(tracking)` sweep |
+| 81 | `wooden-chest-loot.js` | free Wooden Chest weighted table + pick (second weighted-pick copy killed) |
+| 82 | `quest-chain-logic.js` | quest-chain task toggle, chapter/chain completion, active→completed move |
+| 83 | `habit-logic.js` | HABIT streak walk, `double_streak` increment, 7/30/100 milestone tiers |
+| 84 | `default-state.js` | the ONE persisted-field defaults table; `initState` and `buildLoadState` both consume it (init↔load parity) |
+| 85 | `feature-unlocks.js` | nav/arcane unlock tables, companion unlock level (was a bare `3` ×3 incl. `loot-engine.js`), level-keyed tutorials, `isUnlocked`/`isFarOff`; follow-up added the referral/review growth gates |
+| 86 | `chest-weight-logic.js` | chest rarity-weight modifiers: `shiftWeights` (the Lucky Loot / Ranger block that was written twice), `luckyDrawFloor`, `applyChestModifiers` composite |
+| 87 | `boss-streak-logic.js` | boss-defeat streak reward multiplier: `streakForBossType` cadence pick, `streakMultiplier` (+10%/streak, capped +100%), `applyStreakBonus`, `archiveDefeated` (50-cap) |
+| 88 | *(in `companion-logic.js`)* | `companionXpGain` (Bonding ×2 → Beastmaster ceil) + `applyCompanionXp` (the `100 * level` multi-level-up walk) |
+| 89 | `challenge-logic.js` | Challenge-a-Friend `PRESETS` + difficulty→{xp,gold} `REWARDS`, `challengeProgress` (100 clamp), `archiveCompleted` (50-cap) |
+| 90 | *(in `reward-economy.js`)* | `forageReward(chance, rng)` — Ranger Forage hit-roll + 10–20 bonus gold + 1 crystal |
+
+**Render modules (22)** — pure `input → HTML-string` builders; container/orchestrator methods stay on the class.
+
+| Module | Surface |
+|---|---|
+| `boss-render.js` | HP bar, boss card, defeated gallery, battle log, monthly panels (5 slices) |
+| `task-render.js` | checklist leaf, `priorityBadgeHTML`, all six task/goal cards |
+| `companion-render.js` | whole Companion Den |
+| `spell-render.js` | whole Spellbook |
+| `class-render.js` | whole Class panel (selection, skill-tree rows, capstones, subclass track) |
+| `analytics-render.js` | whole Analytics dashboard |
+| `quest-chain-render.js` | whole Quest Chains tab |
+| `enchantment-render.js` | whole Enchantments view |
+| `dashboard-render.js` | four standalone Dashboard cards |
+| `player-hud-render.js` | Player HUD (buffs bar, sigil orbit, portrait, compact row) |
+| `title-render.js` | whole Title Hall |
+| `reward-render.js` | Treasury tab (daily chest + four purchasable tiles) |
+| `theme-render.js` | both Themes surfaces |
+| `badge-render.js` | Badges/Achievements panel |
+| `habit-render.js` | populated Rituals tab |
+| `archive-render.js` | populated Archive |
+| `daily-board-render.js` | both Daily-board surfaces |
+| `recurring-render.js` | populated Recurring-tasks panel |
+| `calendar-render.js` | Calendar day cells + selected-date list |
+| `focus-timer-render.js` | Focus-timer controls + Pomodoro progress |
+| `premium-render.js` | Premium card + shared upsell banner |
+| `reminder-render.js` | Reminder settings (the last tab-render surface) |
+
+### Slice log — archive (slices 1–85)
+
+The full slice-by-slice narrative, kept for the design reasoning each extraction recorded
+(what was de-duplicated, what was proven byte-faithful, which tests lock it). Collapsed
+because it is history, not status.
+
+<details>
+<summary>Expand the slices 1–85 narrative</summary>
+
+**Original running narrative:** ninety slices across sixty-seven modules — twelve are deep-frozen dual-env data
+modules, thirty-three (`loot-engine.js`, `boss-generator.js`, `persistence-migrations.js`, `streak-logic.js`,
 `leveling-logic.js`, `effort-xp-logic.js`, `buff-multipliers.js`, `companion-logic.js`, `class-perks.js`,
 `class-progression.js`, `skill-points.js`, `crystal-economy.js`, `charge-rules.js`, `combat-damage.js`,
 `reward-economy.js`, `focus-session-logic.js`, `spell-lifecycle.js`, `period-summary-logic.js`,
-`reminder-schedule-logic.js`) are LOGIC modules
+`reminder-schedule-logic.js`, `enchantment-lifecycle.js`, `bounty-logic.js`, `recurring-logic.js`,
+`save-serializer.js`, `load-deserializer.js`, `daily-quest-logic.js`, `wooden-chest-loot.js`,
+`quest-chain-logic.js`, `habit-logic.js`, `default-state.js`, `feature-unlocks.js`, `chest-weight-logic.js`,
+`boss-streak-logic.js`, `challenge-logic.js`) are LOGIC modules
 (`persistence-migrations.js` covers BOTH load-side normalizers AND the save-side list pruning;
 `streak-logic.js` + `leveling-logic.js` + `effort-xp-logic.js` + `buff-multipliers.js` + `companion-logic.js`
 + `class-perks.js` + `class-progression.js` + `skill-points.js` + `crystal-economy.js` + `charge-rules.js` +
 `combat-damage.js` + `reward-economy.js` + `focus-session-logic.js` + `spell-lifecycle.js` +
-`period-summary-logic.js` + `reminder-schedule-logic.js` are the SIXTEEN
+`period-summary-logic.js` + `reminder-schedule-logic.js` + `enchantment-lifecycle.js` +
+`bounty-logic.js` + `recurring-logic.js` + `save-serializer.js` + `load-deserializer.js` +
+`daily-quest-logic.js` + `wooden-chest-loot.js` + `quest-chain-logic.js` + `habit-logic.js` are the
+TWENTY-FIVE
 logic slices AFTER the render burn-down closed — daily-login-streak + streak-repair math, the XP curve +
 level-progress band math, the
 effort-based-XP priority scaling, the active-buff (spell + enchantment) reward multipliers, the companion slot
@@ -36,11 +169,35 @@ effort-based-XP priority scaling, the active-buff (spell + enchantment) reward m
 progression-state predicates, and the skill-point economy), then the BOSS-BATTLE TRIO (the Focus Crystal
 supply math, the attack-charge earn/spend rules, and the boss-damage pipeline those charges pay for), then
 the addXP/addGold reward-stack math every reward in the game routes through, the focus-timer +
-Pomodoro-chain mechanics, the active-spell lifecycle, and finally BOTH halves of period tracking —
+Pomodoro-chain mechanics, the active-spell lifecycle, then BOTH halves of period tracking —
 the previous-period recap math and, in a 71st slice on the same module, the transition DETECTION that
-decides whether that recap is shown at all, and — in a 72nd slice — the reminder clock math in
+decides whether that recap is shown at all, then — in a 72nd slice — the reminder clock math in
 `reminder-schedule-logic.js`: the daily morning/evening slot scheduling, the missed-reminder catch-up
-window, and the streak-risk + bounty-ready timers that six thin delegators now consume),
+window, and the streak-risk + bounty-ready timers that six thin delegators now consume, then the 73rd's
+active-enchantment state math in `enchantment-lifecycle.js` — `spell-lifecycle.js`'s sibling, and the slice
+that makes the spell/enchantment ASYMMETRY explicit — then the 74th's Royal Bounty rules in
+`bounty-logic.js`: the level gate, the period keys/windows, the anti-stage eligibility rule and the seeded
+weekly/monthly pick — and finally the 75th's recurring-task scheduling rules in `recurring-logic.js`: the
+ONE day vocabulary behind four separate hand-written copies, the four-branch `dueToday` predicate
+(weekly/biweekly/monthly-date/monthly-weekday) and the three pre-schedule guards — and finally the
+76th's save-data builder in `save-serializer.js`: the 90-field `_doSave` object literal, its two `||`-fallen
+date-stamp defaults, and the `premiumPurchaseToken || null` fallback, now a pure
+`buildSaveData(manager, { todayString, currentWeekString })` that `_doSave` calls — and finally the 77th's
+MIRROR of it, `load-deserializer.js`: the ~150-assignment `loadData` field map, where every DEFAULT lives,
+now a pure `buildLoadState(data, { todayString, classSchemaVersion, defaultSessionMinutes, normalizeClassId })`
+that `loadData` Object.assigns, closing the persistence field map from both ends — and finally the 80th's
+Daily Quest Board rules in `daily-quest-logic.js`: the date-seeded deterministic board pick and the
+`check(tracking)` completion sweep, closing the daily-board pair whose render half went out in the 50th slice,
+and finally the 81st's daily free Wooden Chest loot in `wooden-chest-loot.js`: the frozen 8-entry weighted
+table + the `weightedPick(table, rng)` loop — the SECOND hand-rolled cumulative-weight pick in the codebase,
+de-duplicated from `loot-engine.js`'s (their float-drift fallbacks — first-entry vs last-entry — differ ON
+PURPOSE and a test pins the disagreement), and finally the 82nd's quest-chain progression state math in
+`quest-chain-logic.js` — `quest-chain-render.js`'s SIBLING: the task-toggle array math, the chapter-complete
+predicate, the chapter-advance patch, the chain-complete detection and the active→completed list move that
+the three progression methods delegate to, and finally the 83rd's habit progression math in `habit-logic.js`
+— `habit-render.js`'s LOGIC SIBLING and the HABIT-streak counterpart to `streak-logic.js`'s LOGIN streak: the
+consecutive-day `computeHabitStreak` walk behind `recalculateHabitStreak`, the `double_streak` increment rule
+and the 7/30/100 milestone thresholds `toggleHabit` uses),
 and TWENTY-TWO (`boss-render.js`, `task-render.js`, `companion-render.js`,
 `spell-render.js`, `class-render.js`, `analytics-render.js`, `quest-chain-render.js`, `enchantment-render.js`,
 `dashboard-render.js`, `player-hud-render.js`, `title-render.js`, `reward-render.js`, `theme-render.js`,
@@ -1348,10 +1505,514 @@ values, so it was deliberately blind to the `lastMonth` load-path bug; that fix 
 asserts the pre-fix output was `['week']` and is now `['month', 'week']`. Whole suite now 1249/1249 jest +
 `npm run typecheck` clean.
 
+**`enchantment-lifecycle.js` — the 73rd slice, and `spell-lifecycle.js`'s sibling.** Nine pure functions
+(`minutesToMs`, `isActive`, `expiring`, `stillActive`, `durationWindowMs`, `effectiveDurationMs`,
+`effectiveCost`, `castEntry`, `expiryWarningDelay`) covering the active-enchantment state math. The point of
+doing it right after the spell slice was to make the spell/enchantment **ASYMMETRY explicit rather than
+implicit** — the two systems look alike and are not the same shape. Enchantments are keyed by `effect` (not
+`spellId`), their catalog durations are in MINUTES (not ms), they have NO `-1` permanent / `0` instant
+sentinels because every enchantment is timed, their records carry `totalDuration` (not `castedAt`), and —
+the sharp edge — `hasActiveEnchantment` is a BARE effect match that does NOT re-check expiry inline the way
+`SPELL_LIFECYCLE.isActive` does. It relies on `checkExpiredEnchantments()` having just pruned the array, and
+every caller sweeps first. So `isActive` here deliberately keeps the bare match: folding an expiry check
+into it would silently change behaviour at every call site that sweeps on a different clock read. Same
+reasoning as the three spell sites that kept their bare `spellId` check. `expiring` and `stillActive` are
+likewise kept as two SEPARATE filters instead of one partition, because the caller mutates `expiresAt` on
+preserved entries BETWEEN the two passes and that ordering is load-bearing.
+
+**The find was a duration-window rule duplicated with DISAGREEING tails.** "How long was this enchantment's
+window?" was answered in two hand-maintained places with the same precedence but different fallbacks: the
+Scholar Insight preserve path in `checkExpiredEnchantments` fell back to `0`, while the progress-bar
+denominator in `enchantment-render.js` fell back to a bare `180` minutes — a literal that appears nowhere
+else in the game. Legacy entries saved BEFORE `totalDuration` existed are exactly the inputs that reach
+those tails, so the two copies could genuinely disagree on a real save. `durationWindowMs(entry, def,
+fallbackMinutes)` states the rule once and takes the tail as an explicit PARAMETER, turning the asymmetry
+into a visible argument instead of a buried literal. **Only the preserve path delegates, deliberately:** no
+`*-render.js` module reaches for another extracted module (they take injected deps only), and
+`enchantment-render.js` is documented as a byte-faithful move, so coupling it here would trade a duplicated
+literal for a new load-order dependency. Instead `fallbackMinutes` EXPRESSES the render tail and a test pins
+the two spellings to the same answer — the drift is caught rather than merely re-homed, and neither caller's
+behaviour changes. One deliberate hardening rode along: the old preserve tail produced `NaN` for a catalog
+entry with no `duration` (`undefined * 60000`), and since `NaN <= 0` is false the guard let it through and
+wrote `expiresAt = now + NaN` — a permanently STUCK enchantment. Routing through `minutesToMs` yields `0`,
+which the existing `<= 0` guard rejects cleanly. Unreachable with the current deep-frozen 13-entry catalog
+(every entry has a duration, locked by a data-integrity test), so this is a latent-bug guard, not a
+behaviour change. `effectiveCost` keeps its floor of 1 so the Scholar discount can never make an enchant
+free. 43 new tests.
+
+**`bounty-logic.js` — the 74th slice, and the one where the extraction was mostly an excuse to get the
+Royal Bounty core under test at all.** The whole subsystem — the level gate, period keys/starts, deadlines,
+the cadence→tier table, the anti-stage eligibility rule, the seeded pick, the record builders, the expiry
+probe and the read-side helpers — had **ZERO coverage** before this slice. The two rules worth naming: the
+**anti-stage rule** only admits quests created strictly BEFORE the period start, so a player cannot stage a
+fresh quest to farm a guaranteed bounty (a quest created exactly AT the boundary is staged, and a legacy
+quest with no `created` stamp counts as pre-period); and the **seeded pick** is deterministic per period key
+plus salt, so a given week always yields the same bounty for a given pool and the premium reroll is just the
+same function with a `'reroll'` salt. Preserved verbatim: the unlock gate's `|| 6` / `|| 7` tails mean a
+CONFIGURED `0` also falls back to the default rather than unlocking at level 0 — `||`, not `??` — which is
+now pinned by a test that names it as deliberate. `QUEST_LIST_KEY` is also intentionally WIDER than
+`CADENCE_TIERS`: monthly no longer draws `yearly`/`epic`, but a bounty saved when it did must still RESOLVE
+its quest so `refreshBounties` can discard and re-pick it, and that self-heal is covered end-to-end.
+
+**Three invariants are pinned rather than merged, because each is knowledge that still lives in two places
+and picking a winner would be a behaviour change, not a refactor.** (1) The Monday-start off-by-one
+`dayOfWeek === 0 ? 6 : dayOfWeek - 1` is written verbatim here AND in `period-summary-logic.js`'s
+`previousPeriodRange`, but the surrounding computations genuinely differ — this week's Monday at local
+midnight vs the PREVIOUS week's Monday with time-of-day preserved — so instead of forcing a shared helper, a
+test walks all seven weekdays and asserts the two agree on the weekday arithmetic. (2) There are **TWO live
+ISO-week implementations**: the class's `getISOWeekNumber`/`getISOWeekYear` are LOCAL-time while
+`period-summary-logic.js` carries its own UTC-based `isoWeekNumber`. Reconciling them would MOVE week
+boundaries for users near midnight, so `bounty-logic.js` takes the week key INJECTED and a test walks both
+across year-boundary dates at local noon (noon dodges the offset, so the comparison is timezone-independent).
+That injection also let `_weekKey` collapse FOUR hand-written `${year}-W${week}` template literals — the
+trial prompt, the theme card, the featured-theme analytics guard and the bounty period key — into one
+method; four chances to reintroduce the `getFullYear()`-instead-of-week-YEAR bug the week-year helper was
+added to fix, since the correct and incorrect spellings differ by a single character. (3) `isPastWindow` is
+strictly `>` while `_soonestClaimableBounty` keeps its own inclusive `!(expMs > nowMs)` phrasing, so for
+exactly one millisecond at `expiresAt` a bounty is still claimable but no longer nudge-worthy. That is
+harmless — the reminder is an optimisation, the claim path is the authority — and changing either side is a
+gameplay decision, so a test asserts the disagreement AND that they agree 1ms earlier.
+
+Everything impure stayed on the class: `Date.now()`, the `activeBounties` writes, `saveData`, the chest
+hand-off, the premium gate and upsell, the reminder re-arm, and the re-renders. Because the subsystem had no
+coverage to lean on, the swap was guarded by a THROWAWAY characterization baseline that drove the REAL class
+across an 8-date × 2-cadence matrix — period keys/starts/deadlines, the level gate on both onboarding
+curves, tiers + eligibility, the seeded pick, and the full assign/complete/reroll/refresh state machine —
+serialized with LOCAL calendar fields so the artifact was timezone-independent, then asserted `toEqual`
+post-swap and deleted along with its JSON artifact once the 68 permanent tests replaced it. Those 68 include
+a `class parity` block that re-drives every delegator against the module on identical inputs, so the thin
+wrappers cannot drift from the rules they now import. Whole suite now 1366/1366 jest +
+`npm run typecheck` clean.
+
+**`recurring-logic.js` — the 75th slice, where the duplicated knowledge was a SEVEN-STRING LIST written
+out four separate times, in two different orders.** The recurring-task scheduler had 5 tests (weekly match,
+the duplicate guard, the inactive skip, monthly-date, and the generated-task shape) and **nothing at all for
+`biweekly` or `monthly-weekday`** — precisely the two branches carrying real date math. Extracted pure: the
+day vocabulary (`DAY_KEYS`, `DAY_ORDER`, `DAY_LABELS`, `DAY_LABELS_LONG`), `dayKeyFor`/`dayContext`,
+`daysSince`, `occurrenceOfMonth`, `isLastOccurrenceInMonth`, the four-branch `dueToday`, the three guards
+(`hasGeneratedToday`, `taskExistsFor`, `isPending`) and the `generatedTask` builder.
+
+**The two day orders are genuinely different and must stay that way.** `DAY_KEYS` is Sunday-first because
+it is indexed by `Date.getDay()`; `DAY_ORDER` is Monday-first because that is what every picker shows. The
+generator, `finishRecurringTaskSetup` and `showMultiSelectDays` each carried their own copy, so a
+well-meaning "let's reuse that array" was a one-line change that would have shifted every weekly schedule by
+a day — silently, since both spellings are seven lowercase three-letter strings. The module now names both
+and a test asserts they are NOT interchangeable by showing `DAY_KEYS[sunday.getDay()] === 'sun'` against
+`DAY_ORDER[sunday.getDay()] === 'mon'`. `recurring-render.js` keeps its inline `dayLabels` on purpose — it
+takes injected deps only and never reaches for another module — so instead of re-homing that fourth copy, a
+test drives the REAL builder across all seven keys and asserts it agrees with `DAY_LABELS`, which CATCHES
+the duplication rather than merely relocating it.
+
+**`BIWEEKLY_MIN_DAYS = 13` is preserved verbatim, and the reason is now written down and tested.** The
+comparison mixes a local-noon `Date` against a bare `'YYYY-MM-DD'` stamp that parses as UTC midnight, so a
+true fortnight floors to `14 + floor((12 - offset) / 24)` — 15 at UTC-12, 14 in the middle, and **13 at
+UTC+14**. A tidy-looking `>= 14` would therefore make far-eastern users skip a fortnight entirely. A test
+walks the offset from -12 to +14 by constructing the UTC instants directly, so the rule is pinned without
+touching the machine's timezone. Also preserved: biweekly stamps **both** `lastGenerated` fields (its own
+`recurrence.lastGenerated` anchor and the task-level day guard) while every other type stamps only the
+latter, and `taskExistsFor` matches on all THREE of title, due date and parent id — so a same-named task
+from a different parent does not suppress generation.
+
+One deliberate hardening rather than a pure lift: `dueToday` treats a missing/corrupt `days` as "not due"
+instead of throwing. Previously a single malformed weekly entry threw out of the load-time sweep and took
+every LATER recurring task with it; a test now drives a corrupt entry ahead of a good one and asserts the
+good one still generates. Impure remainder on the class: `getTodayDateString`, `uniqueId`, the `created`
+timestamp, the `dailyTasks` push, `saveData` and the re-render. The swap was guarded by a throwaway
+characterization baseline over a 30-case matrix (all four branches, the Sunday/Saturday index boundaries,
+the biweekly window, `week: -1` in both a 4- and a 5-occurrence month, and every guard), asserted `toEqual`
+post-swap and then deleted with its JSON artifact once the 44 permanent tests — including a `class parity`
+block — replaced it. Whole suite now 1410/1410 jest + `npm run typecheck` clean.
+
+**`save-serializer.js` — the 76th slice, where `_doSave` was the last untested save-data surface.** The
+`JSON.stringify` call carried a 90-field object literal with two `||`-fallen date-stamp defaults
+(`lastHabitReset` defaulting to today and `lastWeekReset` defaulting to the current week key) plus a
+`premiumPurchaseToken || null` fallback. Extracted pure: `buildSaveData(manager, { todayString, currentWeekString })`,
+a field-by-field builder that keeps every historical default and fallback while making the save field map
+independently testable. `_doSave` now caps `archivedGoals`/`bossLog` via `PERSISTENCE_MIGRATIONS` and delegates to
+`SAVE_SERIALIZER.buildSaveData(this, { todayString: this.getTodayDateString(), currentWeekString: this.getWeekString(new Date()) })`,
+then `JSON.stringify` and `localStorage.setItem` stay on the class as the thin I/O wrapper. The module follows the
+dual-environment pattern: a browser `<script>` before `goal-manager.js`, included in `scripts/copy-web.js` for the
+Capacitor build, and `module.exports` for the Jest harness. 10 new unit tests in `tests/save-serializer.test.js` cover the
+full key set, field mapping, `CLASS_SCHEMA_VERSION` capture, both date fallbacks, the `premiumPurchaseToken || null`
+default, non-mutation, and JSON round-trippability. A follow-up 8-test `export → import round-trip parity (backup files)`
+suite in `tests/goal-manager.test.js` — using the `makeFullManager` fixture in `tests/fixtures/full-manager.js` — drives
+`buildSaveData` through `JSON.stringify/parse` into `importData` and asserts every saved key is restored on a fresh
+manager. It caught a half-dozen dropped fields in `importData` (`companion`, the weekly-theme/bounty state,
+`lastHabitReset`, `lastWeekReset`, `freeCastUsedDate`, `activeBounties`, `lastBountyClaim`) and several `||`-masked
+booleans (`tutorialCompleted`, `isPremium`, `progressiveUnlockInitialized`, `referralRewardClaimed`); the test fixture
+keeps `tutorialCompleted` at its production default so a dropped field cannot hide. `importData` was updated to restore
+every field `buildSaveData` exports and to use `??` for those flags. 18 new tests total. Whole suite now 1428/1428 jest +
+`npm run typecheck` clean.
+
+**`load-deserializer.js` — the 77th slice, the MIRROR of the 76th, closing the persistence field map from
+both ends.** The save side is a straight read; the LOAD side is where every default and fallback lives, and
+those are not inert — the 71st slice's suppressed-January-recap bug was one `||` in exactly this block
+(`lastMonth` is 0-INDEXED, so a stored January coerced to the "never seen" default). Extracted pure:
+`buildLoadState(data, { todayString, classSchemaVersion, defaultSessionMinutes, normalizeClassId })`, a
+field-by-field builder returning a plain patch that `loadData` `Object.assign`s onto the instance. Every
+non-obvious rule came along and is now an assertable unit: the four `??` period stamps, `classSelectedAtLevel ?? null`,
+the `totalGoldEarned ?? (goldCoins || 0)` v2.8 seeding migration (absent vs present-and-0), the
+`Array.isArray` guard on `repairableStreaks`, the `titleStyle` normalizer, the level-branching
+`accountCreatedDate` Beginner's Blessing migration, the lone `highPriorityXpDate` → `_highPriorityXpDate`
+rename, the CONDITIONAL `pomodoroChainSettings` key (omitted, not `undefined`, so the constructor default
+survives `Object.assign`), and the 7-field class schema gate whose both branches always write all 7.
+`normalizeClassId` is INJECTED, so the module keeps no dependency on `persistence-migrations.js`'s load
+order. What stayed on the class is exactly what is impure or instance-shaped: `JSON.parse` + the corrupt-save
+backup rotation, the derived `goalTabUnlockLevels`, the companion-collection migration that pushes onto the
+loaded array, and the `PERSISTENCE_MIGRATIONS` passes that mutate the loaded lists in place. The old
+source-text guard asserting `this.<field> = data.<field> ?? null` was repointed at the new module rather
+than deleted. 39 new unit tests. Whole suite now 1467/1467 jest + `npm run typecheck` clean.
+
+**Round-trip parity — the 78th slice, and the point of having done 76 and 77.** Both halves were pinned
+individually, but nothing yet caught the classic persistence bug: a field added to ONE half and forgotten in
+the other. `tests/persistence-roundtrip.test.js` drives `buildSaveData` → `JSON.stringify/parse` (what
+`localStorage` actually does) → `buildLoadState` and asserts the two agree FIELD-FOR-FIELD in BOTH
+directions: every saved key is read back (else it silently resets on the next cold boot), and every loaded
+field is written by someone (else it is null forever). The two legitimate asymmetries are declared as
+constants at the top — `SAVE_ONLY_KEYS = ['classSchemaVersion']` (written from the constant, read as a
+GATE, never instance state) and `SAVE_TO_INSTANCE_RENAMES = { highPriorityXpDate: '_highPriorityXpDate' }`
+— so introducing a THIRD asymmetry fails the suite until it is deliberately documented there. Beyond the
+key sets it pins values: a fully-populated manager survives the trip unchanged (including a January
+`lastMonth` of 0), `save(load(save(m)))` is a FIXED POINT, and a schema-version bump drops the 7 class
+fields AND NOTHING ELSE. Two fixture-health tests keep the parity honest — one fails if the fixture leaves
+any save key `undefined` (a new field would otherwise slip through untested), the other fails if any
+fixture value coincides with its load-side default (which would let a dropped field pass by luck). No
+production change was needed: the halves were already in parity, which is now a fact under test rather
+than an assumption. 14 new tests. Whole suite now 1481/1481 jest + `npm run typecheck` clean.
+
+**`title-definitions.js` — the 79th slice, the TWIN of the badge de-drift.** The achievement-title list was
+hand-maintained in TWO places: the ~40 hardcoded `if (stat >= N && !hasTitle('id')) unlockTitle('id', 'Name', 'Desc')`
+threshold checks in `goal-manager.js`'s `checkTitleUnlocks`, AND the presentational `titleCategories` catalog
+inside `title-render.js` (the same ~40 ids/names/descriptions/rarities, grouped by category for the gallery).
+Change one and forget the other and a title either unlocks but renders as `???`, or shows in the gallery yet
+never unlocks — exactly the two-copies-of-one-list drift the July 2026 loot bug was. Extracted a single
+deep-frozen dual-env catalog: THRESHOLD titles carry `{ type, target }` (a stat key + the unlocking count) and
+the two externally-granted Login-Streak Milestones (`centurion`/`mythic_warrior`, granted by the daily-login
+flow, not by `checkTitleUnlocks`) omit them but stay in the catalog so the gallery renders them. The pure
+`computeUnlockableTitles(stats, unlockedTitles)` derives every unlock from the catalog in declared order,
+skipping typeless titles and ids already owned (tolerating both object records and bare-string ids).
+`checkTitleUnlocks` now gathers its stats into a `{ tasks, habits, level, streak, lifeGoals, weeklyGoals,
+monthlyGoals, yearlyGoals, gold, chests, focus, spells, bosses, companions }` map and delegates, and
+`title-render.js` reads `TITLE_DEFINITIONS.categories` instead of its inline copy — one source of truth, no
+drift possible. Two wording-only differences the OLD unlock path stored (`quest_master`/`grand_master` said
+"...quests" vs the gallery's "...tasks") now match the gallery, exactly as the badge slice accepted for its
+vestigial `description`; every displayed name is byte-unchanged. Dual-environment wiring mirrors
+`achievement-definitions.js`: a browser `<script>` before `goal-manager.js` AND `title-render.js`, included in
+`scripts/copy-web.js`, and `module.exports` for Jest. 17 new unit tests in `tests/title-definitions.test.js`
+cover the frozen catalog shape, the threshold-vs-external split, exact `>=` thresholds, already-owned
+skipping, null-input tolerance, declared order, and input non-mutation. Whole suite now 1498/1498 jest +
+`npm run typecheck` clean.
+
+**`daily-quest-logic.js` — the 80th slice, closing the daily-board pair.** The render half went out in
+the 50th slice (`daily-board-render.js`); this is its save/load-style logic sibling. Two inline bodies had
+ZERO isolation coverage and both carry real logic: `generateDailyQuestBoard`'s date-seeded deterministic
+shuffle + level-eligibility filter (a Lehmer/Park-Miller LCG — `s = (s * 16807) % 2147483647` — seeded from
+the `'YYYYMMDD'` stamp so a given calendar day ALWAYS rolls the same three quests for a given level, the
+whole contract behind a board surviving a reload without re-rolling), and `checkDailyQuestCompletion`'s
+`def.check(tracking)` sweep. FOUR pure functions: `seededShuffle(items, dateString)` (a NEW array, input
+untouched), `pickDailyQuests(pool, level, dateString, count=3)` (filter → shuffle → slice → fresh
+`{ id, completed:false, claimed:false }` records), `buildDailyQuestBoard(...)` (the full `{ date, quests,
+allClaimedBonus:false }` record the save/load path round-trips and `daily-board-render.js` reads), and
+`sweepQuestCompletions(quests, pool, tracking)` (MUTATES the quest records in place, matching the original,
+and RETURNS whether any NEW completion happened so the caller keeps its `if (anyNewCompletion) { saveData();
+render(); }` guard). The `DAILY_QUEST_POOL` catalog stays a CLASS FIELD and is INJECTED — its entries carry
+`check(tracking)` CLOSURES (not JSON data) and three other methods (`claimDailyQuest`,
+`renderDailyQuestBoard`) read it, so passing it in keeps this a clean logic slice with no new load-order
+dependency (exactly the candidate note's prescription). The `allHabitsComplete` stat update (reads
+`this.habits`) and the `saveData`/`render` side-effects stay on the class. `generateDailyQuestBoard` and
+`checkDailyQuestCompletion` became thin delegators; the existing daily-board render + `trackDaily` tests
+stayed green UNCHANGED. NEW module, registered in the usual three places (index.html `<script>` before
+goal-manager.js, `scripts/copy-web.js`, the jest harness) + the module-scoped capture const. 20 new unit
+tests in `tests/daily-quest-logic.test.js` lock the module — the shuffle's determinism / non-mutation /
+permutation + a byte-for-byte LCG parity check, the level filter + count + fresh-record stamping + null-pool
+tolerance, the board shape + JSON round-trip, and the sweep's pass/fail/already-done/absent-id/null-input
+branches + in-place mutation. Whole suite now 1518/1518 jest + `npm run typecheck` clean.
+
+**`wooden-chest-loot.js` — the 81st slice, killing the SECOND weighted-pick copy.** `claimWoodenChest`
+hand-rolled a cumulative-weight loot pick over an inline 8-entry table — a second copy of what
+`loot-engine.js`'s `weightedRandomSelect` already does, exactly the duplicated-knowledge drift class this
+whole roadmap item was created to kill. Extracted the frozen `TABLE` (weights 30/18/22/8/8/5/5/4, total 100,
+byte-identical to the literal) + `weightedPick(table, rng)`, and `claimWoodenChest` now rolls through it
+(`() => this.rng()` keeps the RNG seam) then dispatches the reward + cinematic + `saveData`/`render` as
+before — none of that impurity moved. It is DELIBERATELY not merged with `loot-engine.js`'s pick: the two
+differ in behaviour, not just style — on a float-drift overshoot loot-engine returns the LAST item while the
+wooden loop seeds `table[0]` and returns the FIRST, and the wooden table carries fixed `amount` + `label`
+(the reward IS the entry) rather than loot-engine's `[min,max]` ranges routed through `buildLootReward`. So
+the module keeps its own pick and a test PINS the fallback disagreement against `LOOT_ENGINE.weightedRandomSelect`
+(the same "pin the disagreement rather than force a merge" call the bounty slice made). NEW module,
+registered in the usual three places (index.html `<script>` before goal-manager.js, `scripts/copy-web.js`,
+the jest harness) + the module-scoped capture const. 11 new unit tests in `tests/wooden-chest-loot.test.js`
+lock it — the frozen table + exact weights, per-window boundary + midpoint picks, a byte-for-byte parity
+check against the original inline loop across 101 rolls, the first-entry drift fallback, and the
+in-range-agree / fallback-diverge relationship with loot-engine. Whole suite now 1529/1529 jest +
+`npm run typecheck` clean.
+
+**`quest-chain-logic.js` — the 82nd slice, the render sibling's logic half.** The three progression methods
+(`toggleChainTask`, `completeChapter`, `completeQuestChain`) interleaved pure state transitions with heavy
+impurity — reward grants, toasts, confetti (+ two `setTimeout` bursts), a Chain-Master badge unlock, and
+`saveData`/`render`. This slice lifted ONLY the state math out into five pure functions: `toggleTaskIndex`
+(add/remove an index, new array, no mutation), `isChapterComplete` (the `completedTasks.length ===
+chapter.tasks.length` predicate the toggle's add-only-on-check invariant makes exact), `advanceChapterState`
+(the `{ currentChapterIndex + 1, completedTasks: [] }` patch), `isChainComplete` (`currentChapterIndex >=
+chapters.length`) and `completeChainLists` (the active→completed move as new arrays, stamping `completedAt`,
+matching the identical filter-by-id both the template-present and template-missing branches used). Everything
+impure stayed on the class in the SAME order, and the completion double-branch was refactored to share the
+list move then early-return before the celebration when the template is missing — behaviour-identical. It is
+the SIBLING of `quest-chain-render.js` (the 7th render slice), the same save/load-style view-then-logic split
+the daily-board pair used. NEW module, registered in the usual three places (index.html `<script>` before
+goal-manager.js, `scripts/copy-web.js`, the jest harness) + the module-scoped capture const. 21 new unit
+tests in `tests/quest-chain-logic.test.js` lock it — the toggle's add/remove/round-trip/no-mutation/null
+tolerance, the chapter-complete predicate incl. the empty-chapter + missing-tasks edges, the advance patch's
+non-mutation, the chain-complete boundary (within / at-count / past / missing-template), and the list move's
+by-id removal, `completedAt` stamp, input non-mutation, order preservation and null tolerance. Whole suite
+now 1550/1550 jest + `npm run typecheck` clean.
+
+**`habit-logic.js` — the 83rd slice, the LOGIN-streak module's habit-streak twin.** `recalculateHabitStreak`
+carried a drift-prone consecutive-day date walk: sort the completion history newest-first, bail to streak 0
+if neither today nor yesterday is present, else step a mutable `currentDate = new Date()` backwards counting
+matched days (with a one-day grace for an as-yet-uncompleted today) up to a 365-day cap. This slice lifted
+that into a pure `computeHabitStreak(completionHistory, { today, yesterday, dateStringDaysAgo })` returning
+`{ streak, lastCompleted? }` — the walk now asks the injected `dateStringDaysAgo(n)` seam for each day string
+(mirroring the class's `dateToLocalString(currentDate)` day-for-day; the wrapper supplies `today =
+dateStringDaysAgo(0)`, `yesterday = dateStringDaysAgo(1)`), and `lastCompleted` is present ONLY on the
+counted-streak return so the two streak-0 early-returns leave `habit.lastCompleted` untouched exactly as
+before. Two smaller inline rules came along: `streakIncrement(doubleStreakActive)` (the Precision
+`double_streak` 2-vs-1 advance in `toggleHabit`) and `milestoneTier(streak)` (the exact 7/30/100 thresholds
+`toggleHabit` fires the week/month/life achievements at — removing those magic numbers from the God class
+while the toast copy + share prompts stay inline as presentation). It is the HABIT-streak COUNTERPART to
+`streak-logic.js`'s LOGIN streak (separate features — one-per-player gap-tolerant login vs one-per-habit
+history walk — so separate modules) and the LOGIC SIBLING of `habit-render.js` (the same view-then-logic
+split the daily-board and quest-chain pairs used). NEW module, registered in the usual three places
+(index.html `<script>` before goal-manager.js, `scripts/copy-web.js`, the jest harness) + the module-scoped
+capture const. 14 new unit tests in `tests/habit-logic.test.js` lock it — via a fixed-anchor UTC
+`dateStringDaysAgo` harness: empty/null history, a lapsed streak, today-only, a 5-day run, the day-0 grace
+(reaching only yesterday), a mid-run gap, unordered-input `lastCompleted`, input non-mutation, the 365-day
+cap, a month/year boundary, the increment rule, and the milestone thresholds incl. the null default. Whole
+suite now 1564/1564 jest + `npm run typecheck` clean.
+
+**`default-state.js` — the 84th slice, the FIRST taken directly against Definition-of-done criterion (2).**
+The default value of every persisted field lived in TWO hand-maintained copies: `initState()` set
+`this.x = <default>` for a fresh install, and `buildLoadState()` wrote `d.x || <default>` for a save lacking
+the field — ninety-odd fields, the exact duplicated-knowledge shape behind the July 2026 loot bug, sitting
+in the persistence path itself. Writing the module surfaced three drifts on day one: `lastHabitReset`,
+`lastWeekReset` and `premiumPurchaseToken` were `null` after a load but `undefined` after `initState`
+(never assigned; every consumer is a truthiness check, so harmless — this time). The module exports
+`persistedDefaults({ defaultSessionMinutes })` — a FACTORY, not a frozen literal, because the `[]` / `{}` /
+`{ weekly: null, monthly: null }` defaults are mutated in place by the game and two managers (or a manager
+and a load pass) must never share one; `focusSessionLength` stays injected because `FOCUS_SESSION_LOGIC`
+owns that number — plus two frozen field lists: `SIMPLE_FIELDS` (load rule is plain `d[key] || default`)
+and `SPECIAL_FIELDS` (the eight documented non-`||` rules + the class schema gate + the one save-key
+rename). `initState` now `Object.assign`s the factory output and keeps ONLY session state, derived
+catalogs and tuning constants inline (~130 lines gone); `buildLoadState` loops `SIMPLE_FIELDS` against the
+same object and keeps the specials explicit, each reading its fallback from `defaults.<f>`. Behaviour is
+identical — the 39 deserializer tests, the round-trip parity suite and the `??`-guard source test all pass
+unchanged (the guard was repointed at the new `?? defaults.<f>` form, not weakened). Wiring differs from the
+usual recipe in one way: the `<script>` must precede `load-deserializer.js`, not just `goal-manager.js`, and
+the deserializer resolves `DEFAULT_STATE` from `window` or `require` at load time. 13 new unit tests in
+`tests/default-state.test.js` lock it — fresh-object-per-call, injected session length, pinned seed values,
+`SIMPLE ∪ SPECIAL == keys(defaults)` with no overlap, an EMPTY save loading to the defaults field-for-field
+(with `accountCreatedDate` pinned as the one deliberate migration exception), no aliasing across load
+calls, and defaults↔`buildSaveData` key parity (the schema gate + conditional chain settings as the only
+save-only keys). Whole suite now 1577/1577 jest + `npm run typecheck` clean.
+
+**`feature-unlocks.js` — the 85th slice, the criterion-(2) sweep of the remaining `initState` tables.** The
+sweep queued after the 84th slice audited the four tables still inline in `initState` for second copies.
+`challengePresets` was single-sourced (every reader goes through `this.challengePresets`) and STAYS inline —
+recording a "no extraction needed" is as much the point of the sweep as extracting. The feature-unlock
+knowledge was not: "Arcane unlocks at 3" was `arcane: 3` in the table AND a bare `this.level === 3` in
+`checkFeatureUnlocks`' welcome-spell grant; "companions unlock at 3" was a bare literal in THREE places
+(`loot-engine.js`'s companion→gold fallback, the Player Panel companion-section toggle, `openCompanionDen`
++ its toast copy) and in the unlock table not at all; the `requiredLevel === undefined || level >= requiredLevel`
+predicate was written three times (`isFeatureUnlocked` / `isGoalTabUnlocked` / `isArcaneTabUnlocked`); the
+desktop-nav "More" collapse rule `typeof req === 'number' && req >= level + 2` twice; and the level-keyed
+TUTORIALS were tied to the view-keyed LEVELS by nothing. The module exports the frozen `LEVELS`,
+`ARCANE_TAB_LEVELS` and `TUTORIALS` tables, `COMPANION_UNLOCK_LEVEL` (DEFINED as `LEVELS.arcane`, since it is
+the same beat), `NAV_MORE_HORIZON`, and the two predicates `isUnlocked(levels, key, level)` / `isFarOff(req,
+level)`. `initState` now points the three instance fields at the frozen tables (`goalTabUnlockLevels` stays
+derived from the onboarding path), the three predicates and both collapse sites delegate, the welcome spell
+reads `this.featureUnlockLevels.arcane`, and both class companion gates + `loot-engine.js` read
+`COMPANION_UNLOCK_LEVEL` — loot-engine resolves it from `window`/`require` at load time, so the `<script>`
+must precede `loot-engine.js` (the same order note the 84th slice added for the deserializer). Behaviour is
+identical; every existing unlock/nav/tutorial/loot test passed unchanged. 16 new unit tests in
+`tests/feature-unlocks.test.js` lock it — frozen tables, pinned thresholds, spellbook≡arcane and
+enchantments≡focus, companion≡arcane, EVERY gated view has a tutorial at exactly its level (the consistency
+nothing enforced before), the 2/3/4/5/6/8/10 tutorial set, the `isUnlocked` absent/below/at/above cases against
+the shipped tables, the `isFarOff` horizon incl. non-numeric thresholds and the level-1 collapse set, and
+loot-engine's gate firing exactly below the constant plus a source guard that the bare `level < 3` is gone.
+Whole suite now 1593/1593 jest + `npm run typecheck` clean.
+
+*Follow-up (same day, no new module).* Two loose ends the slice queued. (a) The locked-nav / locked-tab
+teaser copy in `_lockedNavMessage` / `_lockedTabMessage` keys on the same ids as the unlock tables but nothing
+checked coverage — the L5 test that hardcoded five view names now DERIVES the gated set from
+`FEATURE_UNLOCKS.LEVELS`, and a sibling does the same for `ARCANE_TAB_LEVELS` + the default goal-tab curve
+against `_lockedTabMessage`, each asserting a real NAME (not the raw id echoed by the unknown-key fallback) and
+a teaser. (b) A per-site audit of the remaining bare `level <op> N` literals in `goal-manager.js`: the referral
+bonus `level < 2` was a product threshold stated TWICE (guard + the "Reach Level 2 for a bonus chest!" toast)
+and the review prompt's `level < 3` a product threshold stated once — both named in `feature-unlocks.js` as
+`REFERRAL_REWARD_LEVEL` / `REVIEW_PROMPT_MIN_LEVEL` (it is already the level-gates module) with a source-guard
+test; the `level > 1` retroactive-tutorial sweep, the `level <= 1` brand-new-install heuristic and the
+`level >= 2` dashboard-stats reveal are incidental "past the floor" checks OR'd with other signals, so they
+stay as literals by decision. 1596/1596 jest + `npm run typecheck` clean.
+
+</details>
+
+### Recent slices (86–90) — the worked examples for the next one
+
+Kept as prose because these are the current recipe references; when a new slice lands, move the
+oldest of these into the archive above and add its row to the logic table.
+
+**`chest-weight-logic.js` — the 86th slice, the first from the Sep 7 audit queue.** `generateChestRewards`
+took balance.js's per-tier rarity weights and applied three modifiers inline before the loot-engine roll: the
+Lucky Loot enchantment's 15-point upward shift, the Ranger Keen Eye perk's `loot_weight`-point shift, and
+the Lucky Draw spell's common→upper redistribution. The first two were the SAME nine-line block pasted twice
+(pull from common, then uncommon when common runs short, push `ceil(half)` to rare and `floor(half)` to
+epic) — exactly the duplicated-rule shape criterion (1) targets, and the reason the audit ranked it first.
+The module exports `shiftWeights(weights, amount)` (the one shift, with `amount <= 0` returning an unchanged
+copy), `luckyDrawFloor(weights)` (zero common, split it 40/30/20/10 floored — including the one-point loss
+the original's flooring had on royal's 5 common weight, pinned rather than "fixed"), and
+`applyChestModifiers(weights, { luckyLoot, rangerWeight, luckyDraw })` composing them in the original order;
+all three return NEW objects. `generateChestRewards` now makes one call. Behaviour-identical: the
+`lucky_loot chest weight shift` and Ranger `loot_weight` behavioural suites passed unchanged. NEW module,
+registered in the usual three places + the capture const. 17 new unit tests in
+`tests/chest-weight-logic.test.js` — common-only vs common+uncommon pulls, the supply cap, odd-amount
+rounding (extra point → rare), total-weight preservation, the `<= 0`/NaN/undefined no-op, non-mutation,
+lucky-draw shares + the flooring loss, the composite's additive stacking (15 + 12 = 27) and lucky-draw-last
+ordering, and a PARITY ORACLE: the original inline arithmetic transcribed verbatim, asserted equal across
+every balance.js chest tier × {lucky loot} × {ranger 0/12} × {lucky draw}. Whole suite now 1613/1613 jest
++ `npm run typecheck` clean.
+
+**`boss-streak-logic.js` — the 87th slice (32nd LOGIC module), second from the Sep 7 audit queue.**
+`onBossDefeated` picked the streak counter for the boss cadence with a ternary chain, computed "+10% per
+consecutive kill, capped at +100%" as `1 + min(streak - 1, 10) * 0.1` inline, rounded XP and gold through
+it, and trimmed the defeated-boss gallery to 50 with a bare literal. Now `streakForBossType(bossType,
+streaks)`, `streakMultiplier(streak)`, `applyStreakBonus(amount, multiplier)` and `archiveDefeated(list,
+entry)` (newest-first, `DEFEATED_HISTORY_CAP` = 50, returns a new array — the `challenge-logic.js`
+`archiveCompleted` twin). The streak-0 case follows the same line down to 0.9× — unreachable in production
+(the counter is incremented first) but pinned rather than special-cased so the module stays byte-faithful.
+`onBossDefeated` keeps the counters, log line, `addXP`/`addGold` and celebrations. 17 unit tests in
+`tests/boss-streak-logic.test.js` incl. a parity oracle across boss types × streaks × reward amounts, and
+the archive's prepend / cap / non-mutation / null-history cases. (Verification note, Sep 9: the cap was
+left inline by the first pass and the header mis-stated the streak-0 baseline; both fixed on review.)
+
+**`companion-logic.js` extended — the 88th slice, the second from the Sep 7 audit queue.**
+`grantCompanionXP` still carried three rules inline: the Bonding enchantment's flat `×2`, the Ranger
+Beastmaster perk's `ceil(xp * (1 + mult))` scale (applied AFTER bonding, in that order), and a `while`
+loop walking the `100 * level` level-up threshold so one large XP gain can carry a companion through
+multiple levels. Rather than a new module, this folds into the EXISTING `companion-logic.js` (the 60th
+slice's slot/bonus-resolution sibling) as two more pure functions: `companionXpGain(amount, { bondingActive,
+rangerCompXpMult })` returns the scaled gain, and `applyCompanionXp(companion, xpGain)` adds it and walks
+the level-up loop, mutating the handed companion in place (the `persistence-migrations.js` convention) and
+returning whether it leveled at least once. `grantCompanionXP` keeps the post-level-up side effects
+(`effectsManager.companionLevelUp`, `showAchievement`) and is now a thin two-call wrapper. Behaviour-
+identical: the existing Beastmaster "+50% companion XP" / "non-Rangers gain the base amount" tests passed
+unchanged. 8 new unit tests lock the two functions in isolation (bonding-only, Beastmaster-only, stacked
+order, non-positive-mult no-op, under-threshold/exact-threshold/multi-level-up/missing-field edge cases)
+plus 2 new delegator-parity tests (a stacked-buff grant, and a 350-XP grant that clears two thresholds and
+fires the Lv.3 achievement — the previously-untested multi-level-up path). Whole suite now 1636/1636 jest
++ `npm run typecheck` clean.
+
+**`challenge-logic.js` — the 89th slice (33rd LOGIC module), third from the Sep 7 audit queue.** Moves
+`challengePresets` (data half) plus `challengeRewards` (difficulty→{xp,gold}, medium fallback),
+`challengeProgress(challenge, snapshot)` (custom/daily/cumulative/delta, 100 clamp) and
+`archiveCompleted` (50-cap) out of the class; the three methods are now thin delegators. 19 new tests in
+`tests/challenge-logic.test.js`. 1655/1655 jest + typecheck clean.
+
+**`reward-economy.js` extended — the 90th slice, fourth from the Sep 7 audit queue.** `applyForage` still
+carried the Ranger Forage capstone's hit-roll + `10 + floor(rng()*11)` bonus-gold math inline — too small
+a rule for its own module, so it folds into the existing `reward-economy.js` as `forageReward(chance, rng)`,
+returning `{ gold, crystals }` or `null` on a miss. `rng` is called at most twice in the original order
+(hit-check, then amount), so single-value RNG mocks stay behaviour-identical. `applyForage` keeps the
+`focusCrystals` write and toast; existing Forage tests pass unchanged. 5 new unit tests. 1660/1660 jest +
+typecheck clean.
+
+### Criterion (1)/(2) audit (Sep 7, 2026) — the finish line for the logic front
+
+After 85 slices the per-slice "find the next duplicated thing" search was hitting diminishing returns (the
+85th found one duplicated cluster and one already-clean table). Rather than keep slicing open-endedly, this is
+ONE bounded audit of `goal-manager.js` whose output is the complete remaining list. **When every row marked
+→ extract or → single-source below is done, criteria (1) and (2) are ✅ and the logic front closes.** Rows
+marked *inline by decision* are the answer to "why is this still on the class" — do not re-audit them.
+
+**Method.** Enumerated the ~600 class methods, then flagged every non-comment line matching the rule-math
+shapes criterion (1) names: reward arithmetic (`Math.floor/round/ceil(... * ...)`, `* <const>`,
+`* <multiplier>`), numeric thresholds (`>= NN`, `.length > N`), and resource writes (`gold/xp/crystals/charges
++=`). 107 methods hit; ~90 were display percentages, cosmetic particle budgets, timer arithmetic, toast copy or
+list caps and were dismissed on sight. The remaining rule-bearing sites were read and each checked for a
+second copy in the extracted modules, `index.html` and the definition catalogs.
+
+**→ extract (criterion 1) — queued as slices 86–90, in this order:**
+
+| # | Site | Rule still on the class | Target |
+|---|---|---|---|
+| ~~86~~ | ~~`generateChestRewards`~~ | ~~the weight-shift block written TWICE + the Lucky Draw redistribution~~ | ✅ done — `chest-weight-logic.js` (see Recent slices) |
+| ~~87~~ | ~~`onBossDefeated`~~ | ~~boss streak multiplier + XP/gold rounding; `defeatedBossList` cap 50~~ | ✅ done — `boss-streak-logic.js` (see Recent slices) |
+| ~~88~~ | ~~`grantCompanionXP`~~ | ~~Bonding `×2`, Beastmaster `ceil(xp * (1+mult))`, the `100 * level` multi-level-up loop~~ | ✅ done — extended `companion-logic.js` (see Recent slices) |
+| ~~89~~ | ~~`getChallengeRewards` / `getChallengeProgress` / `completeChallenge`~~ | ~~difficulty→{xp,gold} table, progress % with the 100 clamp, `completedChallenges` cap 50~~ | ✅ done — `challenge-logic.js` (see Recent slices) |
+| ~~90~~ | ~~`applyForage`~~ | ~~Ranger Forage `10 + floor(rng*11)` bonus gold + 1 crystal~~ | ✅ done — extended `reward-economy.js` (see Recent slices) |
+
+**→ single-source (criterion 2) — ✅ all five landed Sep 9, 2026 (22 tests, 1686/1686):**
+
+- ~~**Execute threshold stated twice.**~~ `executeBossBySpell` now guards on `COMBAT_DAMAGE.isExecuteRange(boss)`
+  — the same predicate the Executioner capstone uses. Boundary tests at 25/26 HP of 100 + a source guard that
+  `hpPercent > 25` is gone.
+- ~~**Theme achievement thresholds stated twice.**~~ `theme-definitions.js` golden/shadow now carry
+  `unlock: { goldEarned: 10000 }` / `{ bossesDefeated: 25 }`; `checkRewardUnlocks` is ONE catalog loop that
+  evaluates any `unlock` stat table against the lifetime counters (level-gated themes unchanged; `special`
+  copy with no `unlock` table is never auto-unlocked). Tests: catalog fields, copy quotes the numbers, a
+  changed threshold is followed, and a source guard against the old literals.
+- ~~**`DAILY_QUEST_POOL.minLevel` restates the unlock ladder.**~~ Pool moved to `daily-quest-definitions.js`
+  (13th data catalog) with every gate DEFINED as `FEATURE_UNLOCKS.LEVELS.<view>` or
+  `FEATURE_UNLOCKS.GOAL_TAB_LEVELS.default.<tab>`, a `feature` key per quest and `featureLevel(q)` so the
+  test `minLevel === featureLevel(q)` holds for all 20. The goal-tab curves themselves moved from
+  `getGoalTabUnlockLevelsForPath` into `feature-unlocks.js` (`GOAL_TAB_LEVELS`, `goalTabLevelsForPath`) to
+  make that possible. **User-visible fix:** `side_adventurer` / `weekly_warrior` now appear from level 2, not 6.
+- ~~**Daily Board Sweep bonus stated twice.**~~ `DAILY_QUEST_DEFINITIONS.BOARD_SWEEP_BONUS = { xp: 25, gold: 15 }`;
+  the grants and the toast both read it.
+- ~~**Habit tiers vs badge targets.**~~ `HABIT_LOGIC.MILESTONES` is now DERIVED at load from the `streak`-type
+  badges in `achievement-definitions.js` via `TIER_BY_BADGE` (week_warrior→week, month_master→month,
+  centurion→life); test asserts the table equals the catalog's targets.
+
+**Inline by decision (do not re-audit):**
+
+- Display percentages — `calculateProgress`, `updateChecklistProgress`, `_statBreakdownRate`, the period
+  summary `completionRate`s: `round(done/total*100)` is presentation, not a rule.
+- `toggleTask`'s `hour < 12` / `hour >= 18` daily-tracking buckets — they define the `tasksBeforeNoon` /
+  `tasksAfter6pm` counters the quest pool reads; the quest `desc` copy says "noon" / "6pm". Acceptable as-is;
+  if the pool moves to a definitions module, the two hours can move with it as named constants.
+- List caps (`defeatedBossList` / `completedChallenges` at 50) travel with their slices above; the
+  persistence-side pruning in `persistence-migrations.js` is the load-time counterpart and stays.
+- Beginner's Blessing day math — already reads `BEGINNER_BLESSING_DAYS`; the `(today - created) / 86400000`
+  is date plumbing.
+- Everything cosmetic: particle budgets, confetti counts, toast durations, animation timings, `darkenColor`.
+- Orchestration that only SEQUENCES delegated rules (`addXP`, `addGold`, `checkLootDrop`, `levelUp`,
+  `completeFocusSession`, `_completeLoginBonus`, `checkPeriodTransitions`, `rolloverIncompleteTasks`) — their
+  arithmetic already lives in `leveling-logic` / `reward-economy` / `buff-multipliers` / `crystal-economy` /
+  `streak-logic` / `period-summary-logic`; what remains is `this.x += result` and side effects, which is what
+  criterion (1) says the class keeps.
+
+**Exit — reached Sep 9, 2026.** Slices 86–90 and the five single-source items are all done; criteria (1)
+and (2) are marked ✅ in the Definition of done. The active front is criterion (3) (ES modules) — see the
+plan under #3. Any future "is this rule inline?" question is answered by the *Inline by decision* list above.
+
+Done so far from earlier queues: ~~persisted defaults~~ (84), ~~initState tables~~ (85), ~~teaser coverage +
+bare level literals~~ (85 follow-up).
+
+**Method:** read the target, write the pure module first (`// @ts-check`, deep-frozen where it's data,
+`module.exports` + `window.X` dual-env), wire it into `index.html` (before `goal-manager.js`),
+`scripts/copy-web.js`, and the jest harness require block in `tests/goal-manager.test.js`, capture it into a
+module-scoped const with an inert fallback, replace the inline body with a delegating call, add a unit-test
+suite, then confirm `npx jest --no-coverage` + `npx tsc -p jsconfig.json --noEmit` are both green before
+updating the tables and this list. See the "Recent slices" entries above for the exact recipe.
+
 ### Render burn-down — ✅ COMPLETE
 
-The render surface was item #1's "last + hardest" front. It is now fully extracted, and the remaining
-`goal-manager.js` bulk is non-render — the active work has moved to the logic slices tracked above.
+The render surface was item #1's "last + hardest" front. It is now fully extracted (see the render
+table above), and the remaining `goal-manager.js` bulk is non-render — the active work has moved to
+the logic slices tracked above.
+
+<details>
+<summary>Expand the surface-by-surface render record</summary>
+
 Below is the surface-by-surface record: ✅ = extracted to a pure builder module · 🔄 = partial ·
 ⬜ = still inline. Container/orchestrator methods (filter + `.map` + `innerHTML` write, e.g.
 `renderSpellbook` → `renderActiveSpells` + `renderSpellCollection`) intentionally STAY on the class;
@@ -1497,15 +2158,19 @@ effort-XP / buff / companion math, the class-tree trio, the boss-battle trio, th
 stacks, the focus-timer + Pomodoro-chain mechanics, the active-spell lifecycle, and BOTH halves of period
 tracking are all carved out — the 70th slice took the recap summary and the 71st took the transition
 DETECTION that gates it, so `checkPeriodTransitions` is now a thin impure wrapper (guard, clock read,
-slideshow call, persist) over pure, tested functions. Still inline: reminder scheduling; the
-`loadData`/`saveData` field-mapping plumbing (only the
-migrations were carved out — and the 71st slice's January `lastMonth` bug is a warning that this
-plumbing is not as inert as it looks: a single `||` in a field mapping silently suppressed a feature);
-and the ENCHANTMENT lifecycle — the natural sibling follow-up to
-`spell-lifecycle.js`, though a much thinner one: `hasActiveEnchantment` / `checkExpiredEnchantments` are
-already single accessors, so the only finds are the `duration * 60 * 1000` conversion (now expressible via
-`FOCUS_SESSION_LOGIC.minutesToMs`) and the cast-entry builder. Worth doing mainly to make the spell/enchantment
-asymmetry explicit — spells store `castedAt`, enchantments store `totalDuration`. Candidates, not commitments.
+slideshow call, persist) over pure, tested functions. Reminder scheduling closed in the 72nd slice
+(`reminder-schedule-logic.js`) and the enchantment lifecycle in the 73rd (`enchantment-lifecycle.js`) —
+both were listed here as "still inline" until they were done; this note is kept current deliberately, since
+a stale candidate list is how a slice gets planned twice.
+
+**✅ Done — the persistence field map, both halves.** Listed here as "still inline" until the 77th slice
+closed it. The save half went out in the 76th (`save-serializer.js`), the load-side MIGRATIONS long before
+that (`persistence-migrations.js`), and the ~150-assignment `this.x = data.x || default` block in `loadData`
+followed in the 77th (`load-deserializer.js`). Every fallback — and every deliberate `??`-vs-`||` choice,
+including the one behind the January `lastMonth` bug — is now an assertable unit rather than a line of
+untested plumbing. The follow-up landed immediately in the 78th slice: a genuine `buildSaveData` →
+`buildLoadState` ROUND-TRIP suite now asserts the halves agree field-for-field in both directions, so a
+field added to one and forgotten in the other fails CI instead of silently resetting on a cold boot.
 
 **Don't let a test depend on the real clock landing in a date window (learned this slice):** the
 B5a/B5b DOM-delegator tests originally seeded a task with `dueDate = today` and relied on the
@@ -1591,6 +2256,8 @@ unlock toast shows only `name`, so the change is invisible; the stored-but-vesti
 Guarded by 3 new Badge-System tests — including an anti-drift check that the set of
 unlocked ids equals the catalog — bringing the suite to 612/612.
 
+</details>
+
 ## 2. ✅ Automated release pipeline (July 2026)
 
 **Problem:** every release hand-edited up to six version strings across five
@@ -1618,16 +2285,89 @@ a mistyped `spellId` simply never drops.
 - `npm run typecheck` = `tsc -p jsconfig.json --noEmit`, with `typescript`
   pinned as an explicit devDep and wired into `.github/workflows/test.yml`
   alongside jest, so a mistyped id/effect key now fails the build.
-- **11 modules `// @ts-check`'d and tsc-clean:** the three dual-env data
-  catalogs (`balance.js`, `level-titles.js`, `companion-definitions.js`), the
-  `scripts/release.js` exemplar, and the seven standalone browser modules
+- **Every extracted module is `// @ts-check`'d and tsc-clean** — all 67 modules
+  produced by #1 (12 data catalogs, 33 logic modules, 22 render modules), plus the
+  `scripts/release.js` exemplar and the seven standalone browser modules
   (`analytics-methods.js`, `parallax-tilt.js`, `pwa-handler.js`,
   `mobile-touch.js`, `stat-tooltip.js`, `audio-manager.js`, `effects-manager.js`).
+  The typed surface grows one slice at a time as #1 proceeds.
 
-**Convention:** every NEW `.js` file starts with `// @ts-check` and JSDoc-typed
-function signatures. The 24.5k-line `goal-manager.js` monolith is deliberately
-NOT retrofitted wholesale — it gets `// @ts-check`'d slice-by-slice as data/logic
-is extracted into modules (see #1). Note: the editor's TS server can lag on
+**Remaining (blocked on #1 criterion 3) — the plan (Sep 7, 2026):** `goal-manager.js`
+itself under `// @ts-check`. Its imports are 44 `const X = window.X ? window.X : {}`
+capture consts, all typed `any`, so the check is meaningless until they are real
+imports. The conversion is structural, so steps 2–5 land as ONE atomic change, not
+per-module slices (a mixed shim/ESM state means two test harnesses). Step 1 (tooling)
+and step 6 (triage) are separable and land on their own — staged, agreed Sep 9, 2026.
+
+1. ✅ **Tooling** *(landed Sep 9, 2026)* — `babel-jest` + `@babel/core` + `@babel/preset-env`
+   (devDeps), `babel.config.js` (`targets: node current`, jest-only — the browser build is
+   untouched), `transform: { '\\.js$': 'babel-jest' }` in `jest.config.js` (jsdom kept).
+   `tests/esm-tooling.test.js` imports an `export`-syntax fixture (`tests/fixtures/esm-smoke.js`,
+   the only ESM file until the codemod) and confirms CJS modules still load through the
+   transform. Suite 1689/1689, ~14s. Delete the fixture + smoke test when step 5 lands.
+
+   **Probe findings for steps 2–5 (Sep 9):** 78 `<script src>` tags; **90 inline
+   `onclick="goalManager.…"` handlers** so `main.js` must assign `window.goalManager` (and
+   `audioManager` / `effectsManager`) before first interaction; **3 inline `<script>` blocks**
+   (`index.html` ~71, ~2414, ~2566) run synchronously and need an ordering check against a
+   deferred module; **5** modules have load-time `window`/`require` resolvers, not 2
+   (`loot-engine`, `load-deserializer`, `title-render`, `habit-logic`, `daily-quest-definitions`);
+   the jest harness loads `goal-manager.js` by **reading + `eval`ing the source** (not `require`),
+   so step 5 is a rewrite of that block; no service worker file exists to invalidate.
+2. ✅ **Codemod the 69 leaf modules** *(landed Sep 9, 2026, steps 2–5 as one change)* —
+   the `(function () { … if (root) root.X = X; module.exports = X; })();` wrapper is gone;
+   every module ends in `export default X` (default, not named — one shape for the
+   goal-manager imports, the test imports and the `require(…).default` fallback). The codemod
+   used `@babel/parser` template-literal ranges so no HTML template string was re-indented
+   (every render-string test passed unchanged). Four render modules were CRLF; normalised to LF.
+   The five load-time resolvers are `import` lines (`habit-logic` lost its
+   `Array.isArray` guard — the catalog is always present now).
+3. ✅ **`goal-manager.js`** — 48 capture consts (not 44; `LEVEL_TITLE_CHAINS` aliases
+   `level-titles.js`, `TITLE_DEFINITIONS` was multi-line) are `import` lines, PLUS 21 render
+   modules that were read as bare `window` globals with no capture const at all — 69 imports
+   total. `export default GoalManager` + named exports for the five inline-handler wrappers
+   (`addLifeGoal` … `addDailyTask`). The module-scoped `let goalManager` is removed: the 11
+   bare `goalManager.` reads inside the class resolve to `window.goalManager` at call time.
+   All `{}` / `[]` fallbacks are gone — a missing module is a hard load error.
+4. ✅ **`index.html` / `main.js`** — 74 leaf tags + the `goal-manager.js` tag → one
+   `<script type="module" src="main.js">`. `main.js` imports the class, creates the instance
+   **synchronously** (module scripts run after parse, before `DOMContentLoaded`, so every
+   listener the classic scripts and the FAB inline block register sees `window.goalManager`
+   — strictly better than the old `DOMContentLoaded` init, which fired AFTER
+   `mobile-touch.js`'s listener), attaches `window.GoalManager` + the five wrappers, and
+   carries the splash dismissal / error card verbatim. The 8 standalone scripts
+   (analytics-methods, capacitor-bridge, pwa-handler, audio-manager, effects-manager,
+   mobile-touch, parallax-tilt, stat-tooltip) stay classic — they read no module namespace.
+   `scripts/copy-web.js` copies every root `.js` except the three configs.
+   `run-in-browser.bat` now starts the http server (modules do not load over `file://`).
+   **Android `cap:build` device check: passed Sep 12, 2026** (after step 6; app booted and ran
+   with no visible issues).
+5. ✅ **Tests** — the harness's 69 `window.X = require(…)` lines and the `eval(source)` are
+   `import` lines (`import GoalManager from '../goal-manager.js'`); `source` stays for the
+   regex-over-source guards, which needed no re-pointing. All 17 suites: top-level
+   `const X = require(…)` → `import`, in-test `require(…)` → `.default`, `window.X` reads
+   → the imported name. The step-1 smoke fixture is deleted. **1686/1686 + typecheck clean.**
+   Watch-out for future PowerShell edits: `Get-Content -Raw` without `-Encoding UTF8`
+   double-encodes emoji; the fix landed here was a cp1252→UTF-8 round trip.
+6. ✅ **`// @ts-check` on `goal-manager.js`** *(landed Sep 12, 2026)* — triage order:
+   instance-field JSDoc declarations on the class; DOM nullability case-by-case rather
+   than a blanket `$id()` helper (`?.` on same-function-created nodes, `if (!el) return`
+   where the element is genuinely optional, `/** @type {HTMLElement} */` casts only for
+   static `index.html` ids / same-function-created nodes; a cast-only codemod at
+   tsc-flagged lines, then hand fixes — `forEach`/focus-trap sites need a
+   `NodeListOf<HTMLElement>` cast on the list, since typing the callback param is rejected
+   under `strictFunctionTypes`); `Date` subtraction via `getTime()`; `String()` on numeric
+   `textContent` / `strokeDashoffset` writes; `!!` on boolean render inputs.
+   `daily-quest-logic.js` / `daily-board-render.js` pool params widened to `ReadonlyArray`.
+   `jsconfig.json` adds `useUnknownInCatchVariables: false` (TS-class-centric, same rationale
+   as `strictPropertyInitialization`). Real bugs surfaced: `BOUNTY_LOGIC.pickFrom` null
+   return unguarded in assign/reroll; `updateSlideshow` on null `slideshowData`;
+   parent-link resolver with unresolved `parentIdField`/`parentType`. Watch-out: the import
+   `FileReader` mock in tests supplies `e.target.result` only — read the payload from the
+   event, not `reader.result`. **1686/1686 + typecheck clean (0 errors).** Criterion (4) ✅.
+
+**Convention:** every `.js` file — including `goal-manager.js` since step 6 — starts with
+`// @ts-check` and JSDoc-typed function signatures. Note: the editor's TS server can lag on
 `globals.d.ts` (stale "implicitly any" hints); `npm run typecheck` is the
 authoritative result.
 

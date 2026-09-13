@@ -37,30 +37,30 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.CLASS_RENDER.
  *   - Jest/Node: require('./class-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @typedef {Object} ClassDef
-     * @property {string} id
-     * @property {string} color
-     * @property {string} icon
-     * @property {string} name
-     * @property {string} tagline
-     */
 
-    /**
-     * @typedef {Object} SkillItem
-     * @property {string} desc
-     * @property {number} cost
-     */
+/**
+ * @typedef {Object} ClassDef
+ * @property {string} id
+ * @property {string} color
+ * @property {string} icon
+ * @property {string} name
+ * @property {string} tagline
+ */
 
-    /**
-     * One class-selection button (State 2). Pure over the class metadata; the inline hover
-     * handlers restore the 40%-alpha border on mouseout. Byte-faithful to the original template.
-     * @param {ClassDef} cls
-     * @returns {string}
-     */
-    function renderClassSelectCardHTML(cls) {
-        return `
+/**
+ * @typedef {Object} SkillItem
+ * @property {string} desc
+ * @property {number} cost
+ */
+
+/**
+ * One class-selection button (State 2). Pure over the class metadata; the inline hover
+ * handlers restore the 40%-alpha border on mouseout. Byte-faithful to the original template.
+ * @param {ClassDef} cls
+ * @returns {string}
+ */
+function renderClassSelectCardHTML(cls) {
+    return `
                 <button data-action="class.choose" data-class-id="${cls.id}"
                     class="w-full text-left quest-card bg-stone-900/70 rounded-lg p-3 border-2 transition-all hover:scale-[1.02]"
                     style="border-color:${cls.color}66"
@@ -73,17 +73,17 @@
                     <div class="text-xs text-stone-300 fancy-font">${cls.tagline}</div>
                 </button>
             `;
-    }
+}
 
-    /**
-     * The State 2 wrapper: "Choose Your Class" header, the available-points line (with singular/
-     * plural), and the pre-rendered selection cards. Byte-faithful to the original template.
-     * @param {number} available
-     * @param {string} cardsHTML
-     * @returns {string}
-     */
-    function renderClassSelectPanelHTML(available, cardsHTML) {
-        return `
+/**
+ * The State 2 wrapper: "Choose Your Class" header, the available-points line (with singular/
+ * plural), and the pre-rendered selection cards. Byte-faithful to the original template.
+ * @param {number} available
+ * @param {string} cardsHTML
+ * @returns {string}
+ */
+function renderClassSelectPanelHTML(available, cardsHTML) {
+    return `
                 <div class="quest-card bg-gradient-to-br from-stone-800/60 to-stone-950/60 rounded-xl p-4 border-2 border-purple-700/50">
                     <div class="text-sm font-bold text-purple-300 fancy-font mb-1 flex items-center justify-center">
                         <i class="ri-sword-line mr-2"></i> Choose Your Class
@@ -94,24 +94,24 @@
                     <div class="space-y-2">${cardsHTML}</div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * One row of a linear skill track (State 3 base nodes; State 5 subclass tiers next slice).
-     * Computes the ●/◐/○ dot from the progression flags, then renders the perk desc + the
-     * Unlocked badge / Unlock button (affordability-gated + `disabled`) / Locked line. The
-     * `unlockAction` distinguishes base nodes ('class.unlockNode') from subclass tiers
-     * ('class.unlockSubclassTier'). Byte-faithful to the original base-node-row template.
-     * @param {SkillItem} item
-     * @param {{ isUnlocked: boolean, isNext: boolean, canAfford: boolean, color: string, unlockAction: string }} opts
-     * @returns {string}
-     */
-    function renderSkillNodeRowHTML(item, { isUnlocked, isNext, canAfford, color, unlockAction }) {
-        const dot = isUnlocked
-            ? `<span style="color:${color}">●</span>`
-            : isNext ? '<span class="text-amber-300">◐</span>'
-            : '<span class="text-stone-600">○</span>';
-        return `
+/**
+ * One row of a linear skill track (State 3 base nodes; State 5 subclass tiers next slice).
+ * Computes the ●/◐/○ dot from the progression flags, then renders the perk desc + the
+ * Unlocked badge / Unlock button (affordability-gated + `disabled`) / Locked line. The
+ * `unlockAction` distinguishes base nodes ('class.unlockNode') from subclass tiers
+ * ('class.unlockSubclassTier'). Byte-faithful to the original base-node-row template.
+ * @param {SkillItem} item
+ * @param {{ isUnlocked: boolean, isNext: boolean, canAfford: boolean, color: string, unlockAction: string }} opts
+ * @returns {string}
+ */
+function renderSkillNodeRowHTML(item, { isUnlocked, isNext, canAfford, color, unlockAction }) {
+    const dot = isUnlocked
+        ? `<span style="color:${color}">●</span>`
+        : isNext ? '<span class="text-amber-300">◐</span>'
+        : '<span class="text-stone-600">○</span>';
+    return `
                 <div class="flex items-start gap-2 py-1 ${isUnlocked ? '' : 'opacity-70'}">
                     <div class="text-lg leading-none mt-0.5">${dot}</div>
                     <div class="flex-1">
@@ -127,29 +127,29 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * @typedef {Object} CapstoneDef
-     * @property {string} id
-     * @property {string} name
-     * @property {string} desc
-     * @property {number} cost
-     */
+/**
+ * @typedef {Object} CapstoneDef
+ * @property {string} id
+ * @property {string} name
+ * @property {string} desc
+ * @property {number} cost
+ */
 
-    /**
-     * One capstone option (State 4). Three mutually-exclusive branches: the CHOSEN capstone (a
-     * static "Mastered" card tinted with the class colour), a PICKABLE option while the choice is
-     * open (affordability-gated `class.selectCapstone` button), or a greyed "Not chosen" card once
-     * a sibling was picked. Byte-faithful to the three original inline templates — each keeps its
-     * own historical indentation, since the output whitespace is part of the panel's markup.
-     * @param {CapstoneDef} cap
-     * @param {{ isChosen: boolean, canAfford: boolean, capstoneReady: boolean, color: string }} opts
-     * @returns {string}
-     */
-    function renderCapstoneCardHTML(cap, { isChosen, canAfford, capstoneReady, color }) {
-        if (isChosen) {
-            return `
+/**
+ * One capstone option (State 4). Three mutually-exclusive branches: the CHOSEN capstone (a
+ * static "Mastered" card tinted with the class colour), a PICKABLE option while the choice is
+ * open (affordability-gated `class.selectCapstone` button), or a greyed "Not chosen" card once
+ * a sibling was picked. Byte-faithful to the three original inline templates — each keeps its
+ * own historical indentation, since the output whitespace is part of the panel's markup.
+ * @param {CapstoneDef} cap
+ * @param {{ isChosen: boolean, canAfford: boolean, capstoneReady: boolean, color: string }} opts
+ * @returns {string}
+ */
+function renderCapstoneCardHTML(cap, { isChosen, canAfford, capstoneReady, color }) {
+    if (isChosen) {
+        return `
                         <div class="rounded-lg p-2 border-2" style="border-color:${color};background:${color}1a">
                             <div class="flex items-center gap-1.5 mb-0.5">
                                 <span style="color:${color}">★</span>
@@ -159,9 +159,9 @@
                             <div class="text-[11px] text-stone-200 fancy-font">${cap.desc}</div>
                         </div>
                     `;
-        }
-        if (capstoneReady) {
-            return `
+    }
+    if (capstoneReady) {
+        return `
                         <button data-action="class.selectCapstone" data-capstone-id="${cap.id}" ${canAfford ? '' : 'disabled'}
                             class="w-full text-left rounded-lg p-2 border-2 transition-all ${canAfford ? 'hover:scale-[1.02]' : 'opacity-60 cursor-not-allowed'}"
                             style="border-color:${color}66">
@@ -173,8 +173,8 @@
                             <div class="text-[11px] text-stone-300 fancy-font">${cap.desc}</div>
                         </button>
                     `;
-        }
-        return `
+    }
+    return `
                     <div class="rounded-lg p-2 border-2 border-stone-700/50 opacity-50">
                         <div class="flex items-center gap-1.5 mb-0.5">
                             <span class="text-stone-600">◇</span>
@@ -184,47 +184,47 @@
                         <div class="text-[11px] text-stone-500 fancy-font">${cap.desc}</div>
                     </div>
                 `;
-    }
+}
 
-    /**
-     * The State 4 capstone section wrapper: a header ("⭐ Choose your capstone (pick one, N pts)"
-     * while pickable, else a plain "Capstone" label) over the pre-rendered capstone cards.
-     * @param {boolean} capstoneReady
-     * @param {number} firstCapstoneCost  cost of capstones[0] — both cost the same; shown in the header
-     * @param {string} capCardsHTML
-     * @returns {string}
-     */
-    function renderCapstoneSectionHTML(capstoneReady, firstCapstoneCost, capCardsHTML) {
-        const capHeader = capstoneReady
-            ? `<div class="text-[11px] text-amber-300 fancy-font text-center mb-1.5">⭐ Choose your capstone (pick one, ${firstCapstoneCost} pts)</div>`
-            : `<div class="text-[11px] text-stone-400 fancy-font text-center mb-1.5">Capstone</div>`;
-        return `
+/**
+ * The State 4 capstone section wrapper: a header ("⭐ Choose your capstone (pick one, N pts)"
+ * while pickable, else a plain "Capstone" label) over the pre-rendered capstone cards.
+ * @param {boolean} capstoneReady
+ * @param {number} firstCapstoneCost  cost of capstones[0] — both cost the same; shown in the header
+ * @param {string} capCardsHTML
+ * @returns {string}
+ */
+function renderCapstoneSectionHTML(capstoneReady, firstCapstoneCost, capCardsHTML) {
+    const capHeader = capstoneReady
+        ? `<div class="text-[11px] text-amber-300 fancy-font text-center mb-1.5">⭐ Choose your capstone (pick one, ${firstCapstoneCost} pts)</div>`
+        : `<div class="text-[11px] text-stone-400 fancy-font text-center mb-1.5">Capstone</div>`;
+    return `
                 <div class="border-t border-stone-700/60 mt-2 pt-2">
                     ${capHeader}
                     <div class="space-y-1.5">${capCardsHTML}</div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * State 5 locked teaser — shown once the base class is mastered but the player hasn't reached
-     * the subclass unlock level yet. Assigned directly as the subclass body (no wrapper newline).
-     * @param {number} unlockLevel
-     * @returns {string}
-     */
-    function renderSubclassLockedTeaserHTML(unlockLevel) {
-        return `<div class="text-[11px] text-stone-400 fancy-font text-center">🔒 Reach Level ${unlockLevel} to specialize</div>`;
-    }
+/**
+ * State 5 locked teaser — shown once the base class is mastered but the player hasn't reached
+ * the subclass unlock level yet. Assigned directly as the subclass body (no wrapper newline).
+ * @param {number} unlockLevel
+ * @returns {string}
+ */
+function renderSubclassLockedTeaserHTML(unlockLevel) {
+    return `<div class="text-[11px] text-stone-400 fancy-font text-center">🔒 Reach Level ${unlockLevel} to specialize</div>`;
+}
 
-    /**
-     * One subclass-selection button (State 5, once unlocked): the subclass icon/name/tagline + its
-     * first-tier preview. The hover handlers restore the 40%-alpha border on mouseout.
-     * @param {{ id: string, icon: string, name: string, tagline: string, tiers: Array<{ desc: string }> }} sub
-     * @param {{ color: string }} opts
-     * @returns {string}
-     */
-    function renderSubclassSelectCardHTML(sub, { color }) {
-        return `
+/**
+ * One subclass-selection button (State 5, once unlocked): the subclass icon/name/tagline + its
+ * first-tier preview. The hover handlers restore the 40%-alpha border on mouseout.
+ * @param {{ id: string, icon: string, name: string, tagline: string, tiers: Array<{ desc: string }> }} sub
+ * @param {{ color: string }} opts
+ * @returns {string}
+ */
+function renderSubclassSelectCardHTML(sub, { color }) {
+    return `
                         <button data-action="class.chooseSubclass" data-subclass-id="${sub.id}"
                             class="w-full text-left rounded-lg p-2 border-2 transition-all hover:scale-[1.02]"
                             style="border-color:${color}66"
@@ -238,30 +238,30 @@
                             <div class="text-[11px] text-stone-300 fancy-font">${sub.tiers[0].desc}</div>
                         </button>
                     `;
-    }
+}
 
-    /**
-     * State 5 subclass-selection body: the "✨ Specialize" prompt over the pre-rendered choice cards.
-     * @param {string} subCardsHTML
-     * @returns {string}
-     */
-    function renderSubclassSelectBodyHTML(subCardsHTML) {
-        return `
+/**
+ * State 5 subclass-selection body: the "✨ Specialize" prompt over the pre-rendered choice cards.
+ * @param {string} subCardsHTML
+ * @returns {string}
+ */
+function renderSubclassSelectBodyHTML(subCardsHTML) {
+    return `
                         <div class="text-[11px] text-amber-300 fancy-font text-center mb-1.5">✨ Specialize (pick one path)</div>
                         <div class="space-y-1.5">${subCardsHTML}</div>
                     `;
-    }
+}
 
-    /**
-     * State 5 active-subclass body: the chosen subclass's header (icon/name, ★ Mastered badge when
-     * fully unlocked, and a Respec button) over its pre-rendered tier rows (which reuse
-     * renderSkillNodeRowHTML with unlockAction 'class.unlockSubclassTier').
-     * @param {{ icon: string, name: string }} activeSub
-     * @param {{ subMastered: boolean, color: string, tierRowsHTML: string }} opts
-     * @returns {string}
-     */
-    function renderActiveSubclassBodyHTML(activeSub, { subMastered, color, tierRowsHTML }) {
-        return `
+/**
+ * State 5 active-subclass body: the chosen subclass's header (icon/name, ★ Mastered badge when
+ * fully unlocked, and a Respec button) over its pre-rendered tier rows (which reuse
+ * renderSkillNodeRowHTML with unlockAction 'class.unlockSubclassTier').
+ * @param {{ icon: string, name: string }} activeSub
+ * @param {{ subMastered: boolean, color: string, tierRowsHTML: string }} opts
+ * @returns {string}
+ */
+function renderActiveSubclassBodyHTML(activeSub, { subMastered, color, tierRowsHTML }) {
+    return `
                     <div class="flex items-center justify-between mb-1">
                         <div class="flex items-center gap-1.5">
                             <span>${activeSub.icon}</span>
@@ -275,32 +275,32 @@
                     </div>
                     <div>${tierRowsHTML}</div>
                 `;
-    }
+}
 
-    /**
-     * State 5 wrapper: the "🔱 Subclass Specialization" heading over whichever subclass body applies.
-     * @param {string} subBodyHTML
-     * @returns {string}
-     */
-    function renderSubclassSectionHTML(subBodyHTML) {
-        return `
+/**
+ * State 5 wrapper: the "🔱 Subclass Specialization" heading over whichever subclass body applies.
+ * @param {string} subBodyHTML
+ * @returns {string}
+ */
+function renderSubclassSectionHTML(subBodyHTML) {
+    return `
                 <div class="border-t border-stone-700/60 mt-2 pt-2">
                     <div class="text-[11px] text-purple-300 fancy-font text-center mb-1.5">🔱 Subclass Specialization</div>
                     ${subBodyHTML}
                 </div>
             `;
-    }
+}
 
-    /**
-     * The active-class panel shell (States 3–5 assembled): the class header (icon/name, an optional
-     * "· subclass" suffix, a Respec button), the skill-point summary line ("⭐ Class fully mastered"
-     * or "N skill points available"), and the three pre-rendered sections (linear nodes + capstone +
-     * subclass). Byte-faithful to the original `section.innerHTML` template.
-     * @param {{ cls: { icon: string, name: string, color: string }, activeSub: ({ icon: string, name: string }|null), fullyMastered: boolean, available: number, nodeRowsHTML: string, capstoneSectionHTML: string, subclassSectionHTML: string }} opts
-     * @returns {string}
-     */
-    function renderActiveClassPanelHTML({ cls, activeSub, fullyMastered, available, nodeRowsHTML, capstoneSectionHTML, subclassSectionHTML }) {
-        return `
+/**
+ * The active-class panel shell (States 3–5 assembled): the class header (icon/name, an optional
+ * "· subclass" suffix, a Respec button), the skill-point summary line ("⭐ Class fully mastered"
+ * or "N skill points available"), and the three pre-rendered sections (linear nodes + capstone +
+ * subclass). Byte-faithful to the original `section.innerHTML` template.
+ * @param {{ cls: { icon: string, name: string, color: string }, activeSub: ({ icon: string, name: string }|null), fullyMastered: boolean, available: number, nodeRowsHTML: string, capstoneSectionHTML: string, subclassSectionHTML: string }} opts
+ * @returns {string}
+ */
+function renderActiveClassPanelHTML({ cls, activeSub, fullyMastered, available, nodeRowsHTML, capstoneSectionHTML, subclassSectionHTML }) {
+    return `
             <div class="quest-card bg-gradient-to-br from-stone-800/60 to-stone-950/60 rounded-xl p-4 border-2" style="border-color:${cls.color}66">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
@@ -321,30 +321,23 @@
                 ${subclassSectionHTML}
             </div>
         `;
-    }
+}
 
-    const CLASS_RENDER = Object.freeze({
-        renderClassSelectCardHTML,
-        renderClassSelectPanelHTML,
-        renderSkillNodeRowHTML,
-        renderCapstoneCardHTML,
-        renderCapstoneSectionHTML,
-        renderSubclassLockedTeaserHTML,
-        renderSubclassSelectCardHTML,
-        renderSubclassSelectBodyHTML,
-        renderActiveSubclassBodyHTML,
-        renderSubclassSectionHTML,
-        renderActiveClassPanelHTML,
-    });
+const CLASS_RENDER = Object.freeze({
+    renderClassSelectCardHTML,
+    renderClassSelectPanelHTML,
+    renderSkillNodeRowHTML,
+    renderCapstoneCardHTML,
+    renderCapstoneSectionHTML,
+    renderSubclassLockedTeaserHTML,
+    renderSubclassSelectCardHTML,
+    renderSubclassSelectBodyHTML,
+    renderActiveSubclassBodyHTML,
+    renderSubclassSectionHTML,
+    renderActiveClassPanelHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic CLASS_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.CLASS_RENDER = CLASS_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = CLASS_RENDER;
-})();
+// Node / Jest
+
+export default CLASS_RENDER;

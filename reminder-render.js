@@ -23,77 +23,77 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.REMINDER_RENDER.
  *   - Jest/Node: require('./reminder-render.js') returns the frozen builder via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   settings: { enabled: boolean, morningTime: string, morningReminder: boolean, eveningTime: string,
-     *     eveningReminder: boolean, overdueAlert: boolean, streakReminderTime: string, streakReminder: boolean,
-     *     bountyReminderTime: string, bountyReminder: boolean },
-     *   notificationsEnabled: boolean, isNative: boolean, notificationSupported: boolean, permissionDenied: boolean
-     * }} state
-     * @returns {string}
-     */
-    function renderReminderSettingsHTML({ settings, notificationsEnabled, isNative, notificationSupported, permissionDenied }) {
-        // Build notification status section based on native vs web
-        let notifStatusLabel = '';
-        if (notificationsEnabled) {
-            notifStatusLabel = '<span class="text-green-400">✓ Enabled</span>';
-        } else if (isNative) {
-            notifStatusLabel = '<span class="text-red-400">○ Not Enabled</span>';
-        } else if (notificationSupported) {
-            notifStatusLabel = permissionDenied 
-                ? '<span class="text-red-400">✗ Blocked</span>' 
-                : '<span class="text-red-400">○ Not Enabled</span>';
-        } else {
-            notifStatusLabel = '<span class="text-red-400">✗ Not Supported</span>';
-        }
-        
-        // Delivery method row (native only — web/PWA service-worker delivery retired)
-        const deliveryRow = isNative 
-            ? `<div class="flex items-center justify-between text-sm mt-1">
+
+/**
+ * @param {{
+ *   settings: { enabled: boolean, morningTime: string, morningReminder: boolean, eveningTime: string,
+ *     eveningReminder: boolean, overdueAlert: boolean, streakReminderTime: string, streakReminder: boolean,
+ *     bountyReminderTime: string, bountyReminder: boolean },
+ *   notificationsEnabled: boolean, isNative: boolean, notificationSupported: boolean, permissionDenied: boolean
+ * }} state
+ * @returns {string}
+ */
+function renderReminderSettingsHTML({ settings, notificationsEnabled, isNative, notificationSupported, permissionDenied }) {
+    // Build notification status section based on native vs web
+    let notifStatusLabel = '';
+    if (notificationsEnabled) {
+        notifStatusLabel = '<span class="text-green-400">✓ Enabled</span>';
+    } else if (isNative) {
+        notifStatusLabel = '<span class="text-red-400">○ Not Enabled</span>';
+    } else if (notificationSupported) {
+        notifStatusLabel = permissionDenied 
+            ? '<span class="text-red-400">✗ Blocked</span>' 
+            : '<span class="text-red-400">○ Not Enabled</span>';
+    } else {
+        notifStatusLabel = '<span class="text-red-400">✗ Not Supported</span>';
+    }
+    
+    // Delivery method row (native only — web/PWA service-worker delivery retired)
+    const deliveryRow = isNative 
+        ? `<div class="flex items-center justify-between text-sm mt-1">
                     <span class="text-amber-300/70">Delivery:</span>
                     <span class="text-green-400">✓ Native</span>
                </div>`
-            : '';
-        
-        // Enable button section when not enabled
-        let enableSection = '';
-        if (!notificationsEnabled) {
-            if (isNative) {
-                enableSection = `
+        : '';
+    
+    // Enable button section when not enabled
+    let enableSection = '';
+    if (!notificationsEnabled) {
+        if (isNative) {
+            enableSection = `
                     <button data-action="reminder.enable"
                         class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
                         Enable Notifications
                     </button>
                     <p class="text-amber-400/60 text-xs mt-2 text-center">If the prompt doesn't appear, open your device's Settings > Apps > Life Quest Journal > Notifications and enable them.</p>
                 `;
-            } else if (notificationSupported && permissionDenied) {
-                enableSection = `
+        } else if (notificationSupported && permissionDenied) {
+            enableSection = `
                     <button data-action="reminder.guide"
                         class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2.5 rounded-lg text-sm fancy-font flex items-center justify-center gap-2">
                         <i class="ri-settings-3-line"></i> How to Enable Notifications
                     </button>
                     <p class="text-red-400/80 text-xs mt-2 text-center">Notifications are blocked. Tap above for step-by-step instructions.</p>
                 `;
-            } else {
-                enableSection = `
+        } else {
+            enableSection = `
                     <button data-action="reminder.enable"
                         class="w-full mt-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-2 rounded text-sm fancy-font">
                         Enable Notifications
                     </button>
                 `;
-            }
-        } else {
-            enableSection = `
+        }
+    } else {
+        enableSection = `
                 <button data-action="reminder.test"
                     class="w-full mt-2 bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded text-sm fancy-font">
                     🔔 Send Test Notification
                 </button>
                 <p class="text-amber-400/60 text-xs mt-1 text-center">If no notification appears, check that notifications are enabled in your device's app settings.</p>
             `;
-        }
-        
-        return `
+    }
+    
+    return `
             <div class="space-y-4">
                 <!-- Master Toggle -->
                 <div class="flex items-center justify-between">
@@ -184,18 +184,11 @@
                 </div>
             </div>
         `;
-    }
+}
 
-    const REMINDER_RENDER = Object.freeze({ renderReminderSettingsHTML });
+const REMINDER_RENDER = Object.freeze({ renderReminderSettingsHTML });
 
-    // Browser (window / globalThis) - cast to `any` so checkJs doesn't flag the
-    // dynamic REMINDER_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.REMINDER_RENDER = REMINDER_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = REMINDER_RENDER;
-})();
+// Node / Jest
+
+export default REMINDER_RENDER;

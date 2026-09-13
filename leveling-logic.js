@@ -28,69 +28,62 @@
  *   - Jest/Node: require('./leveling-logic.js') returns the frozen object via module.exports (and
  *     also sets window.LEVELING_LOGIC under jsdom).
  */
-(function () {
-    /**
-     * XP required to advance FROM `level` to `level + 1`. Progressive scaling: level 1 = 150,
-     * +250 per level (L2=400, L3=650, L4=900, L5=1150). PURE.
-     * @param {number} level
-     * @returns {number}
-     */
-    function xpForLevel(level) {
-        return 150 + (level - 1) * 250;
+
+/**
+ * XP required to advance FROM `level` to `level + 1`. Progressive scaling: level 1 = 150,
+ * +250 per level (L2=400, L3=650, L4=900, L5=1150). PURE.
+ * @param {number} level
+ * @returns {number}
+ */
+function xpForLevel(level) {
+    return 150 + (level - 1) * 250;
+}
+
+/**
+ * Total cumulative XP required to REACH `level` from level 1. Level 1 = 0; level N is the sum
+ * of xpForLevel(1..N-1). PURE. Uses the module's own xpForLevel — the class delegator is a thin
+ * wrapper (never overridden), so no seam is lost by not routing through `this`.
+ * @param {number} level
+ * @returns {number}
+ */
+function totalXpForLevel(level) {
+    let total = 0;
+    for (let i = 1; i < level; i++) {
+        total += xpForLevel(i);
     }
+    return total;
+}
 
-    /**
-     * Total cumulative XP required to REACH `level` from level 1. Level 1 = 0; level N is the sum
-     * of xpForLevel(1..N-1). PURE. Uses the module's own xpForLevel — the class delegator is a thin
-     * wrapper (never overridden), so no seam is lost by not routing through `this`.
-     * @param {number} level
-     * @returns {number}
-     */
-    function totalXpForLevel(level) {
-        let total = 0;
-        for (let i = 1; i < level; i++) {
-            total += xpForLevel(i);
-        }
-        return total;
-    }
+/**
+ * Progress of a cumulative-XP value within a given level's band. Single source of truth for the
+ * XP-bar fill + "N / M XP" readouts that were duplicated across showXPToast, renderXPDisplay,
+ * _statBreakdownXP, and the character-sheet canvas. PURE.
+ *   currentLevelXP   — total XP at the START of `level`
+ *   nextLevelXP      — total XP at the start of `level + 1`
+ *   xpNeededForLevel — XP span of `level` (nextLevelXP - currentLevelXP)
+ *   xpIntoLevel      — how far `totalXp` is into `level` (can exceed the span before a pending
+ *                      level-up is processed, or be negative if `level` is ahead of `totalXp`)
+ *   pct              — xpIntoLevel / xpNeededForLevel as a 0–100 clamped percentage
+ * @param {number} totalXp
+ * @param {number} level
+ * @returns {{ currentLevelXP:number, nextLevelXP:number, xpIntoLevel:number, xpNeededForLevel:number, pct:number }}
+ */
+function levelProgress(totalXp, level) {
+    const currentLevelXP = totalXpForLevel(level);
+    const nextLevelXP = totalXpForLevel(level + 1);
+    const xpNeededForLevel = nextLevelXP - currentLevelXP;
+    const xpIntoLevel = totalXp - currentLevelXP;
+    const pct = Math.max(0, Math.min(100, (xpIntoLevel / xpNeededForLevel) * 100));
+    return { currentLevelXP, nextLevelXP, xpIntoLevel, xpNeededForLevel, pct };
+}
 
-    /**
-     * Progress of a cumulative-XP value within a given level's band. Single source of truth for the
-     * XP-bar fill + "N / M XP" readouts that were duplicated across showXPToast, renderXPDisplay,
-     * _statBreakdownXP, and the character-sheet canvas. PURE.
-     *   currentLevelXP   — total XP at the START of `level`
-     *   nextLevelXP      — total XP at the start of `level + 1`
-     *   xpNeededForLevel — XP span of `level` (nextLevelXP - currentLevelXP)
-     *   xpIntoLevel      — how far `totalXp` is into `level` (can exceed the span before a pending
-     *                      level-up is processed, or be negative if `level` is ahead of `totalXp`)
-     *   pct              — xpIntoLevel / xpNeededForLevel as a 0–100 clamped percentage
-     * @param {number} totalXp
-     * @param {number} level
-     * @returns {{ currentLevelXP:number, nextLevelXP:number, xpIntoLevel:number, xpNeededForLevel:number, pct:number }}
-     */
-    function levelProgress(totalXp, level) {
-        const currentLevelXP = totalXpForLevel(level);
-        const nextLevelXP = totalXpForLevel(level + 1);
-        const xpNeededForLevel = nextLevelXP - currentLevelXP;
-        const xpIntoLevel = totalXp - currentLevelXP;
-        const pct = Math.max(0, Math.min(100, (xpIntoLevel / xpNeededForLevel) * 100));
-        return { currentLevelXP, nextLevelXP, xpIntoLevel, xpNeededForLevel, pct };
-    }
+const LEVELING_LOGIC = Object.freeze({
+    xpForLevel,
+    totalXpForLevel,
+    levelProgress,
+});
 
-    const LEVELING_LOGIC = Object.freeze({
-        xpForLevel,
-        totalXpForLevel,
-        levelProgress,
-    });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // LEVELING_LOGIC property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.LEVELING_LOGIC = LEVELING_LOGIC;
+// Node / Jest
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = LEVELING_LOGIC;
-})();
+export default LEVELING_LOGIC;

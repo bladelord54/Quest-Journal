@@ -1,5 +1,6 @@
 // @ts-check
 'use strict';
+import TITLE_DEFINITIONS from './title-definitions.js';
 /**
  * title-render.js — pure Title Hall presentation builders (Engineering Roadmap #1).
  *
@@ -15,7 +16,8 @@
  *       Level Ranks section (the auto-earned L1..Ln rank chain from LEVEL_TITLES[style], driven by level).
  *
  * The presentational title catalog (`titleCategories`) was defined INLINE in renderTitleHall (no
- * `this.`), so it moves here as the content builder's local const. Both builders are PURE given their
+ * `this.`); it now reads the shared TITLE_DEFINITIONS.categories (Roadmap #1, 79th slice) so the gallery
+ * and checkTitleUnlocks share one source of truth and cannot drift. Both builders are PURE given their
  * inputs: same data -> same string (no clock, no DOM). Faithful to the original, every title/rank name +
  * description is interpolated RAW (this surface never escaped them). The wrapper keeps only the three
  * `getElementById` lookups, the `if (!container) return` guard, the `unlockedTitles.find(currentTitle)`
@@ -25,17 +27,22 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.TITLE_RENDER.
  *   - Jest/Node: require('./title-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * The #active-title-display card. When a title is equipped (activeTitle resolved from unlockedTitles
-     * by currentTitle) it renders the gold "EQUIPPED" card; otherwise the "No Title Equipped" empty-state.
-     * Byte-faithful to the original inline templates.
-     * @param {{ name?: string, description?: string }} [activeTitle]
-     * @returns {string}
-     */
-    function renderActiveTitleDisplayHTML(activeTitle) {
-            if (activeTitle) {
-                return `
+
+// Single source of truth for the achievement-title catalog (Roadmap #1, 79th slice): the same
+// frozen TITLE_DEFINITIONS.categories that checkTitleUnlocks derives unlocks from. The gallery only
+// reads presentational fields (key/icon/label/color + each title's id/name/description/rarity) and
+// ignores the threshold `type`/`target`, so the two lists can no longer drift.
+
+/**
+ * The #active-title-display card. When a title is equipped (activeTitle resolved from unlockedTitles
+ * by currentTitle) it renders the gold "EQUIPPED" card; otherwise the "No Title Equipped" empty-state.
+ * Byte-faithful to the original inline templates.
+ * @param {{ name?: string, description?: string }} [activeTitle]
+ * @returns {string}
+ */
+function renderActiveTitleDisplayHTML(activeTitle) {
+        if (activeTitle) {
+            return `
                     <div class="quest-card bg-gradient-to-br from-yellow-900 to-yellow-950 p-6 rounded-xl shadow-2xl border-4 border-yellow-500">
                         <div class="flex items-center gap-6">
                             <div class="text-8xl">👑</div>
@@ -49,113 +56,44 @@
                         </div>
                     </div>
                 `;
-            } else {
-                return `
+        } else {
+            return `
                     <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 p-8 rounded-xl shadow-2xl border-4 border-purple-600 text-center">
                         <div class="text-8xl mb-4">🎖️</div>
                         <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Title Equipped</h4>
                         <p class="text-purple-200 fancy-font text-lg">Earn titles by completing achievements, then equip one below!</p>
                     </div>
                 `;
-            }
-    }
+        }
+}
 
-    /**
-     * The #titles-container body: the collection progress summary, one collapsible section per
-     * achievement-title category (earned + locked ??? cards, each with rarity chrome), and the Level
-     * Ranks section (the auto-earned L1..Ln chain from levelTitles[style], driven by level). Byte-faithful
-     * to the original inline template concatenation; the titleCategories catalog is this builder's local
-     * const (it was inline, purely presentational). Names/descriptions interpolated RAW (faithful).
-     * @param {{
-     *   unlockedTitles: Array<{ id: string, name?: string, description?: string }>,
-     *   currentTitle: string | null,
-     *   level: number,
-     *   titleStyle: string,
-     *   levelTitles: Record<string, string[]>,
-     * }} deps
-     * @returns {string}
-     */
-    function renderTitleHallContentHTML({ unlockedTitles, currentTitle, level, titleStyle, levelTitles }) {
-        const titleCategories = [
-            { key: 'early', icon: '⚔️', label: 'Early Game', color: 'green', titles: [
-                { id: 'beginner', name: 'The Beginner', description: 'Complete your first task', rarity: 'common' },
-                { id: 'habit_starter', name: 'Habit Starter', description: 'Create your first habit', rarity: 'common' },
-                { id: 'apprentice', name: 'The Apprentice', description: 'Reach Level 5', rarity: 'common' },
-            ]},
-            { key: 'tasks', icon: '📜', label: 'Quest Milestones', color: 'amber', titles: [
-                { id: 'determined', name: 'The Determined', description: 'Complete 10 tasks', rarity: 'common' },
-                { id: 'dedicated', name: 'The Dedicated', description: 'Complete 50 tasks', rarity: 'uncommon' },
-                { id: 'seasoned_adventurer', name: 'Seasoned Adventurer', description: 'Complete 100 tasks', rarity: 'rare' },
-                { id: 'relentless', name: 'The Relentless', description: 'Complete 250 tasks', rarity: 'epic' },
-                { id: 'quest_master', name: 'Quest Master', description: 'Complete 500 tasks', rarity: 'epic' },
-                { id: 'grand_master', name: 'Grand Master', description: 'Complete 1000 tasks', rarity: 'legendary' },
-            ]},
-            { key: 'streaks', icon: '🔥', label: 'Habit Streaks', color: 'orange', titles: [
-                { id: 'consistent', name: 'The Consistent', description: 'Maintain a 3-day streak', rarity: 'common' },
-                { id: 'disciplined', name: 'The Disciplined', description: 'Maintain a 7-day streak', rarity: 'uncommon' },
-                { id: 'devoted', name: 'The Devoted', description: 'Maintain a 14-day streak', rarity: 'rare' },
-                { id: 'unstoppable', name: 'The Unstoppable', description: 'Maintain a 30-day streak', rarity: 'epic' },
-                { id: 'iron_will', name: 'Iron Will', description: 'Maintain a 60-day streak', rarity: 'epic' },
-                { id: 'the_ascended', name: 'The Ascended', description: 'Maintain a 100-day streak', rarity: 'legendary' },
-                { id: 'eternal', name: 'The Eternal', description: 'Maintain a 365-day streak', rarity: 'legendary' },
-            ]},
-            { key: 'levels', icon: '⬆️', label: 'Level Milestones', color: 'blue', titles: [
-                { id: 'journeyman', name: 'Journeyman', description: 'Reach Level 10', rarity: 'uncommon' },
-                { id: 'veteran', name: 'Veteran', description: 'Reach Level 25', rarity: 'rare' },
-                { id: 'elite', name: 'Elite', description: 'Reach Level 50', rarity: 'epic' },
-                { id: 'legendary_hero', name: 'Legendary Hero', description: 'Reach Level 100', rarity: 'legendary' },
-            ]},
-            { key: 'goals', icon: '🏰', label: 'Goal Conqueror', color: 'purple', titles: [
-                // Life goals are major arcs even at count=1, so they skew
-                // higher than raw count suggests. Yearly goal = legendary
-                // because it represents a full annual commitment.
-                { id: 'legendary', name: 'The Legendary', description: 'Complete a life goal', rarity: 'epic' },
-                { id: 'dream_chaser', name: 'Dream Chaser', description: 'Complete 5 life goals', rarity: 'legendary' },
-                { id: 'weekly_warrior', name: 'Weekly Warrior', description: 'Complete 10 weekly goals', rarity: 'epic' },
-                { id: 'monthly_champion', name: 'Monthly Champion', description: 'Complete 6 monthly goals', rarity: 'epic' },
-                { id: 'visionary', name: 'The Visionary', description: 'Complete a yearly goal', rarity: 'legendary' },
-            ]},
-            { key: 'wealth', icon: '💰', label: 'Wealth & Treasury', color: 'yellow', titles: [
-                { id: 'wealthy', name: 'The Wealthy', description: 'Accumulate 1,000 gold', rarity: 'uncommon' },
-                { id: 'rich', name: 'The Rich', description: 'Accumulate 10,000 gold', rarity: 'epic' },
-                { id: 'tycoon', name: 'Tycoon', description: 'Accumulate 100,000 gold', rarity: 'legendary' },
-                { id: 'treasure_hunter', name: 'Treasure Hunter', description: 'Open your first chest', rarity: 'common' },
-                { id: 'loot_seeker', name: 'Loot Seeker', description: 'Open 25 chests', rarity: 'rare' },
-                { id: 'chest_master', name: 'Chest Master', description: 'Open 100 chests', rarity: 'legendary' },
-            ]},
-            { key: 'arcane', icon: '✨', label: 'Arcane Mastery', color: 'indigo', titles: [
-                { id: 'focused', name: 'The Focused', description: 'Complete your first focus session', rarity: 'common' },
-                { id: 'zen_master', name: 'Zen Master', description: 'Complete 25 focus sessions', rarity: 'rare' },
-                { id: 'meditation_guru', name: 'Meditation Guru', description: 'Complete 100 focus sessions', rarity: 'legendary' },
-                { id: 'spellcaster', name: 'Spellcaster', description: 'Cast your first spell', rarity: 'common' },
-                { id: 'mage', name: 'Mage', description: 'Cast 25 spells', rarity: 'rare' },
-                { id: 'archmage', name: 'Archmage', description: 'Cast 50 spells', rarity: 'epic' },
-            ]},
-            { key: 'combat', icon: '🐉', label: 'Combat & Companions', color: 'red', titles: [
-                { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first boss', rarity: 'common' },
-                { id: 'champion', name: 'Champion', description: 'Defeat 10 bosses', rarity: 'rare' },
-                { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat 50 bosses', rarity: 'legendary' },
-                // Companions drop from chests, so first companion is
-                // onboarding tier; collecting all 10 is the capstone.
-                { id: 'beast_friend', name: 'Beast Friend', description: 'Obtain your first companion', rarity: 'common' },
-                { id: 'beast_master', name: 'Beast Master', description: 'Collect 5 companions', rarity: 'rare' },
-                { id: 'menagerie_keeper', name: 'Menagerie Keeper', description: 'Collect 10 companions', rarity: 'legendary' },
-            ]},
-            { key: 'login', icon: '👑', label: 'Login Streak Milestones', color: 'yellow', titles: [
-                { id: 'centurion', name: '🌟 Centurion', description: '100-day login streak', rarity: 'epic' },
-                { id: 'mythic_warrior', name: '🏆 Mythic Warrior', description: '365-day login streak', rarity: 'legendary' },
-            ]},
-        ];
+/**
+ * The #titles-container body: the collection progress summary, one collapsible section per
+ * achievement-title category (earned + locked ??? cards, each with rarity chrome), and the Level
+ * Ranks section (the auto-earned L1..Ln chain from levelTitles[style], driven by level). Byte-faithful
+ * to the original inline template concatenation; the titleCategories catalog is this builder's local
+ * const (it was inline, purely presentational). Names/descriptions interpolated RAW (faithful).
+ * @param {{
+ *   unlockedTitles: Array<{ id: string, name?: string, description?: string }>,
+ *   currentTitle: string | null,
+ *   level: number,
+ *   titleStyle: string,
+ *   levelTitles: Record<string, string[]>,
+ * }} deps
+ * @returns {string}
+ */
+function renderTitleHallContentHTML({ unlockedTitles, currentTitle, level, titleStyle, levelTitles }) {
+    const titleCategories = /** @type {Array<{ key: string, icon: string, label: string, color: string, titles: Array<{ id: string, name: string, description: string, rarity: string }> }>} */ (TITLE_DEFINITIONS.categories);
 
-        const unlockedIds = new Set(unlockedTitles.map(t => t.id));
-        const unlockedMap = /** @type {Record<string, any>} */ ({});
-        unlockedTitles.forEach(t => { unlockedMap[t.id] = t; });
-        const totalUnlocked = unlockedTitles.length;
-        const totalTitles = titleCategories.reduce((sum, cat) => sum + cat.titles.length, 0);
+    const unlockedIds = new Set(unlockedTitles.map(t => t.id));
+    const unlockedMap = /** @type {Record<string, any>} */ ({});
+    unlockedTitles.forEach(t => { unlockedMap[t.id] = t; });
+    const totalUnlocked = unlockedTitles.length;
+    const totalTitles = titleCategories.reduce((sum, cat) => sum + cat.titles.length, 0);
 
-        // Progress summary
-        const progressPct = totalTitles > 0 ? Math.round((totalUnlocked / totalTitles) * 100) : 0;
-        let html = `
+    // Progress summary
+    const progressPct = totalTitles > 0 ? Math.round((totalUnlocked / totalTitles) * 100) : 0;
+    let html = `
             <div class="mb-4 p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-amber-300 fancy-font text-sm font-bold">Title Collection</span>
@@ -167,16 +105,16 @@
             </div>
         `;
 
-        // Render each category as a collapsible section
-        titleCategories.forEach(cat => {
-            const earned = cat.titles.filter(t => unlockedIds.has(t.id));
-            const locked = cat.titles.filter(t => !unlockedIds.has(t.id));
-            const catComplete = locked.length === 0;
-            const catPct = Math.round((earned.length / cat.titles.length) * 100);
-            // Default open if category has any earned titles, or is Early Game
-            const defaultOpen = earned.length > 0 || cat.key === 'early';
+    // Render each category as a collapsible section
+    titleCategories.forEach(cat => {
+        const earned = cat.titles.filter(t => unlockedIds.has(t.id));
+        const locked = cat.titles.filter(t => !unlockedIds.has(t.id));
+        const catComplete = locked.length === 0;
+        const catPct = Math.round((earned.length / cat.titles.length) * 100);
+        // Default open if category has any earned titles, or is Early Game
+        const defaultOpen = earned.length > 0 || cat.key === 'early';
 
-            html += `
+        html += `
                 <div class="mb-3">
                     <button onclick="this.parentElement.querySelector('.title-cat-body').classList.toggle('hidden');this.querySelector('.title-cat-arrow').classList.toggle('rotate-90')"
                         class="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/40 transition-all cursor-pointer text-left">
@@ -198,12 +136,12 @@
                     <div class="title-cat-body ${defaultOpen ? '' : 'hidden'} mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pl-2">
             `;
 
-            // Earned titles in this category
-            earned.forEach(t => {
-                const titleData = unlockedMap[t.id] || t;
-                const active = currentTitle === t.id;
-                const rarity = t.rarity || 'common';
-                html += `
+        // Earned titles in this category
+        earned.forEach(t => {
+            const titleData = unlockedMap[t.id] || t;
+            const active = currentTitle === t.id;
+            const rarity = t.rarity || 'common';
+            html += `
                     <div data-rarity="${rarity}" class="rarity-frame bg-gradient-to-br from-purple-900/80 to-purple-950/80 p-4 rounded-xl shadow-lg border-2 ${active ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-purple-600/60'} text-center">
                         <div class="text-3xl mb-1">🎖️</div>
                         <h5 class="font-bold text-amber-300 text-sm medieval-title mb-1">"${titleData.name}"</h5>
@@ -218,41 +156,41 @@
                         `}
                     </div>
                 `;
-            });
+        });
 
-            // Locked titles in this category — same rarity chrome so the
-            // shape of the collection is visible even before unlock
-            // (player can see at a glance which slots are the rare/epic/
-            // legendary capstones in this category).
-            locked.forEach(t => {
-                const rarity = t.rarity || 'common';
-                html += `
+        // Locked titles in this category — same rarity chrome so the
+        // shape of the collection is visible even before unlock
+        // (player can see at a glance which slots are the rare/epic/
+        // legendary capstones in this category).
+        locked.forEach(t => {
+            const rarity = t.rarity || 'common';
+            html += `
                     <div data-rarity="${rarity}" class="rarity-frame bg-gradient-to-br from-stone-800/60 to-stone-900/60 p-4 rounded-xl border-2 border-stone-700/40 text-center opacity-50">
                         <div class="text-3xl mb-1">🔒</div>
                         <h5 class="font-bold text-stone-400 text-sm mb-1">???</h5>
                         <p class="text-xs text-stone-500">${t.description}</p>
                     </div>
                 `;
-            });
-
-            html += `</div></div>`;
         });
 
-        // === LEVEL RANKS (L1–L50) ===
-        // These are the auto-earned rank chain from getLevelTitle()
-        // (Wanderer → … → Paragon), distinct from the achievement titles
-        // above — they're driven by `level`, not `unlockedTitles`.
-        // Surfaced here so players can see the full progression and which
-        // ranks they've reached. Style-aware so the feminine chain shows
-        // its gendered counterparts.
-        const rankStyle = titleStyle === 'feminine' ? 'feminine' : 'masculine';
-        const ranks = levelTitles[rankStyle] || [];
-        const earnedRankCount = Math.min(level, ranks.length);
-        const currentRankIdx = Math.min(Math.max(level - 1, 0), ranks.length - 1);
-        const rankPct = ranks.length > 0 ? Math.round((earnedRankCount / ranks.length) * 100) : 0;
-        const ranksComplete = earnedRankCount >= ranks.length;
+        html += `</div></div>`;
+    });
 
-        html += `
+    // === LEVEL RANKS (L1–L50) ===
+    // These are the auto-earned rank chain from getLevelTitle()
+    // (Wanderer → … → Paragon), distinct from the achievement titles
+    // above — they're driven by `level`, not `unlockedTitles`.
+    // Surfaced here so players can see the full progression and which
+    // ranks they've reached. Style-aware so the feminine chain shows
+    // its gendered counterparts.
+    const rankStyle = titleStyle === 'feminine' ? 'feminine' : 'masculine';
+    const ranks = levelTitles[rankStyle] || [];
+    const earnedRankCount = Math.min(level, ranks.length);
+    const currentRankIdx = Math.min(Math.max(level - 1, 0), ranks.length - 1);
+    const rankPct = ranks.length > 0 ? Math.round((earnedRankCount / ranks.length) * 100) : 0;
+    const ranksComplete = earnedRankCount >= ranks.length;
+
+    html += `
             <div class="mb-3">
                 <button onclick="this.parentElement.querySelector('.title-cat-body').classList.toggle('hidden');this.querySelector('.title-cat-arrow').classList.toggle('rotate-90')"
                     class="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700/40 transition-all cursor-pointer text-left">
@@ -295,22 +233,15 @@
             </div>
         `;
 
-        return html;
-    }
+    return html;
+}
 
-    const TITLE_RENDER = Object.freeze({
-        renderActiveTitleDisplayHTML,
-        renderTitleHallContentHTML,
-    });
+const TITLE_RENDER = Object.freeze({
+    renderActiveTitleDisplayHTML,
+    renderTitleHallContentHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic TITLE_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.TITLE_RENDER = TITLE_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = TITLE_RENDER;
-})();
+// Node / Jest
+
+export default TITLE_RENDER;

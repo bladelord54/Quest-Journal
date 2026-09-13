@@ -31,37 +31,37 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.QUEST_CHAIN_RENDER.
  *   - Jest/Node: require('./quest-chain-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * Active (in-progress) quest-chain cards.
-     * @param {any[]} activeChains  `this.activeQuestChains` — each has id, templateId,
-     *   currentChapterIndex, chapters[], completedTasks[].
-     * @param {{ templates: Record<string, any>, spellDefinitions: Record<string, any> }} deps
-     *   templates = the `questChainTemplates` catalog keyed by templateId; spellDefinitions =
-     *   the spell catalog (for the chapter reward's spell name).
-     * @returns {string}
-     */
-    function renderActiveQuestChainsHTML(activeChains, { templates, spellDefinitions }) {
-        if (activeChains.length === 0) {
-            return `
+
+/**
+ * Active (in-progress) quest-chain cards.
+ * @param {any[]} activeChains  `this.activeQuestChains` — each has id, templateId,
+ *   currentChapterIndex, chapters[], completedTasks[].
+ * @param {{ templates: Record<string, any>, spellDefinitions: Record<string, any> }} deps
+ *   templates = the `questChainTemplates` catalog keyed by templateId; spellDefinitions =
+ *   the spell catalog (for the chapter reward's spell name).
+ * @returns {string}
+ */
+function renderActiveQuestChainsHTML(activeChains, { templates, spellDefinitions }) {
+    if (activeChains.length === 0) {
+        return `
                 <div class="text-center py-12 text-cyan-200">
                     <div class="text-8xl mb-4 opacity-30">⛓️</div>
                     <p class="fancy-font text-lg">No active quest chains. Start an adventure below!</p>
                 </div>
             `;
-        }
+    }
 
-        // Filter out chains with missing templates
-        const validChains = activeChains.filter(chain => 
-            templates[chain.templateId] !== undefined
-        );
+    // Filter out chains with missing templates
+    const validChains = activeChains.filter(chain => 
+        templates[chain.templateId] !== undefined
+    );
+    
+    const html = validChains.map(chain => {
+        const template = templates[chain.templateId];
+        const currentChapter = chain.chapters[chain.currentChapterIndex];
+        const progress = Math.round((chain.currentChapterIndex / template.chapters.length) * 100);
         
-        const html = validChains.map(chain => {
-            const template = templates[chain.templateId];
-            const currentChapter = chain.chapters[chain.currentChapterIndex];
-            const progress = Math.round((chain.currentChapterIndex / template.chapters.length) * 100);
-            
-            return `
+        return `
                 <div class="bg-gradient-to-br from-cyan-900 to-cyan-950 p-6 rounded-xl border-3 border-cyan-600 shadow-2xl">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center gap-4">
@@ -130,37 +130,37 @@
                     </div>
                 </div>
             `;
-        }).join('');
+    }).join('');
 
-        return html;
-    }
+    return html;
+}
 
-    /**
-     * Available (not-yet-started) quest-chain catalog cards.
-     * @param {any[]} activeChains     `this.activeQuestChains` (excluded from the catalog)
-     * @param {any[]} completedChains  `this.completedQuestChains` (excluded from the catalog)
-     * @param {{ templates: Record<string, any> }} deps  the `questChainTemplates` catalog
-     * @returns {string}
-     */
-    function renderAvailableQuestChainsHTML(activeChains, completedChains, { templates }) {
-        // Get templates that aren't currently active or completed
-        const activeIds = activeChains.map(c => c.templateId);
-        const completedIds = completedChains.map(c => c.templateId);
-        const availableTemplates = Object.values(templates)
-            .filter(t => !activeIds.includes(t.id) && !completedIds.includes(t.id));
+/**
+ * Available (not-yet-started) quest-chain catalog cards.
+ * @param {any[]} activeChains     `this.activeQuestChains` (excluded from the catalog)
+ * @param {any[]} completedChains  `this.completedQuestChains` (excluded from the catalog)
+ * @param {{ templates: Record<string, any> }} deps  the `questChainTemplates` catalog
+ * @returns {string}
+ */
+function renderAvailableQuestChainsHTML(activeChains, completedChains, { templates }) {
+    // Get templates that aren't currently active or completed
+    const activeIds = activeChains.map(c => c.templateId);
+    const completedIds = completedChains.map(c => c.templateId);
+    const availableTemplates = Object.values(templates)
+        .filter(t => !activeIds.includes(t.id) && !completedIds.includes(t.id));
 
-        if (availableTemplates.length === 0) {
-            return `
+    if (availableTemplates.length === 0) {
+        return `
                 <div class="col-span-3 text-center py-8 text-cyan-200">
                     <p class="fancy-font">All quest chains completed or in progress! More coming soon...</p>
                 </div>
             `;
-        }
+    }
 
-        const html = availableTemplates.map(template => {
-            const difficultyColor = template.difficulty === 'easy' ? 'green' : template.difficulty === 'medium' ? 'yellow' : 'red';
-            
-            return `
+    const html = availableTemplates.map(template => {
+        const difficultyColor = template.difficulty === 'easy' ? 'green' : template.difficulty === 'medium' ? 'yellow' : 'red';
+        
+        return `
                 <div class="bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg border-2 border-cyan-700/50 hover:border-cyan-500 transition-all cursor-pointer group">
                     <div class="text-5xl mb-3 text-center group-hover:scale-110 transition-transform">${template.icon}</div>
                     <h4 class="text-lg font-bold text-cyan-300 medieval-title mb-2 text-center">${template.name}</h4>
@@ -179,37 +179,37 @@
                     </button>
                 </div>
             `;
-        }).join('');
+    }).join('');
 
-        return html;
-    }
+    return html;
+}
 
-    /**
-     * Completed quest-chain trophy cards.
-     * @param {any[]} completedChains  `this.completedQuestChains` — each has templateId + completedAt.
-     * @param {{ templates: Record<string, any> }} deps  the `questChainTemplates` catalog
-     * @returns {string}
-     */
-    function renderCompletedQuestChainsHTML(completedChains, { templates }) {
-        if (completedChains.length === 0) {
-            return `
+/**
+ * Completed quest-chain trophy cards.
+ * @param {any[]} completedChains  `this.completedQuestChains` — each has templateId + completedAt.
+ * @param {{ templates: Record<string, any> }} deps  the `questChainTemplates` catalog
+ * @returns {string}
+ */
+function renderCompletedQuestChainsHTML(completedChains, { templates }) {
+    if (completedChains.length === 0) {
+        return `
                 <div class="col-span-3 text-center py-8 text-cyan-200">
                     <div class="text-6xl mb-3 opacity-30">🏆</div>
                     <p class="fancy-font">No completed quest chains yet. Finish your first saga!</p>
                 </div>
             `;
-        }
+    }
 
-        // Filter out chains with missing templates
-        const validChains = completedChains.filter(chain => 
-            templates[chain.templateId] !== undefined
-        );
-        
-        const html = validChains.map(chain => {
-            const template = templates[chain.templateId];
-            const completedDate = chain.completedAt ? new Date(chain.completedAt).toLocaleDateString() : '';
+    // Filter out chains with missing templates
+    const validChains = completedChains.filter(chain => 
+        templates[chain.templateId] !== undefined
+    );
+    
+    const html = validChains.map(chain => {
+        const template = templates[chain.templateId];
+        const completedDate = chain.completedAt ? new Date(chain.completedAt).toLocaleDateString() : '';
 
-            return `
+        return `
                 <div class="bg-gradient-to-br from-green-900/40 to-stone-900/40 p-4 rounded-lg border-2 border-green-600/50">
                     <div class="text-4xl mb-2 text-center grayscale opacity-75">${template.icon}</div>
                     <h4 class="text-lg font-bold text-green-300 medieval-title mb-1 text-center">${template.name}</h4>
@@ -227,25 +227,18 @@
                     </div>
                 </div>
             `;
-        }).join('');
+    }).join('');
 
-        return html;
-    }
+    return html;
+}
 
-    const QUEST_CHAIN_RENDER = Object.freeze({
-        renderActiveQuestChainsHTML,
-        renderAvailableQuestChainsHTML,
-        renderCompletedQuestChainsHTML,
-    });
+const QUEST_CHAIN_RENDER = Object.freeze({
+    renderActiveQuestChainsHTML,
+    renderAvailableQuestChainsHTML,
+    renderCompletedQuestChainsHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic QUEST_CHAIN_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.QUEST_CHAIN_RENDER = QUEST_CHAIN_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = QUEST_CHAIN_RENDER;
-})();
+// Node / Jest
+
+export default QUEST_CHAIN_RENDER;

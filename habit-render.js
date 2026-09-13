@@ -22,17 +22,17 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.HABIT_RENDER.
  *   - Jest/Node: require('./habit-render.js') returns the frozen builder via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   habits: Array<{ id: number|string, title: string, completedToday?: boolean, streak: number, description?: string, totalCompletions?: number }>,
-     *   escapeHTML: (s: string) => string,
-     *   heatmapHTML: (habit: any) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderHabitsHTML({ habits, escapeHTML, heatmapHTML }) {
-        return habits.map(habit => `
+
+/**
+ * @param {{
+ *   habits: Array<{ id: number|string, title: string, completedToday?: boolean, streak: number, description?: string, totalCompletions?: number }>,
+ *   escapeHTML: (s: string) => string,
+ *   heatmapHTML: (habit: any) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderHabitsHTML({ habits, escapeHTML, heatmapHTML }) {
+    return habits.map(habit => `
                 <div class="quest-card bg-gradient-to-br from-yellow-100 to-amber-50 p-5 rounded-lg shadow-lg border-3 border-yellow-600 hover:shadow-xl transition-all draggable-item"
                     data-habit-id="${habit.id}"
                     draggable="true"
@@ -70,18 +70,11 @@
                     ${heatmapHTML(habit)}
                 </div>
             `).join('');
-    }
+}
 
-    const HABIT_RENDER = Object.freeze({ renderHabitsHTML });
+const HABIT_RENDER = Object.freeze({ renderHabitsHTML });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic HABIT_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.HABIT_RENDER = HABIT_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = HABIT_RENDER;
-})();
+// Node / Jest
+
+export default HABIT_RENDER;

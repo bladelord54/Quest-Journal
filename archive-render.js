@@ -23,39 +23,39 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.ARCHIVE_RENDER.
  *   - Jest/Node: require('./archive-render.js') returns the frozen builder via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   archivedGoals: Array<{ id: number|string, type: string, title: string, description?: string, completed?: boolean, archivedAt: string|number|Date }>,
-     *   escapeHTML: (s: string) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderArchivesHTML({ archivedGoals, escapeHTML }) {
-        const sortedArchives = [...archivedGoals].sort((a, b) => 
-                new Date(b.archivedAt).getTime() - new Date(a.archivedAt).getTime()
-            );
+
+/**
+ * @param {{
+ *   archivedGoals: Array<{ id: number|string, type: string, title: string, description?: string, completed?: boolean, archivedAt: string|number|Date }>,
+ *   escapeHTML: (s: string) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderArchivesHTML({ archivedGoals, escapeHTML }) {
+    const sortedArchives = [...archivedGoals].sort((a, b) => 
+            new Date(b.archivedAt).getTime() - new Date(a.archivedAt).getTime()
+        );
+        
+        return sortedArchives.map(goal => {
+            const typeIcons = {
+                life: '🏰',
+                yearly: '📅',
+                monthly: '🗓️',
+                weekly: '⚔️',
+                daily: '🗡️'
+            };
             
-            return sortedArchives.map(goal => {
-                const typeIcons = {
-                    life: '🏰',
-                    yearly: '📅',
-                    monthly: '🗓️',
-                    weekly: '⚔️',
-                    daily: '🗡️'
-                };
-                
-                const typeColors = {
-                    life: 'red',
-                    yearly: 'purple',
-                    monthly: 'blue',
-                    weekly: 'green',
-                    daily: 'orange'
-                };
-                
-                const color = (/** @type {Record<string, string>} */ (typeColors))[goal.type] || 'gray';
-                
-                return `
+            const typeColors = {
+                life: 'red',
+                yearly: 'purple',
+                monthly: 'blue',
+                weekly: 'green',
+                daily: 'orange'
+            };
+            
+            const color = (/** @type {Record<string, string>} */ (typeColors))[goal.type] || 'gray';
+            
+            return `
                     <div class="quest-card bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700">
                         <div class="flex items-start space-x-4">
                             <div class="text-3xl">${(/** @type {Record<string, string>} */ (typeIcons))[goal.type]}</div>
@@ -81,19 +81,12 @@
                         </div>
                     </div>
                 `;
-            }).join('');
-    }
+        }).join('');
+}
 
-    const ARCHIVE_RENDER = Object.freeze({ renderArchivesHTML });
+const ARCHIVE_RENDER = Object.freeze({ renderArchivesHTML });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic ARCHIVE_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.ARCHIVE_RENDER = ARCHIVE_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = ARCHIVE_RENDER;
-})();
+// Node / Jest
+
+export default ARCHIVE_RENDER;

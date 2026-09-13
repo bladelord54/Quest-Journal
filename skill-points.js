@@ -43,86 +43,79 @@
  *   - Jest/Node: require('./skill-points.js') returns the frozen object via module.exports (and also sets
  *     window.SKILL_POINTS under jsdom).
  */
-(function () {
-    /**
-     * Lifetime skill points earned: 1 per level beyond the unlock level, clamped at 0. PURE.
-     * @param {number} level
-     * @param {number|null|undefined} classUnlockLevel  defaults to 10
-     * @returns {number}
-     */
-    function earnedSkillPoints(level, classUnlockLevel) {
-        return Math.max(0, level - (classUnlockLevel || 10));
-    }
 
-    /**
-     * Unspent skill points, clamped at 0. PURE.
-     * @param {number} earned
-     * @param {number|null|undefined} skillPointsSpent
-     * @returns {number}
-     */
-    function availableSkillPoints(earned, skillPointsSpent) {
-        return Math.max(0, earned - (skillPointsSpent || 0));
-    }
+/**
+ * Lifetime skill points earned: 1 per level beyond the unlock level, clamped at 0. PURE.
+ * @param {number} level
+ * @param {number|null|undefined} classUnlockLevel  defaults to 10
+ * @returns {number}
+ */
+function earnedSkillPoints(level, classUnlockLevel) {
+    return Math.max(0, level - (classUnlockLevel || 10));
+}
 
-    /**
-     * True once the player may PICK a class (earlier than the point supply). PURE.
-     * @param {number} level
-     * @param {number|null|undefined} classSelectLevel  defaults to 8
-     * @returns {boolean}
-     */
-    function isClassSystemUnlocked(level, classSelectLevel) {
-        return level >= (classSelectLevel || 8);
-    }
+/**
+ * Unspent skill points, clamped at 0. PURE.
+ * @param {number} earned
+ * @param {number|null|undefined} skillPointsSpent
+ * @returns {number}
+ */
+function availableSkillPoints(earned, skillPointsSpent) {
+    return Math.max(0, earned - (skillPointsSpent || 0));
+}
 
-    /**
-     * True once the base class is mastered AND the subclass level is reached. PURE.
-     * @param {boolean} classMastered
-     * @param {number} level
-     * @param {number|null|undefined} subclassUnlockLevel  defaults to 40
-     * @returns {boolean}
-     */
-    function isSubclassUnlocked(classMastered, level, subclassUnlockLevel) {
-        return classMastered && level >= (subclassUnlockLevel || 40);
-    }
+/**
+ * True once the player may PICK a class (earlier than the point supply). PURE.
+ * @param {number} level
+ * @param {number|null|undefined} classSelectLevel  defaults to 8
+ * @returns {boolean}
+ */
+function isClassSystemUnlocked(level, classSelectLevel) {
+    return level >= (classSelectLevel || 8);
+}
 
-    /**
-     * The class-respec Focus-Crystal fee — 0 (free) while no points have accrued. PURE.
-     * @param {number} earnedPoints
-     * @param {number|null|undefined} baseCost  defaults to 5
-     * @returns {number}
-     */
-    function respecCost(earnedPoints, baseCost) {
-        return earnedPoints > 0 ? (baseCost || 5) : 0;
-    }
+/**
+ * True once the base class is mastered AND the subclass level is reached. PURE.
+ * @param {boolean} classMastered
+ * @param {number} level
+ * @param {number|null|undefined} subclassUnlockLevel  defaults to 40
+ * @returns {boolean}
+ */
+function isSubclassUnlocked(classMastered, level, subclassUnlockLevel) {
+    return classMastered && level >= (subclassUnlockLevel || 40);
+}
 
-    /**
-     * The shared-pool spent total after a subclass-only respec: only the subclass's sunk points return,
-     * clamped at 0. PURE.
-     * @param {number|null|undefined} skillPointsSpent
-     * @param {number} subclassPointsSpent
-     * @returns {number}
-     */
-    function refundedSpent(skillPointsSpent, subclassPointsSpent) {
-        return Math.max(0, (skillPointsSpent || 0) - subclassPointsSpent);
-    }
+/**
+ * The class-respec Focus-Crystal fee — 0 (free) while no points have accrued. PURE.
+ * @param {number} earnedPoints
+ * @param {number|null|undefined} baseCost  defaults to 5
+ * @returns {number}
+ */
+function respecCost(earnedPoints, baseCost) {
+    return earnedPoints > 0 ? (baseCost || 5) : 0;
+}
 
-    const SKILL_POINTS = Object.freeze({
-        earnedSkillPoints,
-        availableSkillPoints,
-        isClassSystemUnlocked,
-        isSubclassUnlocked,
-        respecCost,
-        refundedSpent,
-    });
+/**
+ * The shared-pool spent total after a subclass-only respec: only the subclass's sunk points return,
+ * clamped at 0. PURE.
+ * @param {number|null|undefined} skillPointsSpent
+ * @param {number} subclassPointsSpent
+ * @returns {number}
+ */
+function refundedSpent(skillPointsSpent, subclassPointsSpent) {
+    return Math.max(0, (skillPointsSpent || 0) - subclassPointsSpent);
+}
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // SKILL_POINTS property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.SKILL_POINTS = SKILL_POINTS;
+const SKILL_POINTS = Object.freeze({
+    earnedSkillPoints,
+    availableSkillPoints,
+    isClassSystemUnlocked,
+    isSubclassUnlocked,
+    respecCost,
+    refundedSpent,
+});
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = SKILL_POINTS;
-})();
+
+// Node / Jest
+
+export default SKILL_POINTS;

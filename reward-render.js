@@ -24,26 +24,26 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.REWARD_RENDER.
  *   - Jest/Node: require('./reward-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   canClaimWooden: boolean,
-     *   goldCoins: number,
-     *   treasureChests: Array<{ type: string }>,
-     *   chestStaticHTML: (tier: string, emoji: string, extraClasses?: string) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderTreasureChestsHTML({ canClaimWooden, goldCoins, treasureChests, chestStaticHTML }) {
-        const chestTypes = [
-            { type: 'bronze', name: 'Bronze Chest', cost: 200, color: 'orange', icon: '🎁', rarity: 'uncommon' },
-            { type: 'silver', name: 'Silver Chest', cost: 600, color: 'gray', icon: '💎', rarity: 'rare' },
-            { type: 'gold', name: 'Gold Chest', cost: 1500, color: 'yellow', icon: '👑', rarity: 'epic' },
-            { type: 'royal', name: 'Royal Chest', cost: 5000, color: 'purple', icon: '⭐', rarity: 'legendary' }
-        ];
 
-        // Daily Free Wooden Chest at the top
-        const woodenChestHTML = `
+/**
+ * @param {{
+ *   canClaimWooden: boolean,
+ *   goldCoins: number,
+ *   treasureChests: Array<{ type: string }>,
+ *   chestStaticHTML: (tier: string, emoji: string, extraClasses?: string) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderTreasureChestsHTML({ canClaimWooden, goldCoins, treasureChests, chestStaticHTML }) {
+    const chestTypes = [
+        { type: 'bronze', name: 'Bronze Chest', cost: 200, color: 'orange', icon: '🎁', rarity: 'uncommon' },
+        { type: 'silver', name: 'Silver Chest', cost: 600, color: 'gray', icon: '💎', rarity: 'rare' },
+        { type: 'gold', name: 'Gold Chest', cost: 1500, color: 'yellow', icon: '👑', rarity: 'epic' },
+        { type: 'royal', name: 'Royal Chest', cost: 5000, color: 'purple', icon: '⭐', rarity: 'legendary' }
+    ];
+
+    // Daily Free Wooden Chest at the top
+    const woodenChestHTML = `
             <div data-rarity="common" class="quest-card rarity-frame bg-gradient-to-br from-yellow-900/80 to-amber-950/80 p-5 rounded-xl shadow-xl border-3 border-yellow-600 text-center relative overflow-hidden">
                 ${canClaimWooden ? '<div class="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full fancy-font animate-pulse">FREE</div>' : ''}
                 ${chestStaticHTML('wooden', '🪵', canClaimWooden ? 'animate-bounce' : 'opacity-40')}
@@ -57,11 +57,11 @@
             </div>
         `;
 
-        return woodenChestHTML + chestTypes.map(chest => {
-            const canAfford = goldCoins >= chest.cost;
-            const timesOpened = treasureChests.filter(c => c.type === chest.type).length;
-            
-            return `
+    return woodenChestHTML + chestTypes.map(chest => {
+        const canAfford = goldCoins >= chest.cost;
+        const timesOpened = treasureChests.filter(c => c.type === chest.type).length;
+        
+        return `
                 <div data-rarity="${chest.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${chest.color}-900 to-${chest.color}-950 p-5 rounded-xl shadow-xl border-3 border-${chest.color}-600 text-center">
                     ${chestStaticHTML(chest.type, chest.icon)}
                     <h4 class="text-xl font-bold text-amber-300 medieval-title mb-2">${chest.name}</h4>
@@ -76,21 +76,14 @@
                     </button>
                 </div>
             `;
-        }).join('');
-    }
+    }).join('');
+}
 
-    const REWARD_RENDER = Object.freeze({
-        renderTreasureChestsHTML,
-    });
+const REWARD_RENDER = Object.freeze({
+    renderTreasureChestsHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic REWARD_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.REWARD_RENDER = REWARD_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = REWARD_RENDER;
-})();
+// Node / Jest
+
+export default REWARD_RENDER;

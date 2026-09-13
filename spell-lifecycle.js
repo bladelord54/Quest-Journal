@@ -66,138 +66,131 @@
  *   - Jest/Node: require('./spell-lifecycle.js') returns the frozen object via module.exports (and also sets
  *     window.SPELL_LIFECYCLE under jsdom).
  */
-(function () {
-    /**
-     * @typedef {{ spellId: string, castedAt?: number, expiresAt: number, overcharged?: any }} ActiveSpell
-     */
 
-    /** `duration`/`expiresAt` sentinel: active until triggered, never expires on a clock. */
-    const PERMANENT = -1;
-    /** `duration` sentinel: an instant effect that never enters the activeSpells array. */
-    const INSTANT = 0;
+/**
+ * @typedef {{ spellId: string, castedAt?: number, expiresAt: number, overcharged?: any }} ActiveSpell
+ */
 
-    /**
-     * The canonical "is this spell active right now" predicate: the id matches AND the entry is either
-     * permanent or not yet expired. PURE.
-     * @param {ActiveSpell[]|null|undefined} spells
-     * @param {string} spellId
-     * @param {number} now epoch ms
-     * @returns {boolean}
-     */
-    function isActive(spells, spellId, now) {
-        return (spells || []).some(s => s.spellId === spellId && (s.expiresAt === PERMANENT || s.expiresAt > now));
+/** `duration`/`expiresAt` sentinel: active until triggered, never expires on a clock. */
+const PERMANENT = -1;
+/** `duration` sentinel: an instant effect that never enters the activeSpells array. */
+const INSTANT = 0;
+
+/**
+ * The canonical "is this spell active right now" predicate: the id matches AND the entry is either
+ * permanent or not yet expired. PURE.
+ * @param {ActiveSpell[]|null|undefined} spells
+ * @param {string} spellId
+ * @param {number} now epoch ms
+ * @returns {boolean}
+ */
+function isActive(spells, spellId, now) {
+    return (spells || []).some(s => s.spellId === spellId && (s.expiresAt === PERMANENT || s.expiresAt > now));
+}
+
+/**
+ * The active entry for a spell, or null. Same predicate as isActive. PURE.
+ * @param {ActiveSpell[]|null|undefined} spells
+ * @param {string} spellId
+ * @param {number} now epoch ms
+ * @returns {ActiveSpell|null}
+ */
+function findActive(spells, spellId, now) {
+    return (spells || []).find(s => s.spellId === spellId && (s.expiresAt === PERMANENT || s.expiresAt > now)) || null;
+}
+
+/**
+ * A NEW array with every entry of the given spell removed — trigger-consumption. Does not mutate. PURE.
+ * @param {ActiveSpell[]|null|undefined} spells
+ * @param {string} spellId
+ * @returns {ActiveSpell[]}
+ */
+function consume(spells, spellId) {
+    return (spells || []).filter(s => s.spellId !== spellId);
+}
+
+/**
+ * Split the active spells into those that survive and those that just expired. Permanent entries are
+ * NEVER expired by the clock; `expiresAt <= now` is expired. PURE.
+ * @param {ActiveSpell[]|null|undefined} spells
+ * @param {number} now epoch ms
+ * @returns {{ kept: ActiveSpell[], expired: ActiveSpell[] }}
+ */
+function expirySweep(spells, now) {
+    const all = spells || [];
+    return {
+        kept: all.filter(s => s.expiresAt === PERMANENT || s.expiresAt > now),
+        expired: all.filter(s => s.expiresAt !== PERMANENT && s.expiresAt <= now),
+    };
+}
+
+/**
+ * Apply a duration multiplier (Wizard Sustained Casting / Archmage) to a spell duration. Only TIMED
+ * spells scale — the -1 and 0 sentinels pass through untouched so an "until triggered" spell can never be
+ * turned into a timed one by a perk. PURE.
+ * @param {number} duration
+ * @param {number} multiplier
+ * @returns {number}
+ */
+function effectiveDuration(duration, multiplier) {
+    return duration > 0 ? Math.round(duration * (multiplier || 1)) : duration;
+}
+
+/**
+ * True when a definition is "active until triggered" rather than clock-bound. This is the single source of
+ * truth for the distinction that used to be implicit across thirteen call sites. PURE.
+ * @param {{ duration?: number }|null|undefined} def
+ * @returns {boolean}
+ */
+function isTriggerConsumed(def) {
+    return !!def && def.duration === PERMANENT;
+}
+
+/**
+ * True for an instant-effect definition, which never enters the activeSpells array at all. PURE.
+ * @param {{ duration?: number }|null|undefined} def
+ * @returns {boolean}
+ */
+function isInstant(def) {
+    return !!def && def.duration === INSTANT;
+}
+
+/**
+ * Build the activeSpells record for a cast, or null for an instant spell that never enters the array.
+ * The permanent branch intentionally omits `overcharged` (an until-triggered cast records no
+ * overcharge flag), matching the inline code exactly. PURE.
+ * @param {{ id: string, duration: number }|null|undefined} spell
+ * @param {{ now?: number, effectiveDuration?: number, overcharged?: any }} [opts]
+ * @returns {ActiveSpell|null}
+ */
+function castEntry(spell, opts) {
+    if (!spell) return null;
+    const o = opts || {};
+    const now = o.now || 0;
+    if (spell.duration > 0) {
+        const dur = o.effectiveDuration === undefined ? spell.duration : o.effectiveDuration;
+        return { spellId: spell.id, castedAt: now, expiresAt: now + dur, overcharged: o.overcharged };
     }
-
-    /**
-     * The active entry for a spell, or null. Same predicate as isActive. PURE.
-     * @param {ActiveSpell[]|null|undefined} spells
-     * @param {string} spellId
-     * @param {number} now epoch ms
-     * @returns {ActiveSpell|null}
-     */
-    function findActive(spells, spellId, now) {
-        return (spells || []).find(s => s.spellId === spellId && (s.expiresAt === PERMANENT || s.expiresAt > now)) || null;
+    if (spell.duration === PERMANENT) {
+        return { spellId: spell.id, castedAt: now, expiresAt: PERMANENT };
     }
+    return null;
+}
 
-    /**
-     * A NEW array with every entry of the given spell removed — trigger-consumption. Does not mutate. PURE.
-     * @param {ActiveSpell[]|null|undefined} spells
-     * @param {string} spellId
-     * @returns {ActiveSpell[]}
-     */
-    function consume(spells, spellId) {
-        return (spells || []).filter(s => s.spellId !== spellId);
-    }
+const SPELL_LIFECYCLE = Object.freeze({
+    PERMANENT,
+    INSTANT,
+    isActive,
+    findActive,
+    consume,
+    expirySweep,
+    effectiveDuration,
+    isTriggerConsumed,
+    isInstant,
+    castEntry,
+});
 
-    /**
-     * Split the active spells into those that survive and those that just expired. Permanent entries are
-     * NEVER expired by the clock; `expiresAt <= now` is expired. PURE.
-     * @param {ActiveSpell[]|null|undefined} spells
-     * @param {number} now epoch ms
-     * @returns {{ kept: ActiveSpell[], expired: ActiveSpell[] }}
-     */
-    function expirySweep(spells, now) {
-        const all = spells || [];
-        return {
-            kept: all.filter(s => s.expiresAt === PERMANENT || s.expiresAt > now),
-            expired: all.filter(s => s.expiresAt !== PERMANENT && s.expiresAt <= now),
-        };
-    }
 
-    /**
-     * Apply a duration multiplier (Wizard Sustained Casting / Archmage) to a spell duration. Only TIMED
-     * spells scale — the -1 and 0 sentinels pass through untouched so an "until triggered" spell can never be
-     * turned into a timed one by a perk. PURE.
-     * @param {number} duration
-     * @param {number} multiplier
-     * @returns {number}
-     */
-    function effectiveDuration(duration, multiplier) {
-        return duration > 0 ? Math.round(duration * (multiplier || 1)) : duration;
-    }
+// Node / Jest
 
-    /**
-     * True when a definition is "active until triggered" rather than clock-bound. This is the single source of
-     * truth for the distinction that used to be implicit across thirteen call sites. PURE.
-     * @param {{ duration?: number }|null|undefined} def
-     * @returns {boolean}
-     */
-    function isTriggerConsumed(def) {
-        return !!def && def.duration === PERMANENT;
-    }
-
-    /**
-     * True for an instant-effect definition, which never enters the activeSpells array at all. PURE.
-     * @param {{ duration?: number }|null|undefined} def
-     * @returns {boolean}
-     */
-    function isInstant(def) {
-        return !!def && def.duration === INSTANT;
-    }
-
-    /**
-     * Build the activeSpells record for a cast, or null for an instant spell that never enters the array.
-     * The permanent branch intentionally omits `overcharged` (an until-triggered cast records no
-     * overcharge flag), matching the inline code exactly. PURE.
-     * @param {{ id: string, duration: number }|null|undefined} spell
-     * @param {{ now?: number, effectiveDuration?: number, overcharged?: any }} [opts]
-     * @returns {ActiveSpell|null}
-     */
-    function castEntry(spell, opts) {
-        if (!spell) return null;
-        const o = opts || {};
-        const now = o.now || 0;
-        if (spell.duration > 0) {
-            const dur = o.effectiveDuration === undefined ? spell.duration : o.effectiveDuration;
-            return { spellId: spell.id, castedAt: now, expiresAt: now + dur, overcharged: o.overcharged };
-        }
-        if (spell.duration === PERMANENT) {
-            return { spellId: spell.id, castedAt: now, expiresAt: PERMANENT };
-        }
-        return null;
-    }
-
-    const SPELL_LIFECYCLE = Object.freeze({
-        PERMANENT,
-        INSTANT,
-        isActive,
-        findActive,
-        consume,
-        expirySweep,
-        effectiveDuration,
-        isTriggerConsumed,
-        isInstant,
-        castEntry,
-    });
-
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // SPELL_LIFECYCLE property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.SPELL_LIFECYCLE = SPELL_LIFECYCLE;
-
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = SPELL_LIFECYCLE;
-})();
+export default SPELL_LIFECYCLE;

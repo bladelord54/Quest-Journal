@@ -24,30 +24,30 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.FOCUS_TIMER_RENDER.
  *   - Jest/Node: require('./focus-timer-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @param {{ focusTimerRunning: boolean, isBreak: boolean, hasPomodoroChain: boolean, focusTimeRemaining: number, sessionsPerChain: number }} state
-     * @returns {{ containerClass: string, buttonsHTML: string }}
-     */
-    function renderFocusTimerControls({ focusTimerRunning, isBreak, hasPomodoroChain, focusTimeRemaining, sessionsPerChain }) {
-        const btnBase = 'py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg flex items-center justify-center gap-2';
-        const chainBtnBase = 'py-3 rounded-lg font-bold fancy-font shadow-lg transition-all text-sm flex items-center justify-center gap-2 border border-amber-500/50';
-        let containerClass, buttonsHTML;
-        
-        if (focusTimerRunning) {
-            if (isBreak) {
-                // Break running: only Stop (no pause during breaks)
-                containerClass = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
-                buttonsHTML = `
+
+/**
+ * @param {{ focusTimerRunning: boolean, isBreak: boolean, hasPomodoroChain: boolean, focusTimeRemaining: number, sessionsPerChain: number }} state
+ * @returns {{ containerClass: string, buttonsHTML: string }}
+ */
+function renderFocusTimerControls({ focusTimerRunning, isBreak, hasPomodoroChain, focusTimeRemaining, sessionsPerChain }) {
+    const btnBase = 'py-4 rounded-lg font-bold fancy-font shadow-lg transition-all text-lg flex items-center justify-center gap-2';
+    const chainBtnBase = 'py-3 rounded-lg font-bold fancy-font shadow-lg transition-all text-sm flex items-center justify-center gap-2 border border-amber-500/50';
+    let containerClass, buttonsHTML;
+    
+    if (focusTimerRunning) {
+        if (isBreak) {
+            // Break running: only Stop (no pause during breaks)
+            containerClass = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
+            buttonsHTML = `
                     <button data-action="focus.stop" class="bg-red-600 hover:bg-red-500 text-white ${btnBase}">
                         <i class="ri-stop-fill text-xl" aria-hidden="true"></i> Stop Chain
                     </button>
                 `;
-            } else {
-                // Running: Pause + Stop
-                const stopLabel = hasPomodoroChain ? 'Stop Chain' : 'Stop';
-                containerClass = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
-                buttonsHTML = `
+        } else {
+            // Running: Pause + Stop
+            const stopLabel = hasPomodoroChain ? 'Stop Chain' : 'Stop';
+            containerClass = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
+            buttonsHTML = `
                     <button data-action="focus.pause" class="bg-yellow-600 hover:bg-yellow-500 text-white ${btnBase}">
                         <i class="ri-pause-fill text-xl" aria-hidden="true"></i> Pause
                     </button>
@@ -55,12 +55,12 @@
                         <i class="ri-stop-fill text-xl" aria-hidden="true"></i> ${stopLabel}
                     </button>
                 `;
-            }
-        } else if (focusTimeRemaining > 0) {
-            // Paused: Resume + Stop
-            const stopLabel = hasPomodoroChain ? 'Stop Chain' : 'Stop';
-            containerClass = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
-            buttonsHTML = `
+        }
+    } else if (focusTimeRemaining > 0) {
+        // Paused: Resume + Stop
+        const stopLabel = hasPomodoroChain ? 'Stop Chain' : 'Stop';
+        containerClass = 'grid grid-cols-2 gap-3 max-w-sm mx-auto';
+        buttonsHTML = `
                 <button data-action="focus.resume" class="btn-themed-primary ${btnBase}">
                     <i class="ri-play-fill text-xl" aria-hidden="true"></i> Resume
                 </button>
@@ -68,10 +68,10 @@
                     <i class="ri-stop-fill text-xl" aria-hidden="true"></i> ${stopLabel}
                 </button>
             `;
-        } else {
-            // Idle: Start + Chain
-            containerClass = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
-            buttonsHTML = `
+    } else {
+        // Idle: Start + Chain
+        containerClass = 'grid grid-cols-1 gap-3 max-w-xs mx-auto';
+        buttonsHTML = `
                 <button data-action="focus.start" class="bg-green-600 hover:bg-green-500 text-white ${btnBase}">
                     <i class="ri-play-fill text-xl" aria-hidden="true"></i> Start Focus
                 </button>
@@ -79,57 +79,50 @@
                     <i class="ri-links-fill text-lg" aria-hidden="true"></i> Start Pomodoro Chain (${sessionsPerChain}x)
                 </button>
             `;
-        }
-
-        return { containerClass, buttonsHTML };
     }
 
-    /**
-     * @param {{ totalSessions: number, currentSession: number, isBreak: boolean }} chain
-     * @returns {string}
-     */
-    function renderChainProgressHTML(chain) {
-        const dots = [];
-        
-        for (let i = 1; i <= chain.totalSessions; i++) {
-            let dotClass = '';
-            /** @type {string|number} */ let icon = ''; // upcoming-session dots use the numeric index; `${icon}` coerces either way
-            if (i < chain.currentSession) {
-                dotClass = 'bg-green-500 border-green-400';
-                icon = '✓';
-            } else if (i === chain.currentSession && !chain.isBreak) {
-                dotClass = 'bg-blue-500 border-blue-400 animate-pulse';
-                icon = '⚔️';
-            } else if (i === chain.currentSession && chain.isBreak) {
-                dotClass = 'bg-green-500/50 border-green-400 animate-pulse';
-                icon = '☕';
-            } else {
-                dotClass = 'bg-stone-700 border-stone-500';
-                icon = i;
-            }
-            dots.push(`<div class="w-10 h-10 rounded-full ${dotClass} border-2 flex items-center justify-center text-xs font-bold text-white fancy-font">${icon}</div>`);
+    return { containerClass, buttonsHTML };
+}
+
+/**
+ * @param {{ totalSessions: number, currentSession: number, isBreak: boolean }} chain
+ * @returns {string}
+ */
+function renderChainProgressHTML(chain) {
+    const dots = [];
+    
+    for (let i = 1; i <= chain.totalSessions; i++) {
+        let dotClass = '';
+        /** @type {string|number} */ let icon = ''; // upcoming-session dots use the numeric index; `${icon}` coerces either way
+        if (i < chain.currentSession) {
+            dotClass = 'bg-green-500 border-green-400';
+            icon = '✓';
+        } else if (i === chain.currentSession && !chain.isBreak) {
+            dotClass = 'bg-blue-500 border-blue-400 animate-pulse';
+            icon = '⚔️';
+        } else if (i === chain.currentSession && chain.isBreak) {
+            dotClass = 'bg-green-500/50 border-green-400 animate-pulse';
+            icon = '☕';
+        } else {
+            dotClass = 'bg-stone-700 border-stone-500';
+            icon = i;
         }
-        
-        const statusText = chain.isBreak 
-            ? `☕ Break — Next: Session ${chain.currentSession}` 
-            : `⚔️ Session ${chain.currentSession} of ${chain.totalSessions}`;
-        
-        return `
+        dots.push(`<div class="w-10 h-10 rounded-full ${dotClass} border-2 flex items-center justify-center text-xs font-bold text-white fancy-font">${icon}</div>`);
+    }
+    
+    const statusText = chain.isBreak 
+        ? `☕ Break — Next: Session ${chain.currentSession}` 
+        : `⚔️ Session ${chain.currentSession} of ${chain.totalSessions}`;
+    
+    return `
             <div class="flex items-center justify-center gap-2 mb-2">${dots.join('')}</div>
             <div class="text-center text-sm text-amber-200 fancy-font">${statusText}</div>
         `;
-    }
+}
 
-    const FOCUS_TIMER_RENDER = Object.freeze({ renderFocusTimerControls, renderChainProgressHTML });
+const FOCUS_TIMER_RENDER = Object.freeze({ renderFocusTimerControls, renderChainProgressHTML });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic FOCUS_TIMER_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.FOCUS_TIMER_RENDER = FOCUS_TIMER_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = FOCUS_TIMER_RENDER;
-})();
+// Node / Jest
+
+export default FOCUS_TIMER_RENDER;

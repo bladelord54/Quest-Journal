@@ -24,7 +24,170 @@ with an `Android versionCode` bump on every release.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **Two daily quests were hidden four levels too long.** The Daily Quest Board's "Side Adventurer"
+  and "Weekly Warrior" quests were gated at level 6 — a leftover from before the onboarding rework
+  that opens the Side Quests and Weekly Quests tabs at level 2. They now appear from level 2, the
+  same level as the tabs they track. (Root cause: the quest pool restated the unlock ladder as bare
+  numbers; the gates are now defined in terms of `feature-unlocks.js` so this cannot recur.)
+
+### Internal
+
+- **ES-module conversion, step 6 of 6 — `// @ts-check` on `goal-manager.js` (Engineering Roadmap
+  #3, criterion 4)** — the monolith is now under the same type check as every extracted module.
+  Triage, in order: instance-field JSDoc declarations on the class; DOM nullability handled
+  case-by-case — `?.` on same-function-created nodes, `if (!el) return` guards where the element
+  is genuinely optional, `/** @type {HTMLElement} */` casts only where the node is a static
+  `index.html` id or was created in the same function (a cast-only codemod applied at
+  tsc-flagged lines, then hand fixes for the `forEach`/focus-trap/`NodeList` sites that need a
+  `NodeListOf<HTMLElement>` cast because callback-param typing is rejected under
+  `strictFunctionTypes`); `Date` subtraction made explicit via `getTime()`; `String()` on
+  numeric `textContent`/`strokeDashoffset` writes; `!!` on boolean-typed render inputs.
+  `daily-quest-logic.js` / `daily-board-render.js` pool params widened to `ReadonlyArray` since
+  they never mutate the pool. `jsconfig.json` adds `useUnknownInCatchVariables: false`
+  (TS-class-centric strict flag, same rationale as the existing `strictPropertyInitialization`
+  opt-out). Real fixes surfaced along the way: `BOUNTY_LOGIC.pickFrom` null return is now guarded
+  in assign/reroll; `updateSlideshow` guards a null `slideshowData`; `showStarterTasks` parent
+  resolver bails on an unresolved `parentIdField`/`parentType`. No behaviour change otherwise.
+  **1686/1686 + `npm run typecheck` clean (0 errors).** Criterion (4) closed.
+- **ES-module conversion, steps 2–5 of 6 (Engineering Roadmap #3, criterion 3)** — the app is
+  now a real ES-module graph. All 69 catalog / logic / render modules end in `export default X`
+  instead of the IIFE + `window.X` + `module.exports` shim; the five load-time `window`/`require`
+  resolvers are `import` lines. `goal-manager.js` imports its 69 dependencies directly (48 former
+  capture consts + 21 render modules that were read as bare globals), exports the class and the
+  five inline-handler wrappers, and has no `{}` fallbacks left — a missing module is a hard load
+  error, not a silent empty object. New `main.js` is the single `<script type="module">` entry,
+  replacing 75 hand-ordered `<script src>` tags in `index.html`; it creates `window.goalManager`
+  synchronously (before `DOMContentLoaded`, so every listener sees it). The 8 standalone scripts
+  stay classic. `scripts/copy-web.js` copies every root `.js` (no hand list);
+  `run-in-browser.bat` starts the http server because modules do not load over `file://`. Tests:
+  the `eval(source)` harness and 77 top-level `require`s are `import`s; the step-1 smoke fixture is
+  gone. 1686/1686 + typecheck clean. No behaviour change intended; Android device check via
+  `cap:build` passed Sep 12 (after step 6).
+- **ES-module conversion, step 1 of 6 (tooling)** — `babel-jest` + `@babel/core` +
+  `@babel/preset-env` added as devDependencies; `babel.config.js` (jest-only, `targets: node
+  current`) and a `transform` entry in `jest.config.js`. See Engineering Roadmap #3.
+- **Engineering Roadmap #1 criteria (1) and (2) closed** — the five criterion-(2) single-source items
+  from the Sep 7 audit landed as one change (22 new tests; 1686/1686 jest + typecheck clean):
+  `executeBossBySpell` guards on `COMBAT_DAMAGE.isExecuteRange` instead of a second `25`;
+  `theme-definitions.js` golden/shadow carry machine-readable `unlock: { goldEarned: 10000 }` /
+  `{ bossesDefeated: 25 }` tables and `checkRewardUnlocks` is one catalog loop; the Daily Quest pool
+  moved to a new `daily-quest-definitions.js` (13th data catalog) with every `minLevel` DEFINED as a
+  `FEATURE_UNLOCKS` level (the goal-tab curves moved into `feature-unlocks.js` as `GOAL_TAB_LEVELS` to
+  make that possible) plus `BOARD_SWEEP_BONUS` for the all-claimed bonus grants and toast; and
+  `HABIT_LOGIC.MILESTONES` is derived at load from the `streak`-type badges in
+  `achievement-definitions.js`. No behaviour change beyond the Fixed entry above. The active front
+  for Roadmap #1 is now criterion (3), the ES-module conversion.
+- **Ranger Forage bonus-gold math folded into `reward-economy.js`** (Engineering Roadmap #1, 90th slice;
+  fifth of the Sep 7 audit queue) — `applyForage` still had the hit-roll + `10 + floor(rng()*11)`
+  bonus-gold math inline. Too small a rule for its own module, so it extends `reward-economy.js` with
+  `forageReward(chance, rng)`; `applyForage` keeps the `focusCrystals` write and toast. Behaviour-
+  identical; 5 new tests (1660 total).
+- **Challenge-a-Friend rules extracted to `challenge-logic.js`** (Engineering Roadmap #1, 89th slice;
+  fourth of the Sep 7 audit queue) — `challengePresets`, the difficulty→{xp,gold} table, the
+  progress reader with its 100 clamp, and the `completedChallenges` 50-cap moved out of
+  `goal-manager.js`; `getChallengeRewards` / `getChallengeProgress` / `completeChallenge` delegate.
+  Behaviour-identical; 19 new tests (1655 total).
+- **Companion XP-gain math folded into `companion-logic.js`** (Engineering Roadmap #1, 88th slice;
+  third of the Sep 7 audit queue) — `grantCompanionXP` still had the Bonding enchantment's flat
+  `×2`, the Ranger Beastmaster perk's `ceil(xp * (1 + mult))` scale, and a `100 * level` multi-
+  level-up `while` loop inline. Extended (not a new module) the existing companion slot/bonus
+  module with `companionXpGain(amount, opts)` and `applyCompanionXp(companion, xpGain)`;
+  `grantCompanionXP` is now a thin two-call wrapper. No behaviour change — existing Beastmaster
+  tests passed unchanged; 10 new tests incl. a stacked-buff case and a 350-XP grant that clears
+  two level thresholds in one call (1636/1636 jest + typecheck clean).
+- **Boss-defeat streak reward multiplier extracted to `boss-streak-logic.js`** (Engineering
+  Roadmap #1, 87th slice, 32nd LOGIC module; second of the Sep 7 audit queue) — `onBossDefeated`'s
+  daily/weekly/monthly streak-counter ternary and its "+10% per streak, capped at +100%" XP/gold
+  multiplier are now `streakForBossType`, `streakMultiplier` and `applyStreakBonus`. No behaviour
+  change; 13 new tests incl. a parity oracle of the original inline arithmetic (1626/1626 jest +
+  typecheck clean). Review follow-up (Sep 9): the defeated-boss gallery's bare `50` cap, which the
+  first pass left inline, is now `archiveDefeated` / `DEFEATED_HISTORY_CAP` in the same module
+  (+4 tests; 1664/1664).
+- **Chest rarity-weight modifiers extracted to `chest-weight-logic.js`** (Engineering Roadmap #1,
+  86th slice, 31st LOGIC module; first of the Sep 7 audit queue) — the Lucky Loot enchantment
+  and Ranger Keen Eye perk applied the SAME nine-line weight-shift block, pasted twice in
+  `generateChestRewards`; the Lucky Draw spell's 40/30/20/10 redistribution sat beside them.
+  Now `shiftWeights(weights, amount)`, `luckyDrawFloor(weights)` and the
+  `applyChestModifiers(weights, { luckyLoot, rangerWeight, luckyDraw })` composite (original
+  order, new objects, no mutation); `generateChestRewards` makes one call. No behaviour change
+  — the existing lucky_loot / Ranger behavioural suites passed unchanged; 17 new tests incl. a
+  parity oracle of the original inline arithmetic across every chest tier × modifier combo
+  (1613/1613 jest + typecheck clean).
+- **Engineering Roadmap #1 criterion (1)/(2) audit** — one bounded scan of `goal-manager.js`
+  (~600 methods, rule-math pattern match, second-copy checks against the catalogs) replaces
+  the open-ended per-slice search. Output: five queued extractions (86–90: chest weight-shift
+  ×2, boss streak multiplier, companion XP/level-up, challenge rewards/progress, Forage), five
+  single-source items (execute 25% vs `COMBAT_DAMAGE.isExecuteRange`, golden/shadow theme
+  thresholds vs `theme-definitions.js` prose, `DAILY_QUEST_POOL.minLevel` vs the unlock ladder
+  — incl. a stale `6` hiding two quests four levels too long, the Board Sweep bonus toast,
+  habit tiers vs badge targets), an inline-by-decision list, and an explicit exit. Also adds
+  the six-step criterion (3) ES-module plan under item #3. Docs only.
+- **Progressive-unlock thresholds unified in `feature-unlocks.js`** (Engineering Roadmap #1,
+  85th slice, 30th LOGIC module) — the criterion-(2) sweep of the tables still inline in
+  `initState` found the unlock knowledge re-stated: "Arcane unlocks at 3" as both `arcane: 3`
+  and a bare `this.level === 3` (welcome-spell grant); "companions unlock at 3" as a bare
+  literal in three places incl. `loot-engine.js`; the unlock predicate written three times
+  and the desktop-nav "More" collapse rule twice. The frozen `LEVELS` / `ARCANE_TAB_LEVELS` /
+  `TUTORIALS` tables, `COMPANION_UNLOCK_LEVEL` (defined as `LEVELS.arcane`) and the
+  `isUnlocked` / `isFarOff` predicates are now the one source; `challengePresets` was audited
+  single-sourced and left inline. New `<script>` loads before `loot-engine.js`. No behaviour
+  change; 16 new tests incl. every-gated-view-has-a-tutorial-at-its-level consistency
+  (1593/1593 jest + typecheck clean). Follow-up: the referral bonus (`level < 2`, previously
+  stated twice incl. the welcome toast) and review prompt (`level < 3`) gates are named
+  `REFERRAL_REWARD_LEVEL` / `REVIEW_PROMPT_MIN_LEVEL` in the same module, and the locked-nav /
+  locked-tab teaser-copy tests now derive the gated id set from the tables so a new gated
+  view/tab without a name + teaser fails CI (1596/1596).
+- **Persisted-field defaults unified in `default-state.js`** (Engineering Roadmap #1, 84th
+  slice, 29th LOGIC module) — the default for every saved field used to be written twice: once
+  in `initState()` (fresh install) and once as the `d.x || <default>` fallback in
+  `load-deserializer.js` (save missing the field). `persistedDefaults({ defaultSessionMinutes })`
+  is now the one source both consume: `initState` `Object.assign`s it and keeps only session
+  state / derived catalogs / constants inline; `buildLoadState` loops `SIMPLE_FIELDS` against
+  it and keeps the documented special rules (`??`, type guards, migrations, schema gate)
+  explicit. Fixes three latent `undefined`-vs-`null` drifts (`lastHabitReset`, `lastWeekReset`,
+  `premiumPurchaseToken`); otherwise no behaviour change. New `<script>` loads before
+  `load-deserializer.js`. 13 new tests incl. init↔load and defaults↔save key parity
+  (1577/1577 jest + typecheck clean).
+- **Engineering Roadmap #1 given a Definition of done** — four checkable criteria (every rule
+  in a tested module; every table single-sourced; real ES modules; `goal-manager.js` under
+  `// @ts-check`) replace the open-ended "keep slicing" framing. Docs only.
+- **`docs/ENGINEERING_ROADMAP.md` restructured as a status page** — item #1's ~100-line
+  running "Progress" sentence is replaced by a headline summary plus three module tables
+  (12 data / 28 logic / 22 render, with slice numbers); the slices 1–80 narrative and the
+  completed render burn-down record are preserved verbatim inside collapsed `<details>`
+  blocks; slices 81–83 stay as prose recipe examples. Item #3's stale "11 modules"
+  `// @ts-check` count updated to all 62 extracted modules. Docs only.
+- **Habit progression math extracted to `habit-logic.js`** (Engineering Roadmap #1, 83rd
+  slice, 28th LOGIC module) — the consecutive-day streak recomputation (`computeHabitStreak`,
+  behind `recalculateHabitStreak`), the `double_streak` increment rule and the 7/30/100
+  milestone thresholds (both inline in `toggleHabit`) are now pure, unit-tested functions.
+  The HABIT-streak counterpart to `streak-logic.js`'s login streak and the logic sibling of
+  `habit-render.js`. The `habit.streak`/`lastCompleted` writes, reward grants/refunds, audio,
+  effects, toasts and `saveData` stay on the class. No behaviour change; 14 new tests
+  (1564/1564 jest + typecheck clean).
+- **Quest-chain progression extracted to `quest-chain-logic.js`** (Engineering Roadmap #1,
+  82nd slice, 27th LOGIC module) — the task-toggle array math, the chapter-complete
+  predicate, the chapter-advance patch, the chain-complete detection and the
+  active→completed list move are now pure, unit-tested functions;
+  `toggleChainTask` / `completeChapter` / `completeQuestChain` delegate their state math
+  while keeping every reward/toast/confetti/badge/`saveData` side-effect on the class.
+  Sibling of the already-extracted `quest-chain-render.js`. No behaviour change; 21 new
+  tests (1550/1550 jest + typecheck clean).
+- **Wooden Chest loot extracted to `wooden-chest-loot.js`** (Engineering Roadmap #1,
+  81st slice, 26th LOGIC module) — the daily free chest's weighted loot table + pick
+  (the SECOND hand-rolled cumulative-weight loop) is now a pure, unit-tested module,
+  de-duplicated from `loot-engine.js`; `claimWoodenChest` delegates its roll through the
+  `this.rng()` seam. The float-drift fallback (first entry) differs from loot-engine's
+  (last entry) on purpose and is pinned by a divergence test. No behaviour change; 11 new
+  tests (1529/1529 jest + typecheck clean).
+- **Daily Quest Board logic extracted to `daily-quest-logic.js`** (Engineering Roadmap
+  #1, 80th slice, 25th LOGIC module) — the date-seeded deterministic board pick and the
+  `check(tracking)` completion sweep are now pure, unit-tested functions;
+  `generateDailyQuestBoard` / `checkDailyQuestCompletion` are thin delegators. Closes the
+  daily-board pair (render half was already `daily-board-render.js`). No behaviour change;
+  20 new tests (1518/1518 jest + typecheck clean).
 
 ---
 

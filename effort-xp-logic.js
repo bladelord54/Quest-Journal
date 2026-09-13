@@ -29,55 +29,48 @@
  *   - Jest/Node: require('./effort-xp-logic.js') returns the frozen object via module.exports (and
  *     also sets window.EFFORT_XP_LOGIC under jsdom).
  */
-(function () {
-    /**
-     * Coerce any priority value to the low/medium/high effort band. Unknown / missing → 'medium'
-     * (the 1.0x baseline, so default-priority items keep their historical XP). PURE.
-     * @param {string=} priority
-     * @returns {'high'|'medium'|'low'}
-     */
-    function normalizePriority(priority) {
-        return (priority === 'high' || priority === 'low') ? priority : 'medium';
+
+/**
+ * Coerce any priority value to the low/medium/high effort band. Unknown / missing → 'medium'
+ * (the 1.0x baseline, so default-priority items keep their historical XP). PURE.
+ * @param {string=} priority
+ * @returns {'high'|'medium'|'low'}
+ */
+function normalizePriority(priority) {
+    return (priority === 'high' || priority === 'low') ? priority : 'medium';
+}
+
+/**
+ * Effort → XP multiplier: high 1.5×, medium 1.0×, low 0.75×. PURE.
+ * @param {string=} priority
+ * @returns {number}
+ */
+function priorityXPMultiplier(priority) {
+    switch (normalizePriority(priority)) {
+        case 'high': return 1.5;
+        case 'low':  return 0.75;
+        default:     return 1;
     }
+}
 
-    /**
-     * Effort → XP multiplier: high 1.5×, medium 1.0×, low 0.75×. PURE.
-     * @param {string=} priority
-     * @returns {number}
-     */
-    function priorityXPMultiplier(priority) {
-        switch (normalizePriority(priority)) {
-            case 'high': return 1.5;
-            case 'low':  return 0.75;
-            default:     return 1;
-        }
-    }
+/**
+ * A quest's effort-scaled XP: base × priority multiplier, rounded. Single source of truth for
+ * the five reward sites (side-quest 20, daily 15, weekly 50, monthly 200, yearly 1000). PURE.
+ * @param {number} base
+ * @param {string=} priority
+ * @returns {number}
+ */
+function scaledXP(base, priority) {
+    return Math.round(base * priorityXPMultiplier(priority));
+}
 
-    /**
-     * A quest's effort-scaled XP: base × priority multiplier, rounded. Single source of truth for
-     * the five reward sites (side-quest 20, daily 15, weekly 50, monthly 200, yearly 1000). PURE.
-     * @param {number} base
-     * @param {string=} priority
-     * @returns {number}
-     */
-    function scaledXP(base, priority) {
-        return Math.round(base * priorityXPMultiplier(priority));
-    }
+const EFFORT_XP_LOGIC = Object.freeze({
+    normalizePriority,
+    priorityXPMultiplier,
+    scaledXP,
+});
 
-    const EFFORT_XP_LOGIC = Object.freeze({
-        normalizePriority,
-        priorityXPMultiplier,
-        scaledXP,
-    });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // EFFORT_XP_LOGIC property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.EFFORT_XP_LOGIC = EFFORT_XP_LOGIC;
+// Node / Jest
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = EFFORT_XP_LOGIC;
-})();
+export default EFFORT_XP_LOGIC;

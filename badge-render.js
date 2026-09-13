@@ -24,37 +24,37 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.BADGE_RENDER.
  *   - Jest/Node: require('./badge-render.js') returns the frozen builder via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   achievements: Array<{ id: string, type: string, target: number, rarity?: string, icon: string, name: string, description: string }>,
-     *   progress: Record<string, number>,
-     *   badges: Array<{ id: string, unlockedAt: string | number | Date }>,
-     * }} deps
-     * @returns {string}
-     */
-    function renderBadgesHTML({ achievements, progress, badges }) {
-        const unlockedIds = badges.map(b => b.id);
-        
-        // Separate unlocked and locked achievements
-        const unlocked = achievements.filter(a => unlockedIds.includes(a.id));
-        const locked = achievements.filter(a => !unlockedIds.includes(a.id));
-        
-        // Sort locked by closest to completion
-        locked.sort((a, b) => {
-            const progressA = (progress[a.type] || 0) / a.target;
-            const progressB = (progress[b.type] || 0) / b.target;
-            return progressB - progressA;
-        });
-        
-        let html = '';
-        
-        // Unlocked badges section
-        if (unlocked.length > 0) {
-            html += '<div class="col-span-2 md:col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-trophy-line mr-1.5"></i>Unlocked</h4></div>';
-            html += unlocked.map(achievement => {
-                const badge = badges.find(b => b.id === achievement.id);
-                return `
+
+/**
+ * @param {{
+ *   achievements: Array<{ id: string, type: string, target: number, rarity?: string, icon: string, name: string, description: string }>,
+ *   progress: Record<string, number>,
+ *   badges: Array<{ id: string, unlockedAt: string | number | Date }>,
+ * }} deps
+ * @returns {string}
+ */
+function renderBadgesHTML({ achievements, progress, badges }) {
+    const unlockedIds = badges.map(b => b.id);
+    
+    // Separate unlocked and locked achievements
+    const unlocked = achievements.filter(a => unlockedIds.includes(a.id));
+    const locked = achievements.filter(a => !unlockedIds.includes(a.id));
+    
+    // Sort locked by closest to completion
+    locked.sort((a, b) => {
+        const progressA = (progress[a.type] || 0) / a.target;
+        const progressB = (progress[b.type] || 0) / b.target;
+        return progressB - progressA;
+    });
+    
+    let html = '';
+    
+    // Unlocked badges section
+    if (unlocked.length > 0) {
+        html += '<div class="col-span-2 md:col-span-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-trophy-line mr-1.5"></i>Unlocked</h4></div>';
+        html += unlocked.map(achievement => {
+            const badge = badges.find(b => b.id === achievement.id);
+            return `
                     <div data-rarity="${achievement.rarity || 'common'}" class="quest-card rarity-frame bg-amber-950/60 p-5 rounded-lg border-2 border-amber-500 text-center">
                         <div class="text-4xl mb-2">${achievement.icon}</div>
                         <div class="text-amber-300 font-bold fancy-font text-sm">${achievement.name}</div>
@@ -62,33 +62,33 @@
                         <div class="text-green-400 text-xs mt-2">✓ ${badge ? new Date(badge.unlockedAt).toLocaleDateString() : 'Unlocked'}</div>
                     </div>
                 `;
-            }).join('');
-        }
-        
-        // In-progress achievements section
-        if (locked.length > 0) {
-            html += '<div class="col-span-2 md:col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-line-chart-line mr-1.5"></i>In Progress</h4></div>';
-            html += locked.map(achievement => {
-                const current = progress[achievement.type] || 0;
-                const target = achievement.target;
-                const percent = Math.min(100, Math.round((current / target) * 100));
-                const remaining = target - current;
-                
-                // Color based on progress
-                let progressColor = 'bg-gray-600';
-                let borderColor = 'border-gray-600';
-                if (percent >= 75) {
-                    progressColor = 'bg-green-500';
-                    borderColor = 'border-green-600';
-                } else if (percent >= 50) {
-                    progressColor = 'bg-yellow-500';
-                    borderColor = 'border-yellow-600';
-                } else if (percent >= 25) {
-                    progressColor = 'bg-orange-500';
-                    borderColor = 'border-orange-600';
-                }
-                
-                return `
+        }).join('');
+    }
+    
+    // In-progress achievements section
+    if (locked.length > 0) {
+        html += '<div class="col-span-2 md:col-span-4 mt-4 mb-2"><h4 class="text-amber-300 font-bold fancy-font text-sm"><i class="ri-line-chart-line mr-1.5"></i>In Progress</h4></div>';
+        html += locked.map(achievement => {
+            const current = progress[achievement.type] || 0;
+            const target = achievement.target;
+            const percent = Math.min(100, Math.round((current / target) * 100));
+            const remaining = target - current;
+            
+            // Color based on progress
+            let progressColor = 'bg-gray-600';
+            let borderColor = 'border-gray-600';
+            if (percent >= 75) {
+                progressColor = 'bg-green-500';
+                borderColor = 'border-green-600';
+            } else if (percent >= 50) {
+                progressColor = 'bg-yellow-500';
+                borderColor = 'border-yellow-600';
+            } else if (percent >= 25) {
+                progressColor = 'bg-orange-500';
+                borderColor = 'border-orange-600';
+            }
+            
+            return `
                     <div data-rarity="${achievement.rarity || 'common'}" class="quest-card rarity-frame bg-gray-900/60 p-5 rounded-lg border-2 ${borderColor} text-center opacity-80 hover:opacity-100">
                         <div class="text-3xl mb-2 grayscale-[50%]">${achievement.icon}</div>
                         <div class="text-gray-300 font-bold fancy-font text-sm">${achievement.name}</div>
@@ -103,26 +103,19 @@
                         </div>
                     </div>
                 `;
-            }).join('');
-        }
-        
-        if (html === '') {
-            html = '<p class="col-span-2 md:col-span-4 text-center text-amber-200 py-8 fancy-font">Complete quests to unlock badges!</p>';
-        }
-
-        return html;
+        }).join('');
+    }
+    
+    if (html === '') {
+        html = '<p class="col-span-2 md:col-span-4 text-center text-amber-200 py-8 fancy-font">Complete quests to unlock badges!</p>';
     }
 
-    const BADGE_RENDER = Object.freeze({ renderBadgesHTML });
+    return html;
+}
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic BADGE_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.BADGE_RENDER = BADGE_RENDER;
+const BADGE_RENDER = Object.freeze({ renderBadgesHTML });
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = BADGE_RENDER;
-})();
+
+// Node / Jest
+
+export default BADGE_RENDER;

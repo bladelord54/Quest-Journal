@@ -42,127 +42,120 @@
  *   - Jest/Node: require('./class-progression.js') returns the frozen object via module.exports (and also
  *     sets window.CLASS_PROGRESSION under jsdom).
  */
-(function () {
-    /**
-     * @typedef {{ nodes?: Array<any> }} ClassDef
-     * @typedef {{ tiers?: Array<{ cost?: number }> }} SubclassDef
-     */
 
-    // ----------------------------------------------------------------- class tree
+/**
+ * @typedef {{ nodes?: Array<any> }} ClassDef
+ * @typedef {{ tiers?: Array<{ cost?: number }> }} SubclassDef
+ */
 
-    /**
-     * Number of linear nodes in a class tree, or 0 when there is no class / no nodes. PURE.
-     * @param {ClassDef|null} cls
-     * @returns {number}
-     */
-    function linearNodeCount(cls) {
-        return (cls && cls.nodes) ? cls.nodes.length : 0;
-    }
+// ----------------------------------------------------------------- class tree
 
-    /**
-     * The next not-yet-unlocked linear node, or null when all are unlocked / no class. PURE.
-     * @param {ClassDef|null} cls
-     * @param {number} classNodesUnlocked
-     * @returns {any}
-     */
-    function nextClassNode(cls, classNodesUnlocked) {
-        if (!cls) return null;
-        return (cls.nodes || [])[classNodesUnlocked || 0] || null;
-    }
+/**
+ * Number of linear nodes in a class tree, or 0 when there is no class / no nodes. PURE.
+ * @param {ClassDef|null} cls
+ * @returns {number}
+ */
+function linearNodeCount(cls) {
+    return (cls && cls.nodes) ? cls.nodes.length : 0;
+}
 
-    /**
-     * True once every linear node is unlocked but no capstone is chosen yet — the capstone choice is now
-     * available. PURE.
-     * @param {ClassDef|null} cls
-     * @param {number} classNodesUnlocked
-     * @param {string|null|undefined} classCapstone
-     * @returns {boolean}
-     */
-    function isCapstoneReady(cls, classNodesUnlocked, classCapstone) {
-        if (!cls) return false;
-        return (classNodesUnlocked || 0) >= linearNodeCount(cls) && !classCapstone;
-    }
+/**
+ * The next not-yet-unlocked linear node, or null when all are unlocked / no class. PURE.
+ * @param {ClassDef|null} cls
+ * @param {number} classNodesUnlocked
+ * @returns {any}
+ */
+function nextClassNode(cls, classNodesUnlocked) {
+    if (!cls) return null;
+    return (cls.nodes || [])[classNodesUnlocked || 0] || null;
+}
 
-    /**
-     * True once every linear node is unlocked AND a capstone is chosen (fully mastered). PURE.
-     * @param {ClassDef|null} cls
-     * @param {number} classNodesUnlocked
-     * @param {string|null|undefined} classCapstone
-     * @returns {boolean}
-     */
-    function isClassMastered(cls, classNodesUnlocked, classCapstone) {
-        if (!cls) return false;
-        return (classNodesUnlocked || 0) >= linearNodeCount(cls) && !!classCapstone;
-    }
+/**
+ * True once every linear node is unlocked but no capstone is chosen yet — the capstone choice is now
+ * available. PURE.
+ * @param {ClassDef|null} cls
+ * @param {number} classNodesUnlocked
+ * @param {string|null|undefined} classCapstone
+ * @returns {boolean}
+ */
+function isCapstoneReady(cls, classNodesUnlocked, classCapstone) {
+    if (!cls) return false;
+    return (classNodesUnlocked || 0) >= linearNodeCount(cls) && !classCapstone;
+}
 
-    // -------------------------------------------------------------- subclass tree
+/**
+ * True once every linear node is unlocked AND a capstone is chosen (fully mastered). PURE.
+ * @param {ClassDef|null} cls
+ * @param {number} classNodesUnlocked
+ * @param {string|null|undefined} classCapstone
+ * @returns {boolean}
+ */
+function isClassMastered(cls, classNodesUnlocked, classCapstone) {
+    if (!cls) return false;
+    return (classNodesUnlocked || 0) >= linearNodeCount(cls) && !!classCapstone;
+}
 
-    /**
-     * Number of tiers in a subclass, or 0 when there is no subclass / no tiers. PURE.
-     * @param {SubclassDef|null} sub
-     * @returns {number}
-     */
-    function subclassTierCount(sub) {
-        return (sub && sub.tiers) ? sub.tiers.length : 0;
-    }
+// -------------------------------------------------------------- subclass tree
 
-    /**
-     * The next not-yet-unlocked subclass tier, or null when all are unlocked / no subclass. PURE.
-     * @param {SubclassDef|null} sub
-     * @param {number} subclassNodesUnlocked
-     * @returns {any}
-     */
-    function nextSubclassTier(sub, subclassNodesUnlocked) {
-        if (!sub) return null;
-        return (sub.tiers || [])[subclassNodesUnlocked || 0] || null;
-    }
+/**
+ * Number of tiers in a subclass, or 0 when there is no subclass / no tiers. PURE.
+ * @param {SubclassDef|null} sub
+ * @returns {number}
+ */
+function subclassTierCount(sub) {
+    return (sub && sub.tiers) ? sub.tiers.length : 0;
+}
 
-    /**
-     * True once every tier of the chosen subclass is unlocked. PURE.
-     * @param {SubclassDef|null} sub
-     * @param {number} subclassNodesUnlocked
-     * @returns {boolean}
-     */
-    function isSubclassMastered(sub, subclassNodesUnlocked) {
-        if (!sub) return false;
-        return (subclassNodesUnlocked || 0) >= subclassTierCount(sub);
-    }
+/**
+ * The next not-yet-unlocked subclass tier, or null when all are unlocked / no subclass. PURE.
+ * @param {SubclassDef|null} sub
+ * @param {number} subclassNodesUnlocked
+ * @returns {any}
+ */
+function nextSubclassTier(sub, subclassNodesUnlocked) {
+    if (!sub) return null;
+    return (sub.tiers || [])[subclassNodesUnlocked || 0] || null;
+}
 
-    /**
-     * Skill points already sunk into the chosen subclass's UNLOCKED tiers — the cumulative `cost` of tiers
-     * [0, subclassNodesUnlocked). 0 when no subclass. PURE.
-     * @param {SubclassDef|null} sub
-     * @param {number} subclassNodesUnlocked
-     * @returns {number}
-     */
-    function subclassPointsSpent(sub, subclassNodesUnlocked) {
-        if (!sub) return 0;
-        const tiers = sub.tiers || [];
-        const n = Math.min(subclassNodesUnlocked || 0, tiers.length);
-        let spent = 0;
-        for (let i = 0; i < n; i++) spent += tiers[i].cost || 0;
-        return spent;
-    }
+/**
+ * True once every tier of the chosen subclass is unlocked. PURE.
+ * @param {SubclassDef|null} sub
+ * @param {number} subclassNodesUnlocked
+ * @returns {boolean}
+ */
+function isSubclassMastered(sub, subclassNodesUnlocked) {
+    if (!sub) return false;
+    return (subclassNodesUnlocked || 0) >= subclassTierCount(sub);
+}
 
-    const CLASS_PROGRESSION = Object.freeze({
-        linearNodeCount,
-        nextClassNode,
-        isCapstoneReady,
-        isClassMastered,
-        subclassTierCount,
-        nextSubclassTier,
-        isSubclassMastered,
-        subclassPointsSpent,
-    });
+/**
+ * Skill points already sunk into the chosen subclass's UNLOCKED tiers — the cumulative `cost` of tiers
+ * [0, subclassNodesUnlocked). 0 when no subclass. PURE.
+ * @param {SubclassDef|null} sub
+ * @param {number} subclassNodesUnlocked
+ * @returns {number}
+ */
+function subclassPointsSpent(sub, subclassNodesUnlocked) {
+    if (!sub) return 0;
+    const tiers = sub.tiers || [];
+    const n = Math.min(subclassNodesUnlocked || 0, tiers.length);
+    let spent = 0;
+    for (let i = 0; i < n; i++) spent += tiers[i].cost || 0;
+    return spent;
+}
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // CLASS_PROGRESSION property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.CLASS_PROGRESSION = CLASS_PROGRESSION;
+const CLASS_PROGRESSION = Object.freeze({
+    linearNodeCount,
+    nextClassNode,
+    isCapstoneReady,
+    isClassMastered,
+    subclassTierCount,
+    nextSubclassTier,
+    isSubclassMastered,
+    subclassPointsSpent,
+});
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = CLASS_PROGRESSION;
-})();
+
+// Node / Jest
+
+export default CLASS_PROGRESSION;

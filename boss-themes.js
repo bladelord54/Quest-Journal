@@ -34,76 +34,69 @@
  *   - Jest/Node: `require('./boss-themes.js')` returns the object via
  *     module.exports (and also sets window.BOSS_THEMES under jsdom).
  */
-(function () {
-    /**
-     * Recursively freeze the catalog so it is a true constant — no generator or
-     * render path can accidentally mutate a shared theme (or splice a pool) at runtime.
-     * @param {any} obj
-     * @returns {any}
-     */
-    function deepFreeze(obj) {
-        Object.getOwnPropertyNames(obj).forEach((key) => {
-            const value = obj[key];
-            if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-                deepFreeze(value);
-            }
-        });
-        return Object.freeze(obj);
-    }
 
-    const BOSS_THEMES = deepFreeze({
-        daily: [
-            { name: 'Slime of Procrastination', icon: '🟢', flavor: 'A gelatinous blob that feeds on delayed tasks.', particleType: 'slime' },
-            { name: 'Goblin of Distraction', icon: '👺', flavor: 'Sneaky creature that steals your focus.', particleType: 'shadow' },
-            { name: 'Imp of Laziness', icon: '😈', flavor: 'Whispers sweet nothings about staying in bed.', particleType: 'ember' },
-            { name: 'Shadow of Doubt', icon: '👤', flavor: 'A dark figure that questions your every move.', particleType: 'shadow' },
-            { name: 'Skeleton of Bad Habits', icon: '💀', flavor: 'Rattles with the chains of old patterns.', particleType: 'arcane' },
-            { name: 'Bat of Anxiety', icon: '🦇', flavor: 'Swoops in when you least expect it.', particleType: 'shadow' },
-            { name: 'Spider of Overwhelm', icon: '🕷️', flavor: 'Spins webs of endless to-do lists.', particleType: 'shadow' },
-            { name: 'Rat of Excuses', icon: '🐀', flavor: 'Gnaws away at your good intentions.', particleType: 'shadow' },
-            { name: 'Ghost of Yesterday', icon: '👻', flavor: 'Haunts you with missed opportunities.', particleType: 'arcane' },
-            { name: 'Mushroom of Confusion', icon: '🍄', flavor: 'Clouds your mind with indecision.', particleType: 'leaf' },
-            { name: 'Snake of Temptation', icon: '🐍', flavor: 'Lures you toward quick dopamine hits.', particleType: 'slime' },
-            { name: 'Scarecrow of Fear', icon: '🎃', flavor: 'Guards the field of your ambitions.', particleType: 'leaf' },
-            { name: 'Troll of Negativity', icon: '🧌', flavor: 'Blocks the bridge to your goals.', particleType: 'shadow' },
-            { name: 'Wisp of Forgetfulness', icon: '🔮', flavor: 'Makes important tasks vanish from memory.', particleType: 'arcane' }
-        ],
-        weekly: [
-            { name: 'Dragon of Distraction', icon: '🐉', flavor: 'Ancient beast that hoards your wasted hours.', particleType: 'ember' },
-            { name: 'Lich of Procrastination', icon: '☠️', flavor: 'Undying lord of "I\'ll do it tomorrow."', particleType: 'arcane' },
-            { name: 'Hydra of Overthinking', icon: '🐲', flavor: 'Cut one worry, two more take its place.', particleType: 'slime' },
-            { name: 'Demon of Self-Doubt', icon: '👿', flavor: 'Feeds on your insecurities to grow stronger.', particleType: 'ember' },
-            { name: 'Titan of Burnout', icon: '👹', flavor: 'Massive creature born from overwork.', particleType: 'ember' },
-            { name: 'Kraken of Chaos', icon: '🦑', flavor: 'Tentacles of disorder wrap around your plans.', particleType: 'slime' },
-            { name: 'Cerberus of Temptation', icon: '🐕', flavor: 'Three heads: social media, games, and snacks.', particleType: 'shadow' },
-            { name: 'Golem of Stagnation', icon: '🗿', flavor: 'An immovable wall blocking your progress.', particleType: 'shadow' },
-            { name: 'Wyvern of Wasted Time', icon: '🦅', flavor: 'Soars away with your precious hours.', particleType: 'ember' },
-            { name: 'Necromancer of Old Habits', icon: '🧙', flavor: 'Keeps resurrecting the patterns you buried.', particleType: 'arcane' }
-        ],
-        monthly: [
-            { name: 'The Obsidian Warden', icon: '🏴', flavor: 'An ancient guardian forged from pure resistance to change.', particleType: 'shadow' },
-            { name: 'Archmage of the Void', icon: '🌑', flavor: 'Master of nothingness who erases your motivation.', particleType: 'arcane' },
-            { name: 'Behemoth of Despair', icon: '🦣', flavor: 'A colossal beast whose footsteps shake your resolve.', particleType: 'shadow' },
-            { name: 'The Crimson Overlord', icon: '👑', flavor: 'Tyrannical ruler who demands your surrender to mediocrity.', particleType: 'ember' },
-            { name: 'Leviathan of Lost Days', icon: '🐋', flavor: 'Swallows entire weeks into its endless abyss.', particleType: 'slime' },
-            { name: 'The Phantom Emperor', icon: '👁️', flavor: 'Rules an invisible empire built on your abandoned dreams.', particleType: 'arcane' },
-            { name: 'Colossus of Complacency', icon: '🗽', flavor: 'A towering monument to "good enough" thinking.', particleType: 'shadow' },
-            { name: 'The Abyssal Serpent', icon: '🐍', flavor: 'Coils around your potential and drags it to the depths.', particleType: 'slime' },
-            { name: 'Infernal Juggernaut', icon: '🔥', flavor: 'An unstoppable force of destructive routines.', particleType: 'ember' },
-            { name: 'The Shadow Sovereign', icon: '🌘', flavor: 'Commands an army of every excuse you\'ve ever made.', particleType: 'shadow' },
-            { name: 'Dreadnought of Doom', icon: '⚓', flavor: 'An armored fortress of fear that blocks your horizon.', particleType: 'shadow' },
-            { name: 'The Eternal Watcher', icon: '🗿', flavor: 'Has observed a thousand failed resolutions. Will yours be different?', particleType: 'shadow' }
-        ]
+/**
+ * Recursively freeze the catalog so it is a true constant — no generator or
+ * render path can accidentally mutate a shared theme (or splice a pool) at runtime.
+ * @param {any} obj
+ * @returns {any}
+ */
+function deepFreeze(obj) {
+    Object.getOwnPropertyNames(obj).forEach((key) => {
+        const value = obj[key];
+        if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+            deepFreeze(value);
+        }
     });
+    return Object.freeze(obj);
+}
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic BOSS_THEMES property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.BOSS_THEMES = BOSS_THEMES;
+const BOSS_THEMES = deepFreeze({
+    daily: [
+        { name: 'Slime of Procrastination', icon: '🟢', flavor: 'A gelatinous blob that feeds on delayed tasks.', particleType: 'slime' },
+        { name: 'Goblin of Distraction', icon: '👺', flavor: 'Sneaky creature that steals your focus.', particleType: 'shadow' },
+        { name: 'Imp of Laziness', icon: '😈', flavor: 'Whispers sweet nothings about staying in bed.', particleType: 'ember' },
+        { name: 'Shadow of Doubt', icon: '👤', flavor: 'A dark figure that questions your every move.', particleType: 'shadow' },
+        { name: 'Skeleton of Bad Habits', icon: '💀', flavor: 'Rattles with the chains of old patterns.', particleType: 'arcane' },
+        { name: 'Bat of Anxiety', icon: '🦇', flavor: 'Swoops in when you least expect it.', particleType: 'shadow' },
+        { name: 'Spider of Overwhelm', icon: '🕷️', flavor: 'Spins webs of endless to-do lists.', particleType: 'shadow' },
+        { name: 'Rat of Excuses', icon: '🐀', flavor: 'Gnaws away at your good intentions.', particleType: 'shadow' },
+        { name: 'Ghost of Yesterday', icon: '👻', flavor: 'Haunts you with missed opportunities.', particleType: 'arcane' },
+        { name: 'Mushroom of Confusion', icon: '🍄', flavor: 'Clouds your mind with indecision.', particleType: 'leaf' },
+        { name: 'Snake of Temptation', icon: '🐍', flavor: 'Lures you toward quick dopamine hits.', particleType: 'slime' },
+        { name: 'Scarecrow of Fear', icon: '🎃', flavor: 'Guards the field of your ambitions.', particleType: 'leaf' },
+        { name: 'Troll of Negativity', icon: '🧌', flavor: 'Blocks the bridge to your goals.', particleType: 'shadow' },
+        { name: 'Wisp of Forgetfulness', icon: '🔮', flavor: 'Makes important tasks vanish from memory.', particleType: 'arcane' }
+    ],
+    weekly: [
+        { name: 'Dragon of Distraction', icon: '🐉', flavor: 'Ancient beast that hoards your wasted hours.', particleType: 'ember' },
+        { name: 'Lich of Procrastination', icon: '☠️', flavor: 'Undying lord of "I\'ll do it tomorrow."', particleType: 'arcane' },
+        { name: 'Hydra of Overthinking', icon: '🐲', flavor: 'Cut one worry, two more take its place.', particleType: 'slime' },
+        { name: 'Demon of Self-Doubt', icon: '👿', flavor: 'Feeds on your insecurities to grow stronger.', particleType: 'ember' },
+        { name: 'Titan of Burnout', icon: '👹', flavor: 'Massive creature born from overwork.', particleType: 'ember' },
+        { name: 'Kraken of Chaos', icon: '🦑', flavor: 'Tentacles of disorder wrap around your plans.', particleType: 'slime' },
+        { name: 'Cerberus of Temptation', icon: '🐕', flavor: 'Three heads: social media, games, and snacks.', particleType: 'shadow' },
+        { name: 'Golem of Stagnation', icon: '🗿', flavor: 'An immovable wall blocking your progress.', particleType: 'shadow' },
+        { name: 'Wyvern of Wasted Time', icon: '🦅', flavor: 'Soars away with your precious hours.', particleType: 'ember' },
+        { name: 'Necromancer of Old Habits', icon: '🧙', flavor: 'Keeps resurrecting the patterns you buried.', particleType: 'arcane' }
+    ],
+    monthly: [
+        { name: 'The Obsidian Warden', icon: '🏴', flavor: 'An ancient guardian forged from pure resistance to change.', particleType: 'shadow' },
+        { name: 'Archmage of the Void', icon: '🌑', flavor: 'Master of nothingness who erases your motivation.', particleType: 'arcane' },
+        { name: 'Behemoth of Despair', icon: '🦣', flavor: 'A colossal beast whose footsteps shake your resolve.', particleType: 'shadow' },
+        { name: 'The Crimson Overlord', icon: '👑', flavor: 'Tyrannical ruler who demands your surrender to mediocrity.', particleType: 'ember' },
+        { name: 'Leviathan of Lost Days', icon: '🐋', flavor: 'Swallows entire weeks into its endless abyss.', particleType: 'slime' },
+        { name: 'The Phantom Emperor', icon: '👁️', flavor: 'Rules an invisible empire built on your abandoned dreams.', particleType: 'arcane' },
+        { name: 'Colossus of Complacency', icon: '🗽', flavor: 'A towering monument to "good enough" thinking.', particleType: 'shadow' },
+        { name: 'The Abyssal Serpent', icon: '🐍', flavor: 'Coils around your potential and drags it to the depths.', particleType: 'slime' },
+        { name: 'Infernal Juggernaut', icon: '🔥', flavor: 'An unstoppable force of destructive routines.', particleType: 'ember' },
+        { name: 'The Shadow Sovereign', icon: '🌘', flavor: 'Commands an army of every excuse you\'ve ever made.', particleType: 'shadow' },
+        { name: 'Dreadnought of Doom', icon: '⚓', flavor: 'An armored fortress of fear that blocks your horizon.', particleType: 'shadow' },
+        { name: 'The Eternal Watcher', icon: '🗿', flavor: 'Has observed a thousand failed resolutions. Will yours be different?', particleType: 'shadow' }
+    ]
+});
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = BOSS_THEMES;
-})();
+
+// Node / Jest
+
+export default BOSS_THEMES;

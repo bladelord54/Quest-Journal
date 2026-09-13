@@ -18,39 +18,39 @@
  *     attaches to window.TASK_RENDER. goal-manager.js captures it and delegates.
  *   - Jest/Node: `require('./task-render.js')` returns the object via module.exports.
  */
-(function () {
-    /**
-     * Checklist completion fold: {completed, total, percent}. Pure — reads only
-     * task.checklist. percent is floored (matches the original) and 0 when the list is empty.
-     * @param {{ checklist?: Array<{ completed?: boolean }> }} task
-     * @returns {{ completed: number, total: number, percent: number }}
-     */
-    function getChecklistProgress(task) {
-        if (!task.checklist || task.checklist.length === 0) {
-            return { completed: 0, total: 0, percent: 0 };
-        }
 
-        const completed = task.checklist.filter(i => i.completed).length;
-        const total = task.checklist.length;
-        const percent = total > 0 ? Math.floor((completed / total) * 100) : 0;
-
-        return { completed, total, percent };
+/**
+ * Checklist completion fold: {completed, total, percent}. Pure — reads only
+ * task.checklist. percent is floored (matches the original) and 0 when the list is empty.
+ * @param {{ checklist?: Array<{ completed?: boolean }> }} task
+ * @returns {{ completed: number, total: number, percent: number }}
+ */
+function getChecklistProgress(task) {
+    if (!task.checklist || task.checklist.length === 0) {
+        return { completed: 0, total: 0, percent: 0 };
     }
 
-    /**
-     * The per-task checklist block: an "Add Checklist Item" prompt when empty, else the
-     * header (done/total) + a row per item (checkbox + text + delete) + a progress bar shown
-     * only while partially complete. `escapeHTML` is INJECTED and applied to the user-entered
-     * item text (the block's only coupling); everything else is task/item data. Indentation
-     * matches the original method so both branch templates are byte-identical.
-     * @param {{ id: any, checklist?: Array<{ id: any, text: any, completed?: boolean }> }} task
-     * @param {string} taskType
-     * @param {{ escapeHTML: (s: any) => string }} deps
-     * @returns {string}
-     */
-    function renderChecklistHTML(task, taskType, { escapeHTML }) {
-        if (!task.checklist || task.checklist.length === 0) {
-            return `
+    const completed = task.checklist.filter(i => i.completed).length;
+    const total = task.checklist.length;
+    const percent = total > 0 ? Math.floor((completed / total) * 100) : 0;
+
+    return { completed, total, percent };
+}
+
+/**
+ * The per-task checklist block: an "Add Checklist Item" prompt when empty, else the
+ * header (done/total) + a row per item (checkbox + text + delete) + a progress bar shown
+ * only while partially complete. `escapeHTML` is INJECTED and applied to the user-entered
+ * item text (the block's only coupling); everything else is task/item data. Indentation
+ * matches the original method so both branch templates are byte-identical.
+ * @param {{ id: any, checklist?: Array<{ id: any, text: any, completed?: boolean }> }} task
+ * @param {string} taskType
+ * @param {{ escapeHTML: (s: any) => string }} deps
+ * @returns {string}
+ */
+function renderChecklistHTML(task, taskType, { escapeHTML }) {
+    if (!task.checklist || task.checklist.length === 0) {
+        return `
                 <div class="mt-3 pt-3 border-t border-gray-700/50">
                     <button data-action="checklist.add" data-task-type="${taskType}" data-task-id="${task.id}" 
                         class="text-xs bg-purple-800/50 hover:bg-purple-700/60 text-purple-200 px-3 py-1 rounded border border-purple-600 fancy-font">
@@ -58,11 +58,11 @@
                     </button>
                 </div>
             `;
-        }
+    }
 
-        const progress = getChecklistProgress(task);
+    const progress = getChecklistProgress(task);
 
-        return `
+    return `
             <div class="mt-3 pt-3 border-t border-gray-700/50">
                 <div class="flex items-center justify-between mb-2">
                     <p class="text-xs text-purple-300 font-semibold">✓ Checklist (${progress.completed}/${progress.total})</p>
@@ -92,54 +92,54 @@
                 ` : ''}
             </div>
         `;
-    }
+}
 
-    /**
-     * The priority badge `<span>` for a task/goal — the small colored 🔥 High / 🪶 Low /
-     * ⭐ Medium pill. Validates the raw priority (anything not low/medium/high falls back to
-     * medium) then returns the matching badge markup. This is the ONE source of the badge that
-     * the daily-task, weekly-goal, yearly-goal, and monthly-goal cards all render via
-     * `${priorityBadge}` — previously each card inlined an identical copy of this block (the exact
-     * kind of duplicated knowledge that drifts). Pure; no injected deps.
-     * @param {string|undefined} priority
-     * @returns {string}
-     */
-    function priorityBadgeHTML(priority) {
-        const p = priority && ['low', 'medium', 'high'].includes(priority) ? priority : 'medium';
-        return p === 'high'
-            ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
-            : p === 'low'
-                ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
-                : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
-    }
+/**
+ * The priority badge `<span>` for a task/goal — the small colored 🔥 High / 🪶 Low /
+ * ⭐ Medium pill. Validates the raw priority (anything not low/medium/high falls back to
+ * medium) then returns the matching badge markup. This is the ONE source of the badge that
+ * the daily-task, weekly-goal, yearly-goal, and monthly-goal cards all render via
+ * `${priorityBadge}` — previously each card inlined an identical copy of this block (the exact
+ * kind of duplicated knowledge that drifts). Pure; no injected deps.
+ * @param {string|undefined} priority
+ * @returns {string}
+ */
+function priorityBadgeHTML(priority) {
+    const p = priority && ['low', 'medium', 'high'].includes(priority) ? priority : 'medium';
+    return p === 'high'
+        ? '<span class="text-xs bg-red-700/50 text-red-200 px-2 py-1 rounded border border-red-600/40 fancy-font">🔥 High</span>'
+        : p === 'low'
+            ? '<span class="text-xs bg-gray-700/50 text-gray-200 px-2 py-1 rounded border border-gray-600/40 fancy-font">🪶 Low</span>'
+            : '<span class="text-xs bg-yellow-700/50 text-yellow-200 px-2 py-1 rounded border border-yellow-600/40 fancy-font">⭐ Medium</span>';
+}
 
-    /**
-     * A single side-quest card: drag/drop wrapper + completion checkbox + priority icon,
-     * escaped title, optional royal-bounty badge + escaped description, priority/added meta,
-     * the checklist block, and edit/delete buttons. Pure once `escapeHTML` (title/description)
-     * and `isBountyTarget` (the bounty-badge predicate — reads game state) are INJECTED; it
-     * COMPOSES this module's own `renderChecklistHTML` for the checklist (passing `escapeHTML`
-     * through). `color` is the theme color the caller (renderSideQuests) picks per card. The
-     * inline `ondrag*` / `onchange` handlers reference the global `goalManager` and stay as
-     * literal template text. Indentation matches the original method so the template is
-     * byte-identical.
-     * @param {{ id:any, completed?:boolean, priority:string, title:any, description?:any, created:any, checklist?:any[] }} quest
-     * @param {string} color
-     * @param {{ escapeHTML:(s:any)=>string, isBountyTarget:(type:string,id:any)=>boolean }} deps
-     * @returns {string}
-     */
-    function renderSideQuestCardHTML(quest, color, { escapeHTML, isBountyTarget }) {
-        /** @type {Record<string, string>} */
-        const priorityIcons = {
-            high: '⚡',
-            medium: '⭐',
-            low: '💫'
-        };
-        const bountyBadge = isBountyTarget('sidequest', quest.id)
-            ? '<span class="bounty-badge text-xs px-2 py-1 rounded fancy-font" title="Royal Bounty target — complete for a free chest!">👑 Royal Bounty</span>'
-            : '';
+/**
+ * A single side-quest card: drag/drop wrapper + completion checkbox + priority icon,
+ * escaped title, optional royal-bounty badge + escaped description, priority/added meta,
+ * the checklist block, and edit/delete buttons. Pure once `escapeHTML` (title/description)
+ * and `isBountyTarget` (the bounty-badge predicate — reads game state) are INJECTED; it
+ * COMPOSES this module's own `renderChecklistHTML` for the checklist (passing `escapeHTML`
+ * through). `color` is the theme color the caller (renderSideQuests) picks per card. The
+ * inline `ondrag*` / `onchange` handlers reference the global `goalManager` and stay as
+ * literal template text. Indentation matches the original method so the template is
+ * byte-identical.
+ * @param {{ id:any, completed?:boolean, priority:string, title:any, description?:any, created:any, checklist?:any[] }} quest
+ * @param {string} color
+ * @param {{ escapeHTML:(s:any)=>string, isBountyTarget:(type:string,id:any)=>boolean }} deps
+ * @returns {string}
+ */
+function renderSideQuestCardHTML(quest, color, { escapeHTML, isBountyTarget }) {
+    /** @type {Record<string, string>} */
+    const priorityIcons = {
+        high: '⚡',
+        medium: '⭐',
+        low: '💫'
+    };
+    const bountyBadge = isBountyTarget('sidequest', quest.id)
+        ? '<span class="bounty-badge text-xs px-2 py-1 rounded fancy-font" title="Royal Bounty target — complete for a free chest!">👑 Royal Bounty</span>'
+        : '';
 
-        return `
+    return `
             <div class="quest-card goal-item bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-lg shadow-xl border-3 border-${color}-700 hover:shadow-2xl transition-all draggable-item"
                 data-side-quest-id="${quest.id}"
                 draggable="true"
@@ -179,25 +179,25 @@
                 </div>
             </div>
         `;
-    }
+}
 
-    /**
-     * A single daily-task card: drag/drop wrapper, optional bulk-select checkbox, completion
-     * checkbox, escaped title + optional description, a priority badge, linked-parent chips, the
-     * checklist block, and the connections/edit/delete controls. Pure once its per-task IMPURE
-     * inputs (computed by the class wrapper) are injected: `parentNames` (from getParentNames over
-     * weeklyGoals), `isSelected` (selectedItems membership), `bulkSelectionMode` (the class flag),
-     * and `escapeHTML`. The pure `priority`/`priorityBadge` derivation stays INSIDE; the card
-     * COMPOSES this module's own renderChecklistHTML. Inline `goalManager.*` handlers stay as
-     * literal template text. Template indentation is preserved byte-for-byte from the original
-     * map callback (hence the deep base indent).
-     * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, checklist?:any[] }} task
-     * @param {{ parentNames:any[], isSelected:boolean, bulkSelectionMode:boolean, escapeHTML:(s:any)=>string }} deps
-     * @returns {string}
-     */
-    function renderDailyTaskCardHTML(task, { parentNames, isSelected, bulkSelectionMode, escapeHTML }) {
-        const priorityBadge = priorityBadgeHTML(task.priority);
-        return `
+/**
+ * A single daily-task card: drag/drop wrapper, optional bulk-select checkbox, completion
+ * checkbox, escaped title + optional description, a priority badge, linked-parent chips, the
+ * checklist block, and the connections/edit/delete controls. Pure once its per-task IMPURE
+ * inputs (computed by the class wrapper) are injected: `parentNames` (from getParentNames over
+ * weeklyGoals), `isSelected` (selectedItems membership), `bulkSelectionMode` (the class flag),
+ * and `escapeHTML`. The pure `priority`/`priorityBadge` derivation stays INSIDE; the card
+ * COMPOSES this module's own renderChecklistHTML. Inline `goalManager.*` handlers stay as
+ * literal template text. Template indentation is preserved byte-for-byte from the original
+ * map callback (hence the deep base indent).
+ * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, checklist?:any[] }} task
+ * @param {{ parentNames:any[], isSelected:boolean, bulkSelectionMode:boolean, escapeHTML:(s:any)=>string }} deps
+ * @returns {string}
+ */
+function renderDailyTaskCardHTML(task, { parentNames, isSelected, bulkSelectionMode, escapeHTML }) {
+    const priorityBadge = priorityBadgeHTML(task.priority);
+    return `
                 <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg shadow-xl border-2 border-amber-700/50 task-item mb-4 ${isSelected ? 'ring-4 ring-purple-500' : ''}"
                     draggable="true"
                     ondragstart="goalManager.handleDragStart('daily', ${task.id}, event)"
@@ -254,29 +254,29 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * A single weekly-goal card: drag-less goal wrapper, optional bulk-select checkbox, completion
-     * checkbox, escaped title + optional description, priority badge, linked-parent chips, a
-     * progress bar, the linked daily-tasks list, the checklist block, and the add-task/connections
-     * + edit/delete controls. Pure once its per-goal IMPURE inputs (computed by the class wrapper)
-     * are injected: `linkedTasks` (daily tasks whose weeklyGoalId(s) include this goal),
-     * `parentNames` (getParentNames over monthlyGoals), `isSelected` (selectedItems membership),
-     * `bulkSelectionMode` (the class flag), and `escapeHTML` (×4 — title, description, parent
-     * chips, linked-task titles). The pure `priority`/`priorityBadge` derivation stays INSIDE; the
-     * card COMPOSES this module's own renderChecklistHTML. NOTE: the original method also computed
-     * a `bountyBadge` here but never interpolated it (dead code — an unused isBountyTarget call);
-     * it is intentionally dropped, leaving the rendered output byte-identical. Inline
-     * `goalManager.*` handlers stay as literal text; template indentation is preserved byte-for-
-     * byte from the original map callback.
-     * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, progress?:any, checklist?:any[] }} goal
-     * @param {{ linkedTasks:any[], parentNames:any[], isSelected:boolean, bulkSelectionMode:boolean, escapeHTML:(s:any)=>string }} deps
-     * @returns {string}
-     */
-    function renderWeeklyGoalCardHTML(goal, { linkedTasks, parentNames, isSelected, bulkSelectionMode, escapeHTML }) {
-        const priorityBadge = priorityBadgeHTML(goal.priority);
-        return `
+/**
+ * A single weekly-goal card: drag-less goal wrapper, optional bulk-select checkbox, completion
+ * checkbox, escaped title + optional description, priority badge, linked-parent chips, a
+ * progress bar, the linked daily-tasks list, the checklist block, and the add-task/connections
+ * + edit/delete controls. Pure once its per-goal IMPURE inputs (computed by the class wrapper)
+ * are injected: `linkedTasks` (daily tasks whose weeklyGoalId(s) include this goal),
+ * `parentNames` (getParentNames over monthlyGoals), `isSelected` (selectedItems membership),
+ * `bulkSelectionMode` (the class flag), and `escapeHTML` (×4 — title, description, parent
+ * chips, linked-task titles). The pure `priority`/`priorityBadge` derivation stays INSIDE; the
+ * card COMPOSES this module's own renderChecklistHTML. NOTE: the original method also computed
+ * a `bountyBadge` here but never interpolated it (dead code — an unused isBountyTarget call);
+ * it is intentionally dropped, leaving the rendered output byte-identical. Inline
+ * `goalManager.*` handlers stay as literal text; template indentation is preserved byte-for-
+ * byte from the original map callback.
+ * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, progress?:any, checklist?:any[] }} goal
+ * @param {{ linkedTasks:any[], parentNames:any[], isSelected:boolean, bulkSelectionMode:boolean, escapeHTML:(s:any)=>string }} deps
+ * @returns {string}
+ */
+function renderWeeklyGoalCardHTML(goal, { linkedTasks, parentNames, isSelected, bulkSelectionMode, escapeHTML }) {
+    const priorityBadge = priorityBadgeHTML(goal.priority);
+    return `
                 <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-5 rounded-lg shadow-xl border-3 border-green-700 goal-item mb-4 ${isSelected ? 'ring-4 ring-purple-500' : ''}">
                     <div class="flex items-start space-x-4">
                         ${bulkSelectionMode ? `
@@ -348,24 +348,24 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * A single life-goal card: completion checkbox, escaped title (h3) + optional description, a
-     * created-date line, then EITHER a progress bar + linked yearly-campaigns list (when the goal
-     * has linked yearly goals) OR a "Legendary Quest" badge, plus the add-yearly + edit/delete
-     * controls. Pure once `linkedYearly` (yearly goals whose lifeGoalId(s) include this goal) and
-     * `escapeHTML` are injected; `progress` is derived from them. Life goals have NO priority,
-     * bulk-select, parent chips, or checklist (they sit at the top of the hierarchy). Inline
-     * `goalManager.*` handlers stay literal; template indentation preserved byte-for-byte from the
-     * original map callback.
-     * @param {{ id:any, completed?:boolean, title:any, description?:any, created:any, progress?:any }} goal
-     * @param {{ linkedYearly:any[], escapeHTML:(s:any)=>string }} deps
-     * @returns {string}
-     */
-    function renderLifeGoalCardHTML(goal, { linkedYearly, escapeHTML }) {
-        const progress = linkedYearly.length > 0 ? goal.progress || 0 : 0;
-        return `
+/**
+ * A single life-goal card: completion checkbox, escaped title (h3) + optional description, a
+ * created-date line, then EITHER a progress bar + linked yearly-campaigns list (when the goal
+ * has linked yearly goals) OR a "Legendary Quest" badge, plus the add-yearly + edit/delete
+ * controls. Pure once `linkedYearly` (yearly goals whose lifeGoalId(s) include this goal) and
+ * `escapeHTML` are injected; `progress` is derived from them. Life goals have NO priority,
+ * bulk-select, parent chips, or checklist (they sit at the top of the hierarchy). Inline
+ * `goalManager.*` handlers stay literal; template indentation preserved byte-for-byte from the
+ * original map callback.
+ * @param {{ id:any, completed?:boolean, title:any, description?:any, created:any, progress?:any }} goal
+ * @param {{ linkedYearly:any[], escapeHTML:(s:any)=>string }} deps
+ * @returns {string}
+ */
+function renderLifeGoalCardHTML(goal, { linkedYearly, escapeHTML }) {
+    const progress = linkedYearly.length > 0 ? goal.progress || 0 : 0;
+    return `
                 <div class="quest-card bg-gradient-to-br from-red-900 to-red-950 p-5 rounded-xl shadow-2xl border-4 border-red-700 goal-item">
                     <div class="flex items-start space-x-4">
                         <input 
@@ -419,25 +419,25 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * A single yearly-goal (campaign) card: completion checkbox, escaped title (h4) + optional
-     * description, priority badge, linked-parent (life-goal) chips, a "Campaign Progress" line +
-     * progress bar, the linked monthly-raids list, and the add-monthly/connections + edit/delete
-     * controls. Pure once `linkedMonthly` (monthly goals whose `yearlyGoalId(s)` include this goal
-     * — filter stays in the wrapper), `parentNames` (getParentNames over `lifeGoals`), and
-     * `escapeHTML` (×4 — title, description, parent chips, monthly titles) are injected; the pure
-     * `priority`/`priorityBadge` derivation stays INSIDE. Yearly goals have NO bulk-select, bounty
-     * badge, or checklist. Inline `goalManager.*` handlers stay literal; template indentation is
-     * preserved byte-for-byte from the original map callback.
-     * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, progress?:any }} goal
-     * @param {{ linkedMonthly:any[], parentNames:any[], escapeHTML:(s:any)=>string }} deps
-     * @returns {string}
-     */
-    function renderYearlyGoalCardHTML(goal, { linkedMonthly, parentNames, escapeHTML }) {
-        const priorityBadge = priorityBadgeHTML(goal.priority);
-        return `
+/**
+ * A single yearly-goal (campaign) card: completion checkbox, escaped title (h4) + optional
+ * description, priority badge, linked-parent (life-goal) chips, a "Campaign Progress" line +
+ * progress bar, the linked monthly-raids list, and the add-monthly/connections + edit/delete
+ * controls. Pure once `linkedMonthly` (monthly goals whose `yearlyGoalId(s)` include this goal
+ * — filter stays in the wrapper), `parentNames` (getParentNames over `lifeGoals`), and
+ * `escapeHTML` (×4 — title, description, parent chips, monthly titles) are injected; the pure
+ * `priority`/`priorityBadge` derivation stays INSIDE. Yearly goals have NO bulk-select, bounty
+ * badge, or checklist. Inline `goalManager.*` handlers stay literal; template indentation is
+ * preserved byte-for-byte from the original map callback.
+ * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, progress?:any }} goal
+ * @param {{ linkedMonthly:any[], parentNames:any[], escapeHTML:(s:any)=>string }} deps
+ * @returns {string}
+ */
+function renderYearlyGoalCardHTML(goal, { linkedMonthly, parentNames, escapeHTML }) {
+    const priorityBadge = priorityBadgeHTML(goal.priority);
+    return `
                 <div class="quest-card bg-gradient-to-br from-purple-900 to-purple-950 p-5 rounded-lg shadow-xl border-3 border-purple-700 goal-item">
                     <div class="flex items-start space-x-4">
                         <input 
@@ -500,30 +500,30 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * A single monthly-goal (raid) card: the richest goal card — an optional bulk-select checkbox,
-     * completion checkbox, escaped title (h4) + optional description, a priority badge AND a
-     * royal-bounty badge (both in one row), linked-parent (yearly) chips, a progress bar + weekly
-     * tally, the linked weekly-goals list, and the add-weekly/connections + edit/delete controls.
-     * Pure once injected: `linkedWeekly` (weekly goals whose `monthlyGoalId(s)` include this goal —
-     * filter stays in the wrapper), `parentNames` (getParentNames over `yearlyGoals`), `isSelected`,
-     * `bulkSelectionMode`, `isBountyTarget` (predicate for the bounty badge — UNLIKE the weekly
-     * card, the badge is actually rendered here), and `escapeHTML` (×4 — title, description, parent
-     * chips, weekly titles). The pure `priority`/`priorityBadge` and the `bountyBadge` (via
-     * `isBountyTarget`) are derived INSIDE. No checklist. Inline `goalManager.*` handlers stay
-     * literal; template indentation preserved byte-for-byte from the original map callback.
-     * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, progress?:any }} goal
-     * @param {{ linkedWeekly:any[], parentNames:any[], isSelected:boolean, bulkSelectionMode:boolean, isBountyTarget:(type:string,id:any)=>boolean, escapeHTML:(s:any)=>string }} deps
-     * @returns {string}
-     */
-    function renderMonthlyGoalCardHTML(goal, { linkedWeekly, parentNames, isSelected, bulkSelectionMode, isBountyTarget, escapeHTML }) {
-        const priorityBadge = priorityBadgeHTML(goal.priority);
-        const bountyBadge = isBountyTarget('monthly', goal.id)
-            ? '<span class="bounty-badge text-xs px-2 py-1 rounded fancy-font" title="Royal Bounty target — complete for a free chest!">👑 Royal Bounty</span>'
-            : '';
-        return `
+/**
+ * A single monthly-goal (raid) card: the richest goal card — an optional bulk-select checkbox,
+ * completion checkbox, escaped title (h4) + optional description, a priority badge AND a
+ * royal-bounty badge (both in one row), linked-parent (yearly) chips, a progress bar + weekly
+ * tally, the linked weekly-goals list, and the add-weekly/connections + edit/delete controls.
+ * Pure once injected: `linkedWeekly` (weekly goals whose `monthlyGoalId(s)` include this goal —
+ * filter stays in the wrapper), `parentNames` (getParentNames over `yearlyGoals`), `isSelected`,
+ * `bulkSelectionMode`, `isBountyTarget` (predicate for the bounty badge — UNLIKE the weekly
+ * card, the badge is actually rendered here), and `escapeHTML` (×4 — title, description, parent
+ * chips, weekly titles). The pure `priority`/`priorityBadge` and the `bountyBadge` (via
+ * `isBountyTarget`) are derived INSIDE. No checklist. Inline `goalManager.*` handlers stay
+ * literal; template indentation preserved byte-for-byte from the original map callback.
+ * @param {{ id:any, completed?:boolean, priority?:string, title:any, description?:any, progress?:any }} goal
+ * @param {{ linkedWeekly:any[], parentNames:any[], isSelected:boolean, bulkSelectionMode:boolean, isBountyTarget:(type:string,id:any)=>boolean, escapeHTML:(s:any)=>string }} deps
+ * @returns {string}
+ */
+function renderMonthlyGoalCardHTML(goal, { linkedWeekly, parentNames, isSelected, bulkSelectionMode, isBountyTarget, escapeHTML }) {
+    const priorityBadge = priorityBadgeHTML(goal.priority);
+    const bountyBadge = isBountyTarget('monthly', goal.id)
+        ? '<span class="bounty-badge text-xs px-2 py-1 rounded fancy-font" title="Royal Bounty target — complete for a free chest!">👑 Royal Bounty</span>'
+        : '';
+    return `
                 <div class="quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-5 rounded-xl shadow-xl border-3 border-blue-700 goal-item ${isSelected ? 'ring-4 ring-purple-500' : ''}">
                     <div class="flex items-start space-x-4">
                         ${bulkSelectionMode ? `
@@ -593,22 +593,22 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * The "This Week's Scheduled Tasks" summary card shown atop renderWeeklyGoals when there are
-     * daily tasks due this week that aren't linked to a weekly goal. Lists each task with its
-     * weekday abbreviation, an overdue highlight, and a toggle. Pure once `todayStr` (today's
-     * YYYY-MM-DD, computed ONCE by the caller from `_cachedToday || getTodayDateString()`) and
-     * `escapeHTML` are injected; the per-task weekday/overdue derivation is pure given `todayStr`.
-     * The day-row IIFE is preserved as-is (its `const _todayStr = todayStr` just aliases the
-     * injected value) so the template stays byte-identical to the original inline block.
-     * @param {Array<{ id:any, dueDate:string, completed?:boolean, title:any }>} tasks
-     * @param {{ todayStr: string, escapeHTML: (s:any)=>string }} deps
-     * @returns {string}
-     */
-    function renderWeeklyScheduledTasksHTML(tasks, { todayStr, escapeHTML }) {
-        return `
+/**
+ * The "This Week's Scheduled Tasks" summary card shown atop renderWeeklyGoals when there are
+ * daily tasks due this week that aren't linked to a weekly goal. Lists each task with its
+ * weekday abbreviation, an overdue highlight, and a toggle. Pure once `todayStr` (today's
+ * YYYY-MM-DD, computed ONCE by the caller from `_cachedToday || getTodayDateString()`) and
+ * `escapeHTML` are injected; the per-task weekday/overdue derivation is pure given `todayStr`.
+ * The day-row IIFE is preserved as-is (its `const _todayStr = todayStr` just aliases the
+ * injected value) so the template stays byte-identical to the original inline block.
+ * @param {Array<{ id:any, dueDate:string, completed?:boolean, title:any }>} tasks
+ * @param {{ todayStr: string, escapeHTML: (s:any)=>string }} deps
+ * @returns {string}
+ */
+function renderWeeklyScheduledTasksHTML(tasks, { todayStr, escapeHTML }) {
+    return `
                 <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-5 rounded-lg shadow-xl border-3 border-green-700 goal-item mb-4">
                     <div class="flex items-start space-x-4">
                         <div class="flex-1">
@@ -636,38 +636,38 @@
                     </div>
                 </div>
                 `;
-    }
+}
 
-    /**
-     * The "This Month's Scheduled Tasks" summary card shown atop renderMonthlyGoals when there are
-     * daily tasks due this month that aren't linked to a monthly goal. Groups the tasks by calendar
-     * week (the `weekGroups` fold, moved in from the wrapper) and renders one mini-panel per week,
-     * each listing its tasks with an overdue highlight + toggle. Pure once `todayStr` (today's
-     * YYYY-MM-DD, computed ONCE by the caller from `_cachedToday || getTodayDateString()`) and
-     * `escapeHTML` are injected; the grouping and per-task overdue derivation are otherwise pure.
-     * The day-row IIFE is preserved as-is so the template stays byte-identical to the original.
-     * @param {Array<{ id:any, dueDate:string, completed?:boolean, title:any }>} tasks
-     * @param {{ todayStr: string, escapeHTML: (s:any)=>string }} deps
-     * @returns {string}
-     */
-    function renderMonthlyScheduledTasksHTML(tasks, { todayStr, escapeHTML }) {
-        /** @type {Record<string, Array<{ id:any, dueDate:string, completed?:boolean, title:any }>>} */
-        const weekGroups = {};
-        tasks.forEach(task => {
-            // Parse date as local time to avoid timezone issues
-            const [year, month, day] = task.dueDate.split('-').map(Number);
-            const taskDate = new Date(year, month - 1, day);
-            const startOfWeek = new Date(taskDate);
-            startOfWeek.setDate(taskDate.getDate() - taskDate.getDay());
-            const weekKey = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
+/**
+ * The "This Month's Scheduled Tasks" summary card shown atop renderMonthlyGoals when there are
+ * daily tasks due this month that aren't linked to a monthly goal. Groups the tasks by calendar
+ * week (the `weekGroups` fold, moved in from the wrapper) and renders one mini-panel per week,
+ * each listing its tasks with an overdue highlight + toggle. Pure once `todayStr` (today's
+ * YYYY-MM-DD, computed ONCE by the caller from `_cachedToday || getTodayDateString()`) and
+ * `escapeHTML` are injected; the grouping and per-task overdue derivation are otherwise pure.
+ * The day-row IIFE is preserved as-is so the template stays byte-identical to the original.
+ * @param {Array<{ id:any, dueDate:string, completed?:boolean, title:any }>} tasks
+ * @param {{ todayStr: string, escapeHTML: (s:any)=>string }} deps
+ * @returns {string}
+ */
+function renderMonthlyScheduledTasksHTML(tasks, { todayStr, escapeHTML }) {
+    /** @type {Record<string, Array<{ id:any, dueDate:string, completed?:boolean, title:any }>>} */
+    const weekGroups = {};
+    tasks.forEach(task => {
+        // Parse date as local time to avoid timezone issues
+        const [year, month, day] = task.dueDate.split('-').map(Number);
+        const taskDate = new Date(year, month - 1, day);
+        const startOfWeek = new Date(taskDate);
+        startOfWeek.setDate(taskDate.getDate() - taskDate.getDay());
+        const weekKey = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
 
-            if (!weekGroups[weekKey]) {
-                weekGroups[weekKey] = [];
-            }
-            weekGroups[weekKey].push(task);
-        });
+        if (!weekGroups[weekKey]) {
+            weekGroups[weekKey] = [];
+        }
+        weekGroups[weekKey].push(task);
+    });
 
-        return `
+    return `
                 <div class="col-span-2 quest-card bg-gradient-to-br from-blue-900 to-blue-950 p-5 rounded-xl shadow-xl border-3 border-blue-700 goal-item mb-4">
                     <h4 class="font-bold text-xl text-amber-300 medieval-title mb-3"><i class="ri-calendar-line mr-2"></i>This Month's Scheduled Tasks</h4>
                     <p class="text-xs text-blue-200 mb-3 fancy-font">${tasks.filter(t => t.completed).length}/${tasks.length} tasks complete</p>
@@ -700,30 +700,23 @@
                     </div>
                 </div>
                 `;
-    }
+}
 
-    const TASK_RENDER = Object.freeze({
-        getChecklistProgress,
-        renderChecklistHTML,
-        priorityBadgeHTML,
-        renderSideQuestCardHTML,
-        renderDailyTaskCardHTML,
-        renderWeeklyGoalCardHTML,
-        renderLifeGoalCardHTML,
-        renderYearlyGoalCardHTML,
-        renderMonthlyGoalCardHTML,
-        renderWeeklyScheduledTasksHTML,
-        renderMonthlyScheduledTasksHTML,
-    });
+const TASK_RENDER = Object.freeze({
+    getChecklistProgress,
+    renderChecklistHTML,
+    priorityBadgeHTML,
+    renderSideQuestCardHTML,
+    renderDailyTaskCardHTML,
+    renderWeeklyGoalCardHTML,
+    renderLifeGoalCardHTML,
+    renderYearlyGoalCardHTML,
+    renderMonthlyGoalCardHTML,
+    renderWeeklyScheduledTasksHTML,
+    renderMonthlyScheduledTasksHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic TASK_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.TASK_RENDER = TASK_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = TASK_RENDER;
-})();
+// Node / Jest
+
+export default TASK_RENDER;

@@ -22,15 +22,15 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.PREMIUM_RENDER.
  *   - Jest/Node: require('./premium-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @param {{ isPremium: boolean, purchaseDate: string }} state
-     * @returns {string}
-     */
-    function renderPremiumCardHTML({ isPremium, purchaseDate }) {
-        if (isPremium) {
-            // Premium user view
-            return `
+
+/**
+ * @param {{ isPremium: boolean, purchaseDate: string }} state
+ * @returns {string}
+ */
+function renderPremiumCardHTML({ isPremium, purchaseDate }) {
+    if (isPremium) {
+        // Premium user view
+        return `
                 <div class="text-center">
                     <div class="text-6xl mb-4">👑</div>
                     <h3 class="text-2xl font-bold text-yellow-200 medieval-title mb-2">Premium Adventurer</h3>
@@ -59,9 +59,9 @@
                     
                 </div>
             `;
-        }
-        // Free user view - show upgrade prompt
-        return `
+    }
+    // Free user view - show upgrade prompt
+    return `
                 <div class="flex flex-col md:flex-row gap-6 items-center">
                     <div class="flex-1">
                         <h3 class="text-2xl font-bold text-yellow-200 medieval-title mb-2 flex items-center">
@@ -102,16 +102,16 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * @param {string} message
-     * @param {boolean} isPremium
-     * @returns {string}
-     */
-    function renderPremiumBannerHTML(message, isPremium) {
-        if (isPremium) return '';
-        return `
+/**
+ * @param {string} message
+ * @param {boolean} isPremium
+ * @returns {string}
+ */
+function renderPremiumBannerHTML(message, isPremium) {
+    if (isPremium) return '';
+    return `
             <div class="bg-gradient-to-r from-yellow-900/60 to-amber-900/60 border border-yellow-600/50 rounded-xl p-3 mb-4 flex items-center justify-between gap-3 cursor-pointer hover:border-yellow-500/70 transition-colors"
                  data-action="premium.showModal">
                 <div class="flex items-center gap-2 min-w-0">
@@ -123,18 +123,11 @@
                 </button>
             </div>
         `;
-    }
+}
 
-    const PREMIUM_RENDER = Object.freeze({ renderPremiumCardHTML, renderPremiumBannerHTML });
+const PREMIUM_RENDER = Object.freeze({ renderPremiumCardHTML, renderPremiumBannerHTML });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic PREMIUM_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.PREMIUM_RENDER = PREMIUM_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = PREMIUM_RENDER;
-})();
+// Node / Jest
+
+export default PREMIUM_RENDER;

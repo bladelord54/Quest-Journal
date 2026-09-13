@@ -26,13 +26,13 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.CALENDAR_RENDER.
  *   - Jest/Node: require('./calendar-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @param {{ day: number, isToday: boolean, completedTasks: number, totalTasks: number }} args
-     * @returns {string}
-     */
-    function renderCalendarDayHTML({ day, isToday, completedTasks, totalTasks }) {
-        return `
+
+/**
+ * @param {{ day: number, isToday: boolean, completedTasks: number, totalTasks: number }} args
+ * @returns {string}
+ */
+function renderCalendarDayHTML({ day, isToday, completedTasks, totalTasks }) {
+    return `
                 <div class="text-center">
                     <div class="text-lg font-bold ${isToday ? 'text-white' : 'text-amber-200'}">${day}</div>
                     ${totalTasks > 0 ? `
@@ -44,18 +44,18 @@
                     ` : ''}
                 </div>
             `;
-    }
+}
 
-    /**
-     * @param {{
-     *   tasksForDay: Array<{ id: number, completed?: boolean, title: string, description?: string, checklist?: Array<{ completed?: boolean, text: string }> }>,
-     *   dateString: string,
-     *   escapeHTML: (s: string) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderCalendarTasksHTML({ tasksForDay, dateString, escapeHTML }) {
-        return tasksForDay.map(task => `
+/**
+ * @param {{
+ *   tasksForDay: Array<{ id: number, completed?: boolean, title: string, description?: string, checklist?: Array<{ completed?: boolean, text: string }> }>,
+ *   dateString: string,
+ *   escapeHTML: (s: string) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderCalendarTasksHTML({ tasksForDay, dateString, escapeHTML }) {
+    return tasksForDay.map(task => `
                 <div class="quest-card bg-gradient-to-br from-stone-800 to-stone-900 p-5 rounded-lg shadow-lg border-2 border-amber-700/50 task-item hover:shadow-xl transition-all">
                     <div class="flex items-center">
                         <input 
@@ -87,18 +87,11 @@
                     </button>
                 </div>
             `;
-    }
+}
 
-    const CALENDAR_RENDER = Object.freeze({ renderCalendarDayHTML, renderCalendarTasksHTML });
+const CALENDAR_RENDER = Object.freeze({ renderCalendarDayHTML, renderCalendarTasksHTML });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic CALENDAR_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.CALENDAR_RENDER = CALENDAR_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = CALENDAR_RENDER;
-})();
+// Node / Jest
+
+export default CALENDAR_RENDER;

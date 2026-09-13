@@ -21,37 +21,37 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.RECURRING_RENDER.
  *   - Jest/Node: require('./recurring-render.js') returns the frozen builder via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   recurringTasks: Array<{ id: number, active?: boolean, title: string, recurrence: { type: 'weekly', days: string[] } | { type: 'biweekly', day: string } | { type: 'monthly-date', dayOfMonth: number } | { type: 'monthly-weekday', week: number, day: string } }>,
-     *   escapeHTML: (s: string) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderRecurringTasksHTML({ recurringTasks, escapeHTML }) {
-        /** @type {Record<string, string>} */
-        const dayLabels = { sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat' };
+
+/**
+ * @param {{
+ *   recurringTasks: Array<{ id: number, active?: boolean, title: string, recurrence: { type: 'weekly', days: string[] } | { type: 'biweekly', day: string } | { type: 'monthly-date', dayOfMonth: number } | { type: 'monthly-weekday', week: number, day: string } }>,
+ *   escapeHTML: (s: string) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderRecurringTasksHTML({ recurringTasks, escapeHTML }) {
+    /** @type {Record<string, string>} */
+    const dayLabels = { sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat' };
+    
+    return recurringTasks.map(rt => {
+        let scheduleText = '';
+        switch (rt.recurrence.type) {
+            case 'weekly':
+                scheduleText = 'Every ' + rt.recurrence.days.map(d => dayLabels[d] || d).join(', ');
+                break;
+            case 'biweekly':
+                scheduleText = 'Every other ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day);
+                break;
+            case 'monthly-date':
+                scheduleText = 'Monthly on day ' + rt.recurrence.dayOfMonth;
+                break;
+            case 'monthly-weekday':
+                const weekLabel = rt.recurrence.week === -1 ? 'Last' : ['', '1st', '2nd', '3rd', '4th'][rt.recurrence.week];
+                scheduleText = weekLabel + ' ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day) + ' of month';
+                break;
+        }
         
-        return recurringTasks.map(rt => {
-            let scheduleText = '';
-            switch (rt.recurrence.type) {
-                case 'weekly':
-                    scheduleText = 'Every ' + rt.recurrence.days.map(d => dayLabels[d] || d).join(', ');
-                    break;
-                case 'biweekly':
-                    scheduleText = 'Every other ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day);
-                    break;
-                case 'monthly-date':
-                    scheduleText = 'Monthly on day ' + rt.recurrence.dayOfMonth;
-                    break;
-                case 'monthly-weekday':
-                    const weekLabel = rt.recurrence.week === -1 ? 'Last' : ['', '1st', '2nd', '3rd', '4th'][rt.recurrence.week];
-                    scheduleText = weekLabel + ' ' + (dayLabels[rt.recurrence.day] || rt.recurrence.day) + ' of month';
-                    break;
-            }
-            
-            return `
+        return `
                 <div class="flex items-center gap-2 p-2 rounded-lg ${rt.active ? 'bg-cyan-900/40' : 'bg-gray-800/40 opacity-60'} border border-cyan-700/50">
                     <button data-action="recurring.toggle" data-rt-id="${rt.id}" 
                         class="text-lg ${rt.active ? 'text-green-400' : 'text-gray-500'}">
@@ -67,19 +67,12 @@
                     </button>
                 </div>
             `;
-        }).join('');
-    }
+    }).join('');
+}
 
-    const RECURRING_RENDER = Object.freeze({ renderRecurringTasksHTML });
+const RECURRING_RENDER = Object.freeze({ renderRecurringTasksHTML });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic RECURRING_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.RECURRING_RENDER = RECURRING_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = RECURRING_RENDER;
-})();
+// Node / Jest
+
+export default RECURRING_RENDER;

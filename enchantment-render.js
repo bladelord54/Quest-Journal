@@ -40,40 +40,40 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.ENCHANTMENT_RENDER.
  *   - Jest/Node: require('./enchantment-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * Active (in-effect) enchantment cards.
-     * @param {any[]} activeEnchantments  `this.activeEnchantments` — each has id, icon, name,
-     *   expiresAt, and optionally totalDuration.
-     * @param {{ now: number, enchantmentDefinitions: Record<string, any> }} deps
-     *   now = the wall clock (`Date.now()`), injected for purity; enchantmentDefinitions = the catalog
-     *   keyed by id (its `.duration` is the progress-bar denominator fallback).
-     * @returns {string}
-     */
-    function renderActiveEnchantmentsHTML(activeEnchantments, { now, enchantmentDefinitions }) {
-        if (activeEnchantments.length === 0) {
-            return `
+
+/**
+ * Active (in-effect) enchantment cards.
+ * @param {any[]} activeEnchantments  `this.activeEnchantments` — each has id, icon, name,
+ *   expiresAt, and optionally totalDuration.
+ * @param {{ now: number, enchantmentDefinitions: Record<string, any> }} deps
+ *   now = the wall clock (`Date.now()`), injected for purity; enchantmentDefinitions = the catalog
+ *   keyed by id (its `.duration` is the progress-bar denominator fallback).
+ * @returns {string}
+ */
+function renderActiveEnchantmentsHTML(activeEnchantments, { now, enchantmentDefinitions }) {
+    if (activeEnchantments.length === 0) {
+        return `
                 <div class="col-span-3 text-center py-8 text-pink-200">
                     <div class="text-6xl mb-3 opacity-30">✨</div>
                     <p class="fancy-font">No active enchantments. Purchase some below!</p>
                 </div>
             `;
+    }
+    
+    const html = activeEnchantments.map(ench => {
+        const timeRemaining = ench.expiresAt - now;
+        const minutesRemaining = Math.ceil(timeRemaining / (60 * 1000));
+        const hoursRemaining = Math.floor(minutesRemaining / 60);
+        const mins = minutesRemaining % 60;
+        
+        let timeDisplay = '';
+        if (hoursRemaining > 0) {
+            timeDisplay = `${hoursRemaining}h ${mins}m remaining`;
+        } else {
+            timeDisplay = `${mins}m remaining`;
         }
         
-        const html = activeEnchantments.map(ench => {
-            const timeRemaining = ench.expiresAt - now;
-            const minutesRemaining = Math.ceil(timeRemaining / (60 * 1000));
-            const hoursRemaining = Math.floor(minutesRemaining / 60);
-            const mins = minutesRemaining % 60;
-            
-            let timeDisplay = '';
-            if (hoursRemaining > 0) {
-                timeDisplay = `${hoursRemaining}h ${mins}m remaining`;
-            } else {
-                timeDisplay = `${mins}m remaining`;
-            }
-            
-            return `
+        return `
                 <div class="bg-gradient-to-br from-pink-900 to-purple-900 p-4 rounded-lg border-3 border-pink-600 shadow-xl animate-pulse-slow">
                     <div class="text-4xl text-center mb-2">${ench.icon}</div>
                     <h4 class="text-lg font-bold text-pink-200 medieval-title text-center mb-2">${ench.name}</h4>
@@ -86,33 +86,33 @@
                     </div>
                 </div>
             `;
-        }).join('');
-        
-        return html;
-    }
+    }).join('');
+    
+    return html;
+}
 
-    /**
-     * Enchantment shop cards (free first, then premium). Returns ONLY the cards — the caller prepends
-     * the premium banner.
-     * @param {Record<string, any>} enchantmentDefinitions  `this.enchantmentDefinitions` catalog.
-     * @param {{ focusCrystals: number, isPremium: boolean, hasActiveEnchantment: (effect: string) => boolean }} deps
-     *   focusCrystals = the player's crystal balance (affordability); isPremium = premium unlock flag
-     *   (gates the locked teaser); hasActiveEnchantment = bound predicate flagging ✓ Active cards.
-     * @returns {string}
-     */
-    function renderEnchantmentShopHTML(enchantmentDefinitions, { focusCrystals, isPremium, hasActiveEnchantment }) {
-        const enchantments = Object.values(enchantmentDefinitions);
+/**
+ * Enchantment shop cards (free first, then premium). Returns ONLY the cards — the caller prepends
+ * the premium banner.
+ * @param {Record<string, any>} enchantmentDefinitions  `this.enchantmentDefinitions` catalog.
+ * @param {{ focusCrystals: number, isPremium: boolean, hasActiveEnchantment: (effect: string) => boolean }} deps
+ *   focusCrystals = the player's crystal balance (affordability); isPremium = premium unlock flag
+ *   (gates the locked teaser); hasActiveEnchantment = bound predicate flagging ✓ Active cards.
+ * @returns {string}
+ */
+function renderEnchantmentShopHTML(enchantmentDefinitions, { focusCrystals, isPremium, hasActiveEnchantment }) {
+    const enchantments = Object.values(enchantmentDefinitions);
+    
+    // Sort: free enchantments first, then premium
+    const sorted = [...enchantments].sort((a, b) => (a.premium === b.premium) ? 0 : a.premium ? 1 : -1);
+    
+    const html = sorted.map(ench => {
+        const isActive = hasActiveEnchantment(ench.effect);
+        const canAfford = focusCrystals >= ench.cost;
+        const isLocked = ench.premium && !isPremium;
         
-        // Sort: free enchantments first, then premium
-        const sorted = [...enchantments].sort((a, b) => (a.premium === b.premium) ? 0 : a.premium ? 1 : -1);
-        
-        const html = sorted.map(ench => {
-            const isActive = hasActiveEnchantment(ench.effect);
-            const canAfford = focusCrystals >= ench.cost;
-            const isLocked = ench.premium && !isPremium;
-            
-            if (isLocked) {
-                return `
+        if (isLocked) {
+            return `
                     <div class="bg-gradient-to-br from-gray-800/60 to-gray-900/60 p-6 rounded-xl border-3 border-gray-600/50 shadow-xl relative overflow-hidden opacity-60">
                         <div class="absolute top-2 right-2 bg-yellow-600/90 text-black text-xs font-bold px-2 py-1 rounded-full fancy-font">
                             <i class="ri-vip-crown-2-fill mr-1"></i>Premium
@@ -136,9 +136,9 @@
                         </button>
                     </div>
                 `;
-            }
-            
-            return `
+        }
+        
+        return `
                 <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl border-3 ${isActive ? 'border-green-600' : 'border-amber-600'} shadow-xl ${isActive ? 'opacity-50' : ''}">
                     <div class="text-5xl text-center mb-3">${ench.icon}</div>
                     <h4 class="text-xl font-bold text-amber-300 medieval-title text-center mb-2">${ench.name}</h4>
@@ -161,24 +161,17 @@
                     </button>
                 </div>
             `;
-        }).join('');
-        
-        return html;
-    }
+    }).join('');
+    
+    return html;
+}
 
-    const ENCHANTMENT_RENDER = Object.freeze({
-        renderActiveEnchantmentsHTML,
-        renderEnchantmentShopHTML,
-    });
+const ENCHANTMENT_RENDER = Object.freeze({
+    renderActiveEnchantmentsHTML,
+    renderEnchantmentShopHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic ENCHANTMENT_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.ENCHANTMENT_RENDER = ENCHANTMENT_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = ENCHANTMENT_RENDER;
-})();
+// Node / Jest
+
+export default ENCHANTMENT_RENDER;

@@ -1,3 +1,4 @@
+// @ts-check
 // Goal Management System
 
 // Centralized economy/balance numbers (Engineering Roadmap #6) live in
@@ -6,7 +7,7 @@
 // once here so every method reads a single source of truth. If this is ever the
 // empty object, balance.js failed to load — check the <script> order in
 // index.html. See docs/ENGINEERING_ROADMAP.md.
-const BALANCE = (typeof window !== 'undefined' && window.BALANCE) ? window.BALANCE : {};
+import BALANCE from './balance.js';
 
 // Player level-title chain (Engineering Roadmap #1 incremental split) lives in
 // level-titles.js, loaded as a plain <script> BEFORE this file in the browser and
@@ -15,14 +16,14 @@ const BALANCE = (typeof window !== 'undefined' && window.BALANCE) ? window.BALAN
 // every call site is unchanged. If this is ever the empty object, level-titles.js
 // failed to load — check the <script> order in index.html. See
 // docs/ENGINEERING_ROADMAP.md.
-const LEVEL_TITLE_CHAINS = (typeof window !== 'undefined' && window.LEVEL_TITLES) ? window.LEVEL_TITLES : {};
+import LEVEL_TITLE_CHAINS from './level-titles.js';
 
 // Companion catalog (Engineering Roadmap #1 incremental split) lives in
 // companion-definitions.js, loaded as a plain <script> BEFORE this file in the
 // browser and required by the jest harness. Captured once here and returned from
 // getCompanionDefinitions() below so every call site is unchanged. Empty object
 // means the module failed to load — check the <script> order in index.html.
-const COMPANION_DEFINITIONS = (typeof window !== 'undefined' && window.COMPANION_DEFINITIONS) ? window.COMPANION_DEFINITIONS : {};
+import COMPANION_DEFINITIONS from './companion-definitions.js';
 
 // Spellbook catalog (Engineering Roadmap #1 incremental split) lives in
 // spell-definitions.js, loaded as a plain <script> BEFORE this file in the
@@ -30,7 +31,7 @@ const COMPANION_DEFINITIONS = (typeof window !== 'undefined' && window.COMPANION
 // initializeSpells() below so every this.spellDefinitions call site is unchanged.
 // Empty object means the module failed to load — check the <script> order in
 // index.html.
-const SPELL_DEFINITIONS = (typeof window !== 'undefined' && window.SPELL_DEFINITIONS) ? window.SPELL_DEFINITIONS : {};
+import SPELL_DEFINITIONS from './spell-definitions.js';
 
 // Color-palette theme catalog (Engineering Roadmap #1 incremental split) lives in
 // theme-definitions.js, loaded as a plain <script> BEFORE this file in the browser
@@ -38,41 +39,49 @@ const SPELL_DEFINITIONS = (typeof window !== 'undefined' && window.SPELL_DEFINIT
 // `themeDefinitions` class field below so this.themeDefinitions and every call site
 // is unchanged. Empty object means the module failed to load — check the <script>
 // order in index.html.
-const THEME_DEFINITIONS = (typeof window !== 'undefined' && window.THEME_DEFINITIONS) ? window.THEME_DEFINITIONS : {};
+import THEME_DEFINITIONS from './theme-definitions.js';
 
 // Achievement/badge catalog (Engineering Roadmap #1 incremental split) lives in
 // achievement-definitions.js, loaded as a plain <script> BEFORE this file in the
 // browser and required by the jest harness. Captured once here and returned from
 // getAchievementDefinitions() below so every call site is unchanged. Empty array
 // means the module failed to load — check the <script> order in index.html.
-const ACHIEVEMENT_DEFINITIONS = (typeof window !== 'undefined' && window.ACHIEVEMENT_DEFINITIONS) ? window.ACHIEVEMENT_DEFINITIONS : [];
+import ACHIEVEMENT_DEFINITIONS from './achievement-definitions.js';
+
+// Achievement-title catalog + pure unlock logic (Engineering Roadmap #1, 79th slice) lives in
+// title-definitions.js, loaded as a plain <script> BEFORE this file in the browser and required by
+// the jest harness. Captured once here: checkTitleUnlocks derives every unlock from
+// TITLE_DEFINITIONS.computeUnlockableTitles (single source of truth, shared with title-render.js's
+// gallery), replacing the ~40 hand-coded threshold checks. The empty fallback keeps the game running
+// (no titles unlock) if the module failed to load — check the <script> order in index.html.
+import TITLE_DEFINITIONS from './title-definitions.js';
 
 // Boss theme catalog (Engineering Roadmap #1 incremental split) lives in
 // boss-themes.js, loaded as a plain <script> BEFORE this file in the browser and
 // required by the jest harness. Captured once here and returned from
 // initializeBossThemes() below so this.bossThemes and every consumer are unchanged.
 // Empty object means the module failed to load — check <script> order in index.html.
-const BOSS_THEMES = (typeof window !== 'undefined' && window.BOSS_THEMES) ? window.BOSS_THEMES : {};
+import BOSS_THEMES from './boss-themes.js';
 
 // Raw class/subclass skill-tree catalog (Engineering Roadmap #1 incremental split)
 // lives in class-definitions.js. initializeClasses() below applies the BALANCE-driven
 // cost/tier schedule to this raw data, so this.classDefinitions is unchanged. Empty
 // object means the module failed to load — check <script> order in index.html.
-const CLASS_DEFINITIONS = (typeof window !== 'undefined' && window.CLASS_DEFINITIONS) ? window.CLASS_DEFINITIONS : {};
+import CLASS_DEFINITIONS from './class-definitions.js';
 
 // Enchantment shop catalog (Engineering Roadmap #1 incremental split) lives in
 // enchantment-definitions.js, loaded as a plain <script> BEFORE this file in the
 // browser and required by the jest harness. Captured once here and returned from
 // initializeEnchantments() below so this.enchantmentDefinitions and every consumer
 // are unchanged. Empty object means the module failed to load — check <script> order.
-const ENCHANTMENT_DEFINITIONS = (typeof window !== 'undefined' && window.ENCHANTMENT_DEFINITIONS) ? window.ENCHANTMENT_DEFINITIONS : {};
+import ENCHANTMENT_DEFINITIONS from './enchantment-definitions.js';
 
 // Onboarding starter-task catalog (Engineering Roadmap #1 incremental split) lives
 // in starter-task-presets.js, loaded as a plain <script> BEFORE this file in the
 // browser and required by the jest harness. Captured once here and assigned to the
 // starterTaskPresets class field below so every consumer is unchanged. Empty object
 // means the module failed to load — check <script> order in index.html.
-const STARTER_TASK_PRESETS = (typeof window !== 'undefined' && window.STARTER_TASK_PRESETS) ? window.STARTER_TASK_PRESETS : {};
+import STARTER_TASK_PRESETS from './starter-task-presets.js';
 
 // Multi-chapter quest-chain catalog (Engineering Roadmap #1 incremental split)
 // lives in quest-chain-templates.js, loaded as a plain <script> BEFORE this file
@@ -82,7 +91,7 @@ const STARTER_TASK_PRESETS = (typeof window !== 'undefined' && window.STARTER_TA
 // a template's chapters on the active chain, but every consumer only READS it (see
 // the module header + the chain-progression regression test). Empty object means
 // the module failed to load — check <script> order in index.html.
-const QUEST_CHAIN_TEMPLATES = (typeof window !== 'undefined' && window.QUEST_CHAIN_TEMPLATES) ? window.QUEST_CHAIN_TEMPLATES : {};
+import QUEST_CHAIN_TEMPLATES from './quest-chain-templates.js';
 
 // Loot roll ENGINE (Engineering Roadmap #1 incremental split — first LOGIC slice)
 // lives in loot-engine.js: pure functions (weightedRandomSelect / buildLootReward /
@@ -91,14 +100,44 @@ const QUEST_CHAIN_TEMPLATES = (typeof window !== 'undefined' && window.QUEST_CHA
 // captured here so the delegating weightedRandomSelect / buildLootReward methods and
 // generateChestRewards / generateBossLoot below use it. Empty-object fallback means
 // the module failed to load — check <script> order in index.html.
-const LOOT_ENGINE = (typeof window !== 'undefined' && window.LOOT_ENGINE) ? window.LOOT_ENGINE : {};
+import LOOT_ENGINE from './loot-engine.js';
+
+// Chest rarity-weight modifiers (Engineering Roadmap #1 incremental split — 86th slice, the
+// THIRTY-FIRST LOGIC module) live in chest-weight-logic.js: the Lucky Loot / Ranger Keen Eye
+// upward shift (one function — it used to be the same block written twice here) and the Lucky
+// Draw common→upper redistribution, composed by applyChestModifiers in generateChestRewards'
+// original order. Loaded as a plain <script> BEFORE this file in the browser and required by the
+// jest harness. Empty-object fallback means the module failed to load — check <script> order.
+import CHEST_WEIGHT_LOGIC from './chest-weight-logic.js';
+
+// Daily Quest Board catalog + Board Sweep bonus (Engineering Roadmap #1 criterion-(2) item) live in
+// daily-quest-definitions.js, the DATA half of daily-quest-logic.js. Quest `minLevel` gates are
+// DEFINED in terms of FEATURE_UNLOCKS there (they used to restate the ladder as bare numbers here,
+// with a stale `6` on the weekly/side quests). Loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Empty-object fallback means the module failed to load.
+import DAILY_QUEST_DEFINITIONS from './daily-quest-definitions.js';
+
+// Boss-defeat streak reward multiplier (Engineering Roadmap #1 incremental split — 87th slice,
+// the THIRTY-SECOND LOGIC module) lives in boss-streak-logic.js: picking the right cadence's
+// streak counter, the "+10% per streak, capped at +100%" multiplier, and the shared rounded
+// apply step onBossDefeated uses for both XP and gold. Loaded as a plain <script> BEFORE this
+// file in the browser and required by the jest harness. Empty-object fallback means the module
+// failed to load — check <script> order in index.html.
+import BOSS_STREAK_LOGIC from './boss-streak-logic.js';
+
+// Challenge-a-Friend data + rules (Engineering Roadmap #1 incremental split — 89th slice, the
+// THIRTY-THIRD LOGIC module) live in challenge-logic.js: the 8 PRESETS, the difficulty→{xp,gold}
+// table, the progress reader with its 100 clamp, and the completed-history cap. Loaded as a plain
+// <script> BEFORE this file in the browser and required by the jest harness. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+import CHALLENGE_LOGIC from './challenge-logic.js';
 
 // Master loot pool catalog (Engineering Roadmap #1 incremental split) lives in
 // loot-pool.js: the base rarity-keyed loot table. Loaded as a plain <script> BEFORE
 // this file in the browser and required by the jest harness; captured here so
 // getMasterLootPool() returns it. Empty-object fallback means the module failed to
 // load — check <script> order in index.html.
-const MASTER_LOOT_POOL = (typeof window !== 'undefined' && window.MASTER_LOOT_POOL) ? window.MASTER_LOOT_POOL : {};
+import MASTER_LOOT_POOL from './loot-pool.js';
 
 // Pure boss spawn ENGINE (Engineering Roadmap #1 incremental split — 2nd LOGIC
 // slice) lives in boss-generator.js: hashDateString (date→seed) + buildBoss (the
@@ -106,7 +145,7 @@ const MASTER_LOOT_POOL = (typeof window !== 'undefined' && window.MASTER_LOOT_PO
 // and required by the jest harness; captured here so the boss generators + the
 // monthly-challenge preview + hashDateString() delegate to it. Empty-object
 // fallback means the module failed to load — check <script> order in index.html.
-const BOSS_GENERATOR = (typeof window !== 'undefined' && window.BOSS_GENERATOR) ? window.BOSS_GENERATOR : {};
+import BOSS_GENERATOR from './boss-generator.js';
 
 // Pure save-data normalizers (Engineering Roadmap #1 incremental split) live in
 // persistence-migrations.js: the legacy-save migrations loadData() delegates to
@@ -114,7 +153,7 @@ const BOSS_GENERATOR = (typeof window !== 'undefined' && window.BOSS_GENERATOR) 
 // normalization). Loaded as a plain <script> BEFORE this file in the browser and
 // required by the jest harness. Empty-object fallback means the module failed to
 // load — check <script> order in index.html.
-const PERSISTENCE_MIGRATIONS = (typeof window !== 'undefined' && window.PERSISTENCE_MIGRATIONS) ? window.PERSISTENCE_MIGRATIONS : {};
+import PERSISTENCE_MIGRATIONS from './persistence-migrations.js';
 
 // Pure daily-login-streak + streak-repair math (Engineering Roadmap #1 incremental split — 56th
 // slice, and the FIRST non-render LOGIC module after the render burn-down) lives in
@@ -123,14 +162,14 @@ const PERSISTENCE_MIGRATIONS = (typeof window !== 'undefined' && window.PERSISTE
 // <script> BEFORE this file in the browser and required by the jest harness; captured here so the
 // login-bonus + streak-repair methods delegate to it. Empty-object fallback means the module
 // failed to load — check <script> order in index.html.
-const STREAK_LOGIC = (typeof window !== 'undefined' && window.STREAK_LOGIC) ? window.STREAK_LOGIC : {};
+import STREAK_LOGIC from './streak-logic.js';
 
 // Pure XP / leveling-curve math (Engineering Roadmap #1 incremental split — 57th slice, the
 // SECOND non-render LOGIC module) lives in leveling-logic.js: xpForLevel, totalXpForLevel,
 // levelProgress. Loaded as a plain <script> BEFORE this file in the browser and required by
 // the jest harness; captured here so the XP curve + the four XP-progress sites delegate to it.
 // Empty-object fallback means the module failed to load — check <script> order in index.html.
-const LEVELING_LOGIC = (typeof window !== 'undefined' && window.LEVELING_LOGIC) ? window.LEVELING_LOGIC : {};
+import LEVELING_LOGIC from './leveling-logic.js';
 
 // Pure effort-based-XP priority scaling (Engineering Roadmap #1 incremental split — 58th slice,
 // the SIXTH LOGIC module) lives in effort-xp-logic.js: normalizePriority, priorityXPMultiplier,
@@ -138,7 +177,7 @@ const LEVELING_LOGIC = (typeof window !== 'undefined' && window.LEVELING_LOGIC) 
 // plain <script> BEFORE this file in the browser and required by the jest harness; captured here
 // so the two priority helpers + the five XP-reward sites delegate to it. Empty-object fallback
 // means the module failed to load — check <script> order in index.html.
-const EFFORT_XP_LOGIC = (typeof window !== 'undefined' && window.EFFORT_XP_LOGIC) ? window.EFFORT_XP_LOGIC : {};
+import EFFORT_XP_LOGIC from './effort-xp-logic.js';
 
 // Pure active-buff → reward-multiplier resolution (Engineering Roadmap #1 incremental split —
 // 59th slice, the SEVENTH LOGIC module) lives in buff-multipliers.js: spellMultiplier (the
@@ -147,7 +186,7 @@ const EFFORT_XP_LOGIC = (typeof window !== 'undefined' && window.EFFORT_XP_LOGIC
 // and required by the jest harness; captured here so getActiveSpellMultiplier /
 // getEnchantmentMultiplier delegate to it. Empty-object fallback means the module failed to
 // load — check <script> order in index.html.
-const BUFF_MULTIPLIERS = (typeof window !== 'undefined' && window.BUFF_MULTIPLIERS) ? window.BUFF_MULTIPLIERS : {};
+import BUFF_MULTIPLIERS from './buff-multipliers.js';
 
 // Pure companion slot + bonus resolution (Engineering Roadmap #1 incremental split — 60th slice,
 // the EIGHTH LOGIC module) lives in companion-logic.js: activeCompanion / secondCompanion (the
@@ -155,7 +194,7 @@ const BUFF_MULTIPLIERS = (typeof window !== 'undefined' && window.BUFF_MULTIPLIE
 // plain <script> BEFORE this file in the browser and required by the jest harness; captured here
 // so getActiveCompanion / getSecondCompanion / getCompanionBonus delegate to it. Empty-object
 // fallback means the module failed to load — check <script> order in index.html.
-const COMPANION_LOGIC = (typeof window !== 'undefined' && window.COMPANION_LOGIC) ? window.COMPANION_LOGIC : {};
+import COMPANION_LOGIC from './companion-logic.js';
 
 // Pure class/subclass perk-value resolution (Engineering Roadmap #1 incremental split — 61st
 // slice, the NINTH LOGIC module) lives in class-perks.js: classPerkValue (unlocked-node scan →
@@ -165,7 +204,7 @@ const COMPANION_LOGIC = (typeof window !== 'undefined' && window.COMPANION_LOGIC
 // BEFORE this file in the browser and required by the jest harness; captured here so
 // getClassPerkValue / getSubclassPerkValue / getChosenCapstone delegate to it. Empty-object
 // fallback means the module failed to load — check <script> order in index.html.
-const CLASS_PERKS = (typeof window !== 'undefined' && window.CLASS_PERKS) ? window.CLASS_PERKS : {};
+import CLASS_PERKS from './class-perks.js';
 
 // Pure class/subclass tree PROGRESSION-STATE predicates (Engineering Roadmap #1 incremental split
 // — 62nd slice, the TENTH LOGIC module) live in class-progression.js: the node/tier counts, the
@@ -174,7 +213,7 @@ const CLASS_PERKS = (typeof window !== 'undefined' && window.CLASS_PERKS) ? wind
 // a plain <script> BEFORE this file in the browser and required by the jest harness; captured here
 // so the eight progression methods delegate to it. Empty-object fallback means the module failed to
 // load — check <script> order in index.html.
-const CLASS_PROGRESSION = (typeof window !== 'undefined' && window.CLASS_PROGRESSION) ? window.CLASS_PROGRESSION : {};
+import CLASS_PROGRESSION from './class-progression.js';
 
 // Pure class skill-point ECONOMY math (Engineering Roadmap #1 incremental split — 63rd slice, the
 // ELEVENTH LOGIC module) lives in skill-points.js: the derived point supply, the unspent balance, the
@@ -184,7 +223,7 @@ const CLASS_PROGRESSION = (typeof window !== 'undefined' && window.CLASS_PROGRES
 // respecSubclass) keep their side effects HERE and only borrow the arithmetic. Loaded as a plain
 // <script> BEFORE this file in the browser and required by the jest harness. Empty-object fallback
 // means the module failed to load — check <script> order in index.html.
-const SKILL_POINTS = (typeof window !== 'undefined' && window.SKILL_POINTS) ? window.SKILL_POINTS : {};
+import SKILL_POINTS from './skill-points.js';
 
 // Pure Focus Crystal SUPPLY math (Engineering Roadmap #1 incremental split — 64th slice, the
 // TWELFTH LOGIC module) lives in crystal-economy.js: the shard auto-conversion (and its
@@ -194,7 +233,7 @@ const SKILL_POINTS = (typeof window !== 'undefined' && window.SKILL_POINTS) ? wi
 // soul_harvest top-up; only the arithmetic moved. Loaded as a plain <script> BEFORE this file in the
 // browser and required by the jest harness. Empty-object fallback means the module failed to load —
 // check <script> order in index.html.
-const CRYSTAL_ECONOMY = (typeof window !== 'undefined' && window.CRYSTAL_ECONOMY) ? window.CRYSTAL_ECONOMY : {};
+import CRYSTAL_ECONOMY from './crystal-economy.js';
 
 // Pure attack-charge EARN + SPEND rules (Engineering Roadmap #1 incremental split — 65th slice, the
 // THIRTEENTH LOGIC module) live in charge-rules.js: the Forage-eligible source set, the Warrior
@@ -203,7 +242,7 @@ const CRYSTAL_ECONOMY = (typeof window !== 'undefined' && window.CRYSTAL_ECONOMY
 // (applyForage, trackDaily, addGold, the suppressed toast, saveData, the DOM pulse). Loaded as a plain
 // <script> BEFORE this file in the browser and required by the jest harness. Empty-object fallback
 // means the module failed to load — check <script> order in index.html.
-const CHARGE_RULES = (typeof window !== 'undefined' && window.CHARGE_RULES) ? window.CHARGE_RULES : {};
+import CHARGE_RULES from './charge-rules.js';
 
 // Pure boss-damage math (Engineering Roadmap #1 incremental split — 66th slice, the FOURTEENTH LOGIC
 // module) lives in combat-damage.js: the base level curve, the ceil-rounded stage step shared by all
@@ -212,17 +251,20 @@ const CHARGE_RULES = (typeof window !== 'undefined' && window.CHARGE_RULES) ? wi
 // and the Cleave splash. attackBoss keeps the rng rolls, spell consumption, counter write, messages,
 // crit effects and HP mutation. Loaded as a plain <script> BEFORE this file in the browser and required
 // by the jest harness. Empty-object fallback means the module failed to load — check <script> order.
-const COMBAT_DAMAGE = (typeof window !== 'undefined' && window.COMBAT_DAMAGE) ? window.COMBAT_DAMAGE : {};
+import COMBAT_DAMAGE from './combat-damage.js';
 
 // Pure XP/gold reward-stack math (Engineering Roadmap #1 incremental split — 67th slice, the
 // FIFTEENTH LOGIC module) lives in reward-economy.js: the left-to-right multiplier fold shared by
 // addXP and addGold, the Beginner's Blessing and Quest Doubler multipliers (each previously written
 // twice, in different methods), the Early Bird and Momentum pre-multiplier bonuses, and the
-// quest-doubler / quiet-gold source sets. Both choke points keep their enchantment lookups, counter
-// writes, the pending-gold flag, spell consumption, toasts, sounds and sprites. Loaded as a plain
-// <script> BEFORE this file in the browser and required by the jest harness. Empty-object fallback
-// means the module failed to load — check <script> order in index.html.
-const REWARD_ECONOMY = (typeof window !== 'undefined' && window.REWARD_ECONOMY) ? window.REWARD_ECONOMY : {};
+// quest-doubler / quiet-gold source sets. Extended by the 90th slice (Sep 7 criterion (1)/(2) audit)
+// with forageReward — the Ranger Forage capstone's hit-roll + bonus-gold math applyForage still had
+// inline (too small a rule for its own module). Both choke points + applyForage keep their
+// enchantment/perk lookups, counter writes, the pending-gold flag, spell consumption, the
+// focusCrystals write, toasts, sounds and sprites. Loaded as a plain <script> BEFORE this file in the
+// browser and required by the jest harness. Empty-object fallback means the module failed to load —
+// check <script> order in index.html.
+import REWARD_ECONOMY from './reward-economy.js';
 
 // Pure focus-timer + Pomodoro-chain math (Engineering Roadmap #1 incremental split — 68th slice, the
 // SIXTEENTH LOGIC module) lives in focus-session-logic.js: the session-length and chain-settings
@@ -232,7 +274,7 @@ const REWARD_ECONOMY = (typeof window !== 'undefined' && window.REWARD_ECONOMY) 
 // DOM, audio, toasts and every instance write stay on the class. Loaded as a plain <script> BEFORE
 // this file in the browser and required by the jest harness. Empty-object fallback means the module
 // failed to load — check <script> order in index.html.
-const FOCUS_SESSION_LOGIC = (typeof window !== 'undefined' && window.FOCUS_SESSION_LOGIC) ? window.FOCUS_SESSION_LOGIC : {};
+import FOCUS_SESSION_LOGIC from './focus-session-logic.js';
 
 // Pure active-spell state math (Engineering Roadmap #1 incremental split — 69th slice, the
 // SEVENTEENTH LOGIC module) lives in spell-lifecycle.js: the canonical is-active predicate (the
@@ -242,7 +284,7 @@ const FOCUS_SESSION_LOGIC = (typeof window !== 'undefined' && window.FOCUS_SESSI
 // saveData and every instant-effect dispatch stay on the class. Loaded as a plain <script> BEFORE
 // this file in the browser and required by the jest harness. Empty-object fallback means the module
 // failed to load — check <script> order in index.html.
-const SPELL_LIFECYCLE = (typeof window !== 'undefined' && window.SPELL_LIFECYCLE) ? window.SPELL_LIFECYCLE : {};
+import SPELL_LIFECYCLE from './spell-lifecycle.js';
 
 // Pure previous-period recap math (Engineering Roadmap #1 incremental split — 70th slice, the
 // EIGHTEENTH LOGIC module) lives in period-summary-logic.js: the previous week/month/year date
@@ -252,7 +294,7 @@ const SPELL_LIFECYCLE = (typeof window !== 'undefined' && window.SPELL_LIFECYCLE
 // stay on the class. Loaded as a plain <script> BEFORE this file in the browser and required by the
 // jest harness. Empty-object fallback means the module failed to load — check <script> order in
 // index.html.
-const PERIOD_SUMMARY_LOGIC = (typeof window !== 'undefined' && window.PERIOD_SUMMARY_LOGIC) ? window.PERIOD_SUMMARY_LOGIC : {};
+import PERIOD_SUMMARY_LOGIC from './period-summary-logic.js';
 
 // Pure reminder scheduling + notification-copy math (Engineering Roadmap #1 incremental split — 72nd
 // slice, the NINETEENTH LOGIC module) lives in reminder-schedule-logic.js: the settings defaults +
@@ -262,16 +304,170 @@ const PERIOD_SUMMARY_LOGIC = (typeof window !== 'undefined' && window.PERIOD_SUM
 // the CapBridge cancel/schedule pair and showNotification delivery — stays on the class. Loaded as a
 // plain <script> BEFORE this file in the browser and required by the jest harness. Empty-object
 // fallback means the module failed to load — check <script> order in index.html.
-const REMINDER_SCHEDULE_LOGIC = (typeof window !== 'undefined' && window.REMINDER_SCHEDULE_LOGIC) ? window.REMINDER_SCHEDULE_LOGIC : {};
+import REMINDER_SCHEDULE_LOGIC from './reminder-schedule-logic.js';
+
+// Pure active-enchantment state math (Engineering Roadmap #1 incremental split — 73rd slice, the
+// TWENTIETH LOGIC module) lives in enchantment-lifecycle.js: the minutes→ms conversion the catalog
+// needs (three inline copies), the bare effect-match predicate (enchantments key on `effect` and are
+// swept BEFORE the read, unlike spells), the two expiry-sweep filters, the purchase-time duration +
+// cost rules, the cast-entry builder, and the duration-window rule that ALSO exists inline in
+// enchantment-render.js with a different fallback (0 here vs a bare 180 there — the render copy stays
+// put, since render modules take injected deps only, and a test pins the two). Date.now(), the
+// activeEnchantments writes, the crystal spend, the premium gate, the rng() preserve roll, the
+// per-day counter resets, toasts, saveData and setTimeout stay on the class. Loaded as a plain
+// <script> BEFORE this file in the browser and required by the jest harness. Empty-object fallback
+// means the module failed to load — check <script> order in index.html.
+import ENCHANTMENT_LIFECYCLE from './enchantment-lifecycle.js';
+
+// Pure Royal Bounty rules (Engineering Roadmap #1 incremental split — 74th slice, the TWENTY-FIRST
+// LOGIC module) live in bounty-logic.js, closing the bounty cluster (dashboard-render.js already owned
+// the card, reminder-schedule-logic.js the "ready" clock): the level gate, the weekly/monthly period
+// keys, the Monday-00:00 / 1st-of-month period starts, the end-of-week vs rolling-10-day deadlines, the
+// cadence→tier table, the anti-stage eligibility filter, the seeded pick, the assigned/empty record
+// builders, the target + quest resolvers, the strict expiry probe (two inline copies) and the
+// time-left label. saveData, trackEvent, the toast queue, openTreasureChest, renderRoyalBounty,
+// scheduleBountyReadyReminder, the deferred chest setTimeout, the premium upsell and every
+// activeBounties write stay on the class, as does _weekKey (the class ISO helpers are LOCAL-time and
+// period-summary-logic.js carries a separate UTC isoWeekNumber — reconciling them is a behaviour
+// question, so the key is INJECTED rather than moved). Loaded as a plain <script> BEFORE this file in
+// the browser and required by the jest harness. Empty-object fallback means the module failed to
+// load — check <script> order in index.html.
+import BOUNTY_LOGIC from './bounty-logic.js';
+
+// Pure recurring-task scheduling rules (Engineering Roadmap #1 incremental split — 75th slice, the
+// TWENTY-SECOND LOGIC module) live in recurring-logic.js: the four-branch "is it due today?" predicate
+// (weekly / biweekly / monthly-date / monthly-weekday), the three pre-schedule guards, the generated
+// daily-task record, and the ONE seven-day vocabulary that had been hand-copied FOUR times across this
+// file and recurring-render.js in two different orders. DAY_KEYS is `Date.getDay()`-indexed and stays
+// Sunday-first; DAY_ORDER is the Monday-first order every picker shows. Loaded as a plain <script>
+// BEFORE this file in the browser and required by the jest harness. Empty-object fallback means the
+// module failed to load — check <script> order in index.html.
+import RECURRING_LOGIC from './recurring-logic.js';
+
+// Pure Daily Quest Board rules (Engineering Roadmap #1 incremental split — 80th slice, the
+// TWENTY-FIFTH LOGIC module) live in daily-quest-logic.js: the date-seeded deterministic shuffle +
+// level filter behind buildDailyQuestBoard, and the def.check(tracking) sweep behind
+// sweepQuestCompletions. The DAILY_QUEST_POOL catalog stays a class field (its entries carry check()
+// closures) and is INJECTED. Loaded as a plain <script> BEFORE this file in the browser and required
+// by the jest harness. Empty-object fallback means the module failed to load — check <script> order
+// in index.html.
+import DAILY_QUEST_LOGIC from './daily-quest-logic.js';
+
+// Daily free Wooden Chest loot table + weighted pick (Engineering Roadmap #1 incremental split — 81st
+// slice, the TWENTY-SIXTH LOGIC module) live in wooden-chest-loot.js: the frozen 8-entry TABLE and the
+// weightedPick(table, rng) loop that claimWoodenChest rolls — the SECOND hand-rolled weighted pick in the
+// codebase, de-duplicated from loot-engine.js's (their float-drift fallbacks differ deliberately). Loaded
+// as a plain <script> BEFORE this file in the browser and required by the jest harness. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+import WOODEN_CHEST_LOOT from './wooden-chest-loot.js';
+
+// Pure quest-chain progression state math (Engineering Roadmap #1 incremental split — 82nd slice, the
+// TWENTY-SEVENTH LOGIC module) lives in quest-chain-logic.js: the task-toggle array math, the
+// chapter-complete predicate, the chapter-advance patch, the chain-complete detection and the
+// active→completed list move that toggleChainTask / completeChapter / completeQuestChain delegate to. The
+// reward grants, toasts, confetti, badge unlock and saveData/render side-effects stay on the class. Loaded
+// as a plain <script> BEFORE this file in the browser and required by the jest harness. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+import QUEST_CHAIN_LOGIC from './quest-chain-logic.js';
+
+// Pure habit progression math (Engineering Roadmap #1 incremental split — 83rd slice, the TWENTY-EIGHTH
+// LOGIC module, and habit-render.js's LOGIC SIBLING) lives in habit-logic.js: the consecutive-day
+// computeHabitStreak walk that recalculateHabitStreak delegates to, the double_streak streakIncrement rule
+// and the 7/30/100 milestoneTier thresholds toggleHabit uses. The HABIT-streak counterpart to
+// streak-logic.js's login streak. The habit.streak/lastCompleted writes, reward grants/refunds, audio,
+// effects, toasts, saveData and re-renders stay on the class. Loaded as a plain <script> BEFORE this file in
+// the browser and required by the jest harness. Empty-object fallback means the module failed to load —
+// check <script> order in index.html.
+import HABIT_LOGIC from './habit-logic.js';
+
+// The ONE source of persisted-field defaults (Engineering Roadmap #1 incremental split — 84th slice, the
+// TWENTY-NINTH LOGIC module, and the third leg of the save-serializer / load-deserializer persistence trio)
+// lives in default-state.js: `persistedDefaults({ defaultSessionMinutes })` returns a fresh object of every
+// persisted field's default. initState() Object.assigns it (a fresh install), and load-deserializer.js's
+// buildLoadState falls back to the SAME object (a save lacking the field), so the two can no longer drift.
+// Session-only state, derived catalogs and tuning constants stay inline in initState. Loaded as a plain
+// <script> BEFORE load-deserializer.js and this file in the browser and required by the jest harness.
+// Empty-object fallback means the module failed to load — check <script> order in index.html.
+import DEFAULT_STATE from './default-state.js';
+
+// The ONE source of progressive-unlock thresholds (Engineering Roadmap #1 incremental split — 85th
+// slice, the THIRTIETH LOGIC module) lives in feature-unlocks.js: the nav-view + arcane-tab level
+// tables, the companion unlock level (previously a bare `3` in three places incl. loot-engine.js),
+// the level-keyed unlock tutorials, and the shared isUnlocked / isFarOff predicates. Loaded as a
+// plain <script> BEFORE loot-engine.js and this file in the browser and required by the jest harness.
+// Empty-object fallback means the module failed to load — check <script> order in index.html.
+import FEATURE_UNLOCKS from './feature-unlocks.js';
+
+// Pure save-data serializer (Engineering Roadmap #1 incremental split — 76th slice, the
+// TWENTY-THIRD LOGIC module) lives in save-serializer.js: the buildSaveData() function that
+// marshals the ~100 `this.*` fields into the JSON object _doSave() stringifies. Loaded as a
+// plain <script> BEFORE this file in the browser and required by the jest harness. Empty-object
+// fallback means the module failed to load — check <script> order in index.html.
+import SAVE_SERIALIZER from './save-serializer.js';
+
+// Pure load-state builder (Engineering Roadmap #1 incremental split — 77th slice, the
+// TWENTY-FOURTH LOGIC module, and save-serializer.js's MIRROR) lives in load-deserializer.js:
+// the buildLoadState() function that maps a parsed save blob back to the ~150 instance fields
+// loadData() assigns, including every default/fallback, the class schema gate and the two
+// value migrations. Loaded as a plain <script> BEFORE this file in the browser and required by
+// the jest harness. Empty-object fallback means the module failed to load — check <script>
+// order in index.html.
+import LOAD_DESERIALIZER from './load-deserializer.js';
 
 // Pure boss-card presentation helpers (Engineering Roadmap #1 incremental split —
 // first rendering slice) live in boss-render.js: getBossPhase, renderBossHPBar, and
 // getBossParticleType. Loaded as a plain <script> BEFORE this file in the browser
 // and required by the jest harness. Empty-object fallback means the module failed to
 // load — check <script> order in index.html.
-const BOSS_RENDER = (typeof window !== 'undefined' && window.BOSS_RENDER) ? window.BOSS_RENDER : {};
+import BOSS_RENDER from './boss-render.js';
+
+// Pure presentation builders (Roadmap #1 render modules). Read as bare globals before the ES-module
+// conversion (Roadmap #3, criterion 3); imported directly now.
+import ANALYTICS_RENDER from './analytics-render.js';
+import ARCHIVE_RENDER from './archive-render.js';
+import BADGE_RENDER from './badge-render.js';
+import CALENDAR_RENDER from './calendar-render.js';
+import CLASS_RENDER from './class-render.js';
+import COMPANION_RENDER from './companion-render.js';
+import DAILY_BOARD_RENDER from './daily-board-render.js';
+import DASHBOARD_RENDER from './dashboard-render.js';
+import ENCHANTMENT_RENDER from './enchantment-render.js';
+import FOCUS_TIMER_RENDER from './focus-timer-render.js';
+import HABIT_RENDER from './habit-render.js';
+import PLAYER_HUD_RENDER from './player-hud-render.js';
+import PREMIUM_RENDER from './premium-render.js';
+import QUEST_CHAIN_RENDER from './quest-chain-render.js';
+import RECURRING_RENDER from './recurring-render.js';
+import REMINDER_RENDER from './reminder-render.js';
+import REWARD_RENDER from './reward-render.js';
+import SPELL_RENDER from './spell-render.js';
+import TASK_RENDER from './task-render.js';
+import THEME_RENDER from './theme-render.js';
+import TITLE_RENDER from './title-render.js';
 
 class GoalManager {
+    // Typing-only field declarations (Roadmap #3 step 6). These are assigned in initState(), which
+    // TypeScript does not treat as a constructor, so without a declaration each one is inferred as
+    // `T | undefined` and every read needs a guard. Runtime effect: none beyond the field existing
+    // as `undefined` for the instant before initState() runs.
+    /** @type {Set<string>} */ selectedItems;
+    /** @type {number} */ historyIndex;
+    /** @type {Date} */ currentCalendarDate;
+    /** @type {number} */ currentTutorialStep;
+    /** @type {Record<string, any>} */ domCache;
+    /** @type {Record<string, any>} */ classDefinitions;
+    /** @type {typeof FEATURE_UNLOCKS.LEVELS} */ featureUnlockLevels;
+    /** @type {Readonly<Record<string, number>>} */ goalTabUnlockLevels;
+    /** @type {typeof FEATURE_UNLOCKS.ARCANE_TAB_LEVELS} */ arcaneTabUnlockLevels;
+    /** @type {typeof FEATURE_UNLOCKS.TUTORIALS} */ featureUnlockTutorials;
+    /** @type {typeof CHALLENGE_LOGIC.PRESETS} */ challengePresets;
+    /** @type {number} */ BEGINNER_BLESSING_DAYS;
+    /** @type {number} */ STREAK_REPAIR_WINDOW_MS;
+    /** @type {number} */ monthlyBossUnlockThreshold;
+    /** @type {number} */ earlyBirdTasksToday;
+    /** @type {number} */ bossKillsThisMonth;
+    /** @type {ReturnType<typeof setInterval> | null} */ focusTimer;
+
     // Engineering Roadmap #5 — testability seam. Production boots via
     // `new GoalManager()`, which runs initState() then _boot() (all the
     // DOM/audio/timer/localStorage side effects). Tests build a REAL instance
@@ -287,91 +483,27 @@ class GoalManager {
     // Pure, synchronous state initialization: no DOM, audio, timers,
     // localStorage, or render scheduling. Safe to call on a bare instance.
     initState() {
-        this.lifeGoals = [];
-        this.yearlyGoals = [];
-        this.monthlyGoals = [];
-        this.weeklyGoals = [];
-        this.dailyTasks = [];
-        this.sideQuests = [];
-        this.habits = [];
-        this.recurringTasks = []; // Tasks that repeat on schedule
+        // Every PERSISTED field's default comes from the one shared source (default-state.js, Roadmap #1
+        // 84th slice) — the same object load-deserializer.js falls back to, so a fresh install and a
+        // save missing a field can no longer disagree. Everything below this line is session-only
+        // state, a derived catalog, or a tuning constant.
+        Object.assign(this, DEFAULT_STATE.persistedDefaults({
+            defaultSessionMinutes: FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES
+        }));
+
         this._lastId = 0;
+        /** Test-only RNG seam (see rng()); production leaves it unset. @type {(() => number) | undefined} */
+        this._rng = undefined;
         this.currentCalendarDate = new Date();
         this.selectedDate = null;
         this.sideQuestFilter = 'all';
-        this.xp = 0;
-        this.level = 1;
-        this.badges = [];
         this.actionHistory = [];
         this.historyIndex = -1;
-        this.archivedGoals = [];
         this.draggedItem = null;
         this.draggedType = null;
-        
-        // Rewards System
-        this.goldCoins = 0;
-        this.unlockedThemes = ['default'];
-        this.currentTheme = 'default';
-        // v2.9 Track 7 — Theme of the Week.
-        //
-        // Two separate idempotency maps drive the two distinct prompts:
-        //
-        //   `weeklyTrialPromptShown` — `{ 'YYYY-Wnn': true }` keyed by
-        //   ISO year+week. Records that the START-of-week spotlight
-        //   ("✨ Theme of the Week — try it now") has been shown for
-        //   that week, so navigating back to the Themes panel later in
-        //   the same week is a no-op.
-        //
-        //   `weeklyTrialEndPromptShown` — `{ themeId: true }` keyed by
-        //   theme id. Records that the END-of-trial upsell ("Your trial
-        //   of {Name} ended — subscribe to keep it") has been shown for
-        //   a given premium theme. Tracked PER THEME (not per week) so
-        //   a user who got a Sunken Library trial last June and a
-        //   Mystic Realm trial this June each see one prompt; we don't
-        //   double-prompt if Sunken Library cycles back into the
-        //   rotation a year later.
-        //
-        // Both are cleared back to {} only via Reset Data.
-        this.weeklyTrialPromptShown = {};
-        this.weeklyTrialEndPromptShown = {};
-        //   `weeklyThemeCardDismissed` — `{ 'YYYY-Wnn': true }` keyed by
-        //   ISO year+week. Records that the user dismissed the PASSIVE
-        //   dashboard Theme-of-the-Week card for that week (distinct from
-        //   the interruptive spotlight modal above). The card re-appears
-        //   automatically when the rotation advances to a new week.
-        //   Cleared only via Reset Data.
-        this.weeklyThemeCardDismissed = {};
-
-        // v2.9 Track 7 Q7 — Analytics funnel state.
-        //
-        //   `lastFeaturedWeekTracked` — last ISO-week-key (`YYYY-Wnn`)
-        //   for which we've emitted `weekly_theme_featured`. Compared
-        //   against the current week in `maybeTrackWeeklyThemeFeatured()`
-        //   so the event fires exactly once per rotation regardless of
-        //   how many times the app launches that week.
-        //
-        //   `weeklyTrialApplyDates` — `{ themeId: ISOdate }` recording
-        //   when a free user APPLIED a featured-week trial. Powers the
-        //   conversion event: when `unlockPremium()` fires, any entry
-        //   here within 14 days emits `weekly_theme_subscribe` with the
-        //   day-delta so we can validate the funnel hypothesis ("free
-        //   user trials Stormwatch → subscribes within 2 weeks").
-        //   Entries are kept indefinitely (never cleared) — a trial
-        //   from 6 months ago that finally converts is still a valid
-        //   signal, just one with a large `daysFromApply`.
-        this.lastFeaturedWeekTracked = null;
-        this.weeklyTrialApplyDates = {};
-        this.unlockedTitles = [];
-        this.currentTitle = null;
-        this.treasureChests = [];
-        this.companion = null; // Legacy - will migrate to companions array
-        this.companions = []; // Collection of unlocked companions
-        this.activeCompanionId = null; // Currently active companion type id
         this.playerPanelOpen = false;
         
         // Spellbook System
-        this.spellbook = [];
-        this.activeSpells = [];
         this.spellDefinitions = this.initializeSpells();
 
         // v3.1 §3.1 — Skill Trees / Class System (multi-perk redesign). The
@@ -391,55 +523,19 @@ class GoalManager {
         this.CLASS_RESPEC_COST = 5; // Focus Crystals to change class
         this.CLASS_SCHEMA_VERSION = 2; // bump to force a class-state reset
         this.classDefinitions = this.initializeClasses();
-        this.playerClass = null;        // 'scholar' | 'warrior' | 'wizard' | 'ranger'
-        this.classNodesUnlocked = 0;    // count of linear nodes unlocked (0-5)
-        this.classCapstone = null;      // chosen capstone id, or null
-        this.skillPointsSpent = 0;      // points sunk into unlocked nodes + capstone
-        this.classSelectedAtLevel = null;
         // v3.1 §9 Subclass Specialization — unlocks once the base class is
         // mastered AND the player hits L40 (where the 30-point base tree maxes),
         // so subclass tiers become the natural post-L40 skill-point sink.
         this.SUBCLASS_UNLOCK_LEVEL = 40;
         this.SUBCLASS_RESPEC_COST = 8;  // Focus Crystals (> base respec's 5 — weightier)
-        this.subclass = null;           // chosen subclass id (scoped to playerClass)
-        this.subclassNodesUnlocked = 0; // count of subclass tiers unlocked (0-3)
         
         // Quest Chains System
-        this.activeQuestChains = [];
-        this.completedQuestChains = [];
         this.questChainTemplates = this.initializeQuestChainTemplates();
         
         // Spell casting lock to prevent double-casting
         this.isCastingSpell = false;
         
-        // Stats tracking for titles
-        this.chestsOpened = 0;
-        this.bossesDefeated = 0;
-        this.focusSessionsCompleted = 0;
-        this.spellsCast = 0;
-        // v2.8 (Jun 7, 2026) — lifetime gold-earned counter for the
-        // Golden Empire theme unlock (10,000 gold earned, NOT current
-        // balance — players who spend gold on chests/spells shouldn't
-        // re-lose the unlock). Incremented in `addGold()` AFTER all
-        // multipliers (blessing, spells, enchantments, companion) so
-        // the counter reflects what actually hit the wallet. Migrated
-        // for existing users in loadData via the standard `data.x || 0`
-        // fallback — first-time-loading existing users get 0 and earn
-        // the unlock organically from their next gold drop forward.
-        this.totalGoldEarned = 0;
-        
         // Boss Battle System (auto-generated daily/weekly/monthly bosses)
-        this.dailyBoss = null;
-        this.weeklyBoss = null;
-        this.monthlyBoss = null;
-        this.attackCharges = 0;
-        this.bossLog = [];
-        this.defeatedBossList = [];
-        this.dailyBossStreak = 0;
-        this.weeklyBossStreak = 0;
-        this.monthlyBossStreak = 0;
-        this.bossKillsThisMonth = 0;
-        this.bossKillsMonth = null; // Tracks which month the kill count belongs to
         this.monthlyBossUnlockThreshold = 5; // Defeat 5 bosses to unlock monthly challenge
         this.bossThemes = this.initializeBossThemes();
         
@@ -455,59 +551,17 @@ class GoalManager {
         // DOM element cache for frequently accessed elements
         this.domCache = {};
         
-        // Daily Quest Board
-        this.dailyQuestBoard = null; // { date, quests: [{id, completed}], allClaimedBonus }
-        this.dailyTracking = null; // { date, xpEarned, goldEarned, tasksCompleted, habitsCompleted, tasksCreated, chestsOpened, spellsCast, bossAttacks, chargesEarned, focusSessions, crystalsEarned, sideQuestsCompleted, weeklyProgress }
-        
-        // Challenge a Friend System
-        this.activeChallenges = [];
-        this.completedChallenges = [];
-        this.challengePresets = [
-            { id: 'tasks_today', title: 'Complete {n} tasks today', icon: '<i class="ri-sword-line"></i>', field: 'tasksCompleted', trackType: 'daily', defaults: { n: 5 }, options: [3, 5, 7, 10] },
-            { id: 'habits_today', title: 'Complete {n} habits today', icon: '<i class="ri-loop-right-line"></i>', field: 'habitsCompleted', trackType: 'daily', defaults: { n: 3 }, options: [2, 3, 5] },
-            { id: 'login_streak', title: 'Reach a {n}-day login streak', icon: '<i class="ri-fire-line"></i>', field: 'loginStreak', trackType: 'cumulative', defaults: { n: 7 }, options: [3, 7, 14, 30] },
-            { id: 'defeat_boss', title: 'Defeat {n} boss(es)', icon: '<i class="ri-skull-2-line"></i>', field: 'bossesDefeated', trackType: 'delta', defaults: { n: 1 }, options: [1, 3, 5] },
-            { id: 'focus_sessions', title: 'Complete {n} focus session(s)', icon: '<i class="ri-focus-3-line"></i>', field: 'focusSessions', trackType: 'daily', defaults: { n: 1 }, options: [1, 2, 3] },
-            { id: 'earn_xp', title: 'Earn {n} XP today', icon: '<i class="ri-star-fill"></i>', field: 'xpEarned', trackType: 'daily', defaults: { n: 100 }, options: [50, 100, 200, 500] },
-            { id: 'earn_gold', title: 'Earn {n} gold today', icon: '<i class="ri-coin-line"></i>', field: 'goldEarned', trackType: 'daily', defaults: { n: 50 }, options: [25, 50, 100, 200] },
-            { id: 'side_quests', title: 'Complete {n} side quest(s)', icon: '<i class="ri-compass-3-line"></i>', field: 'sideQuestsCompleted', trackType: 'daily', defaults: { n: 2 }, options: [1, 2, 3, 5] }
-        ];
-        
-        // Daily Free Wooden Chest
-        this.lastWoodenChestDate = null;
-
-        // v2.9.1 §1.8 — Royal Bounty (spotlight quests + bonus chest).
-        // One active bounty per cadence. Each value is either null, an
-        // assigned bounty object, or { periodKey, cadence, empty:true }
-        // when there was no eligible quest that period. `lastBountyClaim`
-        // is the per-cadence period guard ({ weekly:'YYYY-Wnn',
-        // monthly:'YYYY-MM' }) capping one claimed bonus chest per period.
-        this.activeBounties = { weekly: null, monthly: null };
-        this.lastBountyClaim = {};
+        // Challenge a Friend System — preset templates live in challenge-logic.js (89th slice).
+        this.challengePresets = CHALLENGE_LOGIC.PRESETS || [];
         
         // Focus Timer & Enchantments
-        this.focusCrystals = 0;
-        this.focusCrystalShards = 0;
-        // §1.7 Streak Repair: snapshots of recently-broken streaks the player
-        // can restore within 48h. P2b — the first repair is free; further
-        // repairs are a premium action costing Focus Crystals. Entries are
-        // pruned once their window closes (see getRepairableStreaks).
-        this.repairableStreaks = [];
         this.STREAK_REPAIR_WINDOW_MS = 48 * 60 * 60 * 1000; // 48h to repair
-        // P2b — every player's first streak repair is free (no premium, no
-        // crystals); persisted so the one-time grant survives reloads.
-        this.freeStreakRepairUsed = false;
         this.focusTimer = null;
         this.focusTimeRemaining = 0;
         this.focusTimerRunning = false;
-        this.focusEndTime = null;
-        this.focusSessionLength = FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES;
-        this.totalFocusTime = 0; // in minutes
         
         // Pomodoro Chain System
-        this.pomodoroChain = null; // { currentSession, totalSessions, isBreak, breakDuration, longBreakDuration }
         this.pomodoroChainSettings = FOCUS_SESSION_LOGIC.defaultChainSettings();
-        this.activeEnchantments = [];
         this.enchantmentDefinitions = this.initializeEnchantments();
         this.momentumStack = 0; // Tracks consecutive tasks for Momentum enchantment
         this.earlyBirdTasksToday = 0; // Tracks daily tasks completed today for Early Bird
@@ -517,21 +571,8 @@ class GoalManager {
         // historical XP. The high-priority bonus on DAILY TASKS is capped per
         // day (self-reported priority is gameable) — see _consumeHighPriorityDailySlot().
         this.HIGH_PRIORITY_XP_DAILY_CAP = 8;
-        this.highPriorityTasksToday = 0; // # of high-priority daily-task bonuses granted today
-        this._highPriorityXpDate = null; // local-date stamp gating the counter (reload-proof, self-resets)
-        this.deepWorkStack = 0; // Scholar Deep Work: consecutive back-to-back focus sessions
-        this.lastFocusSessionEndTime = 0; // Timestamp of last completed focus session (Deep Work chaining)
-        this.rageComboCounter = 0; // Warrior Rage Combo: consecutive boss attacks toward the next guaranteed crit
-        this.activeCompanionId2 = null; // Ranger Twin Bond: second equipped companion id
-        this.rangerProtectionsUsedThisWeek = 0; // Ranger Guardian Instinct: weekly streak protections used
-        this.rangerProtectionResetWeek = null; // ISO week-key of the last Guardian Instinct reset
-        this.guardianProtectionsUsedThisWeek = 0; // Warrior Guardian subclass (v3.1 §9): own weekly streak-protection pool
-        this.guardianProtectionResetWeek = null; // ISO week-key of the last Guardian pool reset
-        this.freeCastUsedDate = null; // Wizard Daily Ritual: date-string of the last free spell cast
         
         // Settings
-        this.timezone = 'auto'; // Can be 'auto' or a number (-12 to +13)
-        this.timezoneOffset = 0;
         this.notificationsEnabled = false;
         
         // Bulk Actions
@@ -539,67 +580,27 @@ class GoalManager {
         this.selectedItems = new Set();
         
         // Tutorial System
-        this.tutorialCompleted = false;
         this.currentTutorialStep = 0;
         this.tutorialActive = false;
         
-        // Progressive Feature Unlock System
-        this.featureUnlockLevels = {
-            dashboard: 1, goals: 1, daily: 1, calendar: 1, tools: 1,
-            rewards: 2,
-            arcane: 3,
-            bossbattles: 4,
-            focus: 5,
-            questchains: 6
-        };
+        // Progressive Feature Unlock System — the tables are the frozen feature-unlocks.js ones (85th
+        // slice); goalTabUnlockLevels stays derived from the onboarding path below.
+        this.featureUnlockLevels = FEATURE_UNLOCKS.LEVELS;
         // Onboarding play-style fork (habits vs goals). The chosen path drives
         // how soon the weekly/monthly/yearly/life goal tabs unlock. Default
         // (no choice yet, or "Daily Focus") = fast progressive curve; "Grand
         // Planner" opens the whole hierarchy at level 1. See
         // getGoalTabUnlockLevelsForPath() / chooseOnboardingPath().
-        this.onboardingPath = null;
         this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(null);
-        this.arcaneTabUnlockLevels = {
-            spellbook: 3,
-            enchantments: 5
-        };
-        this.featureUnlockTutorials = {
-            2: { title: '🏆 Treasury Unlocked!', text: "You've earned gold from your quests! Visit the Treasury to open treasure chests and discover spells, themes, and companions." },
-            3: { title: '🔮 Arcane Powers Unlocked!', text: "Your Spellbook is ready! You've received a welcome spell — visit Arcane Powers to view and cast it. Earn more spells from treasure chests and boss loot!" },
-            4: { title: '💀 Boss Battles Unlocked!', text: "Challenge daily and weekly bosses! Complete quests to earn attack charges and defeat powerful foes for epic loot rewards!" },
-            5: { title: '🎯 Focus Timer & Enchantments!', text: "The Focus Timer lets you earn Focus Crystals through timed work sessions. Chain multiple sessions together for bonus rewards! Spend crystals on Enchantments for powerful buffs." },
-            // Quest Chains still unlock at L6 (questchains in featureUnlockLevels).
-            // The weekly/side-quest/monthly/yearly/life goal tabs now unlock far
-            // earlier via the onboarding fork, so their old L6/L7/L9 celebration
-            // toasts were removed to avoid announcing unlocks that already happened.
-            6: { title: '⚔️ Quest Chains Unlocked!', text: "Quest Chains let you link tasks into epic multi-step adventures for bonus rewards! You've also unlocked the Forest Kingdom theme." },
-            8: { title: '🎖️ Choose Your Class!', text: "A major milestone! Open your Player Panel to choose a class — Warrior, Ranger, Wizard, or Scholar — each with its own perk tree. Pick freely now (re-picks are free until Level 10), then at Level 10 you'll start earning skill points to spend on your path!" },
-            10: { title: '👑 Legend Status & Skill Points!', text: "You've reached Level 10 — the rank of Legend! Your class skill points now begin: every level from here grants a point to spend in your Player Panel's class tree on powerful perks." }
-        };
-        this.seenFeatureTutorials = [];
-        this.progressiveUnlockInitialized = false;
+        this.arcaneTabUnlockLevels = FEATURE_UNLOCKS.ARCANE_TAB_LEVELS;
+        this.featureUnlockTutorials = FEATURE_UNLOCKS.TUTORIALS;
         // L6 (UX audit): desktop sidebar "More" disclosure state. New users see
         // their unlocked items + the immediate next unlock; further-off locked
         // entries collapse behind a "More" toggle. Session-only (intentionally
         // not persisted) so every launch starts decluttered.
         this._navMoreExpanded = false;
         
-        // Premium System
-        this.isPremium = false;
-        this.premiumPurchaseDate = null;
-        
-        // Period Transition Tracking
-        this.lastVisitDate = null;
-        this.lastWeekNumber = null;
-        this.lastMonth = null;
-        this.lastYear = null;
-        
-        // Daily Login Bonus
-        this.lastLoginBonusDate = null;
-        this.loginStreak = 0;
-        
         // Beginner's Blessing (2x XP & Gold for first 3 calendar days)
-        this.accountCreatedDate = null;
         this.BEGINNER_BLESSING_DAYS = 3;
 
         // Limited-time events kill-switch (default on). A code/remote
@@ -607,36 +608,6 @@ class GoalManager {
         // event out of unit tests that assert exact XP (the test factory
         // omits this field, so getActiveXPEvent() short-circuits there).
         this.limitedTimeEventsEnabled = true;
-
-        // v2.5 — Level-title style. 'masculine' keeps every existing user's
-        // title chain unchanged on upgrade; 'feminine' swaps the gendered
-        // entries (Knight→Dame, Baron→Baroness, Earl→Countess, Duke→
-        // Duchess, Prince→Princess, King→Queen, Emperor→Empress). Toggleable
-        // in Settings → Title Style. Defaults to 'masculine' for backward
-        // compatibility — the load path also normalizes any unexpected value
-        // back to 'masculine' so save corruption can't cause weird titles.
-        this.titleStyle = 'masculine';
-        
-        // Referral System
-        this.referralCode = null;
-        this.referredBy = null;
-        this.referralRewardClaimed = false;
-        this.referralsSent = 0;
-        
-        // Onboarding Share Hook
-        this.onboardingShareShown = false;
-        
-        // Activation funnel instrumentation — fire-once flags so the
-        // first_task_created / first_task_completed analytics events
-        // each emit exactly once per account (the North-Star activation
-        // signals). Persisted like onboardingShareShown.
-        this.firstTaskCreatedTracked = false;
-        this.firstTaskCompletedTracked = false;
-        
-        // In-App Review Prompt
-        this.reviewPromptCount = 0;
-        this.reviewPromptLastDate = null;
-        this.reviewLeft = false;
     }
 
     // Constructor side effects: localStorage load, retroactive unlock sweeps,
@@ -849,35 +820,25 @@ class GoalManager {
             const saved = localStorage.getItem('lifeOrganizeData');
             if (saved) {
                 const data = JSON.parse(saved);
-                this.lifeGoals = data.lifeGoals || [];
-                this.yearlyGoals = data.yearlyGoals || [];
-                this.monthlyGoals = data.monthlyGoals || [];
-                this.weeklyGoals = data.weeklyGoals || [];
-                this.dailyTasks = data.dailyTasks || [];
-                this.sideQuests = data.sideQuests || [];
-                this.habits = data.habits || [];
-                this.recurringTasks = data.recurringTasks || [];
-                this.xp = data.xp || 0;
-                this.level = data.level || 1;
-                this.badges = data.badges || [];
-                this.archivedGoals = data.archivedGoals || [];
-                
-                // Rewards System
-                this.goldCoins = data.goldCoins || 0;
-                this.unlockedThemes = data.unlockedThemes || ['default'];
-                this.currentTheme = data.currentTheme || 'default';
-                this.weeklyTrialPromptShown = data.weeklyTrialPromptShown || {};
-                this.weeklyTrialEndPromptShown = data.weeklyTrialEndPromptShown || {};
-                this.weeklyThemeCardDismissed = data.weeklyThemeCardDismissed || {};
-                this.lastFeaturedWeekTracked = data.lastFeaturedWeekTracked || null;
-                this.weeklyTrialApplyDates = data.weeklyTrialApplyDates || {};
-                this.unlockedTitles = data.unlockedTitles || [];
-                this.currentTitle = data.currentTitle || null;
-                this.treasureChests = data.treasureChests || [];
-                this.companion = data.companion || null;
-                this.companions = data.companions || [];
-                this.activeCompanionId = data.activeCompanionId || null;
-                
+                // FIELD MAPPING lives in load-deserializer.js (Roadmap #1, 77th slice — the
+                // mirror of the 76th's save-serializer.js). Every default/fallback, the class
+                // schema gate and the two value migrations (totalGoldEarned seeding,
+                // accountCreatedDate blessing) are pure and unit-tested there. The `??` vs `||`
+                // subtleties — notably lastMonth being 0-INDEXED — are pinned by tests now, so
+                // nobody can "tidy" them back into the suppressed-January-recap bug.
+                Object.assign(this, LOAD_DESERIALIZER.buildLoadState(data, {
+                    todayString: this.getTodayDateString(),
+                    classSchemaVersion: this.CLASS_SCHEMA_VERSION,
+                    defaultSessionMinutes: FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES,
+                    normalizeClassId: (id) => PERSISTENCE_MIGRATIONS.normalizeClassId(id)
+                }));
+
+                // Onboarding play-style fork (v3.2) — re-derive the goal-tab thresholds from
+                // the loaded path so a returning Grand Planner keeps the whole hierarchy open
+                // and a Daily Focus / default player keeps the fast progressive curve. Derived
+                // instance state, so it stays here.
+                this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(this.onboardingPath);
+
                 // Migrate legacy single companion to collection (Engineering Roadmap #1, 14th
                 // slice — pure helper in persistence-migrations.js; the push +
                 // activeCompanionId stamp stay here as the instance-state writes).
@@ -886,196 +847,11 @@ class GoalManager {
                     this.companions.push(this.companion);
                     this.activeCompanionId = this.companion.type;
                 }
-                
+
                 // Ensure all companions in the collection have type + rarity (Engineering
                 // Roadmap #1, 14th slice — pure helper in persistence-migrations.js;
                 // the companion name→type map now lives there as ONE frozen table).
                 PERSISTENCE_MIGRATIONS.migrateCompanionCollection(this.companions);
-                
-                // Spellbook System
-                this.spellbook = data.spellbook || [];
-                this.activeSpells = data.activeSpells || [];
-
-                // v3.1 §3.1 — Class System (skill points derive from level).
-                // Schema-gated: only restore class state when the saved schema
-                // matches the current one. On a mismatch (node meanings changed)
-                // we HARD-RESET class state — no migration shim, per the v3.1
-                // dev-build decision. Points re-derive from level so nothing of
-                // value is lost; the player just re-picks their tree.
-                if (data.classSchemaVersion === this.CLASS_SCHEMA_VERSION) {
-                    this.playerClass = data.playerClass || null;
-                    // Defensive: legacy class id rename Mystic → Wizard.
-                    this.playerClass = PERSISTENCE_MIGRATIONS.normalizeClassId(this.playerClass);
-                    this.classNodesUnlocked = data.classNodesUnlocked || 0;
-                    this.classCapstone = data.classCapstone || null;
-                    this.skillPointsSpent = data.skillPointsSpent || 0;
-                    this.classSelectedAtLevel = data.classSelectedAtLevel ?? null;
-                    // v3.1 §9 Subclass Specialization (schema-gated alongside the
-                    // base class state — a subclass id is meaningless without it).
-                    this.subclass = data.subclass || null;
-                    this.subclassNodesUnlocked = data.subclassNodesUnlocked || 0;
-                } else {
-                    this.playerClass = null;
-                    this.classNodesUnlocked = 0;
-                    this.classCapstone = null;
-                    this.skillPointsSpent = 0;
-                    this.classSelectedAtLevel = null;
-                    this.subclass = null;
-                    this.subclassNodesUnlocked = 0;
-                }
-                
-                // Quest Chains System
-                this.activeQuestChains = data.activeQuestChains || [];
-                this.completedQuestChains = data.completedQuestChains || [];
-                
-                // Focus & Enchantments
-                this.focusCrystals = data.focusCrystals || 0;
-                this.focusCrystalShards = data.focusCrystalShards || 0;
-                this.repairableStreaks = Array.isArray(data.repairableStreaks) ? data.repairableStreaks : [];
-                this.freeStreakRepairUsed = data.freeStreakRepairUsed || false;
-                this.totalFocusTime = data.totalFocusTime || 0;
-                this.activeEnchantments = data.activeEnchantments || [];
-                this.focusEndTime = data.focusEndTime || null;
-                this.focusSessionLength = data.focusSessionLength || FOCUS_SESSION_LOGIC.DEFAULT_SESSION_MINUTES;
-                this.deepWorkStack = data.deepWorkStack || 0;
-                this.lastFocusSessionEndTime = data.lastFocusSessionEndTime || 0;
-                this.pomodoroChain = data.pomodoroChain || null;
-                if (data.pomodoroChainSettings) this.pomodoroChainSettings = data.pomodoroChainSettings;
-                
-                // Settings
-                this.timezone = data.timezone || 'auto';
-                this.timezoneOffset = data.timezoneOffset || 0;
-                
-                // Habit/weekly reset markers — real instance fields advanced
-                // ONLY by checkHabitReset(). Previously _doSave() stamped
-                // "today" on every write, which could silently skip a day's
-                // habit reset if any save landed after midnight but before
-                // checkHabitReset ran (v2.9.x audit fix).
-                this.lastHabitReset = data.lastHabitReset || null;
-                this.lastWeekReset = data.lastWeekReset || null;
-                
-                // Tutorial
-                this.tutorialCompleted = data.tutorialCompleted || false;
-
-                // Onboarding play-style fork (v3.2) — re-derive goal-tab
-                // thresholds from the saved path so a returning Grand Planner
-                // keeps the whole hierarchy open, and a Daily Focus / default
-                // player keeps the fast progressive curve.
-                this.onboardingPath = data.onboardingPath || null;
-                this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(this.onboardingPath);
-                
-                // Progressive Feature Unlock
-                this.seenFeatureTutorials = data.seenFeatureTutorials || [];
-                this.progressiveUnlockInitialized = data.progressiveUnlockInitialized || false;
-                
-                // Period Transition Tracking
-                // lastMonth is 0-INDEXED (January === 0), so `||` would coerce a stored January to
-                // null and silently suppress the month-transition recap for anyone whose last visit
-                // was in January. Must be `??`, matching importData(). The other three are safe
-                // under `||` (week numbers are 1-based, years are non-zero, the date is a string)
-                // but use `??` too so the whole block reads consistently.
-                this.lastVisitDate = data.lastVisitDate ?? null;
-                this.lastWeekNumber = data.lastWeekNumber ?? null;
-                this.lastMonth = data.lastMonth ?? null;
-                this.lastYear = data.lastYear ?? null;
-                
-                // Premium System
-                this.isPremium = data.isPremium || false;
-                this.premiumPurchaseDate = data.premiumPurchaseDate || null;
-                this.premiumPurchaseToken = data.premiumPurchaseToken || null;
-                
-                // Daily Login Bonus
-                this.lastLoginBonusDate = data.lastLoginBonusDate || null;
-                this.loginStreak = data.loginStreak || 0;
-                
-                // Referral System
-                this.referralCode = data.referralCode || null;
-                this.referredBy = data.referredBy || null;
-                this.referralRewardClaimed = data.referralRewardClaimed || false;
-                this.referralsSent = data.referralsSent || 0;
-                
-                // Onboarding Share Hook
-                this.onboardingShareShown = data.onboardingShareShown || false;
-                
-                // Activation funnel instrumentation
-                this.firstTaskCreatedTracked = data.firstTaskCreatedTracked || false;
-                this.firstTaskCompletedTracked = data.firstTaskCompletedTracked || false;
-                
-                // In-App Review Prompt
-                this.reviewPromptCount = data.reviewPromptCount || 0;
-                this.reviewPromptLastDate = data.reviewPromptLastDate || null;
-                this.reviewLeft = data.reviewLeft || false;
-                
-                // Beginner's Blessing
-                if (data.accountCreatedDate) {
-                    this.accountCreatedDate = data.accountCreatedDate;
-                } else {
-                    // Migration: give blessing to existing users still in early levels
-                    this.accountCreatedDate = this.level <= 3 ? this.getTodayDateString() : '2020-01-01';
-                }
-                
-                // Daily Quest Board & Tracking
-                this.dailyQuestBoard = data.dailyQuestBoard || null;
-                this.dailyTracking = data.dailyTracking || null;
-                this.lastWoodenChestDate = data.lastWoodenChestDate || null;
-
-                // v2.9.1 §1.8 — Royal Bounty
-                this.activeBounties = data.activeBounties || { weekly: null, monthly: null };
-                this.lastBountyClaim = data.lastBountyClaim || {};
-                
-                // Challenge a Friend
-                this.activeChallenges = data.activeChallenges || [];
-                this.completedChallenges = data.completedChallenges || [];
-                
-                // Stats tracking for titles
-                this.chestsOpened = data.chestsOpened || 0;
-                this.bossesDefeated = data.bossesDefeated || 0;
-                this.focusSessionsCompleted = data.focusSessionsCompleted || 0;
-                // v2.8 N3 migration (Jun 7, 2026 audit) — when the field
-                // is ABSENT from the save (existing user upgrading from a
-                // pre-v2.8 build), seed from `data.goldCoins` rather than
-                // 0. The current balance is a strictly correct lower
-                // bound on lifetime earnings (gold can only enter via
-                // addGold, so currentBalance ≤ trueLifetimeEarned),
-                // which means seeding never falsely unlocks Golden
-                // Empire — it just under-credits players who spent
-                // heavily. Better than punishing every existing player
-                // by starting at 0. Uses `??` not `||` to distinguish
-                // "field absent" (seed) from "field present and 0"
-                // (genuine new player or zero-balance returning user —
-                // stays 0). The subsequent retroactive
-                // `checkRewardUnlocks()` pass at end of `loadData()`
-                // will auto-grant Golden Empire to any player whose
-                // seeded counter already crosses 10,000.
-                this.totalGoldEarned = data.totalGoldEarned ?? (data.goldCoins || 0);
-
-                // v2.5 — Level-title style preference. Normalize any
-                // unexpected value (corrupt save, foreign import) back to
-                // 'masculine' so the title chain is always renderable.
-                this.titleStyle = data.titleStyle === 'feminine' ? 'feminine' : 'masculine';
-                this.spellsCast = data.spellsCast || 0;
-                
-                // Boss Battle System
-                this.dailyBoss = data.dailyBoss || null;
-                this.weeklyBoss = data.weeklyBoss || null;
-                this.monthlyBoss = data.monthlyBoss || null;
-                this.attackCharges = data.attackCharges || 0;
-                this.rageComboCounter = data.rageComboCounter || 0;
-                this.activeCompanionId2 = data.activeCompanionId2 || null;
-                this.rangerProtectionsUsedThisWeek = data.rangerProtectionsUsedThisWeek || 0;
-                this.rangerProtectionResetWeek = data.rangerProtectionResetWeek || null;
-                this.guardianProtectionsUsedThisWeek = data.guardianProtectionsUsedThisWeek || 0;
-                this.guardianProtectionResetWeek = data.guardianProtectionResetWeek || null;
-                this.freeCastUsedDate = data.freeCastUsedDate || null;
-                this.highPriorityTasksToday = data.highPriorityTasksToday || 0;
-                this._highPriorityXpDate = data.highPriorityXpDate || null;
-                this.bossLog = data.bossLog || [];
-                this.defeatedBossList = data.defeatedBossList || [];
-                this.dailyBossStreak = data.dailyBossStreak || 0;
-                this.weeklyBossStreak = data.weeklyBossStreak || 0;
-                this.monthlyBossStreak = data.monthlyBossStreak || 0;
-                this.bossKillsThisMonth = data.bossKillsThisMonth || 0;
-                this.bossKillsMonth = data.bossKillsMonth || null;
                 
                 // Migrate tasks with `name` but no `title` (from the old starter-task bug) —
                 // pure helper in persistence-migrations.js (Roadmap #1, 14th slice).
@@ -1137,119 +913,11 @@ class GoalManager {
             this.archivedGoals = PERSISTENCE_MIGRATIONS.pruneArchivedGoals(this.archivedGoals);
             this.bossLog = PERSISTENCE_MIGRATIONS.pruneBossLog(this.bossLog);
 
-            const dataToSave = JSON.stringify({
-                lifeGoals: this.lifeGoals,
-                yearlyGoals: this.yearlyGoals,
-                monthlyGoals: this.monthlyGoals,
-                weeklyGoals: this.weeklyGoals,
-                dailyTasks: this.dailyTasks,
-                sideQuests: this.sideQuests,
-                habits: this.habits,
-                recurringTasks: this.recurringTasks,
-                xp: this.xp,
-                level: this.level,
-                badges: this.badges,
-                archivedGoals: this.archivedGoals,
-                goldCoins: this.goldCoins,
-                unlockedThemes: this.unlockedThemes,
-                currentTheme: this.currentTheme,
-                weeklyTrialPromptShown: this.weeklyTrialPromptShown,
-                weeklyTrialEndPromptShown: this.weeklyTrialEndPromptShown,
-                weeklyThemeCardDismissed: this.weeklyThemeCardDismissed,
-                lastFeaturedWeekTracked: this.lastFeaturedWeekTracked,
-                weeklyTrialApplyDates: this.weeklyTrialApplyDates,
-                unlockedTitles: this.unlockedTitles,
-                currentTitle: this.currentTitle,
-                treasureChests: this.treasureChests,
-                companion: this.companion,
-                companions: this.companions,
-                activeCompanionId: this.activeCompanionId,
-                spellbook: this.spellbook,
-                activeSpells: this.activeSpells,
-                classSchemaVersion: this.CLASS_SCHEMA_VERSION,
-                playerClass: this.playerClass,
-                classNodesUnlocked: this.classNodesUnlocked,
-                classCapstone: this.classCapstone,
-                skillPointsSpent: this.skillPointsSpent,
-                classSelectedAtLevel: this.classSelectedAtLevel,
-                subclass: this.subclass,
-                subclassNodesUnlocked: this.subclassNodesUnlocked,
-                activeQuestChains: this.activeQuestChains,
-                completedQuestChains: this.completedQuestChains,
-                focusCrystals: this.focusCrystals,
-                focusCrystalShards: this.focusCrystalShards,
-                repairableStreaks: this.repairableStreaks,
-                freeStreakRepairUsed: this.freeStreakRepairUsed,
-                totalFocusTime: this.totalFocusTime,
-                activeEnchantments: this.activeEnchantments,
-                focusEndTime: this.focusEndTime,
-                focusSessionLength: this.focusSessionLength,
-                deepWorkStack: this.deepWorkStack,
-                lastFocusSessionEndTime: this.lastFocusSessionEndTime,
-                pomodoroChain: this.pomodoroChain,
-                pomodoroChainSettings: this.pomodoroChainSettings,
-                timezone: this.timezone,
-                timezoneOffset: this.timezoneOffset,
-                tutorialCompleted: this.tutorialCompleted,
-                onboardingPath: this.onboardingPath,
-                lastHabitReset: this.lastHabitReset || this.getTodayDateString(),
-                lastWeekReset: this.lastWeekReset || this.getWeekString(new Date()),
-                lastVisitDate: this.lastVisitDate,
-                lastWeekNumber: this.lastWeekNumber,
-                lastMonth: this.lastMonth,
-                lastYear: this.lastYear,
-                isPremium: this.isPremium,
-                premiumPurchaseDate: this.premiumPurchaseDate,
-                premiumPurchaseToken: this.premiumPurchaseToken || null,
-                lastLoginBonusDate: this.lastLoginBonusDate,
-                loginStreak: this.loginStreak,
-                referralCode: this.referralCode,
-                referredBy: this.referredBy,
-                referralRewardClaimed: this.referralRewardClaimed,
-                referralsSent: this.referralsSent,
-                onboardingShareShown: this.onboardingShareShown,
-                firstTaskCreatedTracked: this.firstTaskCreatedTracked,
-                firstTaskCompletedTracked: this.firstTaskCompletedTracked,
-                reviewPromptCount: this.reviewPromptCount,
-                reviewPromptLastDate: this.reviewPromptLastDate,
-                reviewLeft: this.reviewLeft,
-                chestsOpened: this.chestsOpened,
-                bossesDefeated: this.bossesDefeated,
-                focusSessionsCompleted: this.focusSessionsCompleted,
-                spellsCast: this.spellsCast,
-                totalGoldEarned: this.totalGoldEarned,
-                dailyBoss: this.dailyBoss,
-                weeklyBoss: this.weeklyBoss,
-                monthlyBoss: this.monthlyBoss,
-                attackCharges: this.attackCharges,
-                rageComboCounter: this.rageComboCounter,
-                activeCompanionId2: this.activeCompanionId2,
-                rangerProtectionsUsedThisWeek: this.rangerProtectionsUsedThisWeek,
-                rangerProtectionResetWeek: this.rangerProtectionResetWeek,
-                guardianProtectionsUsedThisWeek: this.guardianProtectionsUsedThisWeek,
-                guardianProtectionResetWeek: this.guardianProtectionResetWeek,
-                freeCastUsedDate: this.freeCastUsedDate,
-                highPriorityTasksToday: this.highPriorityTasksToday,
-                highPriorityXpDate: this._highPriorityXpDate,
-                bossLog: this.bossLog,
-                defeatedBossList: this.defeatedBossList,
-                dailyBossStreak: this.dailyBossStreak,
-                weeklyBossStreak: this.weeklyBossStreak,
-                monthlyBossStreak: this.monthlyBossStreak,
-                bossKillsThisMonth: this.bossKillsThisMonth,
-                bossKillsMonth: this.bossKillsMonth,
-                accountCreatedDate: this.accountCreatedDate,
-                titleStyle: this.titleStyle,
-                seenFeatureTutorials: this.seenFeatureTutorials,
-                progressiveUnlockInitialized: this.progressiveUnlockInitialized,
-                dailyQuestBoard: this.dailyQuestBoard,
-                dailyTracking: this.dailyTracking,
-                lastWoodenChestDate: this.lastWoodenChestDate,
-                activeBounties: this.activeBounties,
-                lastBountyClaim: this.lastBountyClaim,
-                activeChallenges: this.activeChallenges,
-                completedChallenges: this.completedChallenges
+                        const data = SAVE_SERIALIZER.buildSaveData(this, {
+                todayString: this.getTodayDateString(),
+                currentWeekString: this.getWeekString(new Date())
             });
+            const dataToSave = JSON.stringify(data);
             localStorage.setItem('lifeOrganizeData', dataToSave);
             // Proactive storage warning when approaching typical 5MB limit
             if (dataToSave.length > 4 * 1024 * 1024 && !this._storageWarningShown) {
@@ -1487,7 +1155,7 @@ class GoalManager {
         const intersectionObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) return;
-                const el = entry.target;
+                const el = /** @type {HTMLElement & { _shimmerTimer?: ReturnType<typeof setTimeout> | null }} */ (entry.target);
                 // Clear any in-flight removal so we don't yank the
                 // class mid-replay if the user scrolls fast.
                 const existingTimer = el._shimmerTimer;
@@ -1600,15 +1268,15 @@ class GoalManager {
     
     // Ranger Forage capstone (v3.1 §3.2): rolled once per qualifying task
     // completion (see grantAttackCharge). On a hit, grants bonus gold and one
-    // Focus Crystal. No-op for non-Rangers / without the capstone.
+    // Focus Crystal. No-op for non-Rangers / without the capstone. The hit-roll
+    // + bonus-gold math lives in reward-economy.js's forageReward (90th slice).
     applyForage() {
-        const chance = this.getClassPerkValue('forage');
-        if (chance <= 0 || this.rng() >= chance) return;
-        const bonusGold = 10 + Math.floor(this.rng() * 11); // 10-20
-        this.addGold(bonusGold, 'forage');
-        this.focusCrystals = (this.focusCrystals || 0) + 1;
+        const reward = REWARD_ECONOMY.forageReward(this.getClassPerkValue('forage'), () => this.rng());
+        if (!reward) return;
+        this.addGold(reward.gold, 'forage');
+        this.focusCrystals = (this.focusCrystals || 0) + reward.crystals;
         if (!this._suppressRewardToasts) {
-            this.showAchievement(`🌿 Forage! +${bonusGold} gold, +1 💎`, 'daily');
+            this.showAchievement(`🌿 Forage! +${reward.gold} gold, +${reward.crystals} 💎`, 'daily');
         }
     }
     
@@ -1863,10 +1531,10 @@ class GoalManager {
         const bossCard = document.getElementById(`boss-card-${bossType}`);
         if (!bossCard) return;
 
-        const bar = bossCard.querySelector('.boss-hp-bar');
+        const bar = /** @type {HTMLElement | null} */ (bossCard.querySelector('.boss-hp-bar'));
         if (bar) {
-            const fill = bar.querySelector('.boss-hp-fill');
-            const damageLayer = bar.querySelector('.boss-hp-damage');
+            const fill = /** @type {HTMLElement | null} */ (bar.querySelector('.boss-hp-fill'));
+            const damageLayer = /** @type {HTMLElement | null} */ (bar.querySelector('.boss-hp-damage'));
 
             const maxHP = Math.max(0, boss.maxHP || 0);
             const currentHP = Math.max(0, Math.min(maxHP, boss.currentHP || 0));
@@ -1879,7 +1547,7 @@ class GoalManager {
             //    have a reference; hide it below 15% to match the v2.8 behaviour.
             if (fill) {
                 fill.style.width = `${currentPct}%`;
-                const label = fill.querySelector('.boss-hp-percent');
+                const label = /** @type {HTMLElement | null} */ (fill.querySelector('.boss-hp-percent'));
                 if (label) {
                     if (currentPct > 15) {
                         label.textContent = `${Math.round(currentPct)}%`;
@@ -1936,7 +1604,7 @@ class GoalManager {
         }
 
         // Update attack charges on button
-        const attackBtn = bossCard.querySelector('button[onclick*="attackBoss"]');
+        const attackBtn = /** @type {HTMLInputElement | null} */ (bossCard.querySelector('button[onclick*="attackBoss"]'));
         if (attackBtn) {
             const chargesText = this.attackCharges > 0 ? ` (${this.attackCharges})` : '';
             attackBtn.innerHTML = `<i class="ri-sword-fill mr-2"></i>ATTACK!${chargesText}`;
@@ -2014,11 +1682,15 @@ class GoalManager {
         this.bossKillsThisMonth++;
         
         // Calculate rewards with streak bonus
-        const streak = bossType === 'daily' ? this.dailyBossStreak : bossType === 'weekly' ? this.weeklyBossStreak : this.monthlyBossStreak;
-        const streakMultiplier = 1 + Math.min(streak - 1, 10) * 0.1; // +10% per streak, max +100%
+        const streak = BOSS_STREAK_LOGIC.streakForBossType(bossType, {
+            daily: this.dailyBossStreak,
+            weekly: this.weeklyBossStreak,
+            monthly: this.monthlyBossStreak
+        });
+        const multiplier = BOSS_STREAK_LOGIC.streakMultiplier(streak);
         
-        const xpReward = Math.round(boss.rewards.xp * streakMultiplier);
-        const goldReward = Math.round(boss.rewards.gold * streakMultiplier);
+        const xpReward = BOSS_STREAK_LOGIC.applyStreakBonus(boss.rewards.xp, multiplier);
+        const goldReward = BOSS_STREAK_LOGIC.applyStreakBonus(boss.rewards.gold, multiplier);
         
         // Suppress ALL toasts and sounds during reward processing
         // to prevent notification overlap and sound delays
@@ -2062,8 +1734,8 @@ class GoalManager {
         this._suppressRewardSounds = false;
         this._suppressRewardToasts = false;
         
-        // Add to defeated list
-        this.defeatedBossList.unshift({
+        // Add to defeated list (newest first, capped at DEFEATED_HISTORY_CAP — boss-streak-logic.js)
+        this.defeatedBossList = BOSS_STREAK_LOGIC.archiveDefeated(this.defeatedBossList, {
             name: boss.name,
             icon: boss.icon,
             type: bossType,
@@ -2073,7 +1745,6 @@ class GoalManager {
             defeatedAt: new Date().toISOString(),
             rewards: { xp: xpReward, gold: goldReward }
         });
-        if (this.defeatedBossList.length > 50) this.defeatedBossList.length = 50;
         
         const streakText = streak > 1 ? ` (x${streak} streak!)` : '';
         this.addBossLog(`<i class="ri-trophy-line mr-1"></i>${boss.icon} ${boss.name} DEFEATED! +${xpReward} XP, +${goldReward} Gold, +${crystalReward} 💎${streakText}`);
@@ -2150,9 +1821,10 @@ class GoalManager {
         const boss = bossType === 'daily' ? this.dailyBoss : bossType === 'weekly' ? this.weeklyBoss : this.monthlyBoss;
         if (!boss || boss.defeated) return;
         
-        const hpPercent = (boss.currentHP / boss.maxHP) * 100;
+        // The 25% execute window is COMBAT_DAMAGE.EXECUTE_HP_THRESHOLD — the same predicate the
+        // Executioner capstone uses in attackBoss, so the spell and the perk cannot drift.
         const executeSpell = SPELL_LIFECYCLE.findActive(this.activeSpells, 'execute', Date.now());
-        if (!executeSpell || hpPercent > 25) return;
+        if (!executeSpell || !COMBAT_DAMAGE.isExecuteRange(boss)) return;
         
         // Consume Execute spell
         this.activeSpells = SPELL_LIFECYCLE.consume(this.activeSpells, 'execute');
@@ -2302,8 +1974,7 @@ class GoalManager {
     // discount (floored at 1 so enchantments are never free).
     getEffectiveEnchantmentCost(enchantment) {
         if (!enchantment) return 0;
-        const discount = this.getClassPerkValue('enchant_discount');
-        return Math.max(1, enchantment.cost - discount);
+        return ENCHANTMENT_LIFECYCLE.effectiveCost(enchantment, this.getClassPerkValue('enchant_discount'));
     }
 
     selectClass(classId) {
@@ -2914,21 +2585,15 @@ class GoalManager {
     // ==================== PROGRESSIVE FEATURE UNLOCK ====================
     
     isFeatureUnlocked(viewName) {
-        const requiredLevel = this.featureUnlockLevels[viewName];
-        if (requiredLevel === undefined) return true;
-        return this.level >= requiredLevel;
+        return FEATURE_UNLOCKS.isUnlocked(this.featureUnlockLevels, viewName, this.level);
     }
     
     isGoalTabUnlocked(tabName) {
-        const requiredLevel = this.goalTabUnlockLevels[tabName];
-        if (requiredLevel === undefined) return true;
-        return this.level >= requiredLevel;
+        return FEATURE_UNLOCKS.isUnlocked(this.goalTabUnlockLevels, tabName, this.level);
     }
     
     isArcaneTabUnlocked(tabName) {
-        const requiredLevel = this.arcaneTabUnlockLevels[tabName];
-        if (requiredLevel === undefined) return true;
-        return this.level >= requiredLevel;
+        return FEATURE_UNLOCKS.isUnlocked(this.arcaneTabUnlockLevels, tabName, this.level);
     }
 
     // ── Onboarding play-style fork ─────────────────────────────────────
@@ -2940,10 +2605,9 @@ class GoalManager {
     //     curve (lowered from the old 6/7/9) so habit-first players still
     //     reach every planning tier within days, not weeks.
     getGoalTabUnlockLevelsForPath(path) {
-        if (path === 'goals') {
-            return { weekly: 1, sidequests: 1, monthly: 1, yearly: 1, 'life-goals': 1 };
-        }
-        return { weekly: 2, sidequests: 2, monthly: 3, yearly: 4, 'life-goals': 4 };
+        // Curves live in feature-unlocks.js (GOAL_TAB_LEVELS); a fresh copy per call so callers
+        // never share (or mutate) the frozen table.
+        return { ...FEATURE_UNLOCKS.goalTabLevelsForPath(path) };
     }
 
     // Persist the chosen path and re-derive the goal-tab thresholds from it.
@@ -2954,8 +2618,8 @@ class GoalManager {
     }
     
     updateNavVisibility() {
-        document.querySelectorAll('.nav-link').forEach(link => {
-            const view = link.getAttribute('data-view');
+        /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.nav-link')).forEach(link => {
+            const view = link.getAttribute('data-view') || '';
             const requiredLevel = this.featureUnlockLevels[view];
             
             if (requiredLevel && this.level < requiredLevel) {
@@ -2971,7 +2635,7 @@ class GoalManager {
                 }
                 badge.textContent = `🔒 Lv.${requiredLevel}`;
                 // Hide the original text span on mobile to save space
-                const textSpan = link.querySelector('span.fancy-font:not(.nav-lock-badge)');
+                const textSpan = /** @type {HTMLElement | null} */ (link.querySelector('span.fancy-font:not(.nav-lock-badge)'));
                 if (textSpan) textSpan.style.opacity = '0.5';
             } else {
                 // Unlock: restore normal appearance
@@ -2980,7 +2644,7 @@ class GoalManager {
                 link.style.cursor = '';
                 const badge = link.querySelector('.nav-lock-badge');
                 if (badge) badge.remove();
-                const textSpan = link.querySelector('span.fancy-font:not(.nav-lock-badge)');
+                const textSpan = /** @type {HTMLElement | null} */ (link.querySelector('span.fancy-font:not(.nav-lock-badge)'));
                 if (textSpan) textSpan.style.opacity = '';
             }
         });
@@ -2989,10 +2653,10 @@ class GoalManager {
         this.updateGoalTabVisibility();
         this.updateArcaneTabVisibility();
         
-        // Hide companion section in Player Panel until level 3
+        // Hide companion section in Player Panel until companions unlock
         const companionSection = document.getElementById('panel-companion-section');
         if (companionSection) {
-            companionSection.style.display = this.level >= 3 ? '' : 'none';
+            companionSection.style.display = this.level >= FEATURE_UNLOCKS.COMPANION_UNLOCK_LEVEL ? '' : 'none';
         }
     }
 
@@ -3003,10 +2667,8 @@ class GoalManager {
     // disclosure is expanded so the caller un-hides everything.
     _navCollapsedViews() {
         if (this._navMoreExpanded) return [];
-        return Object.keys(this.featureUnlockLevels).filter(view => {
-            const req = this.featureUnlockLevels[view];
-            return typeof req === 'number' && req >= this.level + 2;
-        });
+        return Object.keys(this.featureUnlockLevels).filter(view =>
+            FEATURE_UNLOCKS.isFarOff(this.featureUnlockLevels[view], this.level));
     }
 
     // Applies the "More" disclosure to the desktop sidebar: hides far-off
@@ -3021,16 +2683,14 @@ class GoalManager {
         const collapsed = new Set(this._navCollapsedViews());
 
         links.forEach(link => {
-            link.classList.toggle('nav-more-hidden', collapsed.has(link.getAttribute('data-view')));
+            link.classList.toggle('nav-more-hidden', collapsed.has(link.getAttribute('data-view') || ''));
         });
 
         // "Is anything collapsible at all?" is independent of expanded state.
-        const isCollapsible = (link) => {
-            const req = this.featureUnlockLevels[link.getAttribute('data-view')];
-            return typeof req === 'number' && req >= this.level + 2;
-        };
+        const isCollapsible = (link) =>
+            FEATURE_UNLOCKS.isFarOff(this.featureUnlockLevels[link.getAttribute('data-view')], this.level);
         const collapsible = links.filter(isCollapsible);
-        let toggle = document.getElementById('nav-more-toggle');
+        let toggle = /** @type {HTMLButtonElement | null} */ (document.getElementById('nav-more-toggle'));
 
         if (collapsible.length === 0) {
             if (toggle) toggle.remove();
@@ -3141,8 +2801,8 @@ class GoalManager {
         if (tutorial && !this.seenFeatureTutorials.includes(this.level)) {
             this.seenFeatureTutorials.push(this.level);
             
-            // Grant a free welcome spell when Arcane Powers unlocks at Lv3
-            if (this.level === 3 && this.spellbook.length === 0) {
+            // Grant a free welcome spell when Arcane Powers unlocks
+            if (this.level === this.featureUnlockLevels.arcane && this.spellbook.length === 0) {
                 this.spellbook.push({ spellId: 'minor_wisdom', charges: 2 });
             }
             
@@ -3158,6 +2818,11 @@ class GoalManager {
         this.updateNavVisibility();
     }
     
+    /**
+     * @param {string} title
+     * @param {string} text
+     * @param {(() => void) | null} [onClose]
+     */
     showFeatureUnlockPopup(title, text, onClose = null) {
         const emoji = title.split(' ')[0];
         const overlay = document.createElement('div');
@@ -3187,7 +2852,7 @@ class GoalManager {
             </div>
         `;
         document.body.appendChild(overlay);
-        const dismissBtn = overlay.querySelector('#unlock-popup-dismiss');
+        const dismissBtn = /** @type {HTMLElement | null} */ (overlay.querySelector('#unlock-popup-dismiss'));
         if (dismissBtn) dismissBtn.onclick = close;
         
         // Animate in
@@ -3373,7 +3038,7 @@ class GoalManager {
                 view.classList.add('hidden');
             });
             const arcaneView = document.getElementById('arcane-view');
-            arcaneView.classList.remove('hidden');
+            arcaneView?.classList.remove('hidden');
             this._animateViewEnter(arcaneView);
             
             document.querySelectorAll('.nav-link').forEach(link => {
@@ -3403,7 +3068,7 @@ class GoalManager {
                 view.classList.add('hidden');
             });
             const goalsView = document.getElementById('goals-view');
-            goalsView.classList.remove('hidden');
+            goalsView?.classList.remove('hidden');
             this._animateViewEnter(goalsView);
             
             document.querySelectorAll('.nav-link').forEach(link => {
@@ -3664,6 +3329,12 @@ class GoalManager {
     // rendered as a tappable button inside the toast (used by the delete
     // UNDO flow; Ctrl+Z is unreachable on Android so the keyboard-only
     // undo system was dead code for the entire user base).
+    /**
+     * @param {string} text
+     * @param {string} [type]
+     * @param {string | null} [soundLevel]
+     * @param {{ label: string, callback: () => void } | null} [action]
+     */
     showToast(text, type = 'info', soundLevel = null, action = null) {
         // Queue-based toast system: toasts show one at a time sequentially
         if (!this._toastQueue) this._toastQueue = [];
@@ -3685,6 +3356,13 @@ class GoalManager {
         }
     }
     
+    // Error-path toast for the share/export flows. Was called in six places but never defined
+    // (surfaced by `// @ts-check`, Roadmap #3 step 6) — every failed share/copy threw a
+    // TypeError instead of telling the user. Uses the existing `warning` toast style.
+    showError(text) {
+        this.showToast(text, 'warning', 'error');
+    }
+
     _processToastQueue() {
         if (!this._toastQueue || this._toastQueue.length === 0) {
             this._toastShowing = false;
@@ -3903,6 +3581,7 @@ class GoalManager {
         });
     }
 
+    /** @param {number | null} [parentLifeGoalId] */
     addYearlyGoal(parentLifeGoalId = null) {
         this.showInputModal({
             title: 'New Yearly Campaign',
@@ -3936,6 +3615,7 @@ class GoalManager {
         });
     }
 
+    /** @param {number | null} [parentYearlyGoalId] */
     addMonthlyGoal(parentYearlyGoalId = null) {
         this.showInputModal({
             title: 'New Monthly Quest',
@@ -3969,6 +3649,7 @@ class GoalManager {
         });
     }
 
+    /** @param {number | null} [parentMonthlyGoalId] */
     addWeeklyGoal(parentMonthlyGoalId = null) {
         this.showInputModal({
             title: 'New Weekly Mission',
@@ -4003,6 +3684,10 @@ class GoalManager {
         });
     }
 
+    /**
+     * @param {number | null} [parentWeeklyGoalId]
+     * @param {string | null} [scheduledDate]
+     */
     addDailyTask(parentWeeklyGoalId = null, scheduledDate = null) {
         this.showInputModal({
             title: 'New Daily Task',
@@ -4222,15 +3907,12 @@ class GoalManager {
     }
 
     finishRecurringTaskSetup(title, description, patternChoice) {
-        const dayChoices = [
-            { value: 'mon', label: 'Monday', icon: '📌' },
-            { value: 'tue', label: 'Tuesday', icon: '📌' },
-            { value: 'wed', label: 'Wednesday', icon: '📌' },
-            { value: 'thu', label: 'Thursday', icon: '📌' },
-            { value: 'fri', label: 'Friday', icon: '📌' },
-            { value: 'sat', label: 'Saturday', icon: '📌' },
-            { value: 'sun', label: 'Sunday', icon: '📌' }
-        ];
+        // Monday-first picker order + long labels from the one day vocabulary (recurring-logic.js).
+        const dayChoices = RECURRING_LOGIC.DAY_ORDER.map(value => ({
+            value,
+            label: RECURRING_LOGIC.DAY_LABELS_LONG[value],
+            icon: '📌'
+        }));
 
         const createTask = (recurrence) => {
             const recurringTask = {
@@ -4304,8 +3986,9 @@ class GoalManager {
         const existingModal = document.getElementById('multiselect-modal');
         if (existingModal) existingModal.remove();
 
-        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        // Two parallel hand-kept arrays collapsed onto the one day vocabulary (recurring-logic.js).
+        const days = RECURRING_LOGIC.DAY_ORDER;
+        const labels = days.map(d => RECURRING_LOGIC.DAY_LABELS[d]);
 
         const modal = document.createElement('div');
         modal.id = 'multiselect-modal';
@@ -4343,7 +4026,7 @@ class GoalManager {
         this.selectedDays = [];
 
         // Setup day toggle buttons
-        modal.querySelectorAll('.day-toggle').forEach(btn => {
+        /** @type {NodeListOf<HTMLElement>} */ (modal.querySelectorAll('.day-toggle')).forEach(btn => {
             btn.addEventListener('click', () => {
                 const day = btn.dataset.day;
                 if (this.selectedDays.includes(day)) {
@@ -4377,86 +4060,36 @@ class GoalManager {
         this.selectedDays = [];
     }
 
+    // Schedule rules live in recurring-logic.js (75th slice): the three pre-schedule
+    // guards (isPending), the four-branch due-today predicate and the generated-task
+    // record. What stays here is the impure half — the local-noon parse of today, id
+    // minting, the clock, the dailyTasks / lastGenerated writes and the save.
+    //
+    // The noon parse is load-bearing: a bare 'YYYY-MM-DD' parses as UTC midnight, which
+    // reads back as the PREVIOUS day for every user west of UTC and would shift their
+    // whole weekly schedule by one.
     generateRecurringTasksForToday() {
-        const today = new Date(this.getTodayDateString() + 'T12:00:00');
         const todayStr = this.getTodayDateString();
-        const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-        const todayDay = dayNames[today.getDay()];
-        const todayDate = today.getDate();
-        
+        const ctx = RECURRING_LOGIC.dayContext(new Date(todayStr + 'T12:00:00'));
+
         this.recurringTasks.forEach(rt => {
-            if (!rt.active) return;
-            
-            // Check if already generated for today
-            if (rt.lastGenerated === todayStr) return;
-            
-            // Check if task already exists for today (by title match)
-            const existsToday = this.dailyTasks.some(t => 
-                t.title === rt.title && 
-                t.dueDate === todayStr && 
-                t.recurringTaskId === rt.id
-            );
-            if (existsToday) return;
-            
-            let shouldGenerate = false;
-            
-            switch (rt.recurrence.type) {
-                case 'weekly':
-                    shouldGenerate = rt.recurrence.days.includes(todayDay);
-                    break;
-                    
-                case 'biweekly':
-                    if (rt.recurrence.day === todayDay) {
-                        // Check if it's been at least 13 days since last generation
-                        if (!rt.recurrence.lastGenerated) {
-                            shouldGenerate = true;
-                        } else {
-                            const lastGen = new Date(rt.recurrence.lastGenerated);
-                            const daysDiff = Math.floor((today - lastGen) / (1000 * 60 * 60 * 24));
-                            shouldGenerate = daysDiff >= 13;
-                        }
-                    }
-                    break;
-                    
-                case 'monthly-date':
-                    shouldGenerate = todayDate === rt.recurrence.dayOfMonth;
-                    break;
-                    
-                case 'monthly-weekday':
-                    if (rt.recurrence.day === todayDay) {
-                        const weekOfMonth = Math.ceil(todayDate / 7);
-                        if (rt.recurrence.week === -1) {
-                            // Last occurrence of this day in month
-                            const nextWeek = new Date(today);
-                            nextWeek.setDate(todayDate + 7);
-                            shouldGenerate = nextWeek.getMonth() !== today.getMonth();
-                        } else {
-                            shouldGenerate = weekOfMonth === rt.recurrence.week;
-                        }
-                    }
-                    break;
-            }
-            
-            if (shouldGenerate) {
-                const task = {
-                    id: this.uniqueId(),
-                    title: rt.title,
-                    description: rt.description,
-                    weeklyGoalIds: [],
-                    created: new Date().toISOString(),
-                    dueDate: todayStr,
-                    completed: false,
-                    checklist: [],
-                    recurringTaskId: rt.id // Link to parent recurring task
-                };
-                this.dailyTasks.push(task);
-                rt.lastGenerated = todayStr;
-                if (rt.recurrence.type === 'biweekly') {
-                    rt.recurrence.lastGenerated = todayStr;
-                }
+            if (!RECURRING_LOGIC.isPending(rt, { todayStr, dailyTasks: this.dailyTasks })) return;
+            if (!RECURRING_LOGIC.dueToday(rt.recurrence, ctx)) return;
+
+            this.dailyTasks.push(RECURRING_LOGIC.generatedTask(rt, {
+                id: this.uniqueId(),
+                todayStr,
+                createdISO: new Date().toISOString()
+            }));
+
+            // Two DIFFERENT stamps, both required: the day guard on the task, and the
+            // fortnight anchor the biweekly window measures from.
+            rt.lastGenerated = todayStr;
+            if (rt.recurrence.type === 'biweekly') {
+                rt.recurrence.lastGenerated = todayStr;
             }
         });
-        
+
         this.saveData();
     }
 
@@ -4828,7 +4461,7 @@ class GoalManager {
                         // If skipped a day (e.g. app not opened for 2+ days), reset streak
                         const lastDate = new Date(lastReset);
                         const todayDate = new Date(today);
-                        const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+                        const dayDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
                         if (dayDiff > 1) {
                             this._applyStreakBreak(habit, streakShieldActive, activeCompanion);
                         }
@@ -4974,7 +4607,7 @@ class GoalManager {
         }
         let awayDays = 1;
         try {
-            awayDays = Math.max(1, Math.floor((new Date(today) - new Date(lastReset)) / (1000 * 60 * 60 * 24)));
+            awayDays = Math.max(1, Math.floor((new Date(today).getTime() - new Date(lastReset).getTime()) / (1000 * 60 * 60 * 24)));
         } catch (e) { /* keep default */ }
         this.showAwayRecapModal(events, awayDays);
     }
@@ -5242,7 +4875,7 @@ class GoalManager {
         const decision = STREAK_LOGIC.classifyLoginBonus(this.lastLoginBonusDate, today, this.loginStreak);
         if (decision.status === 'already-claimed') return;
 
-        const prevStreak = decision.prevStreak;
+        const prevStreak = decision.prevStreak ?? 0;
         if (decision.status === 'continue') {
             this.loginStreak = decision.newStreak;
         } else if (decision.status === 'gap') {
@@ -5464,7 +5097,7 @@ class GoalManager {
         } else if (blessingDays === 0 && this.accountCreatedDate && !this._blessingExpiredNotified) {
             const created = new Date(this.accountCreatedDate + 'T00:00:00');
             const todayDate = new Date(today + 'T00:00:00');
-            const daysSince = Math.floor((todayDate - created) / (1000 * 60 * 60 * 24));
+            const daysSince = Math.floor((todayDate.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
             if (daysSince === this.BEGINNER_BLESSING_DAYS) {
                 this._blessingExpiredNotified = true;
                 setTimeout(() => {
@@ -5668,7 +5301,7 @@ class GoalManager {
         d.setHours(0, 0, 0, 0);
         d.setDate(d.getDate() + 4 - (d.getDay() || 7)); // Set to Thursday of the week
         const yearStart = new Date(d.getFullYear(), 0, 1);
-        const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
         return `${d.getFullYear()}-W${weekNo}`;
     }
 
@@ -5689,7 +5322,7 @@ class GoalManager {
         d.setHours(0, 0, 0, 0);
         d.setDate(d.getDate() + 4 - (d.getDay() || 7));
         const yearStart = new Date(d.getFullYear(), 0, 1);
-        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     }
 
     // `getISOWeekYear(date)` returns the ISO 8601 week-YEAR — the year
@@ -5706,6 +5339,24 @@ class GoalManager {
         d.setHours(0, 0, 0, 0);
         d.setDate(d.getDate() + 4 - (d.getDay() || 7));
         return d.getFullYear();
+    }
+
+    // `_weekKey(date)` composes the two helpers above into the "YYYY-Wnn"
+    // once-per-week identity string. It existed as a hand-written template
+    // literal at FOUR call sites (the trial prompt, the theme card, the
+    // featured-theme analytics guard, and the weekly bounty period key) —
+    // four chances to reintroduce the exact `getFullYear()` bug the
+    // week-YEAR helper was added to fix, since the correct and incorrect
+    // spellings differ by one character. Stated once here (74th slice).
+    //
+    // Deliberately NOT moved into bounty-logic.js: these helpers are
+    // LOCAL-time, while period-summary-logic.js carries its own UTC-based
+    // isoWeekNumber. Two live ISO-week implementations is a real finding,
+    // but picking a winner is a behaviour change (it moves week
+    // boundaries for users near midnight), so bounty-logic takes this
+    // INJECTED and a test walks both across a year boundary.
+    _weekKey(date = new Date()) {
+        return `${this.getISOWeekYear(date)}-W${this.getISOWeekNumber(date)}`;
     }
 
     // `getWeeklyFeaturedThemeId(date)` is the heart of Track 7. Returns
@@ -5748,8 +5399,7 @@ class GoalManager {
         const theme = this.themeDefinitions[featuredId];
         if (!theme) return;
 
-        const now = new Date();
-        const weekKey = `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
+        const weekKey = this._weekKey();
         if (this.weeklyTrialPromptShown && this.weeklyTrialPromptShown[weekKey]) return;
 
         // Avoid stacking if one is already up (e.g. user re-enters view
@@ -5803,8 +5453,8 @@ class GoalManager {
             document.removeEventListener('keydown', onKey);
             this.dismissFeaturedThemeSpotlight(weekKey);
         };
-        modal.querySelector('[data-action="dismiss"]').addEventListener('click', dismiss);
-        modal.querySelector('[data-action="apply"]').addEventListener('click', () => {
+        modal.querySelector('[data-action="dismiss"]')?.addEventListener('click', dismiss);
+        modal.querySelector('[data-action="apply"]')?.addEventListener('click', () => {
             // Apply BEFORE dismiss so selectTheme's downstream renderThemes
             // → setTimeout(maybeShowFeaturedThemeSpotlight, 0) sees the
             // modal still mounted and short-circuits via the stacking
@@ -5862,8 +5512,7 @@ class GoalManager {
         // Already wearing this week's theme — nothing left to nudge.
         if (this.currentTheme === featuredId) return hide();
 
-        const now = new Date();
-        const weekKey = `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
+        const weekKey = this._weekKey();
         if (this.weeklyThemeCardDismissed && this.weeklyThemeCardDismissed[weekKey]) {
             return hide();
         }
@@ -5885,10 +5534,10 @@ class GoalManager {
         wrap.classList.remove('hidden');
         wrap.innerHTML = DASHBOARD_RENDER.renderWeeklyThemeCardHTML(theme, { eyebrow, copy, cta, from, to, border, escapeHTML: (s) => this.escapeHTML(s) });
 
-        wrap.querySelector('[data-action="preview"]').addEventListener('click', () => {
+        wrap.querySelector('[data-action="preview"]')?.addEventListener('click', () => {
             this.previewTheme(featuredId);
         });
-        wrap.querySelector('[data-action="dismiss"]').addEventListener('click', () => {
+        wrap.querySelector('[data-action="dismiss"]')?.addEventListener('click', () => {
             this.dismissWeeklyThemeCard(weekKey);
         });
     }
@@ -6009,8 +5658,8 @@ class GoalManager {
             document.removeEventListener('keydown', onKey);
             this.dismissThemeTrialEndedModal(themeId);
         };
-        modal.querySelector('[data-action="revert"]').addEventListener('click', dismiss);
-        modal.querySelector('[data-action="subscribe"]').addEventListener('click', () => {
+        modal.querySelector('[data-action="revert"]')?.addEventListener('click', dismiss);
+        modal.querySelector('[data-action="subscribe"]')?.addEventListener('click', () => {
             // Mark dismissed FIRST so any state mutations from the
             // premium-modal opener (which may re-render the themes
             // panel) don't see us as "still pending trial end".
@@ -6068,8 +5717,7 @@ class GoalManager {
     maybeTrackWeeklyThemeFeatured() {
         const featuredId = this.getWeeklyFeaturedThemeId();
         if (!featuredId) return false;
-        const now = new Date();
-        const weekKey = `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
+        const weekKey = this._weekKey();
         if (this.lastFeaturedWeekTracked === weekKey) return false;
         this.lastFeaturedWeekTracked = weekKey;
         if (typeof this.saveData === 'function') this.saveData();
@@ -6147,34 +5795,9 @@ class GoalManager {
 
     // ==================== DAILY QUEST BOARD ====================
     
-    DAILY_QUEST_POOL = [
-        // Always available (Level 1+)
-        { id: 'early_bird', name: 'Early Bird', desc: 'Complete a task before noon', icon: '🌅', minLevel: 1, xp: 15, gold: 10, check: (t) => t.tasksBeforeNoon >= 1 },
-        { id: 'triple_threat', name: 'Triple Threat', desc: 'Complete 3 tasks today', icon: '⚔️', minLevel: 1, xp: 20, gold: 15, check: (t) => t.tasksCompleted >= 3 },
-        { id: 'questmaster', name: 'Questmaster', desc: 'Complete 5 tasks today', icon: '👑', minLevel: 1, xp: 35, gold: 25, check: (t) => t.tasksCompleted >= 5 },
-        { id: 'ritual_keeper', name: 'Ritual Keeper', desc: 'Complete all your habits', icon: '🔥', minLevel: 1, xp: 25, gold: 15, check: (t) => t.allHabitsComplete },
-        { id: 'habit_starter', name: 'Habit Starter', desc: 'Complete at least 1 habit', icon: '✅', minLevel: 1, xp: 10, gold: 5, check: (t) => t.habitsCompleted >= 1 },
-        { id: 'productive_day', name: 'Productive Day', desc: 'Complete 3 tasks and 2 habits', icon: '📋', minLevel: 1, xp: 30, gold: 20, check: (t) => t.tasksCompleted >= 3 && t.habitsCompleted >= 2 },
-        { id: 'new_quest', name: 'New Quest', desc: 'Create a new task today', icon: '📝', minLevel: 1, xp: 10, gold: 5, check: (t) => t.tasksCreated >= 1 },
-        { id: 'night_owl', name: 'Night Owl', desc: 'Complete a task after 6pm', icon: '🦉', minLevel: 1, xp: 15, gold: 10, check: (t) => t.tasksAfter6pm >= 1 },
-        { id: 'xp_seeker', name: 'XP Seeker', desc: 'Earn 50+ XP today', icon: '⭐', minLevel: 1, xp: 15, gold: 10, check: (t) => t.xpEarned >= 50 },
-        { id: 'xp_hunter', name: 'XP Hunter', desc: 'Earn 150+ XP today', icon: '💫', minLevel: 1, xp: 30, gold: 20, check: (t) => t.xpEarned >= 150 },
-        { id: 'gold_earner', name: 'Gold Earner', desc: 'Earn 30+ gold today', icon: '💰', minLevel: 1, xp: 15, gold: 10, check: (t) => t.goldEarned >= 30 },
-        // Treasury (Level 2+)
-        { id: 'treasure_hunter', name: 'Treasure Hunter', desc: 'Open a treasure chest', icon: '🎁', minLevel: 2, xp: 20, gold: 10, check: (t) => t.chestsOpened >= 1 },
-        { id: 'gold_hoarder', name: 'Gold Hoarder', desc: 'Earn 50+ gold today', icon: '🏆', minLevel: 2, xp: 15, gold: 10, check: (t) => t.goldEarned >= 50 },
-        // Arcane (Level 3+)
-        { id: 'spell_slinger', name: 'Spell Slinger', desc: 'Cast a spell today', icon: '🔮', minLevel: 3, xp: 20, gold: 15, check: (t) => t.spellsCast >= 1 },
-        // Boss Battles (Level 4+)
-        { id: 'boss_striker', name: 'Boss Striker', desc: 'Deal boss damage today', icon: '💀', minLevel: 4, xp: 25, gold: 15, check: (t) => t.bossAttacks >= 1 },
-        { id: 'charge_collector', name: 'Charge Collector', desc: 'Earn 3+ attack charges', icon: '⚡', minLevel: 4, xp: 20, gold: 10, check: (t) => t.chargesEarned >= 3 },
-        // Focus Timer (Level 5+)
-        { id: 'deep_focus', name: 'Deep Focus', desc: 'Complete a focus session', icon: '🎯', minLevel: 5, xp: 25, gold: 20, check: (t) => t.focusSessions >= 1 },
-        { id: 'crystal_miner', name: 'Crystal Miner', desc: 'Earn 2+ Focus Crystals', icon: '💎', minLevel: 5, xp: 20, gold: 15, check: (t) => t.crystalsEarned >= 2 },
-        // Weekly/Side Quests (Level 6+)
-        { id: 'side_adventurer', name: 'Side Adventurer', desc: 'Complete a side quest', icon: '🧭', minLevel: 6, xp: 20, gold: 15, check: (t) => t.sideQuestsCompleted >= 1 },
-        { id: 'weekly_warrior', name: 'Weekly Warrior', desc: 'Progress on a weekly goal', icon: '🛡️', minLevel: 6, xp: 20, gold: 15, check: (t) => t.weeklyProgress >= 1 },
-    ];
+    // The catalog lives in daily-quest-definitions.js (gates defined in terms of FEATURE_UNLOCKS).
+    // Kept as an instance field so tests can inject a synthetic pool.
+    DAILY_QUEST_POOL = DAILY_QUEST_DEFINITIONS.POOL || [];
 
     ensureDailyTracking() {
         const today = this.getTodayDateString();
@@ -6204,26 +5827,10 @@ class GoalManager {
     generateDailyQuestBoard() {
         const today = this.getTodayDateString();
         if (this.dailyQuestBoard && this.dailyQuestBoard.date === today) return;
-        
-        // Filter quests by player level
-        const eligible = this.DAILY_QUEST_POOL.filter(q => this.level >= q.minLevel);
-        
-        // Seeded shuffle by date for deterministic selection
-        const seed = today.split('-').join('');
-        const shuffled = [...eligible];
-        let s = parseInt(seed) % 2147483647;
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            s = (s * 16807) % 2147483647;
-            const j = s % (i + 1);
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        
-        const selected = shuffled.slice(0, 3);
-        this.dailyQuestBoard = {
-            date: today,
-            quests: selected.map(q => ({ id: q.id, completed: false, claimed: false })),
-            allClaimedBonus: false
-        };
+
+        // Date-seeded deterministic pick delegated to DAILY_QUEST_LOGIC (Roadmap #1, 80th slice);
+        // the pool (whose entries carry check() closures) is injected.
+        this.dailyQuestBoard = DAILY_QUEST_LOGIC.buildDailyQuestBoard(this.DAILY_QUEST_POOL, this.level, today);
         this.saveData();
     }
 
@@ -6236,17 +5843,12 @@ class GoalManager {
         if (this.habits.length > 0) {
             tracking.allHabitsComplete = this.habits.every(h => h.completedToday);
         }
-        
-        let anyNewCompletion = false;
-        this.dailyQuestBoard.quests.forEach(quest => {
-            if (quest.completed) return;
-            const def = this.DAILY_QUEST_POOL.find(q => q.id === quest.id);
-            if (def && def.check(tracking)) {
-                quest.completed = true;
-                anyNewCompletion = true;
-            }
-        });
-        
+
+        // Pure def.check(tracking) sweep delegated to DAILY_QUEST_LOGIC (Roadmap #1, 80th slice); it
+        // mutates the quest records in place and returns whether any NEW completion happened.
+        const anyNewCompletion = DAILY_QUEST_LOGIC.sweepQuestCompletions(
+            this.dailyQuestBoard.quests, this.DAILY_QUEST_POOL, tracking);
+
         if (anyNewCompletion) {
             this.saveData();
             this.render();
@@ -6281,13 +5883,14 @@ class GoalManager {
         if (allClaimed && !this.dailyQuestBoard.allClaimedBonus) {
             this.dailyQuestBoard.allClaimedBonus = true;
             setTimeout(() => {
-                this.addXP(25, 'daily');
-                this.addGold(15, 'daily');
+                const bonus = DAILY_QUEST_DEFINITIONS.BOARD_SWEEP_BONUS;
+                this.addXP(bonus.xp, 'daily');
+                this.addGold(bonus.gold, 'daily');
                 const freeSpells = this.getFreeLootableSpellIds();
                 const randomSpell = freeSpells[Math.floor(this.rng() * freeSpells.length)];
                 this.addSpellToBook(randomSpell, 1);
                 const spellDef = this.spellDefinitions[randomSpell];
-                this.showAchievement(`🏅 Daily Board Sweep! Bonus +25 XP, +15 Gold & ${spellDef?.icon || '🔮'} ${spellDef?.name || 'Spell'}!`, 'weekly');
+                this.showAchievement(`🏅 Daily Board Sweep! Bonus +${bonus.xp} XP, +${bonus.gold} Gold & ${spellDef?.icon || '🔮'} ${spellDef?.name || 'Spell'}!`, 'weekly');
             }, 1000);
         }
         
@@ -6323,27 +5926,11 @@ class GoalManager {
         }
         
         this.lastWoodenChestDate = this.getTodayDateString();
-        
-        // Generate small random loot (weaker than bronze chest)
-        const lootTable = [
-            { type: 'gold', amount: 15, weight: 30, label: '15 Gold' },
-            { type: 'gold', amount: 25, weight: 18, label: '25 Gold' },
-            { type: 'xp', amount: 20, weight: 22, label: '20 XP' },
-            { type: 'xp', amount: 35, weight: 8, label: '35 XP' },
-            { type: 'charges', amount: 1, weight: 8, label: '1 Attack Charge' },
-            { type: 'shards', amount: 5, weight: 5, label: '5 Crystal Shards' },
-            { type: 'spell', spellId: 'minor_wisdom', amount: 1, weight: 5, label: '📚 Minor Wisdom Spell' },
-            { type: 'spell', spellId: 'copper_blessing', amount: 1, weight: 4, label: '🪙 Copper Blessing Spell' },
-        ];
-        
-        const totalWeight = lootTable.reduce((sum, item) => sum + item.weight, 0);
-        let roll = this.rng() * totalWeight;
-        let reward = lootTable[0];
-        for (const item of lootTable) {
-            roll -= item.weight;
-            if (roll <= 0) { reward = item; break; }
-        }
-        
+
+        // Roll small random loot (weaker than bronze chest) via WOODEN_CHEST_LOOT (Roadmap #1, 81st slice):
+        // the frozen table + weighted pick, de-duplicated from loot-engine.js. The rng() seam still flows.
+        const reward = WOODEN_CHEST_LOOT.weightedPick(WOODEN_CHEST_LOOT.TABLE, () => this.rng());
+
         // Apply reward
         if (reward.type === 'gold') this.addGold(reward.amount, 'chest');
         if (reward.type === 'xp') this.addXP(reward.amount, 'chest');
@@ -6489,7 +6076,7 @@ class GoalManager {
         if (!this.accountCreatedDate) return false;
         const created = new Date(this.accountCreatedDate + 'T00:00:00');
         const today = new Date(this.getTodayDateString() + 'T00:00:00');
-        const daysSinceCreation = Math.floor((today - created) / (1000 * 60 * 60 * 24));
+        const daysSinceCreation = Math.floor((today.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
         return daysSinceCreation < this.BEGINNER_BLESSING_DAYS;
     }
     
@@ -6497,7 +6084,7 @@ class GoalManager {
         if (!this.accountCreatedDate) return 0;
         const created = new Date(this.accountCreatedDate + 'T00:00:00');
         const today = new Date(this.getTodayDateString() + 'T00:00:00');
-        const daysSinceCreation = Math.floor((today - created) / (1000 * 60 * 60 * 24));
+        const daysSinceCreation = Math.floor((today.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
         return Math.max(0, this.BEGINNER_BLESSING_DAYS - daysSinceCreation);
     }
 
@@ -6692,10 +6279,10 @@ class GoalManager {
         toast.classList.remove('xp-toast-hiding');
         
         // Set initial state
-        const amountEl = toast.querySelector('.xp-toast-amount');
-        const levelEl = toast.querySelector('.xp-toast-level');
-        const barFill = toast.querySelector('.xp-toast-bar-fill');
-        const xpText = toast.querySelector('.xp-toast-xp-text');
+        const amountEl = /** @type {HTMLElement} */ (toast.querySelector('.xp-toast-amount'));
+        const levelEl = /** @type {HTMLElement} */ (toast.querySelector('.xp-toast-level'));
+        const barFill = /** @type {HTMLElement} */ (toast.querySelector('.xp-toast-bar-fill'));
+        const xpText = /** @type {HTMLElement} */ (toast.querySelector('.xp-toast-xp-text'));
         
         amountEl.textContent = `⚔️ +${amount} XP`;
         levelEl.textContent = `Lv ${oldLevel} · ${title}`;
@@ -6888,154 +6475,30 @@ class GoalManager {
         const totalBossesDefeated = this.bossesDefeated || 0;
         const totalFocusSessions = this.focusSessionsCompleted || 0;
         const totalSpellsCast = this.spellsCast || 0;
-        
-        // Unlock titles based on achievements
-        const hasTitle = (id) => Array.isArray(this.unlockedTitles) &&
-            this.unlockedTitles.some(t => (t && typeof t === 'object') ? t.id === id : t === id);
 
-        // === EARLY GAME TITLES ===
-        if (totalCompletedTasks >= 1 && !hasTitle('beginner')) {
-            this.unlockTitle('beginner', 'The Beginner', 'Complete your first task');
-        }
-        if (this.habits.length >= 1 && !hasTitle('habit_starter')) {
-            this.unlockTitle('habit_starter', 'Habit Starter', 'Create your first habit');
-        }
-        if (this.level >= 5 && !hasTitle('apprentice')) {
-            this.unlockTitle('apprentice', 'The Apprentice', 'Reach Level 5');
-        }
-        
-        // === TASK MILESTONE TITLES ===
-        if (totalCompletedTasks >= 10 && !hasTitle('determined')) {
-            this.unlockTitle('determined', 'The Determined', 'Complete 10 tasks');
-        }
-        if (totalCompletedTasks >= 50 && !hasTitle('dedicated')) {
-            this.unlockTitle('dedicated', 'The Dedicated', 'Complete 50 tasks');
-        }
-        if (totalCompletedTasks >= 100 && !hasTitle('seasoned_adventurer')) {
-            this.unlockTitle('seasoned_adventurer', 'Seasoned Adventurer', 'Complete 100 tasks');
-        }
-        if (totalCompletedTasks >= 250 && !hasTitle('relentless')) {
-            this.unlockTitle('relentless', 'The Relentless', 'Complete 250 tasks');
-        }
-        if (totalCompletedTasks >= 500 && !hasTitle('quest_master')) {
-            this.unlockTitle('quest_master', 'Quest Master', 'Complete 500 quests');
-        }
-        if (totalCompletedTasks >= 1000 && !hasTitle('grand_master')) {
-            this.unlockTitle('grand_master', 'Grand Master', 'Complete 1000 quests');
-        }
-        
-        // === STREAK TITLES ===
-        if (maxStreak >= 3 && !hasTitle('consistent')) {
-            this.unlockTitle('consistent', 'The Consistent', 'Maintain a 3-day streak');
-        }
-        if (maxStreak >= 7 && !hasTitle('disciplined')) {
-            this.unlockTitle('disciplined', 'The Disciplined', 'Maintain a 7-day streak');
-        }
-        if (maxStreak >= 14 && !hasTitle('devoted')) {
-            this.unlockTitle('devoted', 'The Devoted', 'Maintain a 14-day streak');
-        }
-        if (maxStreak >= 30 && !hasTitle('unstoppable')) {
-            this.unlockTitle('unstoppable', 'The Unstoppable', 'Maintain a 30-day streak');
-        }
-        if (maxStreak >= 60 && !hasTitle('iron_will')) {
-            this.unlockTitle('iron_will', 'Iron Will', 'Maintain a 60-day streak');
-        }
-        if (maxStreak >= 100 && !hasTitle('the_ascended')) {
-            this.unlockTitle('the_ascended', 'The Ascended', 'Maintain a 100-day streak');
-        }
-        if (maxStreak >= 365 && !hasTitle('eternal')) {
-            this.unlockTitle('eternal', 'The Eternal', 'Maintain a 365-day streak');
-        }
-        
-        // === LEVEL TITLES ===
-        if (this.level >= 10 && !hasTitle('journeyman')) {
-            this.unlockTitle('journeyman', 'Journeyman', 'Reach Level 10');
-        }
-        if (this.level >= 25 && !hasTitle('veteran')) {
-            this.unlockTitle('veteran', 'Veteran', 'Reach Level 25');
-        }
-        if (this.level >= 50 && !hasTitle('elite')) {
-            this.unlockTitle('elite', 'Elite', 'Reach Level 50');
-        }
-        if (this.level >= 100 && !hasTitle('legendary_hero')) {
-            this.unlockTitle('legendary_hero', 'Legendary Hero', 'Reach Level 100');
-        }
-        
-        // === GOAL TYPE TITLES ===
-        if (completedLifeGoals >= 1 && !hasTitle('legendary')) {
-            this.unlockTitle('legendary', 'The Legendary', 'Complete a life goal');
-        }
-        if (completedLifeGoals >= 5 && !hasTitle('dream_chaser')) {
-            this.unlockTitle('dream_chaser', 'Dream Chaser', 'Complete 5 life goals');
-        }
-        if (completedWeeklyGoals >= 10 && !hasTitle('weekly_warrior')) {
-            this.unlockTitle('weekly_warrior', 'Weekly Warrior', 'Complete 10 weekly goals');
-        }
-        if (completedMonthlyGoals >= 6 && !hasTitle('monthly_champion')) {
-            this.unlockTitle('monthly_champion', 'Monthly Champion', 'Complete 6 monthly goals');
-        }
-        if (completedYearlyGoals >= 1 && !hasTitle('visionary')) {
-            this.unlockTitle('visionary', 'The Visionary', 'Complete a yearly goal');
-        }
-        
-        // === WEALTH TITLES ===
-        if (this.goldCoins >= 1000 && !hasTitle('wealthy')) {
-            this.unlockTitle('wealthy', 'The Wealthy', 'Accumulate 1,000 gold');
-        }
-        if (this.goldCoins >= 10000 && !hasTitle('rich')) {
-            this.unlockTitle('rich', 'The Rich', 'Accumulate 10,000 gold');
-        }
-        if (this.goldCoins >= 100000 && !hasTitle('tycoon')) {
-            this.unlockTitle('tycoon', 'Tycoon', 'Accumulate 100,000 gold');
-        }
-        
-        // === FEATURE TITLES ===
-        if (totalChestsOpened >= 1 && !hasTitle('treasure_hunter')) {
-            this.unlockTitle('treasure_hunter', 'Treasure Hunter', 'Open your first chest');
-        }
-        if (totalChestsOpened >= 25 && !hasTitle('loot_seeker')) {
-            this.unlockTitle('loot_seeker', 'Loot Seeker', 'Open 25 chests');
-        }
-        if (totalChestsOpened >= 100 && !hasTitle('chest_master')) {
-            this.unlockTitle('chest_master', 'Chest Master', 'Open 100 chests');
-        }
-        if (totalFocusSessions >= 1 && !hasTitle('focused')) {
-            this.unlockTitle('focused', 'The Focused', 'Complete your first focus session');
-        }
-        if (totalFocusSessions >= 25 && !hasTitle('zen_master')) {
-            this.unlockTitle('zen_master', 'Zen Master', 'Complete 25 focus sessions');
-        }
-        if (totalFocusSessions >= 100 && !hasTitle('meditation_guru')) {
-            this.unlockTitle('meditation_guru', 'Meditation Guru', 'Complete 100 focus sessions');
-        }
-        if (totalSpellsCast >= 1 && !hasTitle('spellcaster')) {
-            this.unlockTitle('spellcaster', 'Spellcaster', 'Cast your first spell');
-        }
-        if (totalSpellsCast >= 25 && !hasTitle('mage')) {
-            this.unlockTitle('mage', 'Mage', 'Cast 25 spells');
-        }
-        if (totalSpellsCast >= 50 && !hasTitle('archmage')) {
-            this.unlockTitle('archmage', 'Archmage', 'Cast 50 spells');
-        }
-        if (totalBossesDefeated >= 1 && !hasTitle('boss_slayer')) {
-            this.unlockTitle('boss_slayer', 'Boss Slayer', 'Defeat your first boss');
-        }
-        if (totalBossesDefeated >= 10 && !hasTitle('champion')) {
-            this.unlockTitle('champion', 'Champion', 'Defeat 10 bosses');
-        }
-        if (totalBossesDefeated >= 50 && !hasTitle('dragon_slayer')) {
-            this.unlockTitle('dragon_slayer', 'Dragon Slayer', 'Defeat 50 bosses');
-        }
-        
-        // === COMPANION TITLES ===
-        if (this.companions.length >= 1 && !hasTitle('beast_friend')) {
-            this.unlockTitle('beast_friend', 'Beast Friend', 'Obtain your first companion');
-        }
-        if (this.companions.length >= 5 && !hasTitle('beast_master')) {
-            this.unlockTitle('beast_master', 'Beast Master', 'Collect 5 companions');
-        }
-        if (this.companions.length >= 10 && !hasTitle('menagerie_keeper')) {
-            this.unlockTitle('menagerie_keeper', 'Menagerie Keeper', 'Collect 10 companions');
+        // Map every gathered stat to the catalog's `type` keys, then let the single-source-of-truth
+        // TITLE_DEFINITIONS module derive which threshold titles are now unlockable (Roadmap #1, 79th
+        // slice). Externally-granted titles (login-streak milestones) carry no type/target and are
+        // skipped there, exactly as this method never granted them.
+        const stats = {
+            tasks: totalCompletedTasks,
+            habits: this.habits.length,
+            level: this.level,
+            streak: maxStreak,
+            lifeGoals: completedLifeGoals,
+            weeklyGoals: completedWeeklyGoals,
+            monthlyGoals: completedMonthlyGoals,
+            yearlyGoals: completedYearlyGoals,
+            gold: this.goldCoins,
+            chests: totalChestsOpened,
+            focus: totalFocusSessions,
+            spells: totalSpellsCast,
+            bosses: totalBossesDefeated,
+            companions: this.companions.length,
+        };
+        const toUnlock = TITLE_DEFINITIONS.computeUnlockableTitles(stats, this.unlockedTitles);
+        for (const t of toUnlock) {
+            this.unlockTitle(t.id, t.name, t.description);
         }
     }
 
@@ -7058,40 +6521,30 @@ class GoalManager {
         // `special` field (golden/shadow have their own achievement
         // gates handled below) auto-unlocks via this loop, so future
         // themes inherit the behavior automatically.
+        //
+        // Achievement-gated themes (golden / shadow) carry an `unlock`
+        // stat table in theme-definitions.js instead of a level — e.g.
+        // `{ goldEarned: 10000 }` — evaluated against the lifetime
+        // counters below. `goldEarned` reads `totalGoldEarned` (the
+        // post-multiplier lifetime counter), not `goldCoins` (current
+        // balance), so spending gold never re-locks the unlock. The
+        // thresholds used to be restated here as bare numbers.
+        const lifetimeStats = {
+            goldEarned: this.totalGoldEarned || 0,
+            bossesDefeated: this.bossesDefeated || 0
+        };
         Object.entries(this.themeDefinitions).forEach(([id, theme]) => {
             if (id === 'default') return;
-            if (theme.special) return; // achievement-gated, handled below
-            if (!theme.unlockLevel || theme.unlockLevel <= 0) return;
-            if (this.level >= theme.unlockLevel && !this.unlockedThemes.includes(id)) {
-                this.unlockTheme(id, theme.name);
+            if (this.unlockedThemes.includes(id)) return;
+            if (theme.unlock) {
+                const met = Object.entries(theme.unlock).every(([stat, target]) => (lifetimeStats[stat] || 0) >= target);
+                if (met) this.unlockTheme(id, theme.name);
+                return;
             }
+            if (theme.special) return; // achievement-gated copy with no machine-readable unlock
+            if (!theme.unlockLevel || theme.unlockLevel <= 0) return;
+            if (this.level >= theme.unlockLevel) this.unlockTheme(id, theme.name);
         });
-
-        // Special unlock conditions
-        const totalCompleted = this.dailyTasks.filter(t => t.completed).length +
-                              this.weeklyGoals.filter(g => g.completed).length +
-                              this.monthlyGoals.filter(g => g.completed).length;
-        
-        // Golden Empire: lifetime gold earned threshold (Proposal B,
-        // Jun 7, 2026). Migrated from the old "100 completed quests"
-        // criterion to better fit the "Empire" theme — it's about
-        // the wealth you've amassed, not just the busywork done.
-        // Uses `totalGoldEarned` (post-multiplier lifetime counter)
-        // not `goldCoins` (current balance), so spending gold on
-        // chests/spells doesn't re-lock the unlock.
-        if ((this.totalGoldEarned || 0) >= 10000 && !this.unlockedThemes.includes('golden')) {
-            this.unlockTheme('golden', 'Golden Empire');
-        }
-        
-        // Shadow Realm: bosses defeated threshold (Proposal B,
-        // Jun 7, 2026). Migrated from the old "5 life goals"
-        // criterion — the dark/sinister aesthetic now matches the
-        // combat-focused unlock path. 25 sits between the existing
-        // Champion title (10) and Dragon Slayer title (50) in the
-        // boss progression ladder.
-        if ((this.bossesDefeated || 0) >= 25 && !this.unlockedThemes.includes('shadow')) {
-            this.unlockTheme('shadow', 'Shadow Realm');
-        }
     }
 
     unlockTheme(id, name) {
@@ -7274,6 +6727,7 @@ class GoalManager {
         const lootPool = this.getMasterLootPool();
         const freeSpellIds = this.getFreeLootableSpellIds();
         const wizardDrops = this.getWizardLootEntries();
+        /** @type {Record<string, any[]>} */
         const availablePools = {};
         for (const [rarity, pool] of Object.entries(lootPool)) {
             let filtered = this.isPremium ? [...pool] : pool.filter(item => {
@@ -7299,55 +6753,23 @@ class GoalManager {
         const rarityWeights = BALANCE.loot.chestRarityWeights;
         const itemCounts = BALANCE.loot.chestItemCounts;
 
-        const weights = { ...(rarityWeights[type] || rarityWeights.bronze) };
         const itemCount = itemCounts[type] || 1;
 
-        // Lucky Loot enchantment: shift 15 rarity weight points upward to
-        // match the advertised "+15% rare loot & companion chance". Pulls
-        // from common first, then uncommon when common runs short (gold
-        // chests only carry 10 common weight, royal only 5 — the old
-        // common-only version was nearly a no-op on exactly the chests
-        // players buff before opening). Companion odds rise implicitly
-        // since companion entries live in the rare/epic pools.
-        if (this.hasActiveEnchantment('lucky_loot')) {
-            let shift = Math.min(weights.common, 15);
-            weights.common -= shift;
-            if (shift < 15) {
-                const fromUncommon = Math.min(weights.uncommon, 15 - shift);
-                weights.uncommon -= fromUncommon;
-                shift += fromUncommon;
+        // Rarity-weight modifiers, in order (chest-weight-logic.js, 86th slice):
+        //   1. Lucky Loot enchantment — shift 15 points upward (the advertised "+15% rare
+        //      loot & companion chance"); pulls from common, then uncommon, so it still
+        //      bites on gold/royal chests that carry little common weight.
+        //   2. Ranger Keen Eye (v3.0 §3.1) — the same shift by the perk's `loot_weight`,
+        //      stacking additively with Lucky Loot.
+        //   3. Lucky Draw spell — no common drops; its weight is split 40/30/20/10 upward.
+        const weights = CHEST_WEIGHT_LOGIC.applyChestModifiers(
+            rarityWeights[type] || rarityWeights.bronze,
+            {
+                luckyLoot: this.hasActiveEnchantment('lucky_loot'),
+                rangerWeight: this.getClassPerkValue('loot_weight'),
+                luckyDraw: luckyDrawActive
             }
-            weights.rare += Math.ceil(shift * 0.5);
-            weights.epic += Math.floor(shift * 0.5);
-        }
-
-        // Ranger class (v3.0 §3.1): bonus rare-loot weight on chest opens.
-        // Mirrors the Lucky Loot enchantment shift — pulls weight from
-        // common (then uncommon) and pushes it into rare/epic, so the
-        // perk meaningfully helps even on high-tier chests that carry
-        // little common weight. Stacks additively with Lucky Loot.
-        const rangerWeight = this.getClassPerkValue('loot_weight');
-        if (rangerWeight > 0) {
-            let shift = Math.min(weights.common, rangerWeight);
-            weights.common -= shift;
-            if (shift < rangerWeight) {
-                const fromUncommon = Math.min(weights.uncommon, rangerWeight - shift);
-                weights.uncommon -= fromUncommon;
-                shift += fromUncommon;
-            }
-            weights.rare += Math.ceil(shift * 0.5);
-            weights.epic += Math.floor(shift * 0.5);
-        }
-
-        // Lucky Draw: minimum uncommon rarity
-        if (luckyDrawActive) {
-            const commonWeight = weights.common;
-            weights.common = 0;
-            weights.uncommon += Math.floor(commonWeight * 0.4);
-            weights.rare += Math.floor(commonWeight * 0.3);
-            weights.epic += Math.floor(commonWeight * 0.2);
-            weights.legendary += Math.floor(commonWeight * 0.1);
-        }
+        );
 
         const availablePools = this.buildAvailableLootPools();
 
@@ -7822,25 +7244,14 @@ class GoalManager {
         const companion = this.getActiveCompanion();
         if (!companion || !amount || amount <= 0) return;
         
-        // Bonding enchantment: 2x companion XP
-        const bondingActive = this.hasActiveEnchantment('companion_bond');
-        let xpGain = bondingActive ? amount * 2 : amount;
+        // Bonding enchantment ×2 then Ranger Beastmaster's ceil-scale; pure math in companion-logic.js.
+        const xpGain = COMPANION_LOGIC.companionXpGain(amount, {
+            bondingActive: this.hasActiveEnchantment('companion_bond'),
+            rangerCompXpMult: this.getClassPerkValue('companion_xp_mult'),
+        });
         
-        // Ranger class (v3.1 §3.1): Beastmaster boosts companion XP gain.
-        const rangerCompXp = this.getClassPerkValue('companion_xp_mult');
-        if (rangerCompXp > 0) {
-            xpGain = Math.ceil(xpGain * (1 + rangerCompXp));
-        }
-        
-        companion.xp = (companion.xp || 0) + xpGain;
-        
-        // Level up: 100 * currentLevel XP needed (loop for multi-level-ups on large XP gains)
-        let leveled = false;
-        while (companion.xp >= 100 * (companion.level || 1)) {
-            companion.xp -= 100 * (companion.level || 1);
-            companion.level = (companion.level || 1) + 1;
-            leveled = true;
-        }
+        // Adds xpGain + walks the 100*level multi-level-up loop; pure math in companion-logic.js.
+        const leveled = COMPANION_LOGIC.applyCompanionXp(companion, xpGain);
         if (leveled) {
             if (window.effectsManager) {
                 window.effectsManager.companionLevelUp(companion);
@@ -7947,8 +7358,8 @@ class GoalManager {
             
             if (habit.completedToday && habit.rewardedToday !== today) {
                 habit.rewardedToday = today;
-                // Precision enchantment: double streak progress
-                const streakInc = this.hasActiveEnchantment('double_streak') ? 2 : 1;
+                // Precision enchantment: double streak progress (rule named in HABIT_LOGIC, Roadmap #1 83rd slice)
+                const streakInc = HABIT_LOGIC.streakIncrement(this.hasActiveEnchantment('double_streak'));
                 habit.streak = (habit.streak || 0) + streakInc;
                 habit.totalCompletions = (habit.totalCompletions || 0) + 1;
                 habit.lastCompleted = today;
@@ -8013,14 +7424,17 @@ class GoalManager {
                     console.error('toggleHabit reward error:', e);
                 }
                 
-                // Special achievements for streaks (with share prompts for milestones)
-                if (habit.streak === 7) {
+                // Special achievements for streaks (with share prompts for milestones). The 7/30/100
+                // thresholds are named once in HABIT_LOGIC.milestoneTier (Roadmap #1 83rd slice); the toast
+                // copy + share prompts stay here (presentation).
+                const milestoneTier = HABIT_LOGIC.milestoneTier(habit.streak);
+                if (milestoneTier === 'week') {
                     this.showAchievement('🔥 7-Day Streak! Keep the fire burning!', 'weekly');
                     setTimeout(() => this._showMilestoneSharePrompt(`I hit a 7-day streak on "${habit.title}" in Life Quest Journal!`), 1500);
-                } else if (habit.streak === 30) {
+                } else if (milestoneTier === 'month') {
                     this.showAchievement('⚡ 30-Day Streak! Legendary Discipline!', 'monthly');
                     setTimeout(() => this._showMilestoneSharePrompt(`I hit a 30-day streak on "${habit.title}" in Life Quest Journal!`), 1500);
-                } else if (habit.streak === 100) {
+                } else if (milestoneTier === 'life') {
                     this.showAchievement('👑 100-Day Streak! ULTIMATE MASTERY!', 'life');
                     setTimeout(() => this._showMilestoneSharePrompt(`I hit a 100-day streak on "${habit.title}" in Life Quest Journal!`), 1500);
                 } else {
@@ -8097,50 +7511,24 @@ class GoalManager {
     }
 
     recalculateHabitStreak(habit) {
-        // Sort completion history by date (newest first)
-        const sortedHistory = [...(habit.completionHistory || [])].sort((a, b) => 
-            new Date(b) - new Date(a)
-        );
-        
-        if (sortedHistory.length === 0) {
-            habit.streak = 0;
-            return;
+        // Consecutive-day streak walk delegated to HABIT_LOGIC (Roadmap #1, 83rd slice). The clock reads stay
+        // here: `today`/`yesterday` and the dateStringDaysAgo(n) day-stepper mirror the old inline
+        // dateToLocalString(currentDate) as currentDate stepped back. lastCompleted is only written on a
+        // counted streak (the two streak-0 early returns left it untouched), so guard the assignment.
+        const dateStringDaysAgo = (n) => {
+            const d = new Date();
+            d.setDate(d.getDate() - n);
+            return this.dateToLocalString(d);
+        };
+        const result = HABIT_LOGIC.computeHabitStreak(habit.completionHistory, {
+            today: this.getTodayDateString(),
+            yesterday: dateStringDaysAgo(1),
+            dateStringDaysAgo,
+        });
+        habit.streak = result.streak;
+        if (result.lastCompleted !== undefined) {
+            habit.lastCompleted = result.lastCompleted;
         }
-        
-        const today = this.getTodayDateString();
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = this.dateToLocalString(yesterday);
-        
-        // Check if completed today or yesterday (streak is active)
-        if (!sortedHistory.includes(today) && !sortedHistory.includes(yesterdayStr)) {
-            habit.streak = 0;
-            return;
-        }
-        
-        // Count consecutive days from today backwards
-        let streak = 0;
-        let currentDate = new Date();
-        
-        // Start from today and go backwards
-        for (let i = 0; i < 365; i++) { // Max 365 day streak check
-            const dateStr = this.dateToLocalString(currentDate);
-            
-            if (sortedHistory.includes(dateStr)) {
-                streak++;
-                currentDate.setDate(currentDate.getDate() - 1);
-            } else {
-                // Allow one skip if we're on day 0 (today) and yesterday was completed
-                if (i === 0 && dateStr === today) {
-                    currentDate.setDate(currentDate.getDate() - 1);
-                    continue;
-                }
-                break;
-            }
-        }
-        
-        habit.streak = streak;
-        habit.lastCompleted = sortedHistory[0];
     }
 
     // Focus Timer & Enchantment System
@@ -8165,7 +7553,7 @@ class GoalManager {
     }
 
     _startFocusInterval() {
-        clearInterval(this.focusTimer);
+        if (this.focusTimer) clearInterval(this.focusTimer);
         this.focusTimer = setInterval(() => {
             this._tickFocusTimer();
         }, 1000);
@@ -8230,7 +7618,7 @@ class GoalManager {
         // Cannot pause during chain breaks
         if (this.pomodoroChain && this.pomodoroChain.isBreak) return;
         
-        clearInterval(this.focusTimer);
+        if (this.focusTimer) clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
         this.focusTimeRemaining = FOCUS_SESSION_LOGIC.remainingSeconds(this.focusEndTime, Date.now());
         this.focusEndTime = null;
@@ -8262,7 +7650,7 @@ class GoalManager {
             return;
         }
         
-        clearInterval(this.focusTimer);
+        if (this.focusTimer) clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
         this.focusTimeRemaining = 0;
         this.focusEndTime = null;
@@ -8273,7 +7661,7 @@ class GoalManager {
     }
 
     completeFocusSession() {
-        clearInterval(this.focusTimer);
+        if (this.focusTimer) clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
         this.focusTimeRemaining = 0;
         this.focusEndTime = null;
@@ -8421,7 +7809,7 @@ class GoalManager {
     }
 
     _completePomodoroBreak() {
-        clearInterval(this.focusTimer);
+        if (this.focusTimer) clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
         this.focusTimeRemaining = 0;
         this.focusEndTime = null;
@@ -8484,7 +7872,7 @@ class GoalManager {
         const wasChain = !!this.pomodoroChain;
         this.pomodoroChain = null;
         
-        clearInterval(this.focusTimer);
+        if (this.focusTimer) clearInterval(this.focusTimer);
         this.focusTimerRunning = false;
         this.focusTimeRemaining = 0;
         this.focusEndTime = null;
@@ -8508,9 +7896,9 @@ class GoalManager {
 
     renderChainSettingsSelects() {
         const s = this.pomodoroChainSettings;
-        const sessionsEl = document.getElementById('chain-sessions-select');
-        const breakEl = document.getElementById('chain-break-select');
-        const longBreakEl = document.getElementById('chain-long-break-select');
+        const sessionsEl = /** @type {HTMLInputElement | null} */ (document.getElementById('chain-sessions-select'));
+        const breakEl = /** @type {HTMLInputElement | null} */ (document.getElementById('chain-break-select'));
+        const longBreakEl = /** @type {HTMLInputElement | null} */ (document.getElementById('chain-long-break-select'));
         if (sessionsEl) sessionsEl.value = s.sessionsPerChain;
         if (breakEl) breakEl.value = s.breakDuration;
         if (longBreakEl) longBreakEl.value = s.longBreakDuration;
@@ -8606,15 +7994,11 @@ class GoalManager {
         // extends enchantment duration; totalDuration is stored so the progress
         // bar reflects the actual (extended) window rather than the base value.
         const enchantDurationMult = 1 + this.getClassPerkValue('enchant_duration_mult');
-        const effectiveDurationMs = Math.round(enchantment.duration * 60 * 1000 * enchantDurationMult);
-        const activeEnchantment = {
-            id: enchantment.id,
-            effect: enchantment.effect,
-            expiresAt: Date.now() + effectiveDurationMs,
-            totalDuration: effectiveDurationMs,
-            name: enchantment.name,
-            icon: enchantment.icon
-        };
+        const effectiveDurationMs = ENCHANTMENT_LIFECYCLE.effectiveDurationMs(enchantment, enchantDurationMult);
+        const activeEnchantment = ENCHANTMENT_LIFECYCLE.castEntry(enchantment, {
+            now: Date.now(),
+            durationMs: effectiveDurationMs
+        });
         
         this.activeEnchantments.push(activeEnchantment);
         
@@ -8633,12 +8017,12 @@ class GoalManager {
 
     hasActiveEnchantment(effect) {
         this.checkExpiredEnchantments();
-        return this.activeEnchantments.some(e => e.effect === effect);
+        return ENCHANTMENT_LIFECYCLE.isActive(this.activeEnchantments, effect);
     }
 
     checkExpiredEnchantments() {
         const now = Date.now();
-        const expired = this.activeEnchantments.filter(e => e.expiresAt <= now);
+        const expired = ENCHANTMENT_LIFECYCLE.expiring(this.activeEnchantments, now);
         if (expired.length === 0) return;
         
         // Scholar capstone (v3.1 §3.1): Insight — each expiring enchantment has a
@@ -8652,7 +8036,7 @@ class GoalManager {
             expired.forEach(e => {
                 if (this.rng() >= preserveChance) return;
                 const def = this.enchantmentDefinitions && this.enchantmentDefinitions[e.id];
-                const windowMs = e.totalDuration || (def ? def.duration * 60 * 1000 : 0);
+                const windowMs = ENCHANTMENT_LIFECYCLE.durationWindowMs(e, def);
                 if (windowMs <= 0) return;
                 e.expiresAt = now + windowMs;
                 this.scheduleEnchantmentExpiryNotification(e);
@@ -8660,7 +8044,7 @@ class GoalManager {
             });
         }
         
-        this.activeEnchantments = this.activeEnchantments.filter(e => e.expiresAt > now);
+        this.activeEnchantments = ENCHANTMENT_LIFECYCLE.stillActive(this.activeEnchantments, now);
         
         const consumed = expired.filter(e => !preserved.includes(e));
         
@@ -9448,11 +8832,11 @@ class GoalManager {
         const miniRingProgress = document.getElementById('player-xp-ring-progress');
         const panelRingProgress = document.getElementById('panel-xp-ring-progress');
         if (miniRingProgress) {
-            miniRingProgress.style.strokeDashoffset = xpRingOffset;
+            miniRingProgress.style.strokeDashoffset = String(xpRingOffset);
             miniRingProgress.setAttribute('class', xpTierClass);
         }
         if (panelRingProgress) {
-            panelRingProgress.style.strokeDashoffset = xpRingOffset;
+            panelRingProgress.style.strokeDashoffset = String(xpRingOffset);
             panelRingProgress.setAttribute('class', xpTierClass);
         }
 
@@ -9598,10 +8982,10 @@ class GoalManager {
      *     after the WebView resumes from background.
      */
     _syncSigilCounterRotation() {
-        const orbits = [
+        const orbits = /** @type {HTMLElement[]} */ ([
             document.getElementById('player-sigil-orbit'),
             document.getElementById('panel-sigil-orbit')
-        ].filter(Boolean);
+        ].filter(Boolean));
 
         orbits.forEach(orbit => {
             if (typeof orbit.getAnimations !== 'function') return;
@@ -9610,7 +8994,7 @@ class GoalManager {
             // Read the parent orbit's current position in its 24s
             // cycle. CSSNumericValue → fall back to number; modern
             // Chromium returns a plain number (ms).
-            const raw = orbitAnims[0].currentTime;
+            const raw = /** @type {any} */ (orbitAnims[0].currentTime);
             const parentTime = (typeof raw === 'number')
                 ? raw
                 : (raw && typeof raw.value === 'number' ? raw.value : null);
@@ -9879,7 +9263,7 @@ class GoalManager {
                           this.monthlyGoals.filter(g => g.completed).length;
         const maxStreak = Math.max(...this.habits.map(h => h.streak || 0), 0);
         const completedLifeGoals = this.lifeGoals.filter(g => g.completed).length;
-        const futureTasks = this.dailyTasks.filter(t => t.dueDate > this.getCachedToday()).length;
+        const futureTasks = this.dailyTasks.filter(t => (t.dueDate || '') > (this.getCachedToday() || '')).length;
         
         return {
             tasks: totalTasks,
@@ -10139,9 +9523,9 @@ class GoalManager {
     }
 
     openCompanionDen() {
-        // Gate behind level 3
-        if (this.level < 3) {
-            this.showAchievement('🔒 Companions unlock at Level 3!', 'daily');
+        // Gate behind the companion unlock level
+        if (this.level < FEATURE_UNLOCKS.COMPANION_UNLOCK_LEVEL) {
+            this.showAchievement(`🔒 Companions unlock at Level ${FEATURE_UNLOCKS.COMPANION_UNLOCK_LEVEL}!`, 'daily');
             return;
         }
         
@@ -10545,7 +9929,7 @@ class GoalManager {
             if (archivedCount > 0) {
                 // Show per-category breakdown so users (and bug reports) can
                 // verify side quests / yearly / life are actually being picked up.
-                const c = this.lastBulkArchiveBreakdown || {};
+                const c = /** @type {Record<string, number>} */ (this.lastBulkArchiveBreakdown || {});
                 const parts = [];
                 if (c.daily)   parts.push(`${c.daily} daily`);
                 if (c.weekly)  parts.push(`${c.weekly} weekly`);
@@ -10874,7 +10258,8 @@ class GoalManager {
     // ── Referral System ──────────────────────────────────────────────
     getOrCreateReferralCode() {
         if (this.referralCode) return this.referralCode;
-        const name = (this.adventurerName || 'hero').toLowerCase().replace(/[^a-z0-9]/g, '');
+        // No player-name field exists in state; the code was always seeded from 'hero'.
+        const name = 'hero';
         const seed = (this.accountCreatedDate || this.getTodayDateString()).replace(/-/g, '');
         let hash = 0;
         const str = name + seed;
@@ -10907,19 +10292,21 @@ class GoalManager {
 
         // Welcome message for referred user
         setTimeout(() => {
-            this.showAchievement('🤝 Invited by a fellow adventurer! Reach Level 2 for a bonus chest!', 'weekly');
+            this.showAchievement(`🤝 Invited by a fellow adventurer! Reach Level ${FEATURE_UNLOCKS.REFERRAL_REWARD_LEVEL} for a bonus chest!`, 'weekly');
         }, 3000);
     }
 
     checkReferralReward() {
-        if (!this.referredBy || this.referralRewardClaimed || this.level < 2) return;
+        if (!this.referredBy || this.referralRewardClaimed || this.level < FEATURE_UNLOCKS.REFERRAL_REWARD_LEVEL) return;
         this.referralRewardClaimed = true;
         this.saveData();
 
         // Award the referred user a Silver Chest
         setTimeout(() => {
             this.showAchievement('🎁 Referral Bonus! You earned a Silver Chest for joining through an invite!', 'weekly');
-            this.openChest('silver');
+            // `openChest` never existed (@ts-check, Roadmap #3 step 6) — the referral bonus
+            // threw here. Free open: the chest IS the reward.
+            this.openTreasureChest('silver', true);
         }, 2000);
     }
 
@@ -10997,13 +10384,13 @@ class GoalManager {
     maybeShowReviewPrompt(context = '') {
         if (this.reviewLeft) return;
         if (this.reviewPromptCount >= 2) return;
-        if (this.level < 3) return;
+        if (this.level < FEATURE_UNLOCKS.REVIEW_PROMPT_MIN_LEVEL) return;
         
         const today = this.getTodayDateString();
         if (this.reviewPromptLastDate) {
             const last = new Date(this.reviewPromptLastDate);
             const now = new Date(today);
-            const daysSince = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+            const daysSince = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
             if (daysSince < 14) return;
         }
         
@@ -11067,7 +10454,7 @@ class GoalManager {
             }
         });
         
-        document.getElementById('review-prompt-yes').addEventListener('click', async () => {
+        document.getElementById('review-prompt-yes')?.addEventListener('click', async () => {
             this.reviewLeft = true;
             this.saveData();
             if (typeof trackEvent === 'function') trackEvent('review_prompt_accepted', { context });
@@ -11079,12 +10466,12 @@ class GoalManager {
             overlay.remove();
         });
         
-        document.getElementById('review-prompt-later').addEventListener('click', () => {
+        document.getElementById('review-prompt-later')?.addEventListener('click', () => {
             if (typeof trackEvent === 'function') trackEvent('review_prompt_later', { context });
             overlay.remove();
         });
         
-        document.getElementById('review-prompt-never').addEventListener('click', () => {
+        document.getElementById('review-prompt-never')?.addEventListener('click', () => {
             this.reviewPromptCount = 999;
             this.saveData();
             if (typeof trackEvent === 'function') trackEvent('review_prompt_never', { context });
@@ -11233,7 +10620,7 @@ class GoalManager {
         // Skip querySelectorAll entirely when on default theme and no cleanup needed
         if (!isThemed && !this._themeApplied) return;
         
-        const cards = document.querySelectorAll('.quest-card');
+        const cards = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.quest-card'));
         
         if (!isThemed) {
             // Remove inline styles for default theme
@@ -11258,7 +10645,7 @@ class GoalManager {
     }
     
     updateThemeVideoBackground() {
-        const video = document.getElementById('theme-video-bg');
+        const video = /** @type {HTMLVideoElement | null} */ (document.getElementById('theme-video-bg'));
         if (!video) return;
         
         // Check if mobile device, Android WebView/TWA, or Capacitor native
@@ -11594,7 +10981,7 @@ class GoalManager {
         // body video resumes via `.play()` on close — wrapped in a
         // try/catch because some browsers throw if the play promise
         // overlaps with a queued pause.
-        const bodyVideoEl = document.getElementById('theme-video-bg');
+        const bodyVideoEl = /** @type {HTMLVideoElement | null} */ (document.getElementById('theme-video-bg'));
         const wasBodyVideoPlaying = bodyVideoEl && !bodyVideoEl.paused;
         if (bodyVideoEl && wasBodyVideoPlaying) {
             try { bodyVideoEl.pause(); } catch (e) { /* ignore */ }
@@ -11610,7 +10997,7 @@ class GoalManager {
         // S3 fix (Jun 7, 2026 audit) — capture the previously focused
         // element so we can restore focus on close, satisfying the
         // standard dialog focus-restoration a11y pattern.
-        const prevFocusedEl = document.activeElement;
+        const prevFocusedEl = /** @type {HTMLElement | null} */ (document.activeElement);
 
         const overlay = document.createElement('div');
         overlay.className = 'theme-preview-modal-overlay';
@@ -11691,9 +11078,9 @@ class GoalManager {
                 return;
             }
             if (e.key !== 'Tab') return;
-            const focusables = overlay.querySelectorAll(
+            const focusables = /** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(
                 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-            );
+            ));
             if (focusables.length === 0) return;
             const first = focusables[0];
             const last = focusables[focusables.length - 1];
@@ -11710,7 +11097,7 @@ class GoalManager {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) closeModal();
         });
-        overlay.querySelector('.theme-preview-close').addEventListener('click', closeModal);
+        overlay.querySelector('.theme-preview-close')?.addEventListener('click', closeModal);
         overlay.querySelectorAll('[data-action="close"]').forEach(btn =>
             btn.addEventListener('click', closeModal)
         );
@@ -11731,7 +11118,7 @@ class GoalManager {
         // target instead of leaving focus on the body.
         requestAnimationFrame(() => {
             overlay.classList.add('theme-preview-modal-open');
-            const initialFocusEl = applyBtn || overlay.querySelector('.theme-preview-close');
+            const initialFocusEl = /** @type {HTMLElement} */ (applyBtn || overlay.querySelector('.theme-preview-close'));
             if (initialFocusEl) {
                 try { initialFocusEl.focus(); } catch (e) { /* ignore */ }
             }
@@ -11886,6 +11273,7 @@ class GoalManager {
         const backdrop = document.getElementById('player-panel-backdrop');
         const sheet = document.getElementById('player-panel-sheet');
         const toggle = document.getElementById('player-panel-toggle');
+        if (!backdrop || !sheet) return;
         
         if (this.playerPanelOpen) {
             backdrop.classList.remove('hidden');
@@ -12089,7 +11477,7 @@ class GoalManager {
         let capstoneSection = '';
         if (maxed && cls.capstones && cls.capstones.length) {
             const capCards = cls.capstones.map(cap => CLASS_RENDER.renderCapstoneCardHTML(cap, {
-                isChosen: chosenCap && chosenCap.id === cap.id,
+                isChosen: !!chosenCap && chosenCap.id === cap.id,
                 canAfford: capstoneReady && available >= cap.cost,
                 capstoneReady,
                 color: cls.color,
@@ -12419,7 +11807,7 @@ class GoalManager {
         // Confirm/prompt dialog — back means Cancel, never Confirm
         const confirmModal = document.getElementById('custom-confirm-modal');
         if (confirmModal) {
-            const cancelBtn = confirmModal.querySelector('#confirm-cancel-btn, #prompt-cancel-btn');
+            const cancelBtn = /** @type {HTMLElement | null} */ (confirmModal.querySelector('#confirm-cancel-btn, #prompt-cancel-btn'));
             if (cancelBtn) cancelBtn.click();
             else confirmModal.remove();
             return true;
@@ -12429,7 +11817,7 @@ class GoalManager {
         // body-video resume, focus restoration)
         const themePreview = document.querySelector('.theme-preview-modal-overlay');
         if (themePreview) {
-            const closeBtn = themePreview.querySelector('.theme-preview-close');
+            const closeBtn = /** @type {HTMLElement | null} */ (themePreview.querySelector('.theme-preview-close'));
             if (closeBtn) closeBtn.click();
             else themePreview.remove();
             return true;
@@ -12438,12 +11826,12 @@ class GoalManager {
         // Weekly featured theme spotlight / trial-ended modals
         const spotlight = document.getElementById('theme-spotlight-modal');
         if (spotlight) {
-            const dismiss = spotlight.querySelector('[data-action="dismiss"]');
+            const dismiss = /** @type {HTMLElement | null} */ (spotlight.querySelector('[data-action="dismiss"]'));
             if (dismiss) { dismiss.click(); return true; }
         }
         const trialEnded = document.getElementById('theme-trial-ended-modal');
         if (trialEnded) {
-            const revert = trialEnded.querySelector('[data-action="revert"]');
+            const revert = /** @type {HTMLElement | null} */ (trialEnded.querySelector('[data-action="revert"]'));
             if (revert) { revert.click(); return true; }
         }
         
@@ -12472,9 +11860,9 @@ class GoalManager {
         const dialogs = document.querySelectorAll('[role="dialog"]');
         for (const dialog of dialogs) {
             if (dialog.classList.contains('hidden')) continue;
-            const closeCtl = dialog.querySelector(
+            const closeCtl = /** @type {HTMLElement | null} */ (dialog.querySelector(
                 '[data-action="close"], [data-action="dismiss"], [aria-label="Close"], [aria-label^="Close"]'
-            );
+            ));
             if (closeCtl) { closeCtl.click(); return true; }
         }
         
@@ -12485,7 +11873,8 @@ class GoalManager {
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
             // Don't trigger shortcuts when typing in input fields (except search shortcuts)
-            const isInputField = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+            const targetEl = /** @type {HTMLElement} */ (e.target);
+            const isInputField = targetEl.tagName === 'INPUT' || targetEl.tagName === 'TEXTAREA';
             
             // Escape to close modals
             if (e.key === 'Escape') {
@@ -12616,7 +12005,7 @@ class GoalManager {
     }
 
     updateTimezoneDisplay() {
-        const select = document.getElementById('timezone-select');
+        const select = /** @type {HTMLInputElement | null} */ (document.getElementById('timezone-select'));
         const info = document.getElementById('timezone-info');
         
         if (select) {
@@ -12898,88 +12287,66 @@ class GoalManager {
     // reload mid-period can't silently reroll for free.
     // ════════════════════════════════════════════════════════════════
 
-    // Chest tier awarded per targeted quest tier.
+    // Chest tier awarded per targeted quest tier (table → bounty-logic.js).
     get BOUNTY_CHEST_TIER() {
-        return { weekly: 'silver', sidequest: 'silver', monthly: 'gold', yearly: 'royal', epic: 'royal' };
+        return BOUNTY_LOGIC.CHEST_TIER_BY_QUEST_TIER;
+    }
+
+    // The manager's quest arrays keyed by FIELD name — the shape the pure
+    // module indexes through its tier→list table. Built fresh per call so
+    // it always reflects the live arrays.
+    _bountyQuestLists() {
+        return {
+            weeklyGoals: this.weeklyGoals,
+            sideQuests: this.sideQuests,
+            monthlyGoals: this.monthlyGoals,
+            yearlyGoals: this.yearlyGoals,
+            lifeGoals: this.lifeGoals,
+        };
     }
 
     // Feature gate: bounties only surface once the matching Quest Log tab
     // is unlocked (weekly @ lvl 6, monthly @ lvl 7) so low-level players
     // aren't nudged toward quest types they can't create yet.
     _bountyUnlocked(cadence) {
-        if (cadence === 'weekly') return this.level >= (this.goalTabUnlockLevels?.weekly || 6);
-        return this.level >= (this.goalTabUnlockLevels?.monthly || 7);
+        return BOUNTY_LOGIC.isUnlocked(cadence, this.level, this.goalTabUnlockLevels);
     }
 
+    // Weekly stamps the INJECTED local-time week key (see _weekKey's note on
+    // the two live ISO implementations); monthly is `YYYY-MM`.
     _bountyPeriodKey(cadence, now = new Date()) {
-        if (cadence === 'weekly') {
-            return `${this.getISOWeekYear(now)}-W${this.getISOWeekNumber(now)}`;
-        }
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        return BOUNTY_LOGIC.periodKey(cadence, now, (d) => this._weekKey(d));
     }
 
     // Start-of-period boundary used by the anti-stage rule. Weekly = this
     // ISO week's Monday 00:00 local; Monthly = the 1st at 00:00 local.
     _bountyPeriodStart(cadence, now = new Date()) {
-        if (cadence === 'weekly') {
-            const d = new Date(now);
-            d.setHours(0, 0, 0, 0);
-            const day = d.getDay();                 // 0 Sun .. 6 Sat
-            const daysFromMonday = day === 0 ? 6 : day - 1;
-            d.setDate(d.getDate() - daysFromMonday);
-            return d;
-        }
-        return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        return BOUNTY_LOGIC.periodStart(cadence, now);
     }
 
     // Fixed windows: weekly expires end of this ISO week (Sun 23:59:59.999
     // local); monthly expires 10 days out at end-of-day (the assignment
     // day counts, so "the 1st → end of the 10th").
     _bountyDeadline(cadence, now = new Date()) {
-        if (cadence === 'weekly') {
-            const start = this._bountyPeriodStart('weekly', now);
-            const end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            end.setHours(23, 59, 59, 999);
-            return end;
-        }
-        const end = new Date(now);
-        end.setDate(end.getDate() + 9);             // assignment day + 9 = 10-day span
-        end.setHours(23, 59, 59, 999);
-        return end;
+        return BOUNTY_LOGIC.deadline(cadence, now);
     }
 
     _bountyTiers(cadence) {
-        return cadence === 'weekly'
-            ? [['weekly', this.weeklyGoals], ['sidequest', this.sideQuests]]
-            : [['monthly', this.monthlyGoals]];
+        return BOUNTY_LOGIC.tiersFor(cadence, this._bountyQuestLists());
     }
 
     // Eligible = incomplete Quest Log items of the cadence's tier(s) that
     // existed BEFORE this period opened (anti-stage). Items missing the
     // `created` stamp (legacy saves) are treated as pre-period = eligible.
     _bountyEligibleQuests(cadence, periodStart) {
-        const out = [];
-        for (const [tier, list] of this._bountyTiers(cadence)) {
-            for (const q of (list || [])) {
-                if (!q || q.completed) continue;
-                if (q.created && new Date(q.created) >= periodStart) continue;
-                out.push({ id: q.id, tier });
-            }
-        }
-        return out;
+        return BOUNTY_LOGIC.eligibleQuests(cadence, periodStart, this._bountyQuestLists());
     }
 
     // Deterministic index into a pool, seeded by periodKey (+ optional
     // salt for the reroll so it lands on a different slot than the
     // original pick). Same LCG family as the daily quest board.
     _bountySeededIndex(periodKey, salt, length) {
-        if (length <= 0) return 0;
-        const str = `${periodKey}:${salt || ''}`;
-        let s = 0;
-        for (let i = 0; i < str.length; i++) s = (s * 31 + str.charCodeAt(i)) % 2147483647;
-        s = (s * 16807) % 2147483647;
-        return s % length;
+        return BOUNTY_LOGIC.seededIndex(periodKey, salt, length);
     }
 
     // Assign this period's bounty for a cadence if not already done.
@@ -12987,7 +12354,7 @@ class GoalManager {
     // empty for this periodKey. Stores `{ ...empty:true }` when there's no
     // eligible quest so the dashboard shows the "add a quest" nudge.
     maybeAssignBounty(cadence = 'weekly', now = new Date()) {
-        if (!this.activeBounties) this.activeBounties = { weekly: null, monthly: null };
+        if (!this.activeBounties) this.activeBounties = BOUNTY_LOGIC.emptySlots();
         if (!this._bountyUnlocked(cadence)) return null;
 
         const periodKey = this._bountyPeriodKey(cadence, now);
@@ -12997,23 +12364,20 @@ class GoalManager {
         const periodStart = this._bountyPeriodStart(cadence, now);
         const pool = this._bountyEligibleQuests(cadence, periodStart);
         if (pool.length === 0) {
-            this.activeBounties[cadence] = { periodKey, cadence, empty: true };
+            this.activeBounties[cadence] = BOUNTY_LOGIC.emptyBounty(cadence, periodKey);
             this.saveData();
             return this.activeBounties[cadence];
         }
 
-        const pick = pool[this._bountySeededIndex(periodKey, '', pool.length)];
-        this.activeBounties[cadence] = {
-            periodKey,
+        const pick = BOUNTY_LOGIC.pickFrom(pool, periodKey, '');
+        if (!pick) return this.activeBounties[cadence];
+        this.activeBounties[cadence] = BOUNTY_LOGIC.assignedBounty({
             cadence,
-            questType: pick.tier,
-            questId: pick.id,
-            assignedAt: now.toISOString(),
-            expiresAt: this._bountyDeadline(cadence, now).toISOString(),
-            chestTier: this.BOUNTY_CHEST_TIER[pick.tier],
-            status: 'active',
-            rerolled: false,
-        };
+            periodKey,
+            pick,
+            now,
+            expiresAt: this._bountyDeadline(cadence, now),
+        });
         this.saveData();
         if (typeof trackEvent === 'function') {
             trackEvent('bounty_assigned', { cadence, questType: pick.tier });
@@ -13030,10 +12394,10 @@ class GoalManager {
         if (!this.activeBounties) return;
         let claimedTier = null;
         let claimedCadence = null;
-        ['weekly', 'monthly'].forEach(cadence => {
+        BOUNTY_LOGIC.CADENCES.forEach(cadence => {
             const b = this.activeBounties[cadence];
             if (!b || b.empty || b.status !== 'active' || b.questId !== questId) return;
-            if (Date.now() > new Date(b.expiresAt).getTime()) {
+            if (BOUNTY_LOGIC.isPastWindow(b, Date.now())) {
                 b.status = 'expired';
                 return;
             }
@@ -13080,7 +12444,8 @@ class GoalManager {
             this.showAchievement('No other eligible quest to reroll into.', 'daily');
             return;
         }
-        const pick = pool[this._bountySeededIndex(b.periodKey, 'reroll', pool.length)];
+        const pick = BOUNTY_LOGIC.pickFrom(pool, b.periodKey, 'reroll');
+        if (!pick) return;
         b.questType = pick.tier;
         b.questId = pick.id;
         b.chestTier = this.BOUNTY_CHEST_TIER[pick.tier];
@@ -13096,9 +12461,9 @@ class GoalManager {
     // window has closed, then (re)assign for the current period. Safe to
     // call repeatedly — assignment no-ops within the same period.
     refreshBounties() {
-        if (!this.activeBounties) this.activeBounties = { weekly: null, monthly: null };
+        if (!this.activeBounties) this.activeBounties = BOUNTY_LOGIC.emptySlots();
         const newlyAssigned = [];
-        ['weekly', 'monthly'].forEach(cadence => {
+        BOUNTY_LOGIC.CADENCES.forEach(cadence => {
             const b = this.activeBounties[cadence];
             const prevKey = b ? b.periodKey : null;
             // Self-heal: if an active bounty targets a tier no longer eligible
@@ -13107,10 +12472,9 @@ class GoalManager {
             // so maybeAssignBounty re-picks from the current pool this period.
             // prevKey is already captured above, so the reassignment stays
             // silent (no spurious "new bounty" toast for a correction).
-            if (b && !b.empty && b.questType &&
-                !this._bountyTiers(cadence).some(([tier]) => tier === b.questType)) {
+            if (b && !b.empty && b.questType && !BOUNTY_LOGIC.servesTier(cadence, b.questType)) {
                 this.activeBounties[cadence] = null;
-            } else if (b && !b.empty && b.status === 'active' && Date.now() > new Date(b.expiresAt).getTime()) {
+            } else if (b && !b.empty && b.status === 'active' && BOUNTY_LOGIC.isPastWindow(b, Date.now())) {
                 b.status = 'expired';
             }
             const assigned = this.maybeAssignBounty(cadence);
@@ -13149,36 +12513,17 @@ class GoalManager {
     // Look up the live quest object the bounty targets (title may have
     // changed; the quest may have been deleted → returns null).
     _bountyQuest(b) {
-        if (!b || b.empty) return null;
-        const lists = {
-            weekly: this.weeklyGoals, sidequest: this.sideQuests,
-            monthly: this.monthlyGoals,
-            yearly: this.yearlyGoals, epic: this.lifeGoals,
-        };
-        return (lists[b.questType] || []).find(q => q && q.id === b.questId) || null;
+        return BOUNTY_LOGIC.findQuest(b, this._bountyQuestLists());
     }
 
     // True when the given quest is the live target of an ACTIVE bounty —
     // used to badge the quest card in the Quest Log.
     isBountyTarget(questType, questId) {
-        if (!this.activeBounties) return false;
-        for (const cadence of ['weekly', 'monthly']) {
-            const b = this.activeBounties[cadence];
-            if (b && !b.empty && b.status === 'active' && b.questType === questType && b.questId === questId) {
-                return true;
-            }
-        }
-        return false;
+        return BOUNTY_LOGIC.isTarget(this.activeBounties, questType, questId);
     }
 
     _bountyTimeLeftLabel(expiresAt) {
-        const ms = new Date(expiresAt).getTime() - Date.now();
-        if (ms <= 0) return 'expired';
-        const hours = Math.floor(ms / 3600000);
-        if (hours < 1) return 'less than 1h left';
-        if (hours < 24) return `${hours}h left`;
-        const days = Math.round(hours / 24);
-        return `${days} day${days === 1 ? '' : 's'} left`;
+        return BOUNTY_LOGIC.timeLeftLabel(expiresAt, Date.now());
     }
 
     renderRoyalBounty() {
@@ -13221,14 +12566,14 @@ class GoalManager {
     }
 
     renderDashboard() {
-        document.getElementById('life-goals-count').textContent = this.lifeGoals.length;
-        document.getElementById('monthly-goals-count').textContent = this.monthlyGoals.filter(g => !g.completed).length;
-        document.getElementById('weekly-goals-count').textContent = this.weeklyGoals.filter(g => !g.completed).length;
+        /** @type {HTMLElement} */ (document.getElementById('life-goals-count')).textContent = this.lifeGoals.length;
+        /** @type {HTMLElement} */ (document.getElementById('monthly-goals-count')).textContent = this.monthlyGoals.filter(g => !g.completed).length;
+        /** @type {HTMLElement} */ (document.getElementById('weekly-goals-count')).textContent = this.weeklyGoals.filter(g => !g.completed).length;
         
         // Only count today's completed tasks
         const todaysTasks = this.dailyTasks.filter(task => this.isToday(task.dueDate));
         const completedToday = todaysTasks.filter(t => t.completed).length;
-        document.getElementById('daily-completed-count').textContent = completedToday;
+        /** @type {HTMLElement} */ (document.getElementById('daily-completed-count')).textContent = completedToday;
 
         // v2.7.1 audit fix M3: hide the four-card stats grid for brand-new
         // users who would otherwise see "0 / 0 / 0 / 0" above the fold on
@@ -13286,7 +12631,7 @@ class GoalManager {
         }
 
         // Render today's tasks in dashboard
-        const todayTasksList = document.getElementById('today-tasks-list');
+        const todayTasksList = /** @type {HTMLElement} */ (document.getElementById('today-tasks-list'));
         
         if (todaysTasks.length === 0) {
             todayTasksList.innerHTML = this._renderEmptyState({
@@ -13389,7 +12734,7 @@ class GoalManager {
     }
 
     renderLifeGoals() {
-        const container = document.getElementById('life-goals-container');
+        const container = /** @type {HTMLElement} */ (document.getElementById('life-goals-container'));
         if (this.lifeGoals.length === 0) {
             container.innerHTML = this._renderEmptyState({
                 icon: '🏰',
@@ -13413,7 +12758,7 @@ class GoalManager {
     }
 
     renderYearlyGoals() {
-        const container = document.getElementById('yearly-goals-container');
+        const container = /** @type {HTMLElement} */ (document.getElementById('yearly-goals-container'));
         if (this.yearlyGoals.length === 0) {
             container.innerHTML = this._renderEmptyState({
                 icon: '📜',
@@ -13439,7 +12784,7 @@ class GoalManager {
     }
 
     renderMonthlyGoals() {
-        const container = document.getElementById('monthly-goals-container');
+        const container = /** @type {HTMLElement} */ (document.getElementById('monthly-goals-container'));
         
         // Get tasks scheduled for this month (not linked to a monthly goal)
         const thisMonthsTasks = this.dailyTasks.filter(task => 
@@ -13488,7 +12833,7 @@ class GoalManager {
     }
 
     renderWeeklyGoals() {
-        const container = document.getElementById('weekly-goals-container');
+        const container = /** @type {HTMLElement} */ (document.getElementById('weekly-goals-container'));
         
         // Get tasks scheduled for this week (not linked to a weekly goal)
         const thisWeeksTasks = this.dailyTasks.filter(task => 
@@ -13535,7 +12880,7 @@ class GoalManager {
     }
 
     renderDailyTasks() {
-        const container = document.getElementById('daily-tasks-container');
+        const container = /** @type {HTMLElement} */ (document.getElementById('daily-tasks-container'));
         
         // Filter tasks for today only
         const todaysTasks = this.dailyTasks.filter(task => this.isToday(task.dueDate));
@@ -13872,6 +13217,7 @@ class GoalManager {
         // Get the Digital Goods service
         let service;
         try {
+            if (!window.getDigitalGoodsService) throw new Error('Digital Goods API unavailable');
             service = await window.getDigitalGoodsService('https://play.google.com/billing');
         } catch (serviceError) {
             console.error('Failed to get Digital Goods service:', serviceError);
@@ -13967,7 +13313,7 @@ class GoalManager {
         }
 
         // Web/TWA path: Digital Goods API
-        if ('getDigitalGoodsService' in window) {
+        if (window.getDigitalGoodsService) {
             try {
                 const service = await window.getDigitalGoodsService('https://play.google.com/billing');
                 const purchases = await service.listPurchases();
@@ -14008,117 +13354,33 @@ class GoalManager {
     // Data Export/Import
     async exportData() {
         try {
-            const data = {
-                lifeGoals: this.lifeGoals,
-                yearlyGoals: this.yearlyGoals,
-                monthlyGoals: this.monthlyGoals,
-                weeklyGoals: this.weeklyGoals,
-                dailyTasks: this.dailyTasks,
-                sideQuests: this.sideQuests,
-                habits: this.habits,
-                recurringTasks: this.recurringTasks,
-                xp: this.xp,
-                level: this.level,
-                badges: this.badges,
-                archivedGoals: this.archivedGoals,
-                goldCoins: this.goldCoins,
-                unlockedThemes: this.unlockedThemes,
-                currentTheme: this.currentTheme,
-                weeklyTrialPromptShown: this.weeklyTrialPromptShown,
-                weeklyTrialEndPromptShown: this.weeklyTrialEndPromptShown,
-                weeklyThemeCardDismissed: this.weeklyThemeCardDismissed,
-                lastFeaturedWeekTracked: this.lastFeaturedWeekTracked,
-                weeklyTrialApplyDates: this.weeklyTrialApplyDates,
-                unlockedTitles: this.unlockedTitles,
-                currentTitle: this.currentTitle,
-                treasureChests: this.treasureChests,
-                companions: this.companions,
-                activeCompanionId: this.activeCompanionId,
-                spellbook: this.spellbook,
-                activeSpells: this.activeSpells,
-                classSchemaVersion: this.CLASS_SCHEMA_VERSION,
-                playerClass: this.playerClass,
-                classNodesUnlocked: this.classNodesUnlocked,
-                classCapstone: this.classCapstone,
-                skillPointsSpent: this.skillPointsSpent,
-                classSelectedAtLevel: this.classSelectedAtLevel,
-                subclass: this.subclass,
-                subclassNodesUnlocked: this.subclassNodesUnlocked,
-                activeQuestChains: this.activeQuestChains,
-                completedQuestChains: this.completedQuestChains,
-                focusCrystals: this.focusCrystals,
-                focusCrystalShards: this.focusCrystalShards,
-                repairableStreaks: this.repairableStreaks,
-                freeStreakRepairUsed: this.freeStreakRepairUsed,
-                totalFocusTime: this.totalFocusTime,
-                activeEnchantments: this.activeEnchantments,
-                focusEndTime: this.focusEndTime,
-                focusSessionLength: this.focusSessionLength,
-                deepWorkStack: this.deepWorkStack,
-                lastFocusSessionEndTime: this.lastFocusSessionEndTime,
-                pomodoroChain: this.pomodoroChain,
-                pomodoroChainSettings: this.pomodoroChainSettings,
-                timezone: this.timezone,
-                timezoneOffset: this.timezoneOffset,
-                tutorialCompleted: this.tutorialCompleted,
-                onboardingPath: this.onboardingPath,
-                isPremium: this.isPremium,
-                premiumPurchaseDate: this.premiumPurchaseDate,
-                premiumPurchaseToken: this.premiumPurchaseToken || null,
-                lastLoginBonusDate: this.lastLoginBonusDate,
-                loginStreak: this.loginStreak,
-                referralCode: this.referralCode,
-                referredBy: this.referredBy,
-                referralRewardClaimed: this.referralRewardClaimed,
-                referralsSent: this.referralsSent,
-                onboardingShareShown: this.onboardingShareShown,
-                firstTaskCreatedTracked: this.firstTaskCreatedTracked,
-                firstTaskCompletedTracked: this.firstTaskCompletedTracked,
-                reviewPromptCount: this.reviewPromptCount,
-                reviewPromptLastDate: this.reviewPromptLastDate,
-                reviewLeft: this.reviewLeft,
-                chestsOpened: this.chestsOpened,
-                bossesDefeated: this.bossesDefeated,
-                focusSessionsCompleted: this.focusSessionsCompleted,
-                spellsCast: this.spellsCast,
-                totalGoldEarned: this.totalGoldEarned,
-                dailyBoss: this.dailyBoss,
-                weeklyBoss: this.weeklyBoss,
-                monthlyBoss: this.monthlyBoss,
-                attackCharges: this.attackCharges,
-                rageComboCounter: this.rageComboCounter,
-                activeCompanionId2: this.activeCompanionId2,
-                rangerProtectionsUsedThisWeek: this.rangerProtectionsUsedThisWeek,
-                rangerProtectionResetWeek: this.rangerProtectionResetWeek,
-                guardianProtectionsUsedThisWeek: this.guardianProtectionsUsedThisWeek,
-                guardianProtectionResetWeek: this.guardianProtectionResetWeek,
-                freeCastUsedDate: this.freeCastUsedDate,
-                highPriorityTasksToday: this.highPriorityTasksToday,
-                highPriorityXpDate: this._highPriorityXpDate,
-                bossLog: this.bossLog,
-                defeatedBossList: this.defeatedBossList,
-                dailyBossStreak: this.dailyBossStreak,
-                weeklyBossStreak: this.weeklyBossStreak,
-                monthlyBossStreak: this.monthlyBossStreak,
-                bossKillsThisMonth: this.bossKillsThisMonth,
-                bossKillsMonth: this.bossKillsMonth,
-                seenFeatureTutorials: this.seenFeatureTutorials,
-                progressiveUnlockInitialized: this.progressiveUnlockInitialized,
-                lastVisitDate: this.lastVisitDate,
-                lastWeekNumber: this.lastWeekNumber,
-                lastMonth: this.lastMonth,
-                lastYear: this.lastYear,
-                reminderSettings: this.reminderSettings,
-                dailyQuestBoard: this.dailyQuestBoard,
-                dailyTracking: this.dailyTracking,
-                lastWoodenChestDate: this.lastWoodenChestDate,
-                activeChallenges: this.activeChallenges,
-                completedChallenges: this.completedChallenges,
-                accountCreatedDate: this.accountCreatedDate,
-                exportDate: new Date().toISOString(),
-                version: '3.0.0'
-            };
-            
+            // Roadmap #1, 79th slice: this used to carry its OWN hand-maintained ~100-field
+            // copy of the save map — a third copy alongside _doSave and loadData — and it had
+            // already drifted. Six fields `_doSave` persists were silently absent from every
+            // backup file: `titleStyle` (the level-title preference — importData even has a
+            // branch to restore it, which could never fire), `activeBounties` + `lastBountyClaim`
+            // (in-flight Royal Bounty state AND the claim ledger that prevents double-claims),
+            // `lastHabitReset` + `lastWeekReset` (the habit/weekly reset markers) and the legacy
+            // `companion`. Restoring a backup quietly dropped all six. Delegating to the ONE
+            // builder makes that class of drift impossible, and the export⊇save parity test in
+            // tests/persistence-roundtrip.test.js fails if anyone reintroduces a separate copy.
+            //
+            // `reminderSettings` is a GENUINE export-only extra, not an oversight: it lives in
+            // its own `reminderSettings` localStorage key (see initializeReminders), never in
+            // the save blob, and importData writes it back there — a backup would be incomplete
+            // without it. `exportDate`/`version` are the file envelope.
+            const data = Object.assign(
+                SAVE_SERIALIZER.buildSaveData(this, {
+                    todayString: this.getTodayDateString(),
+                    currentWeekString: this.getWeekString(new Date())
+                }),
+                {
+                    reminderSettings: this.reminderSettings,
+                    exportDate: new Date().toISOString(),
+                    version: '3.0.0'
+                }
+            );
+
             const dataStr = JSON.stringify(data, null, 2);
             const fileName = `quest-journal-backup-${this.getTodayDateString()}.json`;
 
@@ -14210,7 +13472,7 @@ class GoalManager {
         document.body.appendChild(modal);
         const cleanup = () => modal.remove();
 
-        modal.querySelector('#export-save-btn').addEventListener('click', async () => {
+        modal.querySelector('#export-save-btn')?.addEventListener('click', async () => {
             cleanup();
             try {
                 const result = await window.CapBridge.saveFileToDevice(fileName, dataStr);
@@ -14226,7 +13488,7 @@ class GoalManager {
             }
         });
 
-        modal.querySelector('#export-share-btn').addEventListener('click', async () => {
+        modal.querySelector('#export-share-btn')?.addEventListener('click', async () => {
             cleanup();
             try {
                 const result = await window.CapBridge.shareFile(fileName, dataStr, 'application/json');
@@ -14242,11 +13504,11 @@ class GoalManager {
             }
         });
 
-        modal.querySelector('#export-cancel-btn').addEventListener('click', cleanup);
+        modal.querySelector('#export-cancel-btn')?.addEventListener('click', cleanup);
         modal.addEventListener('click', (e) => { if (e.target === modal) cleanup(); });
         modal.addEventListener('keydown', (e) => { if (e.key === 'Escape') cleanup(); });
 
-        setTimeout(() => modal.querySelector('#export-save-btn')?.focus(), 50);
+        setTimeout(() => /** @type {HTMLElement | null} */ (modal.querySelector('#export-save-btn'))?.focus(), 50);
     }
 
     importData(event) {
@@ -14263,7 +13525,7 @@ class GoalManager {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const data = JSON.parse(e.target.result);
+                const data = JSON.parse(String(/** @type {FileReader} */ (e.target).result));
                 
                 // Validate it's a Life Quest Journal backup
                 if (!data.version && !data.lifeGoals && !data.dailyTasks) {
@@ -14294,9 +13556,15 @@ class GoalManager {
                     this.goldCoins = typeof data.goldCoins === 'number' ? Math.max(0, data.goldCoins) : this.goldCoins;
                     this.unlockedThemes = arr(data.unlockedThemes, this.unlockedThemes);
                     this.currentTheme = data.currentTheme || this.currentTheme;
+                    this.weeklyTrialPromptShown = data.weeklyTrialPromptShown || this.weeklyTrialPromptShown;
+                    this.weeklyTrialEndPromptShown = data.weeklyTrialEndPromptShown || this.weeklyTrialEndPromptShown;
+                    this.weeklyThemeCardDismissed = data.weeklyThemeCardDismissed || this.weeklyThemeCardDismissed;
+                    this.lastFeaturedWeekTracked = data.lastFeaturedWeekTracked || this.lastFeaturedWeekTracked;
+                    this.weeklyTrialApplyDates = data.weeklyTrialApplyDates || this.weeklyTrialApplyDates;
                     this.unlockedTitles = arr(data.unlockedTitles, this.unlockedTitles);
                     this.currentTitle = data.currentTitle || this.currentTitle;
                     this.treasureChests = arr(data.treasureChests, this.treasureChests);
+                    this.companion = data.companion || this.companion;
                     this.companions = arr(data.companions, this.companions);
                     this.activeCompanionId = data.activeCompanionId || this.activeCompanionId;
                     this.spellbook = arr(data.spellbook, this.spellbook);
@@ -14326,17 +13594,19 @@ class GoalManager {
                     if (data.pomodoroChainSettings) this.pomodoroChainSettings = data.pomodoroChainSettings;
                     this.timezone = data.timezone || this.timezone;
                     this.timezoneOffset = data.timezoneOffset ?? this.timezoneOffset;
-                    this.tutorialCompleted = data.tutorialCompleted || this.tutorialCompleted;
+                    this.tutorialCompleted = data.tutorialCompleted ?? this.tutorialCompleted;
                     this.onboardingPath = data.onboardingPath || this.onboardingPath;
+                    this.lastHabitReset = data.lastHabitReset || this.lastHabitReset;
+                    this.lastWeekReset = data.lastWeekReset || this.lastWeekReset;
                     this.goalTabUnlockLevels = this.getGoalTabUnlockLevelsForPath(this.onboardingPath);
-                    this.isPremium = data.isPremium || this.isPremium;
+                    this.isPremium = data.isPremium ?? this.isPremium;
                     this.premiumPurchaseDate = data.premiumPurchaseDate || this.premiumPurchaseDate;
                     this.premiumPurchaseToken = data.premiumPurchaseToken || this.premiumPurchaseToken;
                     this.lastLoginBonusDate = data.lastLoginBonusDate || this.lastLoginBonusDate;
                     this.loginStreak = data.loginStreak ?? this.loginStreak;
                     this.referralCode = data.referralCode || this.referralCode;
                     this.referredBy = data.referredBy || this.referredBy;
-                    this.referralRewardClaimed = data.referralRewardClaimed || this.referralRewardClaimed;
+                    this.referralRewardClaimed = data.referralRewardClaimed ?? this.referralRewardClaimed;
                     this.referralsSent = data.referralsSent ?? this.referralsSent;
                     this.onboardingShareShown = data.onboardingShareShown ?? this.onboardingShareShown;
                     this.firstTaskCreatedTracked = data.firstTaskCreatedTracked ?? this.firstTaskCreatedTracked;
@@ -14368,6 +13638,7 @@ class GoalManager {
                     this.rangerProtectionResetWeek = data.rangerProtectionResetWeek ?? this.rangerProtectionResetWeek;
                     this.guardianProtectionsUsedThisWeek = data.guardianProtectionsUsedThisWeek ?? this.guardianProtectionsUsedThisWeek;
                     this.guardianProtectionResetWeek = data.guardianProtectionResetWeek ?? this.guardianProtectionResetWeek;
+                    this.freeCastUsedDate = data.freeCastUsedDate || this.freeCastUsedDate;
                     this.bossLog = data.bossLog || this.bossLog;
                     this.defeatedBossList = data.defeatedBossList || this.defeatedBossList;
                     this.dailyBossStreak = data.dailyBossStreak ?? this.dailyBossStreak;
@@ -14376,7 +13647,7 @@ class GoalManager {
                     this.bossKillsThisMonth = data.bossKillsThisMonth ?? this.bossKillsThisMonth;
                     this.bossKillsMonth = data.bossKillsMonth ?? this.bossKillsMonth;
                     this.seenFeatureTutorials = data.seenFeatureTutorials || this.seenFeatureTutorials;
-                    this.progressiveUnlockInitialized = data.progressiveUnlockInitialized || this.progressiveUnlockInitialized;
+                    this.progressiveUnlockInitialized = data.progressiveUnlockInitialized ?? this.progressiveUnlockInitialized;
                     this.lastVisitDate = data.lastVisitDate || this.lastVisitDate;
                     this.lastWeekNumber = data.lastWeekNumber || this.lastWeekNumber;
                     this.lastMonth = data.lastMonth ?? this.lastMonth;
@@ -14384,6 +13655,8 @@ class GoalManager {
                     this.dailyQuestBoard = data.dailyQuestBoard || this.dailyQuestBoard;
                     this.dailyTracking = data.dailyTracking || this.dailyTracking;
                     this.lastWoodenChestDate = data.lastWoodenChestDate || this.lastWoodenChestDate;
+                    this.activeBounties = data.activeBounties || this.activeBounties;
+                    this.lastBountyClaim = data.lastBountyClaim || this.lastBountyClaim;
                     this.activeChallenges = arr(data.activeChallenges, this.activeChallenges);
                     this.completedChallenges = arr(data.completedChallenges, this.completedChallenges);
                     if (data.accountCreatedDate) this.accountCreatedDate = data.accountCreatedDate;
@@ -14484,11 +13757,11 @@ class GoalManager {
         const total = todaysTasks.length;
         const completed = todaysTasks.filter(t => t.completed).length;
         
-        document.getElementById('completed-count').textContent = completed;
-        document.getElementById('total-count').textContent = total;
+        /** @type {HTMLElement} */ (document.getElementById('completed-count')).textContent = completed;
+        /** @type {HTMLElement} */ (document.getElementById('total-count')).textContent = total;
         
         const progress = total > 0 ? (completed / total) * 100 : 0;
-        document.getElementById('daily-progress').style.width = progress + '%';
+        /** @type {HTMLElement} */ (document.getElementById('daily-progress')).style.width = progress + '%';
     }
 
     // Date utility methods
@@ -14556,13 +13829,13 @@ class GoalManager {
         // Update month/year display
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                            'July', 'August', 'September', 'October', 'November', 'December'];
-        document.getElementById('calendar-month-year').textContent = `${monthNames[month]} ${year}`;
+        /** @type {HTMLElement} */ (document.getElementById('calendar-month-year')).textContent = `${monthNames[month]} ${year}`;
         
         // Get first day of month and number of days
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        const calendarDays = document.getElementById('calendar-days');
+        const calendarDays = /** @type {HTMLElement} */ (document.getElementById('calendar-days'));
         calendarDays.innerHTML = '';
         
         // Pre-index tasks by date for O(1) lookup per calendar day
@@ -14618,11 +13891,11 @@ class GoalManager {
                            'July', 'August', 'September', 'October', 'November', 'December'];
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         
-        document.getElementById('selected-date-title').textContent = 
+        /** @type {HTMLElement} */ (document.getElementById('selected-date-title')).textContent = 
             `${dayNames[date.getDay()]}, ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
         
         const tasksForDay = this.dailyTasks.filter(t => t.dueDate === dateString);
-        const container = document.getElementById('selected-date-tasks');
+        const container = /** @type {HTMLElement} */ (document.getElementById('selected-date-tasks'));
         
         if (tasksForDay.length === 0) {
             // v2.7 — illustrated empty-state with date-bound CTA. The
@@ -14991,6 +14264,7 @@ class GoalManager {
     }
 
     updateSlideshow() {
+        if (!this.slideshowData) return;
         const { slides, currentSlide, totalSlides } = this.slideshowData;
         
         const container = document.getElementById('slideshow-container');
@@ -15205,7 +14479,7 @@ class GoalManager {
             parentIdField = 'weeklyGoalIds';
         }
         
-        if (!goal || !parentArray) return;
+        if (!goal || !parentArray || !parentIdField || !parentType) return;
         
         // Ensure parentIds exists and is an array (migrate old format)
         if (!goal[parentIdField]) {
@@ -15568,7 +14842,7 @@ class GoalManager {
             const prev = new Date(days[i - 1] + 'T12:00:00');
             const cur = new Date(days[i] + 'T12:00:00');
             if (isNaN(prev.getTime()) || isNaN(cur.getTime())) { run = 1; continue; }
-            const gap = Math.round((cur - prev) / 86400000);
+            const gap = Math.round((cur.getTime() - prev.getTime()) / 86400000);
             if (gap === 1) { run++; if (run > longest) longest = run; }
             else if (gap !== 0) { run = 1; }         // gap>1 breaks the run; gap===0 (dup) ignored
         }
@@ -15641,7 +14915,7 @@ class GoalManager {
         const statMonthlyStreak = document.getElementById('stat-monthly-streak');
         if (statMonthlyStreak) statMonthlyStreak.textContent = this.monthlyBossStreak;
         const statMonthlyKills = document.getElementById('stat-monthly-kills');
-        if (statMonthlyKills) statMonthlyKills.textContent = this.bossKillsThisMonth;
+        if (statMonthlyKills) statMonthlyKills.textContent = String(this.bossKillsThisMonth);
         const statAttacks = document.getElementById('stat-total-attacks');
         if (statAttacks) statAttacks.textContent = this.attackCharges;
         
@@ -15689,7 +14963,7 @@ class GoalManager {
             level: this.level
         });
         
-        return BOSS_RENDER.renderMonthlyBossChallengeHTML(preview);
+        return BOSS_RENDER.renderMonthlyBossChallengeHTML(/** @type {any} */ (preview));
     }
     
     renderMonthlyBossProgress() {
@@ -15734,8 +15008,10 @@ class GoalManager {
     renderActiveBosses() {}
     renderBossConversionList() {}
     toggleBossMode() {}
-    dealBossDamage() {}
-    checkBossDefeat() {}
+    /** @param {...any} _args */
+    dealBossDamage(..._args) {}
+    /** @param {...any} _args */
+    checkBossDefeat(..._args) {}
 
     getBossIcon(boss) {
         return boss.icon || '🐉';
@@ -15915,7 +15191,7 @@ class GoalManager {
         if (!container) return;
         
         const { containerClass, buttonsHTML } = FOCUS_TIMER_RENDER.renderFocusTimerControls({
-            focusTimerRunning: this.focusTimerRunning,
+            focusTimerRunning: !!this.focusTimerRunning,
             isBreak: this.pomodoroChain && this.pomodoroChain.isBreak,
             hasPomodoroChain: !!this.pomodoroChain,
             focusTimeRemaining: this.focusTimeRemaining,
@@ -16133,9 +15409,9 @@ class GoalManager {
         // For date selects, add change listeners to update day options based on month/year
         if (inputType === 'date') {
             setTimeout(() => {
-                const monthSel = document.getElementById('modal-date-month');
-                const daySel = document.getElementById('modal-date-day');
-                const yearSel = document.getElementById('modal-date-year');
+                const monthSel = /** @type {HTMLInputElement | null} */ (document.getElementById('modal-date-month'));
+                const daySel = /** @type {HTMLInputElement | null} */ (document.getElementById('modal-date-day'));
+                const yearSel = /** @type {HTMLInputElement | null} */ (document.getElementById('modal-date-year'));
                 if (monthSel && daySel && yearSel) {
                     const updateDays = () => {
                         const m = parseInt(monthSel.value);
@@ -16154,7 +15430,7 @@ class GoalManager {
 
         // Focus and select input
         setTimeout(() => {
-            const input = document.getElementById('modal-input');
+            const input = /** @type {HTMLInputElement | null} */ (document.getElementById('modal-input'));
             if (input) {
                 input.focus();
                 if (inputType !== 'textarea') input.select();
@@ -16169,7 +15445,7 @@ class GoalManager {
         });
 
         // Handle Enter key
-        const input = modal.querySelector('#modal-input');
+        const input = /** @type {HTMLInputElement | null} */ (modal.querySelector('#modal-input'));
         if (input && inputType !== 'textarea') {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -16184,12 +15460,12 @@ class GoalManager {
         let value = '';
         const dateSelects = document.getElementById('modal-date-selects');
         if (dateSelects) {
-            const y = document.getElementById('modal-date-year').value;
-            const m = String(document.getElementById('modal-date-month').value).padStart(2, '0');
-            const d = String(document.getElementById('modal-date-day').value).padStart(2, '0');
+            const y = /** @type {HTMLInputElement} */ (document.getElementById('modal-date-year')).value;
+            const m = String(/** @type {HTMLInputElement} */ (document.getElementById('modal-date-month')).value).padStart(2, '0');
+            const d = String(/** @type {HTMLInputElement} */ (document.getElementById('modal-date-day')).value).padStart(2, '0');
             value = `${y}-${m}-${d}`;
         } else {
-            const input = document.getElementById('modal-input');
+            const input = /** @type {HTMLInputElement | null} */ (document.getElementById('modal-input'));
             value = input ? input.value : '';
         }
         const callback = this.inputCallback;
@@ -16732,6 +16008,12 @@ class GoalManager {
         document.body.appendChild(prompt);
     }
 
+    /**
+     * @param {string} title
+     * @param {string} body
+     * @param {string} [icon]
+     * @param {string | null} [tag]
+     */
     showNotification(title, body, icon = '⚔️', tag = null) {
         // Use native local notifications when running inside Capacitor
         if (window.CapBridge && window.CapBridge.isNative) {
@@ -16987,6 +16269,7 @@ class GoalManager {
     _soonestClaimableBounty(now = new Date()) {
         if (!this.activeBounties) return null;
         const nowMs = now.getTime();
+        /** @type {any} */
         let best = null;
         ['weekly', 'monthly'].forEach(cadence => {
             const b = this.activeBounties[cadence];
@@ -17109,7 +16392,7 @@ class GoalManager {
         // gets the resolved flags. The time <input>s' inline onchange handlers live verbatim in the module.
         container.innerHTML = REMINDER_RENDER.renderReminderSettingsHTML({
             settings: this.reminderSettings,
-            notificationsEnabled: this.notificationsEnabled,
+            notificationsEnabled: !!this.notificationsEnabled,
             isNative: !!isNative,
             notificationSupported: 'Notification' in window,
             permissionDenied: 'Notification' in window && Notification.permission === 'denied',
@@ -17251,12 +16534,12 @@ class GoalManager {
         
         const cleanup = () => modal.remove();
         
-        modal.querySelector('#confirm-ok-btn').addEventListener('click', () => {
+        modal.querySelector('#confirm-ok-btn')?.addEventListener('click', () => {
             cleanup();
             if (onConfirm) onConfirm();
         });
         
-        modal.querySelector('#confirm-cancel-btn').addEventListener('click', () => {
+        modal.querySelector('#confirm-cancel-btn')?.addEventListener('click', () => {
             cleanup();
             if (onCancel) onCancel();
         });
@@ -17276,7 +16559,7 @@ class GoalManager {
                 if (onCancel) onCancel();
             }
             if (e.key === 'Tab') {
-                const focusable = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+                const focusable = /** @type {NodeListOf<HTMLElement>} */ (modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])'));
                 const first = focusable[0];
                 const last = focusable[focusable.length - 1];
                 if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -17289,7 +16572,7 @@ class GoalManager {
         // data-import overwrite). Focusing Confirm meant a stray Enter
         // press or fast double-tap landed on the destructive action;
         // defaulting to Cancel makes the dangerous path opt-in.
-        setTimeout(() => modal.querySelector('#confirm-cancel-btn')?.focus(), 50);
+        setTimeout(() => /** @type {HTMLElement | null} */ (modal.querySelector('#confirm-cancel-btn'))?.focus(), 50);
     }
 
     showPrompt(message, expectedValue, onMatch, onCancel) {
@@ -17323,8 +16606,8 @@ class GoalManager {
         document.body.appendChild(modal);
         const cleanup = () => modal.remove();
         
-        modal.querySelector('#prompt-ok-btn').addEventListener('click', () => {
-            const val = modal.querySelector('#prompt-input').value.trim();
+        modal.querySelector('#prompt-ok-btn')?.addEventListener('click', () => {
+            const val = /** @type {HTMLInputElement} */ (modal.querySelector('#prompt-input')).value.trim();
             cleanup();
             if (val === expectedValue) {
                 if (onMatch) onMatch();
@@ -17333,7 +16616,7 @@ class GoalManager {
             }
         });
         
-        modal.querySelector('#prompt-cancel-btn').addEventListener('click', () => {
+        modal.querySelector('#prompt-cancel-btn')?.addEventListener('click', () => {
             cleanup();
             if (onCancel) onCancel();
         });
@@ -17352,7 +16635,7 @@ class GoalManager {
                 if (onCancel) onCancel();
             }
             if (e.key === 'Tab') {
-                const focusable = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+                const focusable = /** @type {NodeListOf<HTMLElement>} */ (modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])'));
                 const first = focusable[0];
                 const last = focusable[focusable.length - 1];
                 if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -17360,7 +16643,7 @@ class GoalManager {
             }
         });
         
-        setTimeout(() => modal.querySelector('#prompt-input')?.focus(), 50);
+        setTimeout(() => /** @type {HTMLElement | null} */ (modal.querySelector('#prompt-input'))?.focus(), 50);
     }
 
     // ==================== SEARCH FUNCTIONALITY ====================
@@ -17431,7 +16714,7 @@ class GoalManager {
         this.currentSearchFilter = filter;
         
         // Update button styles
-        document.querySelectorAll('.search-filter-btn').forEach(btn => {
+        /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.search-filter-btn')).forEach(btn => {
             if (btn.dataset.filter === filter) {
                 btn.className = 'search-filter-btn active btn-themed-primary px-3 py-1 rounded-lg text-sm fancy-font';
             } else {
@@ -17440,7 +16723,7 @@ class GoalManager {
         });
         
         // Re-run search with current query
-        const input = document.getElementById('search-input');
+        const input = /** @type {HTMLInputElement | null} */ (document.getElementById('search-input'));
         if (input && input.value) {
             this.performSearch(input.value);
         }
@@ -17646,18 +16929,18 @@ class GoalManager {
     }
 
     scheduleEnchantmentExpiryNotification(enchantment) {
-        const timeUntilExpiry = enchantment.expiresAt - Date.now();
-        const warningTime = 5 * 60 * 1000; // 5 minutes
+        // Null = the window is already inside the 5-minute warning period, so no
+        // "expiring soon" warning is scheduled at all.
+        const delay = ENCHANTMENT_LIFECYCLE.expiryWarningDelay(enchantment, Date.now());
+        if (delay === null) return;
 
-        if (timeUntilExpiry > warningTime) {
-            setTimeout(() => {
-                this.showNotification(
-                    '⏰ Enchantment Expiring Soon!',
-                    `${enchantment.name} will expire in 5 minutes`,
-                    '✨'
-                );
-            }, timeUntilExpiry - warningTime);
-        }
+        setTimeout(() => {
+            this.showNotification(
+                '⏰ Enchantment Expiring Soon!',
+                `${enchantment.name} will expire in 5 minutes`,
+                '✨'
+            );
+        }, delay);
     }
 
     checkDailyTaskReminder() {
@@ -17680,7 +16963,7 @@ class GoalManager {
     // Quick Add Modal
     openQuickAdd() {
         const modal = document.getElementById('quick-add-modal');
-        const input = document.getElementById('quick-add-input');
+        const input = /** @type {HTMLInputElement | null} */ (document.getElementById('quick-add-input'));
         if (modal && input) {
             modal.classList.remove('hidden');
             input.focus();
@@ -17773,7 +17056,7 @@ class GoalManager {
             if (count > 0) {
                 bulkActions.classList.remove('hidden');
                 if (countDisplay) {
-                    countDisplay.textContent = count;
+                    countDisplay.textContent = String(count);
                 }
             } else {
                 bulkActions.classList.add('hidden');
@@ -17791,7 +17074,9 @@ class GoalManager {
             if (type === 'daily') {
                 const task = this.dailyTasks.find(t => t.id === itemId);
                 if (task && !task.completed) {
-                    this.toggleDailyTask(itemId);
+                    // Was `toggleDailyTask`, which never existed (@ts-check, Roadmap #3 step 6):
+                    // Bulk-complete threw on the first unfinished daily task.
+                    this.toggleTask(itemId);
                     completed++;
                 }
             } else if (type === 'weekly') {
@@ -18033,11 +17318,11 @@ class GoalManager {
         this.centerTooltip(tooltip);
         
         // Update tooltip content
-        document.getElementById('tutorial-title').textContent = step.title;
-        document.getElementById('tutorial-content').innerHTML = step.fork
+        /** @type {HTMLElement} */ (document.getElementById('tutorial-title')).textContent = step.title;
+        /** @type {HTMLElement} */ (document.getElementById('tutorial-content')).innerHTML = step.fork
             ? this._renderOnboardingForkHTML()
             : step.content.replace(/\n/g, '<br>');
-        document.getElementById('tutorial-step-number').textContent = `${this.currentTutorialStep + 1} / ${this.tutorialSteps.length}`;
+        /** @type {HTMLElement} */ (document.getElementById('tutorial-step-number')).textContent = `${this.currentTutorialStep + 1} / ${this.tutorialSteps.length}`;
         
         // Update button text and visibility. The fork step has no Next button —
         // picking a play-style card is what advances it (chooseOnboardingPath).
@@ -18064,11 +17349,11 @@ class GoalManager {
             // Position spotlight on element if specified - longer delay for view rendering
             setTimeout(() => {
                 if (step.element && spotlight) {
-                    const targetElement = document.querySelector(step.element);
+                    const targetElement = /** @type {HTMLElement | null} */ (document.querySelector(step.element));
                     if (targetElement) {
                         const isMobile = window.innerWidth <= 768;
                         const navContainer = targetElement.closest('nav');
-                        const isInBottomNav = isMobile && navContainer;
+                        const isInBottomNav = !!(isMobile && navContainer);
                         
                         if (isInBottomNav) {
                             // On mobile, nav is a fixed horizontal bar at bottom
@@ -18593,12 +17878,12 @@ class GoalManager {
     }
 
     addSelectedStarterTasks() {
-        const checkboxes = document.querySelectorAll('.starter-task-checkbox:checked');
+        const checkboxes = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.starter-task-checkbox:checked'));
         let added = 0;
 
         checkboxes.forEach(checkbox => {
-            const type = checkbox.dataset.type;
-            const index = parseInt(checkbox.dataset.index);
+            const type = checkbox.dataset.type || '';
+            const index = parseInt(checkbox.dataset.index || '');
             const task = this.starterTaskPresets[type][index];
 
             if (task) {
@@ -18671,17 +17956,17 @@ class GoalManager {
         if (!chain) return;
 
         const currentChapter = chain.chapters[chain.currentChapterIndex];
-        
-        if (chain.completedTasks.includes(taskIndex)) {
-            // Uncheck
-            chain.completedTasks = chain.completedTasks.filter(i => i !== taskIndex);
-        } else {
-            // Check
-            chain.completedTasks.push(taskIndex);
+
+        // Toggle math delegated to QUEST_CHAIN_LOGIC (Roadmap #1, 82nd slice): a new array with the index
+        // removed if present, appended otherwise. The checked/unchecked branch drives the impure side-effects.
+        const wasChecked = chain.completedTasks.includes(taskIndex);
+        chain.completedTasks = QUEST_CHAIN_LOGIC.toggleTaskIndex(chain.completedTasks, taskIndex);
+
+        if (!wasChecked) {
             this.showAchievement('Task completed!', 'daily');
 
             // Check if all tasks in chapter are done
-            if (chain.completedTasks.length === currentChapter.tasks.length) {
+            if (QUEST_CHAIN_LOGIC.isChapterComplete(chain.completedTasks, currentChapter)) {
                 this.completeChapter(chain);
             }
         }
@@ -18707,12 +17992,11 @@ class GoalManager {
         this.showAchievement(`📖 Chapter Complete: ${currentChapter.title}!`, 'epic');
         this.createConfetti();
 
-        // Move to next chapter
-        chain.currentChapterIndex++;
-        chain.completedTasks = [];
+        // Chapter-advance state (index + 1, tasks reset) delegated to QUEST_CHAIN_LOGIC (Roadmap #1, 82nd slice).
+        Object.assign(chain, QUEST_CHAIN_LOGIC.advanceChapterState(chain));
 
         // Check if quest chain is complete
-        if (chain.currentChapterIndex >= template.chapters.length) {
+        if (QUEST_CHAIN_LOGIC.isChainComplete(chain, template)) {
             this.completeQuestChain(chain);
         }
 
@@ -18722,17 +18006,21 @@ class GoalManager {
 
     completeQuestChain(chain) {
         const template = this.questChainTemplates[chain.templateId];
+        // The active→completed list move delegated to QUEST_CHAIN_LOGIC (Roadmap #1, 82nd slice): the chain is
+        // stamped with completedAt, removed from active and appended to completed. Identical for the
+        // template-present and template-missing branches — the ONLY difference is the celebration/rewards below.
+        chain.completedAt = new Date().toISOString();
+        const moved = QUEST_CHAIN_LOGIC.completeChainLists(chain, {
+            active: this.activeQuestChains,
+            completed: this.completedQuestChains,
+        });
+        this.activeQuestChains = moved.active;
+        this.completedQuestChains = moved.completed;
+
         if (!template) {
-            // Still complete the chain even if template is missing
-            chain.completedAt = new Date().toISOString();
-            this.completedQuestChains.push(chain);
-            this.activeQuestChains = this.activeQuestChains.filter(c => c.id !== chain.id);
+            // Still complete the chain even if template is missing (no celebration/rewards/badge).
             return;
         }
-        
-        chain.completedAt = new Date().toISOString();
-        this.completedQuestChains.push(chain);
-        this.activeQuestChains = this.activeQuestChains.filter(c => c.id !== chain.id);
 
         // Epic celebration
         this.createConfetti();
@@ -18775,6 +18063,7 @@ class GoalManager {
         canvas.width = W;
         canvas.height = H;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
 
         // Background gradient
         const bg = ctx.createLinearGradient(0, 0, 0, H);
@@ -19058,7 +18347,7 @@ class GoalManager {
                     <div class="flex gap-2">
                         <button data-action="share.statCardClose"
                             class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 text-sm">
-                            <i class="ri-share-line mr-1"></i> ${navigator.canShare ? 'Share' : 'Download'} Image
+                            <i class="ri-share-line mr-1"></i> ${typeof navigator.canShare === 'function' ? 'Share' : 'Download'} Image
                         </button>
                     </div>
                     <div class="text-center mt-2">
@@ -19101,12 +18390,12 @@ class GoalManager {
                 await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
                 const btn = document.getElementById('share-copy-btn');
                 if (btn) {
-                    btn.querySelector('i').className = 'ri-check-line text-lg text-green-300';
-                    btn.querySelector('span').textContent = 'Copied!';
+                    /** @type {HTMLElement} */ (btn.querySelector('i')).className = 'ri-check-line text-lg text-green-300';
+                    /** @type {HTMLElement} */ (btn.querySelector('span')).textContent = 'Copied!';
                     setTimeout(() => {
                         if (btn) {
-                            btn.querySelector('i').className = 'ri-file-copy-line text-lg text-green-400';
-                            btn.querySelector('span').textContent = 'Copy';
+                            /** @type {HTMLElement} */ (btn.querySelector('i')).className = 'ri-file-copy-line text-lg text-green-400';
+                            /** @type {HTMLElement} */ (btn.querySelector('span')).textContent = 'Copy';
                         }
                     }, 2000);
                 }
@@ -19178,6 +18467,7 @@ class GoalManager {
         canvas.width = W;
         canvas.height = H;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
 
         // Background gradient — green-tinted theme for weekly
         const bg = ctx.createLinearGradient(0, 0, 0, H);
@@ -19464,7 +18754,7 @@ class GoalManager {
                     <div class="flex gap-2">
                         <button data-action="share.weeklyRecapClose"
                             class="flex-1 py-3 rounded-xl font-bold fancy-font bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white shadow-lg transition-all hover:scale-[1.02] active:scale-95 text-sm">
-                            <i class="ri-share-line mr-1"></i> ${navigator.canShare ? 'Share' : 'Download'} Recap
+                            <i class="ri-share-line mr-1"></i> ${typeof navigator.canShare === 'function' ? 'Share' : 'Download'} Recap
                         </button>
                     </div>
                     <div class="text-center mt-2">
@@ -19508,12 +18798,12 @@ class GoalManager {
                 await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
                 const btn = document.getElementById('recap-copy-btn');
                 if (btn) {
-                    btn.querySelector('i').className = 'ri-check-line text-lg text-green-300';
-                    btn.querySelector('span').textContent = 'Copied!';
+                    /** @type {HTMLElement} */ (btn.querySelector('i')).className = 'ri-check-line text-lg text-green-300';
+                    /** @type {HTMLElement} */ (btn.querySelector('span')).textContent = 'Copied!';
                     setTimeout(() => {
                         if (btn) {
-                            btn.querySelector('i').className = 'ri-file-copy-line text-lg text-green-400';
-                            btn.querySelector('span').textContent = 'Copy';
+                            /** @type {HTMLElement} */ (btn.querySelector('i')).className = 'ri-file-copy-line text-lg text-green-400';
+                            /** @type {HTMLElement} */ (btn.querySelector('span')).textContent = 'Copy';
                         }
                     }, 2000);
                 }
@@ -19577,13 +18867,8 @@ class GoalManager {
     // ==================== CHALLENGE A FRIEND ====================
 
     getChallengeRewards(difficulty) {
-        const rewards = {
-            easy:   { xp: 25,  gold: 15 },
-            medium: { xp: 50,  gold: 30 },
-            hard:   { xp: 100, gold: 60 },
-            epic:   { xp: 200, gold: 100 }
-        };
-        return rewards[difficulty] || rewards.medium;
+        // Difficulty → {xp, gold} table in challenge-logic.js (89th slice); unknown → medium.
+        return CHALLENGE_LOGIC.challengeRewards(difficulty);
     }
 
     showCreateChallenge() {
@@ -19765,9 +19050,9 @@ class GoalManager {
     }
 
     submitCustomChallenge() {
-        const title = document.getElementById('custom-challenge-title')?.value?.trim();
-        const difficulty = document.getElementById('custom-difficulty')?.value || 'medium';
-        const deadlineDays = parseInt(document.getElementById('custom-deadline')?.value) || 3;
+        const title = /** @type {HTMLInputElement | null} */ (document.getElementById('custom-challenge-title'))?.value?.trim();
+        const difficulty = /** @type {HTMLInputElement | null} */ (document.getElementById('custom-difficulty'))?.value || 'medium';
+        const deadlineDays = parseInt(/** @type {HTMLInputElement | null} */ (document.getElementById('custom-deadline'))?.value ?? '') || 3;
 
         if (!title) {
             this.showErrorNotification('Please enter a challenge title');
@@ -19950,12 +19235,12 @@ class GoalManager {
                 await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
                 const btn = document.getElementById('challenge-copy-btn');
                 if (btn) {
-                    btn.querySelector('i').className = 'ri-check-line text-lg text-green-300';
-                    btn.querySelector('span').textContent = 'Copied!';
+                    /** @type {HTMLElement} */ (btn.querySelector('i')).className = 'ri-check-line text-lg text-green-300';
+                    /** @type {HTMLElement} */ (btn.querySelector('span')).textContent = 'Copied!';
                     setTimeout(() => {
                         if (btn) {
-                            btn.querySelector('i').className = 'ri-file-copy-line text-lg text-green-400';
-                            btn.querySelector('span').textContent = 'Copy';
+                            /** @type {HTMLElement} */ (btn.querySelector('i')).className = 'ri-file-copy-line text-lg text-green-400';
+                            /** @type {HTMLElement} */ (btn.querySelector('span')).textContent = 'Copy';
                         }
                     }, 2000);
                 }
@@ -20130,26 +19415,12 @@ class GoalManager {
     }
 
     getChallengeProgress(challenge) {
-        if (challenge.type === 'custom') {
-            return { current: challenge.completed ? 1 : 0, target: 1, pct: challenge.completed ? 100 : 0 };
-        }
-
-        let current = 0;
-        const target = challenge.target;
-
-        if (challenge.trackType === 'daily') {
-            const tracking = this.ensureDailyTracking();
-            current = tracking[challenge.field] || 0;
-        } else if (challenge.trackType === 'cumulative') {
-            if (challenge.field === 'loginStreak') current = this.loginStreak || 0;
-        } else if (challenge.trackType === 'delta') {
-            let currentTotal = 0;
-            if (challenge.field === 'bossesDefeated') currentTotal = this.bossesDefeated || 0;
-            current = currentTotal - (challenge.startValue || 0);
-        }
-
-        const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-        return { current, target, pct };
+        // Pure progress reader (custom 0/1, daily/cumulative/delta, 100 clamp) in challenge-logic.js (89th slice).
+        return CHALLENGE_LOGIC.challengeProgress(challenge, {
+            dailyTracking: challenge.trackType === 'daily' ? this.ensureDailyTracking() : undefined,
+            loginStreak: this.loginStreak,
+            bossesDefeated: this.bossesDefeated
+        });
     }
 
     checkChallengeProgress() {
@@ -20199,13 +19470,9 @@ class GoalManager {
             this.showAchievement(`🎁 Bonus chest earned from epic challenge!`, 'loot');
         }
 
-        // Move to completed
+        // Move to completed; history cap in challenge-logic.js (89th slice).
         this.activeChallenges.splice(idx, 1);
-        this.completedChallenges.push(challenge);
-        // Cap completed challenges history
-        if (this.completedChallenges.length > 50) {
-            this.completedChallenges = this.completedChallenges.slice(-50);
-        }
+        this.completedChallenges = CHALLENGE_LOGIC.archiveCompleted(this.completedChallenges, challenge);
 
         this.saveData();
         this.showAchievement(`⚔️ Challenge Complete: "${challenge.title}" +${rewards.xp} XP, +${rewards.gold} Gold`, 'achievement');
@@ -20262,7 +19529,7 @@ class GoalManager {
         } else {
             content = this.activeChallenges.map(ch => {
                 const progress = this.getChallengeProgress(ch);
-                const daysLeft = Math.max(0, Math.ceil((new Date(ch.deadline + 'T23:59:59') - new Date()) / 86400000));
+                const daysLeft = Math.max(0, Math.ceil((new Date(ch.deadline + 'T23:59:59').getTime() - Date.now()) / 86400000));
                 const diffColors = { easy: 'green', medium: 'orange', hard: 'red', epic: 'purple' };
                 const diffColor = diffColors[ch.difficulty] || 'orange';
 
@@ -20332,8 +19599,9 @@ class GoalManager {
     }
 }
 
-// Global functions for onclick handlers
-let goalManager;
+// Global functions for onclick handlers. The live instance is `window.goalManager`, created and
+// attached by main.js (the module entry) — the bare `goalManager` reads below and throughout the
+// class body resolve to that global at call time.
 
 // v2.7 — These global wrappers previously took no parameters and
 // passed none through to the underlying method. That silently broke
@@ -20379,4 +19647,7 @@ window.onunhandledrejection = function(event) {
     console.warn('Unhandled promise rejection (suppressed notification):', event.reason);
 };
 
-// GoalManager is initialized in index.html now
+// GoalManager is instantiated by main.js (the <script type="module"> entry), which also attaches
+// the instance and these five inline-handler wrappers to `window`.
+export default GoalManager;
+export { addLifeGoal, addYearlyGoal, addMonthlyGoal, addWeeklyGoal, addDailyTask };

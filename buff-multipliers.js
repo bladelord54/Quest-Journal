@@ -31,79 +31,72 @@
  *   - Jest/Node: require('./buff-multipliers.js') returns the frozen object via module.exports (and also
  *     sets window.BUFF_MULTIPLIERS under jsdom).
  */
-(function () {
-    /**
-     * Active-spell reward multiplier for an economy effect (e.g. 'xp_multiplier', 'xp_boost',
-     * 'gold_multiplier'). Walks the active-spell list, skipping expired casts, and for each spell whose
-     * `effect` matches multiplies in its bonus (spell.multiplier - 1). When a bonus is positive it is
-     * scaled by Empowered Magic (1 + powerMult) and, for an overcharged cast, doubled again. PURE.
-     * @param {string} effectType
-     * @param {Array<{ spellId: string, expiresAt: number, overcharged?: boolean }>} activeSpells
-     * @param {Record<string, { effect?: string, multiplier?: number }>} spellDefinitions
-     * @param {{ now?: number, powerMult?: number }} [opts]
-     * @returns {number}
-     */
-    function spellMultiplier(effectType, activeSpells, spellDefinitions, opts) {
-        const now = (opts && typeof opts.now === 'number') ? opts.now : Date.now();
-        const powerMult = (opts && typeof opts.powerMult === 'number') ? opts.powerMult : 0;
-        let multiplier = 1;
 
-        (activeSpells || []).forEach(activeSpell => {
-            // Check if spell is still active (not expired, or -1 means until triggered)
-            if (activeSpell.expiresAt === -1 || activeSpell.expiresAt > now) {
-                const spell = spellDefinitions[activeSpell.spellId];
-                // Skip if spell no longer exists in definitions
-                if (spell && spell.effect === effectType && spell.multiplier) {
-                    let bonus = spell.multiplier - 1; // the portion above 1×
-                    if (bonus > 0) {
-                        // Empowered Magic scales the bonus; an Overcharged cast
-                        // (capstone) doubles it again, recorded per-instance.
-                        let scale = 1 + (powerMult > 0 ? powerMult : 0);
-                        if (activeSpell.overcharged) scale *= 2;
-                        bonus *= scale;
-                    }
-                    multiplier *= (1 + bonus);
+/**
+ * Active-spell reward multiplier for an economy effect (e.g. 'xp_multiplier', 'xp_boost',
+ * 'gold_multiplier'). Walks the active-spell list, skipping expired casts, and for each spell whose
+ * `effect` matches multiplies in its bonus (spell.multiplier - 1). When a bonus is positive it is
+ * scaled by Empowered Magic (1 + powerMult) and, for an overcharged cast, doubled again. PURE.
+ * @param {string} effectType
+ * @param {Array<{ spellId: string, expiresAt: number, overcharged?: boolean }>} activeSpells
+ * @param {Record<string, { effect?: string, multiplier?: number }>} spellDefinitions
+ * @param {{ now?: number, powerMult?: number }} [opts]
+ * @returns {number}
+ */
+function spellMultiplier(effectType, activeSpells, spellDefinitions, opts) {
+    const now = (opts && typeof opts.now === 'number') ? opts.now : Date.now();
+    const powerMult = (opts && typeof opts.powerMult === 'number') ? opts.powerMult : 0;
+    let multiplier = 1;
+
+    (activeSpells || []).forEach(activeSpell => {
+        // Check if spell is still active (not expired, or -1 means until triggered)
+        if (activeSpell.expiresAt === -1 || activeSpell.expiresAt > now) {
+            const spell = spellDefinitions[activeSpell.spellId];
+            // Skip if spell no longer exists in definitions
+            if (spell && spell.effect === effectType && spell.multiplier) {
+                let bonus = spell.multiplier - 1; // the portion above 1×
+                if (bonus > 0) {
+                    // Empowered Magic scales the bonus; an Overcharged cast
+                    // (capstone) doubles it again, recorded per-instance.
+                    let scale = 1 + (powerMult > 0 ? powerMult : 0);
+                    if (activeSpell.overcharged) scale *= 2;
+                    bonus *= scale;
                 }
+                multiplier *= (1 + bonus);
             }
-        });
-
-        return multiplier;
-    }
-
-    /**
-     * Enchantment reward multiplier for a reward type. double_xp → 2× (xp), double_gold → 2× (gold),
-     * boss_damage → 1.3× (boss_damage), otherwise 1×. hasEnchantment(id) is injected so the caller owns
-     * the expiry side effect (checkExpiredEnchantments). PURE.
-     * @param {string} type
-     * @param {(id: string) => boolean} hasEnchantment
-     * @returns {number}
-     */
-    function enchantmentMultiplier(type, hasEnchantment) {
-        if (type === 'xp' && hasEnchantment('double_xp')) {
-            return 2;
         }
-        if (type === 'gold' && hasEnchantment('double_gold')) {
-            return 2;
-        }
-        if (type === 'boss_damage' && hasEnchantment('boss_damage')) {
-            return 1.3;
-        }
-        return 1;
-    }
-
-    const BUFF_MULTIPLIERS = Object.freeze({
-        spellMultiplier,
-        enchantmentMultiplier,
     });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // BUFF_MULTIPLIERS property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.BUFF_MULTIPLIERS = BUFF_MULTIPLIERS;
+    return multiplier;
+}
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = BUFF_MULTIPLIERS;
-})();
+/**
+ * Enchantment reward multiplier for a reward type. double_xp → 2× (xp), double_gold → 2× (gold),
+ * boss_damage → 1.3× (boss_damage), otherwise 1×. hasEnchantment(id) is injected so the caller owns
+ * the expiry side effect (checkExpiredEnchantments). PURE.
+ * @param {string} type
+ * @param {(id: string) => boolean} hasEnchantment
+ * @returns {number}
+ */
+function enchantmentMultiplier(type, hasEnchantment) {
+    if (type === 'xp' && hasEnchantment('double_xp')) {
+        return 2;
+    }
+    if (type === 'gold' && hasEnchantment('double_gold')) {
+        return 2;
+    }
+    if (type === 'boss_damage' && hasEnchantment('boss_damage')) {
+        return 1.3;
+    }
+    return 1;
+}
+
+const BUFF_MULTIPLIERS = Object.freeze({
+    spellMultiplier,
+    enchantmentMultiplier,
+});
+
+
+// Node / Jest
+
+export default BUFF_MULTIPLIERS;

@@ -31,39 +31,39 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.SPELL_RENDER.
  *   - Jest/Node: require('./spell-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @typedef {Object} SpellDef
-     * @property {string} id
-     * @property {string} rarity
-     * @property {string} icon
-     * @property {string} name
-     * @property {string} description
-     */
 
-    // The spellbook rarity→color word map (formerly duplicated inline in both
-    // renderActiveSpells and renderSpellCollection). Index signature so @ts-check
-    // is happy indexing it with an arbitrary spell.rarity string.
-    /** @type {Record<string, string>} */
-    const SPELL_RARITY_COLORS = {
-        common: 'gray',
-        uncommon: 'green',
-        rare: 'blue',
-        epic: 'purple',
-        legendary: 'yellow',
-    };
+/**
+ * @typedef {Object} SpellDef
+ * @property {string} id
+ * @property {string} rarity
+ * @property {string} icon
+ * @property {string} name
+ * @property {string} description
+ */
 
-    /**
-     * One card in the "Active Spells" row. `timeDisplay` is computed by the caller because it is
-     * time-sensitive (Date.now()); everything else is pure. Byte-faithful to the original inline
-     * template — note the active row's rarity fallback is 'purple' (not the collection's 'gray').
-     * @param {SpellDef} spell
-     * @param {{ timeDisplay: string, rarityNameplate: (rarity: string) => string }} deps
-     * @returns {string}
-     */
-    function renderActiveSpellCardHTML(spell, { timeDisplay, rarityNameplate }) {
-        const color = SPELL_RARITY_COLORS[spell.rarity] || 'purple';
-        return `
+// The spellbook rarity→color word map (formerly duplicated inline in both
+// renderActiveSpells and renderSpellCollection). Index signature so @ts-check
+// is happy indexing it with an arbitrary spell.rarity string.
+/** @type {Record<string, string>} */
+const SPELL_RARITY_COLORS = {
+    common: 'gray',
+    uncommon: 'green',
+    rare: 'blue',
+    epic: 'purple',
+    legendary: 'yellow',
+};
+
+/**
+ * One card in the "Active Spells" row. `timeDisplay` is computed by the caller because it is
+ * time-sensitive (Date.now()); everything else is pure. Byte-faithful to the original inline
+ * template — note the active row's rarity fallback is 'purple' (not the collection's 'gray').
+ * @param {SpellDef} spell
+ * @param {{ timeDisplay: string, rarityNameplate: (rarity: string) => string }} deps
+ * @returns {string}
+ */
+function renderActiveSpellCardHTML(spell, { timeDisplay, rarityNameplate }) {
+    const color = SPELL_RARITY_COLORS[spell.rarity] || 'purple';
+    return `
                     <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-800 to-${color}-900 p-5 rounded-xl shadow-2xl active-spell">
                         <div class="text-5xl mb-2 text-center rune-text">${spell.icon}</div>
                         <h4 class="text-xl font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
@@ -74,39 +74,39 @@
                         </div>
                     </div>
                 `;
-    }
+}
 
-    /**
-     * The "Free Spells" section header. Byte-faithful to the original inline template.
-     * @param {number} freeCount
-     * @returns {string}
-     */
-    function renderFreeSpellsHeaderHTML(freeCount) {
-        return `
+/**
+ * The "Free Spells" section header. Byte-faithful to the original inline template.
+ * @param {number} freeCount
+ * @returns {string}
+ */
+function renderFreeSpellsHeaderHTML(freeCount) {
+    return `
             <div class="w-full mb-2">
                 <h3 class="text-lg font-bold text-green-300 medieval-title flex items-center justify-center md:justify-start gap-2">
                     <span>✨</span> Free Spells <span class="text-sm font-normal text-green-400">(${freeCount} available)</span>
                 </h3>
             </div>
         `;
-    }
+}
 
-    /**
-     * One free-spell collection card. Derives its rarity color internally (fallback 'gray').
-     * Byte-faithful to the original inline template; the ownership/active/empty action block is
-     * unchanged. `overchargeButtonHTML` is injected (the tested Wizard-capstone class helper).
-     * @param {SpellDef} spell
-     * @param {{
-     *   charges: number,
-     *   isActive: boolean,
-     *   rarityNameplate: (rarity: string) => string,
-     *   overchargeButtonHTML: (spell: SpellDef, charges: number) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderFreeSpellCardHTML(spell, { charges, isActive, rarityNameplate, overchargeButtonHTML }) {
-        const color = SPELL_RARITY_COLORS[spell.rarity] || 'gray';
-        return `
+/**
+ * One free-spell collection card. Derives its rarity color internally (fallback 'gray').
+ * Byte-faithful to the original inline template; the ownership/active/empty action block is
+ * unchanged. `overchargeButtonHTML` is injected (the tested Wizard-capstone class helper).
+ * @param {SpellDef} spell
+ * @param {{
+ *   charges: number,
+ *   isActive: boolean,
+ *   rarityNameplate: (rarity: string) => string,
+ *   overchargeButtonHTML: (spell: SpellDef, charges: number) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderFreeSpellCardHTML(spell, { charges, isActive, rarityNameplate, overchargeButtonHTML }) {
+    const color = SPELL_RARITY_COLORS[spell.rarity] || 'gray';
+    return `
                 <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl">
                     <div class="text-5xl mb-2 text-center">${spell.icon}</div>
                     <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
@@ -132,17 +132,17 @@
                     `}
                 </div>
             `;
-    }
+}
 
-    /**
-     * The "Premium Spells" section header. The premium upsell banner is passed in pre-rendered
-     * (this.getPremiumBannerHTML(...)). Byte-faithful to the original inline template.
-     * @param {number} premiumCount
-     * @param {string} bannerHTML
-     * @returns {string}
-     */
-    function renderPremiumSpellsHeaderHTML(premiumCount, bannerHTML) {
-        return `
+/**
+ * The "Premium Spells" section header. The premium upsell banner is passed in pre-rendered
+ * (this.getPremiumBannerHTML(...)). Byte-faithful to the original inline template.
+ * @param {number} premiumCount
+ * @param {string} bannerHTML
+ * @returns {string}
+ */
+function renderPremiumSpellsHeaderHTML(premiumCount, bannerHTML) {
+    return `
             <div class="w-full mt-6 mb-2">
                 ${bannerHTML}
                 <h3 class="text-lg font-bold text-yellow-300 medieval-title flex items-center justify-center md:justify-start gap-2">
@@ -150,26 +150,26 @@
                 </h3>
             </div>
         `;
-    }
+}
 
-    /**
-     * One premium-spell collection card. Same rarity color derivation (fallback 'gray') as the
-     * free card, but the frame gains an `opacity-60` tint + a lock icon when premium-locked, and
-     * the action block leads with an "Unlock Premium" branch before the shared active/cast/empty
-     * states. Byte-faithful to the original inline template.
-     * @param {SpellDef} spell
-     * @param {{
-     *   charges: number,
-     *   isActive: boolean,
-     *   isPremiumLocked: boolean,
-     *   rarityNameplate: (rarity: string) => string,
-     *   overchargeButtonHTML: (spell: SpellDef, charges: number) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderPremiumSpellCardHTML(spell, { charges, isActive, isPremiumLocked, rarityNameplate, overchargeButtonHTML }) {
-        const color = SPELL_RARITY_COLORS[spell.rarity] || 'gray';
-        return `
+/**
+ * One premium-spell collection card. Same rarity color derivation (fallback 'gray') as the
+ * free card, but the frame gains an `opacity-60` tint + a lock icon when premium-locked, and
+ * the action block leads with an "Unlock Premium" branch before the shared active/cast/empty
+ * states. Byte-faithful to the original inline template.
+ * @param {SpellDef} spell
+ * @param {{
+ *   charges: number,
+ *   isActive: boolean,
+ *   isPremiumLocked: boolean,
+ *   rarityNameplate: (rarity: string) => string,
+ *   overchargeButtonHTML: (spell: SpellDef, charges: number) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderPremiumSpellCardHTML(spell, { charges, isActive, isPremiumLocked, rarityNameplate, overchargeButtonHTML }) {
+    const color = SPELL_RARITY_COLORS[spell.rarity] || 'gray';
+    return `
                 <div data-rarity="${spell.rarity}" class="quest-card rarity-frame bg-gradient-to-br from-${color}-900 to-${color}-950 p-5 rounded-xl shadow-xl ${isPremiumLocked ? 'opacity-60' : ''}">
                     <div class="text-5xl mb-2 text-center">${spell.icon}</div>
                     <h4 class="text-lg font-bold text-${color}-200 medieval-title mb-2 text-center">${spell.name}</h4>
@@ -203,24 +203,17 @@
                     `}
                 </div>
             `;
-    }
+}
 
-    const SPELL_RENDER = Object.freeze({
-        renderActiveSpellCardHTML,
-        renderFreeSpellsHeaderHTML,
-        renderFreeSpellCardHTML,
-        renderPremiumSpellsHeaderHTML,
-        renderPremiumSpellCardHTML,
-    });
+const SPELL_RENDER = Object.freeze({
+    renderActiveSpellCardHTML,
+    renderFreeSpellsHeaderHTML,
+    renderFreeSpellCardHTML,
+    renderPremiumSpellsHeaderHTML,
+    renderPremiumSpellCardHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic SPELL_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.SPELL_RENDER = SPELL_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = SPELL_RENDER;
-})();
+// Node / Jest
+
+export default SPELL_RENDER;

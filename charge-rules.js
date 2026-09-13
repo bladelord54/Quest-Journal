@@ -43,93 +43,86 @@
  *   - Jest/Node: require('./charge-rules.js') returns the frozen object via module.exports (and also sets
  *     window.CHARGE_RULES under jsdom).
  */
-(function () {
-    /** Soft cap on banked attack charges. */
-    const ATTACK_CHARGE_CAP = 25;
-    /** Gold awarded per charge lost to overflow. */
-    const CHARGE_OVERFLOW_GOLD = 5;
 
-    /** Grant sources that count as a "completion" and therefore roll Ranger Forage. */
-    const FORAGE_SOURCES = Object.freeze(['task', 'sidequest', 'habit', 'weekly', 'monthly']);
+/** Soft cap on banked attack charges. */
+const ATTACK_CHARGE_CAP = 25;
+/** Gold awarded per charge lost to overflow. */
+const CHARGE_OVERFLOW_GOLD = 5;
 
-    /**
-     * True when a grant source is completion-flavoured and should roll the Forage capstone. PURE.
-     * @param {string} source
-     * @returns {boolean}
-     */
-    function isForageSource(source) {
-        return FORAGE_SOURCES.includes(source);
-    }
+/** Grant sources that count as a "completion" and therefore roll Ranger Forage. */
+const FORAGE_SOURCES = Object.freeze(['task', 'sidequest', 'habit', 'weekly', 'monthly']);
 
-    /**
-     * The charge amount after the Warrior bonus and the Battle Fury doubling. The bonus is added BEFORE the
-     * doubling, so Battle Fury doubles it too. PURE.
-     * @param {number} amount
-     * @param {boolean} [bonusChargeHit] outcome of the impure charge_chance roll
-     * @param {boolean} [battleFury] the bonus_charges enchantment is active
-     * @returns {number}
-     */
-    function grantedAmount(amount, bonusChargeHit, battleFury) {
-        const withBonus = amount + (bonusChargeHit ? 1 : 0);
-        return battleFury ? withBonus * 2 : withBonus;
-    }
+/**
+ * True when a grant source is completion-flavoured and should roll the Forage capstone. PURE.
+ * @param {string} source
+ * @returns {boolean}
+ */
+function isForageSource(source) {
+    return FORAGE_SOURCES.includes(source);
+}
 
-    /**
-     * Split a grant into the part that fits under the soft cap and the part that overflows. With
-     * keepOverflow (the Warrior Overflow capstone) the cap is ignored entirely. PURE.
-     * @param {number} amount
-     * @param {number} currentCharges
-     * @param {number|null|undefined} [cap] defaults to ATTACK_CHARGE_CAP (25)
-     * @param {boolean} [keepOverflow]
-     * @returns {{ granted: number, overflow: number }}
-     */
-    function chargeSplit(amount, currentCharges, cap, keepOverflow) {
-        if (keepOverflow) return { granted: amount, overflow: 0 };
-        const limit = cap ?? ATTACK_CHARGE_CAP;
-        const room = Math.max(0, limit - currentCharges);
-        const granted = Math.min(amount, room);
-        return { granted, overflow: amount - granted };
-    }
+/**
+ * The charge amount after the Warrior bonus and the Battle Fury doubling. The bonus is added BEFORE the
+ * doubling, so Battle Fury doubles it too. PURE.
+ * @param {number} amount
+ * @param {boolean} [bonusChargeHit] outcome of the impure charge_chance roll
+ * @param {boolean} [battleFury] the bonus_charges enchantment is active
+ * @returns {number}
+ */
+function grantedAmount(amount, bonusChargeHit, battleFury) {
+    const withBonus = amount + (bonusChargeHit ? 1 : 0);
+    return battleFury ? withBonus * 2 : withBonus;
+}
 
-    /**
-     * Gold owed for charges lost to overflow. PURE.
-     * @param {number} overflow
-     * @param {number|null|undefined} [goldPerCharge] defaults to CHARGE_OVERFLOW_GOLD (5)
-     * @returns {number}
-     */
-    function overflowGold(overflow, goldPerCharge) {
-        return overflow * (goldPerCharge ?? CHARGE_OVERFLOW_GOLD);
-    }
+/**
+ * Split a grant into the part that fits under the soft cap and the part that overflows. With
+ * keepOverflow (the Warrior Overflow capstone) the cap is ignored entirely. PURE.
+ * @param {number} amount
+ * @param {number} currentCharges
+ * @param {number|null|undefined} [cap] defaults to ATTACK_CHARGE_CAP (25)
+ * @param {boolean} [keepOverflow]
+ * @returns {{ granted: number, overflow: number }}
+ */
+function chargeSplit(amount, currentCharges, cap, keepOverflow) {
+    if (keepOverflow) return { granted: amount, overflow: 0 };
+    const limit = cap ?? ATTACK_CHARGE_CAP;
+    const room = Math.max(0, limit - currentCharges);
+    const granted = Math.min(amount, room);
+    return { granted, overflow: amount - granted };
+}
 
-    /**
-     * True when a boss can be attacked: it exists, is not already defeated, and a charge is available. PURE.
-     * @param {{ defeated?: boolean }|null|undefined} boss
-     * @param {number} attackCharges
-     * @returns {boolean}
-     */
-    function canAttack(boss, attackCharges) {
-        return !!boss && !boss.defeated && attackCharges > 0;
-    }
+/**
+ * Gold owed for charges lost to overflow. PURE.
+ * @param {number} overflow
+ * @param {number|null|undefined} [goldPerCharge] defaults to CHARGE_OVERFLOW_GOLD (5)
+ * @returns {number}
+ */
+function overflowGold(overflow, goldPerCharge) {
+    return overflow * (goldPerCharge ?? CHARGE_OVERFLOW_GOLD);
+}
 
-    const CHARGE_RULES = Object.freeze({
-        ATTACK_CHARGE_CAP,
-        CHARGE_OVERFLOW_GOLD,
-        FORAGE_SOURCES,
-        isForageSource,
-        grantedAmount,
-        chargeSplit,
-        overflowGold,
-        canAttack,
-    });
+/**
+ * True when a boss can be attacked: it exists, is not already defeated, and a charge is available. PURE.
+ * @param {{ defeated?: boolean }|null|undefined} boss
+ * @param {number} attackCharges
+ * @returns {boolean}
+ */
+function canAttack(boss, attackCharges) {
+    return !!boss && !boss.defeated && attackCharges > 0;
+}
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // CHARGE_RULES property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.CHARGE_RULES = CHARGE_RULES;
+const CHARGE_RULES = Object.freeze({
+    ATTACK_CHARGE_CAP,
+    CHARGE_OVERFLOW_GOLD,
+    FORAGE_SOURCES,
+    isForageSource,
+    grantedAmount,
+    chargeSplit,
+    overflowGold,
+    canAttack,
+});
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = CHARGE_RULES;
-})();
+
+// Node / Jest
+
+export default CHARGE_RULES;

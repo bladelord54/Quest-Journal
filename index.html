@@ -2188,166 +2188,13 @@
     <script src="pwa-handler.js"></script>
     <script src="audio-manager.js"></script>
     <script src="effects-manager.js"></script>
-    <!-- Centralized economy/balance table (Engineering Roadmap #6). MUST load
-         BEFORE goal-manager.js, which captures window.BALANCE at startup. -->
-    <script src="balance.js"></script>
-    <!-- Player level-title chain (Engineering Roadmap #1 incremental split). MUST
-         load BEFORE goal-manager.js, which captures window.LEVEL_TITLES at startup. -->
-    <script src="level-titles.js"></script>
-    <!-- Companion catalog (Engineering Roadmap #1 incremental split). MUST load
-         BEFORE goal-manager.js, which captures window.COMPANION_DEFINITIONS. -->
-    <script src="companion-definitions.js"></script>
-    <!-- Spellbook catalog (Engineering Roadmap #1 incremental split). MUST load
-         BEFORE goal-manager.js, which captures window.SPELL_DEFINITIONS. -->
-    <script src="spell-definitions.js"></script>
-    <!-- Color-palette theme catalog (Engineering Roadmap #1 incremental split).
-         MUST load BEFORE goal-manager.js, which captures window.THEME_DEFINITIONS. -->
-    <script src="theme-definitions.js"></script>
-    <!-- Achievement/badge catalog (Engineering Roadmap #1 incremental split). MUST
-         load BEFORE goal-manager.js, which captures window.ACHIEVEMENT_DEFINITIONS. -->
-    <script src="achievement-definitions.js"></script>
-    <!-- Boss theme catalog (Engineering Roadmap #1 incremental split). MUST load
-         BEFORE goal-manager.js, which captures window.BOSS_THEMES. -->
-    <script src="boss-themes.js"></script>
-    <!-- Raw class/subclass skill-tree catalog (Engineering Roadmap #1 incremental
-         split). MUST load BEFORE goal-manager.js, which captures window.CLASS_DEFINITIONS. -->
-    <script src="class-definitions.js"></script>
-    <!-- Enchantment shop catalog (Engineering Roadmap #1 incremental split). MUST
-         load BEFORE goal-manager.js, which captures window.ENCHANTMENT_DEFINITIONS. -->
-    <script src="enchantment-definitions.js"></script>
-    <!-- Onboarding starter-task catalog (Engineering Roadmap #1 incremental split).
-         MUST load BEFORE goal-manager.js, which captures window.STARTER_TASK_PRESETS. -->
-    <script src="starter-task-presets.js"></script>
-    <!-- Multi-chapter quest-chain catalog (Engineering Roadmap #1 incremental split).
-         MUST load BEFORE goal-manager.js, which captures window.QUEST_CHAIN_TEMPLATES. -->
-    <script src="quest-chain-templates.js"></script>
-    <!-- Pure loot roll ENGINE (Engineering Roadmap #1 incremental split — first LOGIC
-         slice). MUST load BEFORE goal-manager.js, which captures window.LOOT_ENGINE. -->
-    <script src="loot-engine.js"></script>
-    <!-- Master loot pool catalog (Engineering Roadmap #1 incremental split). MUST
-         load BEFORE goal-manager.js, which captures window.MASTER_LOOT_POOL. -->
-    <script src="loot-pool.js"></script>
-    <!-- Pure boss spawn ENGINE (Engineering Roadmap #1 incremental split — 2nd LOGIC
-         slice). MUST load BEFORE goal-manager.js, which captures window.BOSS_GENERATOR. -->
-    <script src="boss-generator.js"></script>
-    <!-- Pure save-data migrations (Engineering Roadmap #1 incremental split). MUST load
-         BEFORE goal-manager.js, which captures window.PERSISTENCE_MIGRATIONS for loadData. -->
-    <script src="persistence-migrations.js"></script>
-    <!-- Pure daily-login-streak + streak-repair math (Engineering Roadmap #1 — 56th slice, first
-         non-render LOGIC module). MUST load BEFORE goal-manager.js (captures window.STREAK_LOGIC). -->
-    <script src="streak-logic.js"></script>
-    <!-- Pure XP / leveling-curve math (Engineering Roadmap #1 — 57th slice, second non-render
-         LOGIC module). MUST load BEFORE goal-manager.js (captures window.LEVELING_LOGIC). -->
-    <script src="leveling-logic.js"></script>
-    <!-- Pure effort-based-XP priority scaling (Engineering Roadmap #1 — 58th slice). MUST load
-         BEFORE goal-manager.js (captures window.EFFORT_XP_LOGIC). -->
-    <script src="effort-xp-logic.js"></script>
-    <!-- Pure active-buff → reward-multiplier resolution (Engineering Roadmap #1 — 59th slice).
-         MUST load BEFORE goal-manager.js (captures window.BUFF_MULTIPLIERS). -->
-    <script src="buff-multipliers.js"></script>
-    <!-- Pure companion slot + bonus resolution (Engineering Roadmap #1 — 60th slice). MUST load
-         BEFORE goal-manager.js (captures window.COMPANION_LOGIC). -->
-    <script src="companion-logic.js"></script>
-    <!-- Pure class/subclass perk-value resolution (Engineering Roadmap #1 — 61st slice). MUST
-         load BEFORE goal-manager.js (captures window.CLASS_PERKS). -->
-    <script src="class-perks.js"></script>
-    <!-- Pure class/subclass tree progression-state predicates (Engineering Roadmap #1 — 62nd
-         slice). MUST load BEFORE goal-manager.js (captures window.CLASS_PROGRESSION). -->
-    <script src="class-progression.js"></script>
-    <!-- Pure class skill-point economy math (Engineering Roadmap #1 — 63rd slice). MUST load
-         BEFORE goal-manager.js (captures window.SKILL_POINTS). -->
-    <script src="skill-points.js"></script>
-    <!-- Pure Focus Crystal supply math (Engineering Roadmap #1 — 64th slice). MUST load BEFORE
-         goal-manager.js (captures window.CRYSTAL_ECONOMY). -->
-    <script src="crystal-economy.js"></script>
-    <!-- Pure attack-charge earn + spend rules (Engineering Roadmap #1 — 65th slice). MUST load
-         BEFORE goal-manager.js (captures window.CHARGE_RULES). -->
-    <script src="charge-rules.js"></script>
-    <!-- Pure boss-damage math (Engineering Roadmap #1 — 66th slice). MUST load BEFORE
-         goal-manager.js (captures window.COMBAT_DAMAGE). -->
-    <script src="combat-damage.js"></script>
-    <!-- Pure XP/gold reward-stack math (Engineering Roadmap #1 — 67th slice). MUST load
-         BEFORE goal-manager.js (captures window.REWARD_ECONOMY). -->
-    <script src="reward-economy.js"></script>
-    <!-- Pure focus-timer + Pomodoro-chain math (Engineering Roadmap #1 — 68th slice). MUST load
-         BEFORE goal-manager.js (captures window.FOCUS_SESSION_LOGIC). -->
-    <script src="focus-session-logic.js"></script>
-    <!-- Pure active-spell state math (Engineering Roadmap #1 — 69th slice). MUST load
-         BEFORE goal-manager.js (captures window.SPELL_LIFECYCLE). -->
-    <script src="spell-lifecycle.js"></script>
-    <!-- Pure previous-period recap math (Engineering Roadmap #1 — 70th slice). MUST load
-         BEFORE goal-manager.js (captures window.PERIOD_SUMMARY_LOGIC). -->
-    <script src="period-summary-logic.js"></script>
-    <!-- Pure reminder scheduling + notification-copy math (Engineering Roadmap #1 — 72nd slice).
-         MUST load BEFORE goal-manager.js (captures window.REMINDER_SCHEDULE_LOGIC). -->
-    <script src="reminder-schedule-logic.js"></script>
-    <!-- Pure boss-card presentation helpers (Engineering Roadmap #1 — first render slice).
-         MUST load BEFORE goal-manager.js, which captures window.BOSS_RENDER. -->
-    <script src="boss-render.js"></script>
-    <!-- Pure task/goal presentation builders (Engineering Roadmap #1 — 2nd render module).
-         MUST load BEFORE goal-manager.js, which captures window.TASK_RENDER. -->
-    <script src="task-render.js"></script>
-    <!-- Pure companion-den presentation builders (Engineering Roadmap #1 — 3rd render module).
-         MUST load BEFORE goal-manager.js, which captures window.COMPANION_RENDER. -->
-    <script src="companion-render.js"></script>
-    <!-- Pure spellbook presentation builders (Engineering Roadmap #1 — 4th render module).
-         MUST load BEFORE goal-manager.js, which captures window.SPELL_RENDER. -->
-    <script src="spell-render.js"></script>
-    <!-- Pure Class / Skill-Tree presentation builders (Engineering Roadmap #1 — 5th render module).
-         MUST load BEFORE goal-manager.js, which captures window.CLASS_RENDER. -->
-    <script src="class-render.js"></script>
-    <!-- Pure Analytics presentation builders (Engineering Roadmap #1 — 6th render module).
-         MUST load BEFORE goal-manager.js, which captures window.ANALYTICS_RENDER. -->
-    <script src="analytics-render.js"></script>
-    <!-- Pure Quest Chains presentation builders (Engineering Roadmap #1 — 7th render module).
-         MUST load BEFORE goal-manager.js, which captures window.QUEST_CHAIN_RENDER. -->
-    <script src="quest-chain-render.js"></script>
-    <!-- Pure Enchantments presentation builders (Engineering Roadmap #1 — 8th render module).
-         MUST load BEFORE goal-manager.js, which captures window.ENCHANTMENT_RENDER. -->
-    <script src="enchantment-render.js"></script>
-    <!-- Pure Dashboard-card presentation builders (Engineering Roadmap #1 — 9th render module).
-         MUST load BEFORE goal-manager.js, which captures window.DASHBOARD_RENDER. -->
-    <script src="dashboard-render.js"></script>
-    <!-- Pure Player-HUD presentation builders (Engineering Roadmap #1 — 10th render module).
-         MUST load BEFORE goal-manager.js, which captures window.PLAYER_HUD_RENDER. -->
-    <script src="player-hud-render.js"></script>
-    <!-- Pure Title Hall presentation builders (Engineering Roadmap #1 — 11th render module).
-         MUST load BEFORE goal-manager.js, which captures window.TITLE_RENDER. -->
-    <script src="title-render.js"></script>
-    <!-- Pure Treasury / rewards presentation builders (Engineering Roadmap #1 — 12th render module).
-         MUST load BEFORE goal-manager.js, which captures window.REWARD_RENDER. -->
-    <script src="reward-render.js"></script>
-    <!-- Pure Themes-panel presentation builders (Engineering Roadmap #1 — 13th render module).
-         MUST load BEFORE goal-manager.js, which captures window.THEME_RENDER. -->
-    <script src="theme-render.js"></script>
-    <!-- Pure Badges/Achievements presentation builder (Engineering Roadmap #1 — 14th render module).
-         MUST load BEFORE goal-manager.js, which captures window.BADGE_RENDER. -->
-    <script src="badge-render.js"></script>
-    <!-- Pure Rituals/Habits presentation builder (Engineering Roadmap #1 — 15th render module).
-         MUST load BEFORE goal-manager.js, which captures window.HABIT_RENDER. -->
-    <script src="habit-render.js"></script>
-    <!-- Pure Archive-panel presentation builder (Engineering Roadmap #1 — 16th render module).
-         MUST load BEFORE goal-manager.js, which captures window.ARCHIVE_RENDER. -->
-    <script src="archive-render.js"></script>
-    <!-- Pure Daily-board presentation builders (Engineering Roadmap #1 — 17th render module).
-         MUST load BEFORE goal-manager.js, which captures window.DAILY_BOARD_RENDER. -->
-    <script src="daily-board-render.js"></script>
-    <!-- Pure Recurring-tasks presentation builder (Engineering Roadmap #1 — 18th render module).
-         MUST load BEFORE goal-manager.js, which captures window.RECURRING_RENDER. -->
-    <script src="recurring-render.js"></script>
-    <!-- Pure Calendar-tab presentation builders (Engineering Roadmap #1 — 19th render module).
-         MUST load BEFORE goal-manager.js, which captures window.CALENDAR_RENDER. -->
-    <script src="calendar-render.js"></script>
-    <!-- Pure Focus-timer presentation builders (Engineering Roadmap #1 — 20th render module).
-         MUST load BEFORE goal-manager.js, which captures window.FOCUS_TIMER_RENDER. -->
-    <script src="focus-timer-render.js"></script>
-    <!-- Pure Premium-surface presentation builders (Engineering Roadmap #1 — 21st render module).
-         MUST load BEFORE goal-manager.js, which captures window.PREMIUM_RENDER. -->
-    <script src="premium-render.js"></script>
-    <!-- Pure Reminder-settings presentation builder (Engineering Roadmap #1 — 22nd render module).
-         MUST load BEFORE goal-manager.js, which captures window.REMINDER_RENDER. -->
-    <script src="reminder-render.js"></script>
-    <script src="goal-manager.js"></script>
+    <!-- ES-module entry (Engineering Roadmap #3, criterion 3). main.js imports goal-manager.js, which
+         imports every catalog / logic / render module itself — the 74 hand-ordered <script> tags that
+         used to live here are gone. Module scripts are deferred: main.js runs after the document is
+         parsed and before DOMContentLoaded, creates window.goalManager synchronously, and attaches the
+         five inline-handler wrappers (addDailyTask & co). The classic scripts above and below keep
+         their own runtime globals (audioManager, effectsManager, CapBridge, trackEvent). -->
+    <script type="module" src="main.js"></script>
     <script src="mobile-touch.js"></script>
     <!-- v2.7 Phase 4: pointer-tracked 3D parallax tilt for epic+ rarity
          cards. Self-contained module, uses event delegation so it works
@@ -2361,42 +2208,8 @@
          call needed from the GoalManager constructor. -->
     <script src="stat-tooltip.js"></script>
     
-    <!-- Initialize GoalManager -->
+    <!-- Page-level helpers (mobile nav toggle, etc.). GoalManager itself is created by main.js. -->
     <script>
-        // goalManager is declared in goal-manager.js
-        console.log('Starting GoalManager initialization...');
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, creating GoalManager...');
-            try {
-                goalManager = new GoalManager();
-                window.goalManager = goalManager; // Also set on window object
-                console.log('✅ GoalManager created successfully!', goalManager);
-                
-                // Dismiss splash screen
-                const splash = document.getElementById('splash-screen');
-                if (splash) {
-                    splash.style.opacity = '0';
-                    splash.style.pointerEvents = 'none';
-                    setTimeout(() => splash.remove(), 500);
-                }
-            } catch (err) {
-                console.error('❌ Error creating GoalManager:', err);
-                document.body.innerHTML = `
-                    <div class="min-h-screen bg-stone-900 flex items-center justify-center p-8">
-                        <div class="bg-red-900/50 border-2 border-red-500 rounded-xl p-8 max-w-md text-center">
-                            <div class="text-6xl mb-4">⚠️</div>
-                            <h2 class="text-2xl font-bold text-red-300 mb-4">Life Quest Journal Error</h2>
-                            <p class="text-red-200 mb-4">Sorry, the app couldn't load properly.</p>
-                            <p class="text-red-300/70 text-sm mb-6">${err.message}</p>
-                            <button onclick="location.reload()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold">
-                                <i class="ri-refresh-line mr-1"></i>Reload App
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-        });
-        
         // Mobile Nav Toggle Function
         function toggleMobileNav() {
             const sidebar = document.getElementById('main-sidebar');

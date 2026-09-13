@@ -29,41 +29,41 @@
  *     attaches to window.COMPANION_RENDER. goal-manager.js captures it and delegates.
  *   - Jest/Node: `require('./companion-render.js')` returns the object via module.exports.
  */
-(function () {
-    /**
-     * One card in the owned-companion collection grid. Byte-faithful to the original inline
-     * `sortedCompanions.map(comp => …)` callback in renderCompanionDen. Derives the rarity
-     * colours, active/second-slot state, catalog fallbacks, and the footer (single click-to-equip
-     * action, or the Twin-Bond two-slot buttons) INSIDE, then returns the card markup.
-     * @param {{ type:any, rarity?:string, icon?:string, name?:string, description?:string }} comp
-     * @param {{
-     *   companionDefs: Record<string, { icon?:string, name?:string, description?:string, rarity?:string }>,
-     *   rarityColors: Record<string, { bg:string, border?:string, text:string }>,
-     *   defaultColors: { bg:string, border?:string, text:string },
-     *   activeCompanionId: any,
-     *   activeCompanionId2: any,
-     *   twinBond: boolean,
-     *   rarityNameplate: (rarity:any) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderCompanionCollectionCardHTML(comp, { companionDefs, rarityColors, defaultColors, activeCompanionId, activeCompanionId2, twinBond, rarityNameplate }) {
-        const cColors = rarityColors[/** @type {string} */ (comp.rarity)] || defaultColors;
-        const isActive = comp.type === activeCompanionId;
-        const isSecond = twinBond && comp.type === activeCompanionId2;
-        const compIcon = comp.icon || companionDefs[comp.type]?.icon || '🐾';
-        const compName = comp.name || companionDefs[comp.type]?.name || 'Companion';
-        const compDesc = comp.description || companionDefs[comp.type]?.description || '';
-        const ring = isActive ? 'ring-2 ring-green-400' : (isSecond ? 'ring-2 ring-sky-400' : '');
-        const slot1Cls = isActive ? 'bg-green-600 text-white' : 'bg-stone-700 text-stone-200 hover:bg-stone-600';
-        const slot2Cls = isSecond ? 'bg-sky-600 text-white' : (isActive ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-stone-700 text-stone-200 hover:bg-stone-600');
-        const cardOnclick = twinBond ? '' : `data-action="companion.setActive" data-companion-type="${comp.type}"`;
-        const cardCursor = twinBond ? '' : 'cursor-pointer hover:scale-105';
-        const footer = twinBond
-            ? `<div class="flex gap-1 mt-2"><button data-action="companion.setActive" data-companion-type="${comp.type}" class="flex-1 text-xs px-1 py-1 rounded font-bold ${slot1Cls}">${isActive ? '✓ Slot 1' : 'Slot 1'}</button><button data-action="companion.setSecond" data-companion-type="${isSecond ? '' : comp.type}" ${isActive ? 'disabled' : ''} class="flex-1 text-xs px-1 py-1 rounded font-bold ${slot2Cls}">${isSecond ? '✓ Slot 2' : 'Slot 2'}</button></div>`
-            : (isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>');
 
-        return `
+/**
+ * One card in the owned-companion collection grid. Byte-faithful to the original inline
+ * `sortedCompanions.map(comp => …)` callback in renderCompanionDen. Derives the rarity
+ * colours, active/second-slot state, catalog fallbacks, and the footer (single click-to-equip
+ * action, or the Twin-Bond two-slot buttons) INSIDE, then returns the card markup.
+ * @param {{ type:any, rarity?:string, icon?:string, name?:string, description?:string }} comp
+ * @param {{
+ *   companionDefs: Record<string, { icon?:string, name?:string, description?:string, rarity?:string }>,
+ *   rarityColors: Record<string, { bg:string, border?:string, text:string }>,
+ *   defaultColors: { bg:string, border?:string, text:string },
+ *   activeCompanionId: any,
+ *   activeCompanionId2: any,
+ *   twinBond: boolean,
+ *   rarityNameplate: (rarity:any) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderCompanionCollectionCardHTML(comp, { companionDefs, rarityColors, defaultColors, activeCompanionId, activeCompanionId2, twinBond, rarityNameplate }) {
+    const cColors = rarityColors[/** @type {string} */ (comp.rarity)] || defaultColors;
+    const isActive = comp.type === activeCompanionId;
+    const isSecond = twinBond && comp.type === activeCompanionId2;
+    const compIcon = comp.icon || companionDefs[comp.type]?.icon || '🐾';
+    const compName = comp.name || companionDefs[comp.type]?.name || 'Companion';
+    const compDesc = comp.description || companionDefs[comp.type]?.description || '';
+    const ring = isActive ? 'ring-2 ring-green-400' : (isSecond ? 'ring-2 ring-sky-400' : '');
+    const slot1Cls = isActive ? 'bg-green-600 text-white' : 'bg-stone-700 text-stone-200 hover:bg-stone-600';
+    const slot2Cls = isSecond ? 'bg-sky-600 text-white' : (isActive ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-stone-700 text-stone-200 hover:bg-stone-600');
+    const cardOnclick = twinBond ? '' : `data-action="companion.setActive" data-companion-type="${comp.type}"`;
+    const cardCursor = twinBond ? '' : 'cursor-pointer hover:scale-105';
+    const footer = twinBond
+        ? `<div class="flex gap-1 mt-2"><button data-action="companion.setActive" data-companion-type="${comp.type}" class="flex-1 text-xs px-1 py-1 rounded font-bold ${slot1Cls}">${isActive ? '✓ Slot 1' : 'Slot 1'}</button><button data-action="companion.setSecond" data-companion-type="${isSecond ? '' : comp.type}" ${isActive ? 'disabled' : ''} class="flex-1 text-xs px-1 py-1 rounded font-bold ${slot2Cls}">${isSecond ? '✓ Slot 2' : 'Slot 2'}</button></div>`
+        : (isActive ? '<div class="text-xs text-green-400 mt-2 font-bold">✓ ACTIVE</div>' : '<div class="text-xs text-gray-400 mt-2">Click to equip</div>');
+
+    return `
                                 <div data-rarity="${comp.rarity || 'rare'}" class="quest-card rarity-frame bg-gradient-to-br from-${cColors.bg}-900 to-${cColors.bg}-950 p-5 rounded-lg ${ring} text-center ${cardCursor} transition-transform"
                                      ${cardOnclick}>
                                     <div class="text-5xl mb-2">${compIcon}</div>
@@ -73,15 +73,15 @@
                                     ${footer}
                                 </div>
                             `;
-    }
+}
 
-    /**
-     * The active-companion panel's EMPTY state: the egg card shown when no companion is owned
-     * or equipped. Byte-faithful to the original inline template in renderCompanionDen.
-     * @returns {string}
-     */
-    function renderNoActiveCompanionHTML() {
-        return `
+/**
+ * The active-companion panel's EMPTY state: the egg card shown when no companion is owned
+ * or equipped. Byte-faithful to the original inline template in renderCompanionDen.
+ * @returns {string}
+ */
+function renderNoActiveCompanionHTML() {
+    return `
                 <div class="quest-card bg-gradient-to-br from-green-900 to-green-950 p-8 rounded-xl shadow-2xl border-4 border-green-600 text-center">
                     <div class="text-8xl mb-4">🥚</div>
                     <h4 class="text-2xl font-bold text-amber-300 medieval-title mb-3">No Companions Yet</h4>
@@ -92,26 +92,26 @@
                     </button>
                 </div>
             `;
-    }
+}
 
-    /**
-     * The active-companion panel's POPULATED state: the equipped companion's card (icon, rarity
-     * nameplate, ACTIVE badge, name, description, level). Byte-faithful to the original inline
-     * template; the rarity colours, description/icon catalog fallbacks are derived INSIDE.
-     * @param {{ type:any, rarity?:string, name?:any, description?:string, icon?:string, level?:number }} activeCompanion
-     * @param {{
-     *   rarityColors: Record<string, { bg:string, border?:string, text:string }>,
-     *   defaultColors: { bg:string, border?:string, text:string },
-     *   companionDefs: Record<string, { icon?:string, description?:string }>,
-     *   rarityNameplate: (rarity:any) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderActiveCompanionHTML(activeCompanion, { rarityColors, defaultColors, companionDefs, rarityNameplate }) {
-        const colors = rarityColors[/** @type {string} */ (activeCompanion.rarity)] || defaultColors;
-        const description = activeCompanion.description || companionDefs[activeCompanion.type]?.description || 'Loyal companion';
-        const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
-        return `
+/**
+ * The active-companion panel's POPULATED state: the equipped companion's card (icon, rarity
+ * nameplate, ACTIVE badge, name, description, level). Byte-faithful to the original inline
+ * template; the rarity colours, description/icon catalog fallbacks are derived INSIDE.
+ * @param {{ type:any, rarity?:string, name?:any, description?:string, icon?:string, level?:number }} activeCompanion
+ * @param {{
+ *   rarityColors: Record<string, { bg:string, border?:string, text:string }>,
+ *   defaultColors: { bg:string, border?:string, text:string },
+ *   companionDefs: Record<string, { icon?:string, description?:string }>,
+ *   rarityNameplate: (rarity:any) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderActiveCompanionHTML(activeCompanion, { rarityColors, defaultColors, companionDefs, rarityNameplate }) {
+    const colors = rarityColors[/** @type {string} */ (activeCompanion.rarity)] || defaultColors;
+    const description = activeCompanion.description || companionDefs[activeCompanion.type]?.description || 'Loyal companion';
+    const icon = activeCompanion.icon || companionDefs[activeCompanion.type]?.icon || '🐾';
+    return `
                 <div data-rarity="${activeCompanion.rarity || 'rare'}" class="quest-card rarity-frame bg-gradient-to-br from-${colors.bg}-900 to-${colors.bg}-950 p-6 rounded-xl shadow-2xl">
                     <div class="flex items-center gap-6">
                         <div class="text-8xl">${icon}</div>
@@ -127,36 +127,36 @@
                     </div>
                 </div>
             `;
-    }
+}
 
-    /**
-     * The undiscovered-grid's ALL-DISCOVERED state: the trophy card shown when every showable
-     * companion is owned. Byte-faithful to the original inline template.
-     * @returns {string}
-     */
-    function renderAllCompanionsDiscoveredHTML() {
-        return `
+/**
+ * The undiscovered-grid's ALL-DISCOVERED state: the trophy card shown when every showable
+ * companion is owned. Byte-faithful to the original inline template.
+ * @returns {string}
+ */
+function renderAllCompanionsDiscoveredHTML() {
+    return `
                     <div class="text-center py-6">
                         <div class="text-4xl mb-2">🏆</div>
                         <p class="text-amber-300 fancy-font font-bold text-lg">All companions discovered!</p>
                         <p class="text-amber-200 text-sm">You've collected every companion. Legendary!</p>
                     </div>
                 `;
-    }
+}
 
-    /**
-     * The undiscovered-grid's POPULATED state: the ??? mystery cards for companions not yet owned
-     * (the wrapper pre-filters out owned + Ranger-exclusive types). Byte-faithful to the original
-     * inline `lockedCompanions.map(...)` template; rarity colours derived per entry INSIDE.
-     * @param {Array<[string, { rarity?:string }]>} lockedCompanions
-     * @param {{
-     *   rarityColors: Record<string, { bg:string, text:string }>,
-     *   defaultColors: { bg:string, text:string },
-     * }} deps
-     * @returns {string}
-     */
-    function renderUndiscoveredCompanionsGridHTML(lockedCompanions, { rarityColors, defaultColors }) {
-        return `
+/**
+ * The undiscovered-grid's POPULATED state: the ??? mystery cards for companions not yet owned
+ * (the wrapper pre-filters out owned + Ranger-exclusive types). Byte-faithful to the original
+ * inline `lockedCompanions.map(...)` template; rarity colours derived per entry INSIDE.
+ * @param {Array<[string, { rarity?:string }]>} lockedCompanions
+ * @param {{
+ *   rarityColors: Record<string, { bg:string, text:string }>,
+ *   defaultColors: { bg:string, text:string },
+ * }} deps
+ * @returns {string}
+ */
+function renderUndiscoveredCompanionsGridHTML(lockedCompanions, { rarityColors, defaultColors }) {
+    return `
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         ${lockedCompanions.map(([type, def]) => {
                             const cColors = rarityColors[/** @type {string} */ (def.rarity)] || defaultColors;
@@ -171,26 +171,17 @@
                         }).join('')}
                     </div>
                 `;
-    }
+}
 
-    const COMPANION_RENDER = Object.freeze({
-        renderCompanionCollectionCardHTML,
-        renderNoActiveCompanionHTML,
-        renderActiveCompanionHTML,
-        renderAllCompanionsDiscoveredHTML,
-        renderUndiscoveredCompanionsGridHTML,
-    });
+const COMPANION_RENDER = Object.freeze({
+    renderCompanionCollectionCardHTML,
+    renderNoActiveCompanionHTML,
+    renderActiveCompanionHTML,
+    renderAllCompanionsDiscoveredHTML,
+    renderUndiscoveredCompanionsGridHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic COMPANION_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.COMPANION_RENDER = COMPANION_RENDER;
 
-    // Jest / Node
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = COMPANION_RENDER;
-    }
-})();
+// Jest / Node
+
+export default COMPANION_RENDER;

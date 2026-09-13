@@ -26,29 +26,29 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.DAILY_BOARD_RENDER.
  *   - Jest/Node: require('./daily-board-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   quests: Array<{ id: string, claimed?: boolean, completed?: boolean }>,
-     *   tracking: any,
-     *   dailyQuestPool: Array<{ id: string, name: string, desc: string, icon: string, xp: number, check: (t: any) => boolean }>,
-     * }} deps
-     * @returns {string}
-     */
-    function renderDailyQuestBoardHTML({ quests, tracking, dailyQuestPool }) {
-        const allDone = quests.every(q => q.claimed);
+
+/**
+ * @param {{
+ *   quests: Array<{ id: string, claimed?: boolean, completed?: boolean }>,
+ *   tracking: any,
+ *   dailyQuestPool: ReadonlyArray<{ id: string, name: string, desc: string, icon: string, xp: number, check: (t: any) => boolean }>,
+ * }} deps
+ * @returns {string}
+ */
+function renderDailyQuestBoardHTML({ quests, tracking, dailyQuestPool }) {
+    const allDone = quests.every(q => q.claimed);
+    
+    let html = quests.map(quest => {
+        const def = dailyQuestPool.find(q => q.id === quest.id);
+        if (!def) return '';
+        const progress = def.check(tracking);
+        const statusClass = quest.claimed ? 'opacity-50' : quest.completed ? 'border-green-500/70 bg-green-900/20' : '';
+        // statusIcon kept for any external reference; daily quest row
+        // below uses Remix Icon SVG for the claimed state to render
+        // identically across Android brands.
+        const statusIcon = quest.claimed ? '✅' : quest.completed ? '🎉' : '○';
         
-        let html = quests.map(quest => {
-            const def = dailyQuestPool.find(q => q.id === quest.id);
-            if (!def) return '';
-            const progress = def.check(tracking);
-            const statusClass = quest.claimed ? 'opacity-50' : quest.completed ? 'border-green-500/70 bg-green-900/20' : '';
-            // statusIcon kept for any external reference; daily quest row
-            // below uses Remix Icon SVG for the claimed state to render
-            // identically across Android brands.
-            const statusIcon = quest.claimed ? '✅' : quest.completed ? '🎉' : '○';
-            
-            return `
+        return `
                 <div class="flex items-center gap-3 p-3 rounded-lg border-2 border-amber-700/40 ${statusClass} transition-all" data-daily-quest-id="${quest.id}">
                     <span class="text-2xl">${quest.claimed ? '<i class="ri-checkbox-circle-fill text-green-400"></i>' : def.icon}</span>
                     <div class="flex-1 min-w-0">
@@ -62,25 +62,25 @@
                     </div>
                 </div>
             `;
-        }).join('');
-        
-        // Sweep bonus indicator
-        if (allDone) {
-            html += `<div class="text-center text-green-400 text-sm font-bold fancy-font mt-2">🏅 Board Swept! All bonuses claimed!</div>`;
-        } else {
-            const claimed = quests.filter(q => q.claimed).length;
-            html += `<div class="text-center text-amber-400/60 text-xs mt-2">${claimed}/3 complete — sweep the board for a bonus!</div>`;
-        }
-        return html;
+    }).join('');
+    
+    // Sweep bonus indicator
+    if (allDone) {
+        html += `<div class="text-center text-green-400 text-sm font-bold fancy-font mt-2">🏅 Board Swept! All bonuses claimed!</div>`;
+    } else {
+        const claimed = quests.filter(q => q.claimed).length;
+        html += `<div class="text-center text-amber-400/60 text-xs mt-2">${claimed}/3 complete — sweep the board for a bonus!</div>`;
     }
+    return html;
+}
 
-    /**
-     * @param {{ canClaim: boolean, chestStaticHTML: (tier: string, emoji: string, extraClasses?: string) => string }} deps
-     * @returns {string}
-     */
-    function renderWoodenChestHTML({ canClaim, chestStaticHTML }) {
-        if (canClaim) {
-            return `
+/**
+ * @param {{ canClaim: boolean, chestStaticHTML: (tier: string, emoji: string, extraClasses?: string) => string }} deps
+ * @returns {string}
+ */
+function renderWoodenChestHTML({ canClaim, chestStaticHTML }) {
+    if (canClaim) {
+        return `
                 ${chestStaticHTML('wooden', '🪵', 'animate-bounce')}
                 <p class="text-amber-200/80 fancy-font text-sm mb-4">A free chest awaits you each day!</p>
                 <button data-action="chest.claimWooden" 
@@ -88,25 +88,18 @@
                     <i class="ri-gift-line mr-2"></i>Open Chest
                 </button>
             `;
-        } else {
-            return `
+    } else {
+        return `
                 ${chestStaticHTML('wooden', '🪵', 'opacity-40')}
                 <p class="text-amber-200/50 fancy-font text-sm mb-2">Already claimed today!</p>
                 <p class="text-amber-400/40 text-xs fancy-font">Return tomorrow for another chest</p>
             `;
-        }
     }
+}
 
-    const DAILY_BOARD_RENDER = Object.freeze({ renderDailyQuestBoardHTML, renderWoodenChestHTML });
+const DAILY_BOARD_RENDER = Object.freeze({ renderDailyQuestBoardHTML, renderWoodenChestHTML });
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic DAILY_BOARD_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.DAILY_BOARD_RENDER = DAILY_BOARD_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = DAILY_BOARD_RENDER;
-})();
+// Node / Jest
+
+export default DAILY_BOARD_RENDER;

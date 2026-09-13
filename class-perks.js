@@ -34,80 +34,73 @@
  *   - Jest/Node: require('./class-perks.js') returns the frozen object via module.exports (and also sets
  *     window.CLASS_PERKS under jsdom).
  */
-(function () {
-    /**
-     * @typedef {{ effect?: string, value?: number, id?: string }} PerkNode
-     * @typedef {{ nodes?: PerkNode[], capstones?: PerkNode[] }} ClassDef
-     * @typedef {{ effect?: string, tiers?: Array<{ value?: number }> }} SubclassDef
-     */
 
-    /**
-     * The effect value for a perk at the player's current progression: unlocked linear nodes first, then
-     * the chosen capstone, then the highest of that and the subclass value. 0 when no class. PURE.
-     * @param {string} effect
-     * @param {ClassDef|null} cls
-     * @param {number} classNodesUnlocked
-     * @param {PerkNode|null} capstone
-     * @param {number} subValue  already-resolved subclass value for this effect
-     * @returns {number}
-     */
-    function classPerkValue(effect, cls, classNodesUnlocked, capstone, subValue) {
-        if (!cls) return 0;
-        let value = 0;
-        const nodes = cls.nodes || [];
-        const n = Math.min(classNodesUnlocked || 0, nodes.length);
-        for (let i = 0; i < n; i++) {
-            if (nodes[i].effect === effect) { value = nodes[i].value || 0; break; }
-        }
-        if (value === 0) {
-            if (capstone && capstone.effect === effect) value = capstone.value || 0;
-        }
-        const sub = subValue || 0;
-        return sub > value ? sub : value;
+/**
+ * @typedef {{ effect?: string, value?: number, id?: string }} PerkNode
+ * @typedef {{ nodes?: PerkNode[], capstones?: PerkNode[] }} ClassDef
+ * @typedef {{ effect?: string, tiers?: Array<{ value?: number }> }} SubclassDef
+ */
+
+/**
+ * The effect value for a perk at the player's current progression: unlocked linear nodes first, then
+ * the chosen capstone, then the highest of that and the subclass value. 0 when no class. PURE.
+ * @param {string} effect
+ * @param {ClassDef|null} cls
+ * @param {number} classNodesUnlocked
+ * @param {PerkNode|null} capstone
+ * @param {number} subValue  already-resolved subclass value for this effect
+ * @returns {number}
+ */
+function classPerkValue(effect, cls, classNodesUnlocked, capstone, subValue) {
+    if (!cls) return 0;
+    let value = 0;
+    const nodes = cls.nodes || [];
+    const n = Math.min(classNodesUnlocked || 0, nodes.length);
+    for (let i = 0; i < n; i++) {
+        if (nodes[i].effect === effect) { value = nodes[i].value || 0; break; }
     }
-
-    /**
-     * The chosen subclass's value at the current tier, or 0 when no subclass, the effect isn't the
-     * subclass's signature, or no tiers are unlocked. Returns the HIGHEST unlocked tier's value. PURE.
-     * @param {string} effect
-     * @param {SubclassDef|null} sub
-     * @param {number} subclassNodesUnlocked
-     * @returns {number}
-     */
-    function subclassPerkValue(effect, sub, subclassNodesUnlocked) {
-        if (!sub || sub.effect !== effect) return 0;
-        const tiers = sub.tiers || [];
-        const n = Math.min(subclassNodesUnlocked || 0, tiers.length);
-        if (n <= 0) return 0;
-        return tiers[n - 1].value || 0;
+    if (value === 0) {
+        if (capstone && capstone.effect === effect) value = capstone.value || 0;
     }
+    const sub = subValue || 0;
+    return sub > value ? sub : value;
+}
 
-    /**
-     * The chosen capstone node object (matching classCapstone by id), or null when no class, no capstone
-     * chosen, the class has no capstones, or the id isn't found. PURE.
-     * @param {ClassDef|null} cls
-     * @param {string|null|undefined} classCapstone
-     * @returns {PerkNode|null}
-     */
-    function chosenCapstone(cls, classCapstone) {
-        if (!cls || !classCapstone || !cls.capstones) return null;
-        return cls.capstones.find(c => c.id === classCapstone) || null;
-    }
+/**
+ * The chosen subclass's value at the current tier, or 0 when no subclass, the effect isn't the
+ * subclass's signature, or no tiers are unlocked. Returns the HIGHEST unlocked tier's value. PURE.
+ * @param {string} effect
+ * @param {SubclassDef|null} sub
+ * @param {number} subclassNodesUnlocked
+ * @returns {number}
+ */
+function subclassPerkValue(effect, sub, subclassNodesUnlocked) {
+    if (!sub || sub.effect !== effect) return 0;
+    const tiers = sub.tiers || [];
+    const n = Math.min(subclassNodesUnlocked || 0, tiers.length);
+    if (n <= 0) return 0;
+    return tiers[n - 1].value || 0;
+}
 
-    const CLASS_PERKS = Object.freeze({
-        classPerkValue,
-        subclassPerkValue,
-        chosenCapstone,
-    });
+/**
+ * The chosen capstone node object (matching classCapstone by id), or null when no class, no capstone
+ * chosen, the class has no capstones, or the id isn't found. PURE.
+ * @param {ClassDef|null} cls
+ * @param {string|null|undefined} classCapstone
+ * @returns {PerkNode|null}
+ */
+function chosenCapstone(cls, classCapstone) {
+    if (!cls || !classCapstone || !cls.capstones) return null;
+    return cls.capstones.find(c => c.id === classCapstone) || null;
+}
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the dynamic
-    // CLASS_PERKS property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.CLASS_PERKS = CLASS_PERKS;
+const CLASS_PERKS = Object.freeze({
+    classPerkValue,
+    subclassPerkValue,
+    chosenCapstone,
+});
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = CLASS_PERKS;
-})();
+
+// Node / Jest
+
+export default CLASS_PERKS;

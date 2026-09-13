@@ -28,6 +28,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock, writabl
 window.audioManager = {
     playLevelUp: jest.fn(),
     playSpellCast: jest.fn(),
+    playEnchantmentActivate: jest.fn(),
     playChestOpen: jest.fn(),
     playBossDefeated: jest.fn(),
     playAchievement: jest.fn(),
@@ -48,158 +49,206 @@ const source = fs.readFileSync(sourceFile, 'utf-8');
 
 // Load the centralized balance table into the global BEFORE eval'ing
 // goal-manager.js, mirroring the browser's <script src="balance.js"> order.
-// goal-manager.js captures window.BALANCE into its module-scoped `BALANCE`.
-window.BALANCE = require('../balance.js');
+// goal-manager.js captures BALANCE into its module-scoped `BALANCE`.
+import BALANCE from '../balance.js';
 // Same dual-env wiring for the extracted data catalogs (Roadmap #1): goal-manager.js
-// captures window.LEVEL_TITLES / window.COMPANION_DEFINITIONS / window.SPELL_DEFINITIONS
-// / window.THEME_DEFINITIONS / window.ACHIEVEMENT_DEFINITIONS / window.BOSS_THEMES
-// / window.CLASS_DEFINITIONS / window.ENCHANTMENT_DEFINITIONS / window.STARTER_TASK_PRESETS
-// / window.QUEST_CHAIN_TEMPLATES into module consts.
-window.LEVEL_TITLES = require('../level-titles.js');
-window.COMPANION_DEFINITIONS = require('../companion-definitions.js');
-window.SPELL_DEFINITIONS = require('../spell-definitions.js');
-window.THEME_DEFINITIONS = require('../theme-definitions.js');
-window.ACHIEVEMENT_DEFINITIONS = require('../achievement-definitions.js');
-window.BOSS_THEMES = require('../boss-themes.js');
-window.CLASS_DEFINITIONS = require('../class-definitions.js');
-window.ENCHANTMENT_DEFINITIONS = require('../enchantment-definitions.js');
-window.STARTER_TASK_PRESETS = require('../starter-task-presets.js');
-window.QUEST_CHAIN_TEMPLATES = require('../quest-chain-templates.js');
+// captures LEVEL_TITLES / COMPANION_DEFINITIONS / SPELL_DEFINITIONS
+// / THEME_DEFINITIONS / ACHIEVEMENT_DEFINITIONS / BOSS_THEMES
+// / CLASS_DEFINITIONS / ENCHANTMENT_DEFINITIONS / STARTER_TASK_PRESETS
+// / QUEST_CHAIN_TEMPLATES into module consts.
+import LEVEL_TITLES from '../level-titles.js';
+import COMPANION_DEFINITIONS from '../companion-definitions.js';
+import SPELL_DEFINITIONS from '../spell-definitions.js';
+import THEME_DEFINITIONS from '../theme-definitions.js';
+import ACHIEVEMENT_DEFINITIONS from '../achievement-definitions.js';
+// Achievement-title catalog + pure unlock logic (Roadmap #1, 79th slice): checkTitleUnlocks derives
+// every unlock from TITLE_DEFINITIONS.computeUnlockableTitles and title-render.js reads .categories.
+import TITLE_DEFINITIONS from '../title-definitions.js';
+import BOSS_THEMES from '../boss-themes.js';
+import CLASS_DEFINITIONS from '../class-definitions.js';
+import ENCHANTMENT_DEFINITIONS from '../enchantment-definitions.js';
+import STARTER_TASK_PRESETS from '../starter-task-presets.js';
+import QUEST_CHAIN_TEMPLATES from '../quest-chain-templates.js';
+// The ONE source of progressive-unlock thresholds (Roadmap #1, 85th slice). Must be required
+// BEFORE loot-engine.js, which reads FEATURE_UNLOCKS for the companion gate at load time.
+import FEATURE_UNLOCKS from '../feature-unlocks.js';
+// Daily Quest Board catalog + Board Sweep bonus (criterion-(2) item): gates are defined in terms of
+// FEATURE_UNLOCKS, so it must come AFTER it. goal-manager.js seeds DAILY_QUEST_POOL from it.
+import DAILY_QUEST_DEFINITIONS from '../daily-quest-definitions.js';
 // Pure loot roll engine (Roadmap #1, first LOGIC slice): goal-manager.js captures
-// window.LOOT_ENGINE and delegates its loot methods to it.
-window.LOOT_ENGINE = require('../loot-engine.js');
+// LOOT_ENGINE and delegates its loot methods to it.
+import LOOT_ENGINE from '../loot-engine.js';
+// Chest rarity-weight modifiers (Roadmap #1, 86th slice): generateChestRewards delegates the
+// Lucky Loot / Ranger / Lucky Draw weight shifts to CHEST_WEIGHT_LOGIC.applyChestModifiers.
+import CHEST_WEIGHT_LOGIC from '../chest-weight-logic.js';
+// Boss-defeat streak reward multiplier (Roadmap #1, 87th slice): onBossDefeated delegates the
+// streak-counter pick and the "+10% per streak, capped at +100%" reward multiplier to
+// BOSS_STREAK_LOGIC.
+import BOSS_STREAK_LOGIC from '../boss-streak-logic.js';
+// Challenge-a-Friend presets + rules (Roadmap #1, 89th slice): challengePresets / getChallengeRewards /
+// getChallengeProgress / completeChallenge's history cap delegate to CHALLENGE_LOGIC.
+import CHALLENGE_LOGIC from '../challenge-logic.js';
 // Master loot pool catalog (Roadmap #1): getMasterLootPool() returns this.
-window.MASTER_LOOT_POOL = require('../loot-pool.js');
+import MASTER_LOOT_POOL from '../loot-pool.js';
 // Pure boss spawn engine (Roadmap #1, 2nd LOGIC slice): the boss generators +
 // hashDateString + the monthly-challenge preview delegate to it.
-window.BOSS_GENERATOR = require('../boss-generator.js');
+import BOSS_GENERATOR from '../boss-generator.js';
 // Pure save-data migrations (Roadmap #1): loadData() delegates its legacy-save
 // normalizers (companion/class/task/priority) to this.
-window.PERSISTENCE_MIGRATIONS = require('../persistence-migrations.js');
+import PERSISTENCE_MIGRATIONS from '../persistence-migrations.js';
 // Pure daily-login-streak + streak-repair math (Roadmap #1, 56th slice — first non-render LOGIC
 // module): checkDailyLoginBonus / _completeLoginBonus / the streak-repair methods delegate to it.
-window.STREAK_LOGIC = require('../streak-logic.js');
+import STREAK_LOGIC from '../streak-logic.js';
 // Pure XP / leveling-curve math (Roadmap #1, 57th slice — second non-render LOGIC module):
 // getXPForLevel / getTotalXPForLevel + the four XP-progress sites delegate to it.
-window.LEVELING_LOGIC = require('../leveling-logic.js');
+import LEVELING_LOGIC from '../leveling-logic.js';
 // Pure effort-based-XP priority scaling (Roadmap #1, 58th slice): _normalizePriority /
 // getPriorityXPMultiplier + the five XP-reward sites delegate to it.
-window.EFFORT_XP_LOGIC = require('../effort-xp-logic.js');
+import EFFORT_XP_LOGIC from '../effort-xp-logic.js';
 // Pure active-buff → reward-multiplier resolution (Roadmap #1, 59th slice): getActiveSpellMultiplier /
 // getEnchantmentMultiplier delegate to it.
-window.BUFF_MULTIPLIERS = require('../buff-multipliers.js');
+import BUFF_MULTIPLIERS from '../buff-multipliers.js';
 // Pure companion slot + bonus resolution (Roadmap #1, 60th slice): getActiveCompanion /
 // getSecondCompanion / getCompanionBonus delegate to it.
-window.COMPANION_LOGIC = require('../companion-logic.js');
+import COMPANION_LOGIC from '../companion-logic.js';
 // Pure class/subclass perk-value resolution (Roadmap #1, 61st slice): getClassPerkValue /
 // getSubclassPerkValue / getChosenCapstone delegate to it.
-window.CLASS_PERKS = require('../class-perks.js');
+import CLASS_PERKS from '../class-perks.js';
 // Pure class/subclass tree progression-state predicates (Roadmap #1, 62nd slice): the eight
 // progression methods delegate to it.
-window.CLASS_PROGRESSION = require('../class-progression.js');
+import CLASS_PROGRESSION from '../class-progression.js';
 // Pure class skill-point economy math (Roadmap #1, 63rd slice): the point-supply / gate getters and
 // the respec fee + refund lines delegate to it.
-window.SKILL_POINTS = require('../skill-points.js');
+import SKILL_POINTS from '../skill-points.js';
 // Pure Focus Crystal supply math (Roadmap #1, 64th slice): the shard conversion, the focus-session
 // yield pipeline and the boss reward tiers delegate to it.
-window.CRYSTAL_ECONOMY = require('../crystal-economy.js');
+import CRYSTAL_ECONOMY from '../crystal-economy.js';
 // Pure attack-charge earn + spend rules (Roadmap #1, 65th slice): grantAttackCharge and the
 // attackBoss guard delegate to it.
-window.CHARGE_RULES = require('../charge-rules.js');
+import CHARGE_RULES from '../charge-rules.js';
 // Pure boss-damage math (Roadmap #1, 66th slice): the attackBoss damage pipeline delegates to it.
-window.COMBAT_DAMAGE = require('../combat-damage.js');
+import COMBAT_DAMAGE from '../combat-damage.js';
 // Pure XP/gold reward-stack math (Roadmap #1, 67th slice): addXP and addGold delegate to it.
-window.REWARD_ECONOMY = require('../reward-economy.js');
+import REWARD_ECONOMY from '../reward-economy.js';
 // Pure focus-timer + Pomodoro-chain math (Roadmap #1, 68th slice).
-window.FOCUS_SESSION_LOGIC = require('../focus-session-logic.js');
+import FOCUS_SESSION_LOGIC from '../focus-session-logic.js';
 // Pure active-spell state math (Roadmap #1, 69th slice).
-window.SPELL_LIFECYCLE = require('../spell-lifecycle.js');
+import SPELL_LIFECYCLE from '../spell-lifecycle.js';
 // Pure previous-period recap math (Roadmap #1, 70th slice).
-window.PERIOD_SUMMARY_LOGIC = require('../period-summary-logic.js');
+import PERIOD_SUMMARY_LOGIC from '../period-summary-logic.js';
 // Pure reminder scheduling + notification-copy math (Roadmap #1, 72nd slice): the reminder surface
 // (catch-up window, daily/native slot math, sent-today rollover, settings backfill, bodies) delegates to it.
-window.REMINDER_SCHEDULE_LOGIC = require('../reminder-schedule-logic.js');
+import REMINDER_SCHEDULE_LOGIC from '../reminder-schedule-logic.js';
+// Pure active-enchantment state math (Roadmap #1, 73rd slice): the effect-match predicate, the two
+// expiry-sweep filters, the duration/cost rules, the cast-entry builder and the warning delay.
+import ENCHANTMENT_LIFECYCLE from '../enchantment-lifecycle.js';
+// Pure Royal Bounty rules (Roadmap #1, 74th slice): the level gate, period keys/starts, deadlines,
+// cadence→tier table, anti-stage eligibility, the seeded pick and the expiry probe.
+import BOUNTY_LOGIC from '../bounty-logic.js';
+// Pure recurring-task scheduling rules (Roadmap #1, 75th slice): the one day vocabulary, the
+// four-branch dueToday predicate, the three pre-schedule guards and the generated-task builder.
+import RECURRING_LOGIC from '../recurring-logic.js';
+// Pure Daily Quest Board rules (Roadmap #1, 80th slice): generateDailyQuestBoard's
+// seeded pick and checkDailyQuestCompletion's sweep delegate to it.
+import DAILY_QUEST_LOGIC from '../daily-quest-logic.js';
+// Daily free Wooden Chest loot table + weighted pick (Roadmap #1, 81st slice): claimWoodenChest
+// delegates its loot roll to it (the second hand-rolled weighted pick, de-duplicated from loot-engine).
+import WOODEN_CHEST_LOOT from '../wooden-chest-loot.js';
+// Pure quest-chain progression state math (Roadmap #1, 82nd slice): toggleChainTask / completeChapter /
+// completeQuestChain delegate their task-toggle, chapter-complete predicate, chapter advance, chain-complete
+// detection and the active→completed list move to it.
+import QUEST_CHAIN_LOGIC from '../quest-chain-logic.js';
+// Pure habit progression math (Roadmap #1, 83rd slice): recalculateHabitStreak delegates its consecutive-day
+// streak walk, and toggleHabit delegates the double_streak increment + the 7/30/100 milestone thresholds.
+import HABIT_LOGIC from '../habit-logic.js';
+// The ONE source of persisted-field defaults (Roadmap #1, 84th slice): initState Object.assigns
+// persistedDefaults(), and load-deserializer's buildLoadState falls back to the same object.
+// Must be required BEFORE load-deserializer.js, which reads DEFAULT_STATE at load time.
+import DEFAULT_STATE from '../default-state.js';
+// Pure save-data builder (Roadmap #1, 76th slice): _doSave delegates the save-object
+// marshalling to SAVE_SERIALIZER.buildSaveData.
+import SAVE_SERIALIZER from '../save-serializer.js';
+// Pure load-state builder (Roadmap #1, 77th slice): loadData delegates the field mapping
+// to LOAD_DESERIALIZER.buildLoadState — save-serializer's mirror.
+import LOAD_DESERIALIZER from '../load-deserializer.js';
 // Pure boss-card presentation helpers (Roadmap #1, first render slice): getBossPhase,
 // renderBossHPBar, getBossParticleType delegate to this.
-window.BOSS_RENDER = require('../boss-render.js');
+import BOSS_RENDER from '../boss-render.js';
 // Pure task/goal presentation builders (Roadmap #1, 2nd render module): getChecklistProgress
 // + renderChecklistHTML delegate to this.
-window.TASK_RENDER = require('../task-render.js');
+import TASK_RENDER from '../task-render.js';
 // Pure companion-den presentation builders (Roadmap #1, 3rd render module): the collection-card
 // builder renderCompanionDen delegates to.
-window.COMPANION_RENDER = require('../companion-render.js');
+import COMPANION_RENDER from '../companion-render.js';
 // Pure spellbook presentation builders (Roadmap #1, 4th render module): the active-spell +
 // free/premium collection card builders renderActiveSpells/renderSpellCollection delegate to.
-window.SPELL_RENDER = require('../spell-render.js');
+import SPELL_RENDER from '../spell-render.js';
 // Pure Class / Skill-Tree presentation builders (Roadmap #1, 5th render module): renderClassPanel's
 // class-selection cards + linear skill-tree node rows delegate to.
-window.CLASS_RENDER = require('../class-render.js');
+import CLASS_RENDER from '../class-render.js';
 // Pure Analytics presentation builders (Roadmap #1, 6th render module): renderTaskBreakdown +
 // renderActivityHeatmap delegate their chart markup to these.
-window.ANALYTICS_RENDER = require('../analytics-render.js');
+import ANALYTICS_RENDER from '../analytics-render.js';
 // Pure Quest Chains presentation builders (Roadmap #1, 7th render module): renderActiveQuestChains
 // + renderAvailableQuestChains + renderCompletedQuestChains delegate their card markup to these.
-window.QUEST_CHAIN_RENDER = require('../quest-chain-render.js');
+import QUEST_CHAIN_RENDER from '../quest-chain-render.js';
 // Pure Enchantments presentation builders (Roadmap #1, 8th render module): renderActiveEnchantments
 // + renderEnchantmentShop delegate their card markup to these.
-window.ENCHANTMENT_RENDER = require('../enchantment-render.js');
+import ENCHANTMENT_RENDER from '../enchantment-render.js';
 // Pure Dashboard-card presentation builders (Roadmap #1, 9th render module): renderXPEvent +
 // renderRoyalBounty delegate their card markup to these (renderStreakRepair + renderWeeklyThemeCard
 // join in the 41st slice).
-window.DASHBOARD_RENDER = require('../dashboard-render.js');
+import DASHBOARD_RENDER from '../dashboard-render.js';
 // Pure Player-HUD presentation builders (Roadmap #1, 10th render module): renderActiveBuffsSummary +
 // renderActiveSpellSigils delegate their markup to these (renderPlayerPanel's blocks join in the 43rd slice).
-window.PLAYER_HUD_RENDER = require('../player-hud-render.js');
+import PLAYER_HUD_RENDER from '../player-hud-render.js';
 // Pure Title Hall presentation builders (Roadmap #1, 11th render module): renderTitleHall delegates its
 // #active-title-display card + #titles-container content (progress + category sections + level ranks) to these.
-window.TITLE_RENDER = require('../title-render.js');
+import TITLE_RENDER from '../title-render.js';
 // Pure Treasury / rewards presentation builders (Roadmap #1, 12th render module): renderTreasureChests
 // delegates its #treasure-chests-container body (free Daily Wooden Chest card + the four purchasable tiles) here.
-window.REWARD_RENDER = require('../reward-render.js');
+import REWARD_RENDER from '../reward-render.js';
 // Pure Themes-panel presentation builders (Roadmap #1, 13th render module): renderThemes + renderThemeSelector
 // delegate their tile/banner markup (featured-week banner + full/compact theme grids) to these.
-window.THEME_RENDER = require('../theme-render.js');
+import THEME_RENDER from '../theme-render.js';
 // Pure Badges/Achievements presentation builder (Roadmap #1, 14th render module): renderBadges delegates its
 // #badges-container body (Unlocked cards + In-Progress cards with progress bars, or the empty state) to this.
-window.BADGE_RENDER = require('../badge-render.js');
+import BADGE_RENDER from '../badge-render.js';
 // Pure Rituals/Habits presentation builder (Roadmap #1, 15th render module): renderHabits delegates its
 // populated #habits-container body (the per-habit ritual cards + heatmaps) to this; the empty-state stays inline.
-window.HABIT_RENDER = require('../habit-render.js');
+import HABIT_RENDER from '../habit-render.js';
 // Pure Archive-panel presentation builder (Roadmap #1, 16th render module): renderArchives delegates its
 // populated #archives-container body (the newest-first type-colored archived-goal cards) to this; the
 // #archive-count textContent write + the zero-archives empty-state stay inline in the wrapper.
-window.ARCHIVE_RENDER = require('../archive-render.js');
+import ARCHIVE_RENDER from '../archive-render.js';
 // Pure Daily-board presentation builders (Roadmap #1, 17th render module): renderDailyQuestBoard delegates its
 // #daily-quest-board body (quest rows + sweep footer) and renderWoodenChest delegates its #daily-wooden-chest
 // body (claimable vs claimed) to these; the wrappers keep the generate/ensure side-effects + clock read + guards.
-window.DAILY_BOARD_RENDER = require('../daily-board-render.js');
+import DAILY_BOARD_RENDER from '../daily-board-render.js';
 // Pure Recurring-tasks presentation builder (Roadmap #1, 18th render module): renderRecurringTasks delegates its
 // populated #recurring-tasks-container body (a row per recurring task with a human schedule line) to this; the
 // lookup + guard + the zero-tasks empty-state (this._renderEmptyState) stay inline in the wrapper.
-window.RECURRING_RENDER = require('../recurring-render.js');
+import RECURRING_RENDER from '../recurring-render.js';
 // Pure Calendar-tab presentation builders (Roadmap #1, 19th render module): renderCalendar delegates each day
 // cell's inner HTML to renderCalendarDayHTML, and renderCalendarTasks delegates its populated selected-date list
 // to renderCalendarTasksHTML; the wrappers keep all imperative DOM (grid loop/onclick, textContent writes, the
 // zero-tasks empty-state) inline.
-window.CALENDAR_RENDER = require('../calendar-render.js');
+import CALENDAR_RENDER from '../calendar-render.js';
 // Pure Focus-timer presentation builders (Roadmap #1, 20th render module): updateFocusTimerControls delegates its
 // 4-state #focus-timer-controls button set (returning { containerClass, buttonsHTML }) to renderFocusTimerControls,
 // and _updateChainProgressIndicator delegates its active-chain dots+status body to renderChainProgressHTML; the
 // wrappers keep the lookups/guards, the no-chain empty/hidden branch, and renderFocusTimer's textContent writes.
-window.FOCUS_TIMER_RENDER = require('../focus-timer-render.js');
+import FOCUS_TIMER_RENDER from '../focus-timer-render.js';
 // Pure Premium-surface presentation builders (Roadmap #1, 21st render module): renderPremiumCard delegates both
 // #premium-content branches (premium thank-you view / free upgrade prompt) to renderPremiumCardHTML, and
 // getPremiumBannerHTML forwards this.isPremium to renderPremiumBannerHTML (the shared upsell banner, 5 call sites).
-window.PREMIUM_RENDER = require('../premium-render.js');
+import PREMIUM_RENDER from '../premium-render.js';
 // Pure Reminder-settings presentation builder (Roadmap #1, 22nd render module): renderReminderSettings keeps its
 // container lookup/guard + the permission re-check (mutates this.notificationsEnabled), then delegates the whole
 // #reminder-settings-container body to renderReminderSettingsHTML (settings + the four resolved notif flags).
-window.REMINDER_RENDER = require('../reminder-render.js');
+import REMINDER_RENDER from '../reminder-render.js';
 
-// eval the source with an explicit window assignment so we can access the class
-// (class declarations in eval are block-scoped and don't leak to outer scope)
-eval(source + '\nwindow.GoalManager = GoalManager;');
-const GoalManager = window.GoalManager;
+import GoalManager from '../goal-manager.js';
 
 // (Removed in Roadmap #5) themeDefinitions used to be sliced out of the source
 // by brace-balance so tests could read it without booting the constructor.
@@ -1115,7 +1164,7 @@ describe('GoalManager', () => {
     // fallback) and by the lucky_loot / Trophy Hunter suites; these lock the module in
     // ISOLATION, especially rollLootTable (the newly de-duplicated shared loop).
     describe('loot-engine.js (pure roll engine)', () => {
-        const LootEngine = require('../loot-engine.js');
+        const LootEngine = require('../loot-engine.js').default;
         // ctx factory: fixed rng, level, and a minimal locked-companion gold table.
         const ctx = (rngValue, level = 5) => ({
             rng: () => rngValue,
@@ -1183,7 +1232,7 @@ describe('GoalManager', () => {
     // module in ISOLATION — especially classifyLoginBonus + computeLoginRewards, which had NO direct
     // test before this slice (their callers are impure: shield modals, addXP/addGold, saveData, render).
     describe('streak-logic.js (pure login-streak + repair math)', () => {
-        const StreakLogic = require('../streak-logic.js');
+        const StreakLogic = require('../streak-logic.js').default;
 
         describe('classifyLoginBonus (date-gap break detection)', () => {
             test('already-claimed when today === lastLoginBonusDate', () => {
@@ -1320,7 +1369,7 @@ describe('GoalManager', () => {
     // ISOLATION — especially levelProgress (the de-duplicated four-site core) and its clamp edges,
     // plus a matrix parity check against the exact pre-extraction inline formula.
     describe('leveling-logic.js (pure XP curve + level-progress math)', () => {
-        const LevelingLogic = require('../leveling-logic.js');
+        const LevelingLogic = require('../leveling-logic.js').default;
 
         describe('xpForLevel (XP to advance from a level)', () => {
             test('level 1 = 150, then +250 per level', () => {
@@ -1421,7 +1470,7 @@ describe('GoalManager', () => {
     // further below + its side-quest reward-parity guard); these lock the module in ISOLATION — especially
     // scaledXP (the de-duplicated five-site core) and normalizePriority's unknown→medium coercion.
     describe('effort-xp-logic.js (pure effort-based-XP priority scaling)', () => {
-        const EffortXP = require('../effort-xp-logic.js');
+        const EffortXP = require('../effort-xp-logic.js').default;
 
         describe('normalizePriority (low/medium/high coercion)', () => {
             test('passes through the two non-default bands', () => {
@@ -1500,7 +1549,7 @@ describe('GoalManager', () => {
     // importantly the Empowered-Magic × Overcharge bonus scaling on spellMultiplier, which had NO direct
     // coverage before the extraction.
     describe('buff-multipliers.js (pure active-buff reward multipliers)', () => {
-        const BuffMultipliers = require('../buff-multipliers.js');
+        const BuffMultipliers = require('../buff-multipliers.js').default;
         const NOW = 1_000_000;
         // Synthetic definitions so the assertions do not couple to the live spell catalog's balance values.
         const DEFS = {
@@ -1586,13 +1635,16 @@ describe('GoalManager', () => {
         });
     });
 
-    // ==================== COMPANION LOGIC (Roadmap #1, 60th slice — eighth LOGIC module) ====================
+    // ==================== COMPANION LOGIC (Roadmap #1, 60th slice + 88th slice) ====================
     // companion-logic.js holds the PURE slot + bonus resolution that getActiveCompanion / getSecondCompanion /
-    // getCompanionBonus delegate to. The class methods are already covered (the "Companion System" describe +
-    // the Ranger "Twin Bond" describe); these lock the three functions in ISOLATION — the slot-resolution edge
-    // cases (empty roster, unowned id, the Twin Bond perk gate + duplicate guard) and the matching-type sum.
-    describe('companion-logic.js (pure companion slot + bonus resolution)', () => {
-        const CompanionLogic = require('../companion-logic.js');
+    // getCompanionBonus delegate to (60th slice, eighth LOGIC module), plus — since the 88th slice (the Sep 7
+    // criterion (1)/(2) audit) — the companion XP-gain math grantCompanionXP delegates to. The class methods
+    // are already covered (the "Companion System" describe + the Ranger "Twin Bond"/"Beastmaster" describes);
+    // these lock the five functions in ISOLATION — the slot-resolution edge cases (empty roster, unowned id,
+    // the Twin Bond perk gate + duplicate guard), the matching-type sum, the Bonding×Beastmaster XP-gain
+    // stacking order, and the 100*level multi-level-up loop.
+    describe('companion-logic.js (pure companion slot/bonus resolution + XP-gain math)', () => {
+        const CompanionLogic = require('../companion-logic.js').default;
         const owl = { type: 'owl', bonusType: 'xp', bonusAmount: 0.10 };
         const dragon = { type: 'dragon', bonusType: 'gold', bonusAmount: 0.15 };
         const eagle = { type: 'eagle', bonusType: 'xp', bonusAmount: 0.15 };
@@ -1638,6 +1690,50 @@ describe('GoalManager', () => {
             });
         });
 
+        describe('companionXpGain (Bonding ×2 then Beastmaster ceil-scale)', () => {
+            test('returns the raw amount with neither buff active', () => {
+                expect(CompanionLogic.companionXpGain(10)).toBe(10);
+                expect(CompanionLogic.companionXpGain(10, {})).toBe(10);
+            });
+            test('Bonding enchantment doubles the raw amount', () => {
+                expect(CompanionLogic.companionXpGain(10, { bondingActive: true })).toBe(20);
+            });
+            test('Beastmaster ceil-scales the (possibly bonded) amount', () => {
+                // ceil(10 * 1.5) = 15
+                expect(CompanionLogic.companionXpGain(10, { rangerCompXpMult: 0.5 })).toBe(15);
+                // bonding first (10*2=20), THEN ceil(20 * 1.5) = 30
+                expect(CompanionLogic.companionXpGain(10, { bondingActive: true, rangerCompXpMult: 0.5 })).toBe(30);
+            });
+            test('a non-positive mult is a no-op (no ceil rounding introduced)', () => {
+                expect(CompanionLogic.companionXpGain(10, { rangerCompXpMult: 0 })).toBe(10);
+                expect(CompanionLogic.companionXpGain(10, { bondingActive: true, rangerCompXpMult: -1 })).toBe(20);
+            });
+        });
+
+        describe('applyCompanionXp (100*level multi-level-up loop)', () => {
+            test('adds xp with no level-up when under threshold', () => {
+                const companion = { level: 1, xp: 0 };
+                expect(CompanionLogic.applyCompanionXp(companion, 50)).toBe(false);
+                expect(companion).toEqual({ level: 1, xp: 50 });
+            });
+            test('levels up once, carrying the remainder', () => {
+                const companion = { level: 1, xp: 80 };
+                expect(CompanionLogic.applyCompanionXp(companion, 30)).toBe(true);
+                expect(companion).toEqual({ level: 2, xp: 10 });
+            });
+            test('a large gain carries through multiple level-ups (the while-loop fix)', () => {
+                // level 1->2 costs 100, 2->3 costs 200: 350 xp clears both with 50 left over.
+                const companion = { level: 1, xp: 0 };
+                expect(CompanionLogic.applyCompanionXp(companion, 350)).toBe(true);
+                expect(companion).toEqual({ level: 3, xp: 50 });
+            });
+            test('missing xp/level default to the level-1 floor when computing the threshold', () => {
+                const companion = {};
+                expect(CompanionLogic.applyCompanionXp(companion, 50)).toBe(false);
+                expect(companion.xp).toBe(50); // under the 100*1 threshold, so level is never written
+            });
+        });
+
         describe('parity with the GoalManager delegators', () => {
             test('getActiveCompanion delegates to activeCompanion', () => {
                 const gm = createTestManager();
@@ -1660,6 +1756,33 @@ describe('GoalManager', () => {
                 expect(gm.getCompanionBonus('xp'))
                     .toBe(CompanionLogic.companionBonus('xp', gm.getActiveCompanion(), gm.getSecondCompanion()));
             });
+            test('grantCompanionXP delegates to companionXpGain + applyCompanionXp', () => {
+                const gm = createTestManager();
+                gm.hasActiveEnchantment = jest.fn(() => true); // Bonding active
+                gm.getClassPerkValue = jest.fn(() => 0.5); // Beastmaster +50%
+                gm.companions = [{ type: 'owl', icon: '🦉', name: 'Wise Owl', level: 1, xp: 0 }];
+                gm.activeCompanionId = 'owl';
+                gm.showAchievement = jest.fn();
+                gm.grantCompanionXP(10);
+                // bonding: 10*2=20, then ceil(20*1.5)=30
+                const expectedGain = CompanionLogic.companionXpGain(10, { bondingActive: true, rangerCompXpMult: 0.5 });
+                expect(expectedGain).toBe(30);
+                expect(gm.companions[0].xp).toBe(30);
+            });
+            test('grantCompanionXP fires the level-up achievement across a multi-level gain', () => {
+                const gm = createTestManager();
+                gm.hasActiveEnchantment = jest.fn(() => false);
+                gm.getClassPerkValue = jest.fn(() => 0);
+                gm.companions = [{ type: 'owl', icon: '🦉', name: 'Wise Owl', level: 1, xp: 0 }];
+                gm.activeCompanionId = 'owl';
+                gm.showAchievement = jest.fn();
+                gm.grantCompanionXP(350); // clears 1->2 (100) and 2->3 (200), 50 left over
+                expect(gm.companions[0].level).toBe(3);
+                expect(gm.companions[0].xp).toBe(50);
+                expect(gm.showAchievement).toHaveBeenCalledWith(
+                    expect.stringContaining('leveled up to Lv.3'), 'weekly'
+                );
+            });
         });
     });
 
@@ -1670,7 +1793,7 @@ describe('GoalManager', () => {
     // "Class System v3.1 — Phase 1 / Phase 2 perks" describes); these lock the three functions in ISOLATION
     // with a synthetic class/subclass so they're decoupled from the live class catalog.
     describe('class-perks.js (pure class/subclass perk-value resolution)', () => {
-        const ClassPerks = require('../class-perks.js');
+        const ClassPerks = require('../class-perks.js').default;
         const cls = {
             nodes: [
                 { effect: 'focus_xp', value: 40 },
@@ -1757,7 +1880,7 @@ describe('GoalManager', () => {
     // class methods are already covered end-to-end (the "Class System v3.1" + subclass describes); these lock
     // the eight functions in ISOLATION with a synthetic class/subclass so they're decoupled from the catalog.
     describe('class-progression.js (pure class/subclass tree progression state)', () => {
-        const CLASS_PROGRESSION = require('../class-progression.js');
+        const CLASS_PROGRESSION = require('../class-progression.js').default;
         const cls = { nodes: [{ id: 'n0' }, { id: 'n1' }, { id: 'n2' }, { id: 'n3' }, { id: 'n4' }] };
         const sub = { tiers: [{ cost: 3 }, { cost: 4 }, { cost: 5 }] };
 
@@ -1848,7 +1971,7 @@ describe('GoalManager', () => {
     // covered end-to-end by the "Class System v3.1" + subclass describes; these lock the six functions in
     // isolation, including the explicit `|| n` tunable defaults.
     describe('skill-points.js (pure class skill-point economy)', () => {
-        const SKILL_POINTS = require('../skill-points.js');
+        const SKILL_POINTS = require('../skill-points.js').default;
 
         describe('point supply', () => {
             test('earnedSkillPoints grants 1 per level beyond the unlock level, clamped at 0', () => {
@@ -1922,7 +2045,7 @@ describe('GoalManager', () => {
     // rounding-sensitive four-stage pipeline that had no isolation coverage. The mutating callers keep their
     // side effects; these tests lock the arithmetic.
     describe('crystal-economy.js (pure Focus Crystal supply math)', () => {
-        const CRYSTAL_ECONOMY = require('../crystal-economy.js');
+        const CRYSTAL_ECONOMY = require('../crystal-economy.js').default;
 
         describe('shard auto-conversion', () => {
             test('SHARDS_PER_CRYSTAL is the single source of truth (10)', () => {
@@ -2011,7 +2134,7 @@ describe('GoalManager', () => {
     // doubling, or a lucky Warrior silently loses a charge). The impure rng roll and every side effect stay
     // on the class; these tests lock the arithmetic, the source set and the guards.
     describe('charge-rules.js (pure attack-charge earn + spend rules)', () => {
-        const CHARGE_RULES = require('../charge-rules.js');
+        const CHARGE_RULES = require('../charge-rules.js').default;
 
         describe('forage-eligible sources', () => {
             test('only completion-flavoured sources roll Forage', () => {
@@ -2125,7 +2248,7 @@ describe('GoalManager', () => {
     // inside the Berserker ramp to decide whether Executioner is "active" for the §9.8 cap), and every stage
     // is Math.ceil'ed INDEPENDENTLY so the stages neither commute nor equal one folded multiply.
     describe('combat-damage.js (pure boss-damage math)', () => {
-        const COMBAT_DAMAGE = require('../combat-damage.js');
+        const COMBAT_DAMAGE = require('../combat-damage.js').default;
 
         describe('base damage curve', () => {
             test('starts at 1 and gains +1 per 10 levels', () => {
@@ -2251,8 +2374,8 @@ describe('GoalManager', () => {
     // plus six hand-written copies of the consume idiom. Every site was already CORRECT against the current
     // definitions — this was a LATENT-DRIFT slice, so the drift itself is what these tests pin.
     describe('spell-lifecycle.js (pure active-spell state math)', () => {
-        const SL = require('../spell-lifecycle.js');
-        const SPELL_DEFS = require('../spell-definitions.js');
+        const SL = require('../spell-lifecycle.js').default;
+        const SPELL_DEFS = require('../spell-definitions.js').default;
 
         const NOW = 10_000_000;
         const timed = (spellId, msLeft) => ({ spellId, castedAt: NOW - 1000, expiresAt: NOW + msLeft });
@@ -2456,13 +2579,355 @@ describe('GoalManager', () => {
         });
     });
 
+    // ==================== ENCHANTMENT LIFECYCLE (Roadmap #1, 73rd slice — twentieth LOGIC module) ====================
+    // enchantment-lifecycle.js is spell-lifecycle.js's SIBLING, and the asymmetry between them is the whole
+    // point of the slice: enchantments key on `effect` (not id), store durations in MINUTES (not ms), have no
+    // permanent/instant sentinels, and their "is it active?" predicate is a BARE match because every caller
+    // sweeps expiry first. The find was a duration-window rule duplicated with DISAGREEING tails (0 in the
+    // preserve path, a bare 180 in the render module) — the last describe pins those two to one answer.
+    describe('enchantment-lifecycle.js (pure active-enchantment state math)', () => {
+        const EL = require('../enchantment-lifecycle.js').default;
+        const ENCH_DEFS = require('../enchantment-definitions.js').default;
+
+        const NOW = 10_000_000;
+        // A live entry with `msLeft` remaining. `totalDuration` is what purchases record.
+        const live = (id, effect, msLeft, totalDuration) => ({
+            id, effect, expiresAt: NOW + msLeft,
+            ...(totalDuration === undefined ? {} : { totalDuration }),
+            name: id, icon: '✨',
+        });
+
+        describe('constants', () => {
+            test('exposes the minute and expiry-warning constants', () => {
+                expect(EL.MINUTE_MS).toBe(60 * 1000);
+                expect(EL.EXPIRY_WARNING_MS).toBe(5 * 60 * 1000);
+            });
+        });
+
+        describe('minutesToMs (the catalog unit conversion)', () => {
+            test('converts catalog MINUTES to milliseconds', () => {
+                expect(EL.minutesToMs(180)).toBe(10_800_000);
+                expect(EL.minutesToMs(1440)).toBe(86_400_000);
+            });
+            test('a missing/zero duration is 0 ms, never NaN', () => {
+                expect(EL.minutesToMs(0)).toBe(0);
+                expect(EL.minutesToMs(null)).toBe(0);
+                expect(EL.minutesToMs(undefined)).toBe(0);
+            });
+        });
+
+        describe('isActive (the BARE effect match)', () => {
+            test('matches on `effect`, not on id', () => {
+                const e = live('boss_slayer', 'boss_damage', 5000);
+                expect(EL.isActive([e], 'boss_damage')).toBe(true);
+                expect(EL.isActive([e], 'boss_slayer')).toBe(false);
+            });
+            test('does NOT re-check expiry — the sweep is the callers\' job', () => {
+                // The documented asymmetry with SPELL_LIFECYCLE.isActive. An already-expired entry still reads
+                // active here; folding an expiry check in would change behaviour at every site that sweeps on a
+                // different clock read.
+                expect(EL.isActive([live('double_xp', 'double_xp', -5000)], 'double_xp')).toBe(true);
+            });
+            test('tolerates a null/undefined/empty array', () => {
+                expect(EL.isActive(null, 'double_xp')).toBe(false);
+                expect(EL.isActive(undefined, 'double_xp')).toBe(false);
+                expect(EL.isActive([], 'double_xp')).toBe(false);
+            });
+        });
+
+        describe('expiring / stillActive (the two sweep filters)', () => {
+            test('splits the closed windows from the running ones', () => {
+                const gone = live('double_xp', 'double_xp', -1);
+                const kept = live('serenity', 'crystal_chance', 5000);
+                expect(EL.expiring([gone, kept], NOW)).toEqual([gone]);
+                expect(EL.stillActive([gone, kept], NOW)).toEqual([kept]);
+            });
+            test('the boundary is INCLUSIVE for expiring and exclusive for stillActive', () => {
+                const boundary = live('double_xp', 'double_xp', 0); // expiresAt === now
+                expect(EL.expiring([boundary], NOW)).toEqual([boundary]);
+                expect(EL.stillActive([boundary], NOW)).toEqual([]);
+            });
+            test('the two filters are disjoint and cover the whole input', () => {
+                const all = [
+                    live('a', 'a', 5000), live('b', 'b', -1), live('c', 'c', 0), live('d', 'd', 1),
+                ];
+                const expired = EL.expiring(all, NOW);
+                const kept = EL.stillActive(all, NOW);
+                expect(expired.length + kept.length).toBe(all.length);
+                expect(kept.filter(e => expired.includes(e))).toEqual([]);
+            });
+            test('neither filter mutates its input, and both tolerate null', () => {
+                const all = [live('a', 'a', -1)];
+                EL.expiring(all, NOW);
+                EL.stillActive(all, NOW);
+                expect(all).toHaveLength(1);
+                expect(EL.expiring(null, NOW)).toEqual([]);
+                expect(EL.stillActive(null, NOW)).toEqual([]);
+            });
+        });
+
+        describe('durationWindowMs (the de-duplicated rule)', () => {
+            const def = { duration: 120 };
+
+            test('a recorded totalDuration WINS over the catalog', () => {
+                expect(EL.durationWindowMs({ totalDuration: 999 }, def, 180)).toBe(999);
+            });
+            test('falls back to the catalog duration (converted from minutes)', () => {
+                expect(EL.durationWindowMs({}, def, 180)).toBe(7_200_000);
+            });
+            test('falls back to the caller\'s tail when neither exists', () => {
+                expect(EL.durationWindowMs({}, null, 180)).toBe(10_800_000);
+                expect(EL.durationWindowMs({}, undefined, 0)).toBe(0);
+            });
+            test('the default tail is 0 — the preserve path\'s "no window, skip it"', () => {
+                expect(EL.durationWindowMs({}, null)).toBe(0);
+                expect(EL.durationWindowMs(null, null)).toBe(0);
+            });
+            test('a catalog entry with NO duration yields 0, never NaN (the latent-bug guard)', () => {
+                // The old preserve tail computed `undefined * 60000` → NaN, and `NaN <= 0` is false, so the
+                // guard passed it through and wrote `expiresAt = now + NaN` — a permanently-stuck enchantment.
+                const out = EL.durationWindowMs({}, { id: 'broken' });
+                expect(Number.isNaN(out)).toBe(false);
+                expect(out).toBe(0);
+            });
+            test('a zero/falsy totalDuration falls through to the catalog (precedence is ||, by design)', () => {
+                expect(EL.durationWindowMs({ totalDuration: 0 }, def)).toBe(7_200_000);
+            });
+        });
+
+        describe('effectiveDurationMs (purchase-time window)', () => {
+            test('converts the catalog minutes and applies the perk multiplier', () => {
+                expect(EL.effectiveDurationMs({ duration: 180 }, 1)).toBe(10_800_000);
+                expect(EL.effectiveDurationMs({ duration: 180 }, 1.25)).toBe(13_500_000);
+            });
+            test('rounds rather than truncates', () => {
+                expect(EL.effectiveDurationMs({ duration: 1 }, 1.000_008)).toBe(60_000);
+                expect(EL.effectiveDurationMs({ duration: 3 }, 1.111)).toBe(199_980);
+            });
+            test('a missing multiplier is a 1x pass-through, a missing def is 0', () => {
+                expect(EL.effectiveDurationMs({ duration: 120 }, undefined)).toBe(7_200_000);
+                expect(EL.effectiveDurationMs(null, 2)).toBe(0);
+            });
+        });
+
+        describe('effectiveCost (Scholar discount, floored at 1)', () => {
+            test('subtracts the discount', () => {
+                expect(EL.effectiveCost({ cost: 8 }, 3)).toBe(5);
+            });
+            test('is NEVER free — the floor is 1 crystal', () => {
+                expect(EL.effectiveCost({ cost: 5 }, 5)).toBe(1);
+                expect(EL.effectiveCost({ cost: 5 }, 100)).toBe(1);
+            });
+            test('no discount is a pass-through; a missing def costs 0', () => {
+                expect(EL.effectiveCost({ cost: 7 }, 0)).toBe(7);
+                expect(EL.effectiveCost({ cost: 7 }, undefined)).toBe(7);
+                expect(EL.effectiveCost(null, 3)).toBe(0);
+            });
+        });
+
+        describe('castEntry (the activeEnchantments record)', () => {
+            const def = ENCH_DEFS.double_xp;
+
+            test('records the id, effect, expiry AND the actual window as totalDuration', () => {
+                const entry = EL.castEntry(def, { now: NOW, durationMs: 13_500_000 });
+                expect(entry).toEqual({
+                    id: 'double_xp', effect: 'double_xp', expiresAt: NOW + 13_500_000,
+                    totalDuration: 13_500_000, name: def.name, icon: def.icon,
+                });
+            });
+            test('totalDuration is the PERK-EXTENDED window, not the base catalog value', () => {
+                // This is why the progress bar can be trusted: the denominator is the real window.
+                const durationMs = EL.effectiveDurationMs(def, 1.25);
+                const entry = EL.castEntry(def, { now: NOW, durationMs });
+                expect(entry.totalDuration).toBe(13_500_000);
+                expect(entry.totalDuration).toBeGreaterThan(EL.minutesToMs(def.duration));
+            });
+            test('falls back to the base catalog duration when no durationMs is supplied', () => {
+                const entry = EL.castEntry(def, { now: NOW });
+                expect(entry.expiresAt).toBe(NOW + 10_800_000);
+                expect(entry.totalDuration).toBe(10_800_000);
+            });
+            test('an explicit 0 durationMs is respected (not treated as absent)', () => {
+                const entry = EL.castEntry(def, { now: NOW, durationMs: 0 });
+                expect(entry.expiresAt).toBe(NOW);
+                expect(entry.totalDuration).toBe(0);
+            });
+            test('tolerates a missing def and missing opts', () => {
+                expect(EL.castEntry(null, { now: NOW })).toBeNull();
+                expect(EL.castEntry(def).expiresAt).toBe(10_800_000); // now defaults to 0
+            });
+        });
+
+        describe('expiryWarningDelay', () => {
+            test('returns the lead-time delay when the window is longer than the warning', () => {
+                expect(EL.expiryWarningDelay({ expiresAt: NOW + 600_000 }, NOW)).toBe(300_000);
+            });
+            test('returns null when the remaining window is already AT or inside the warning period', () => {
+                expect(EL.expiryWarningDelay({ expiresAt: NOW + 300_000 }, NOW)).toBeNull(); // exactly 5m
+                expect(EL.expiryWarningDelay({ expiresAt: NOW + 60_000 }, NOW)).toBeNull();
+                expect(EL.expiryWarningDelay({ expiresAt: NOW - 1 }, NOW)).toBeNull();
+            });
+            test('honours a custom warning window, including 0', () => {
+                expect(EL.expiryWarningDelay({ expiresAt: NOW + 600_000 }, NOW, 60_000)).toBe(540_000);
+                expect(EL.expiryWarningDelay({ expiresAt: NOW + 600_000 }, NOW, 0)).toBe(600_000);
+            });
+            test('tolerates a missing entry or a non-numeric expiresAt', () => {
+                expect(EL.expiryWarningDelay(null, NOW)).toBeNull();
+                expect(EL.expiryWarningDelay({}, NOW)).toBeNull();
+            });
+        });
+
+        describe('catalog integrity (the guard\'s premise)', () => {
+            const entries = Object.entries(ENCH_DEFS);
+
+            test('all 13 enchantments loaded', () => {
+                expect(entries).toHaveLength(13);
+            });
+            test('every entry has a positive MINUTE duration and a payable cost', () => {
+                for (const [id, def] of entries) {
+                    expect({ id, ok: def.duration > 0 && def.cost >= 1 }).toEqual({ id, ok: true });
+                }
+            });
+            test('every catalog entry resolves a real window for a LEGACY entry with no totalDuration', () => {
+                // Legacy saves (pre-totalDuration) are exactly the inputs that reach the fallback tails, so the
+                // preserve path must resolve a usable window for every real enchantment.
+                for (const [id, def] of entries) {
+                    const windowMs = EL.durationWindowMs({ id }, def);
+                    expect({ id, windowMs }).toEqual({ id, windowMs: def.duration * 60_000 });
+                }
+            });
+            test('a full purchase → cast round-trip is active now and expired after its window', () => {
+                for (const [id, def] of entries) {
+                    const entry = EL.castEntry(def, { now: NOW });
+                    expect({ id, active: EL.isActive([entry], def.effect) }).toEqual({ id, active: true });
+                    expect({ id, expiring: EL.expiring([entry], NOW + entry.totalDuration).length })
+                        .toEqual({ id, expiring: 1 });
+                    expect({ id, live: EL.stillActive([entry], NOW).length }).toEqual({ id, live: 1 });
+                }
+            });
+        });
+
+        describe('the duplicated duration-window rule (drift pin)', () => {
+            // enchantment-render.js keeps its own INLINE copy of this rule on purpose: no *-render.js module
+            // reaches for another extracted module. So instead of coupling them, these tests pin the two
+            // spellings to the same answer — if either tail is edited, this fails.
+            const fs = require('fs');
+            const path = require('path');
+
+            /** The render module's progress-bar denominator, transcribed verbatim from enchantment-render.js. */
+            const renderWindowMs = (ench, defs) =>
+                ench.totalDuration || (defs[ench.id]?.duration || 180) * 60000;
+
+            test('durationWindowMs(entry, def, 180) === the render module\'s inline expression', () => {
+                const defs = { double_xp: { duration: 180 }, boss_slayer: { duration: 120 } };
+                const cases = [
+                    { id: 'boss_slayer', totalDuration: 13_500_000 }, // recorded window wins
+                    { id: 'boss_slayer' },                            // catalog fallback
+                    { id: 'double_xp' },                              // catalog fallback
+                    { id: 'not_in_catalog' },                         // the 180-minute tail
+                    { id: 'not_in_catalog', totalDuration: 60_000 },  // recorded, no catalog entry
+                ];
+                for (const ench of cases) {
+                    expect({ id: ench.id, ms: EL.durationWindowMs(ench, defs[ench.id], 180) })
+                        .toEqual({ id: ench.id, ms: renderWindowMs(ench, defs) });
+                }
+            });
+
+            test('the render module still carries the tail this pin was written against', () => {
+                const src = fs.readFileSync(path.join(__dirname, '..', 'enchantment-render.js'), 'utf8');
+                expect(src).toContain("ench.totalDuration || (enchantmentDefinitions[ench.id]?.duration || 180) * 60000");
+            });
+
+            test('the preserve path DELIBERATELY passes no fallback, so an unknown window skips', () => {
+                const src = fs.readFileSync(path.join(__dirname, '..', 'goal-manager.js'), 'utf8');
+                expect(src).toContain('ENCHANTMENT_LIFECYCLE.durationWindowMs(e, def)');
+                expect(EL.durationWindowMs({ id: 'unknown' }, undefined)).toBe(0);
+            });
+        });
+
+        describe('parity with the class', () => {
+            test('hasActiveEnchantment sweeps FIRST, then bare-matches the effect', () => {
+                const gm = createTestManager();
+                gm.showAchievement = jest.fn();
+                gm.activeEnchantments = [
+                    { id: 'double_xp', effect: 'double_xp', expiresAt: Date.now() - 1, name: 'x', icon: '⚡' },
+                ];
+                // Expired-but-unswept reads active from the pure predicate, but the class sweeps first.
+                expect(EL.isActive(gm.activeEnchantments, 'double_xp')).toBe(true);
+                expect(gm.hasActiveEnchantment('double_xp')).toBe(false);
+                expect(gm.activeEnchantments).toEqual([]);
+            });
+
+            test('checkExpiredEnchantments drops expired entries and keeps live ones', () => {
+                const gm = createTestManager();
+                gm.showAchievement = jest.fn();
+                gm.getClassPerkValue = () => 0; // no Insight
+                gm.activeEnchantments = [
+                    { id: 'double_xp', effect: 'double_xp', expiresAt: Date.now() - 1, name: 'x', icon: '⚡' },
+                    { id: 'serenity', effect: 'crystal_chance', expiresAt: Date.now() + 60_000, name: 'y', icon: '🧘' },
+                ];
+                gm.checkExpiredEnchantments();
+                expect(gm.activeEnchantments.map(e => e.id)).toEqual(['serenity']);
+            });
+
+            test('the Insight preserve re-extends by the durationWindowMs answer', () => {
+                const gm = createTestManager();
+                gm.showAchievement = jest.fn();
+                gm.scheduleEnchantmentExpiryNotification = jest.fn();
+                gm.getClassPerkValue = (k) => (k === 'enchant_preserve' ? 1 : 0);
+                gm.rng = () => 0; // always inside the preserve chance
+                const entry = { id: 'boss_slayer', effect: 'boss_damage', expiresAt: Date.now() - 1, name: 'y', icon: '⚔️' };
+                gm.activeEnchantments = [entry];
+
+                gm.checkExpiredEnchantments();
+
+                // Survived, with a fresh full window from the catalog (120 minutes).
+                expect(gm.activeEnchantments).toEqual([entry]);
+                expect(entry.expiresAt).toBeGreaterThan(Date.now());
+                expect(gm.scheduleEnchantmentExpiryNotification).toHaveBeenCalledWith(entry);
+            });
+
+            test('a legacy entry with an UNKNOWN id is dropped, never left permanently stuck', () => {
+                // The NaN path: no totalDuration and no catalog entry. windowMs is 0, so the guard drops it.
+                const gm = createTestManager();
+                gm.showAchievement = jest.fn();
+                gm.getClassPerkValue = (k) => (k === 'enchant_preserve' ? 1 : 0);
+                gm.rng = () => 0;
+                gm.activeEnchantments = [
+                    { id: 'removed_in_a_rebalance', effect: 'ghost', expiresAt: Date.now() - 1, name: 'z', icon: '❓' },
+                ];
+                gm.checkExpiredEnchantments();
+                expect(gm.activeEnchantments).toEqual([]);
+            });
+
+            test('purchaseEnchantment records the perk-extended window as totalDuration', () => {
+                const gm = createTestManager();
+                gm.showAchievement = jest.fn();
+                gm.saveData = jest.fn();
+                gm.render = jest.fn();
+                gm.scheduleEnchantmentExpiryNotification = jest.fn();
+                gm.isPremium = true;
+                gm.focusCrystals = 50;
+                gm.getClassPerkValue = (k) => (k === 'enchant_duration_mult' ? 0.25 : 0);
+
+                gm.purchaseEnchantment('double_xp');
+
+                expect(gm.activeEnchantments).toHaveLength(1);
+                const cast = gm.activeEnchantments[0];
+                expect(cast.effect).toBe('double_xp');
+                expect(cast.totalDuration).toBe(EL.effectiveDurationMs(ENCH_DEFS.double_xp, 1.25));
+                expect(gm.focusCrystals).toBe(50 - EL.effectiveCost(ENCH_DEFS.double_xp, 0));
+            });
+        });
+    });
+
     // ==================== PERIOD SUMMARY LOGIC (Roadmap #1, 70th slice — eighteenth LOGIC module) ====================
     // period-summary-logic.js holds the PURE previous-period recap math behind generatePreviousPeriodSummary,
     // which had ZERO coverage despite FIVE call sites, and whose weekly share sentence was hand-written at
     // THREE of them. The date ranges are the drift-prone part (Monday-start weeks, leap-year month ends),
     // so those are pinned hardest here.
     describe('period-summary-logic.js (pure previous-period recap math)', () => {
-        const PSL = require('../period-summary-logic.js');
+        const PSL = require('../period-summary-logic.js').default;
 
         // The real dateToLocalString is timezone-aware and lives on the class; a plain local-calendar
         // ISO formatter is the correct stand-in for the pure module's injected dependency.
@@ -2860,11 +3325,15 @@ describe('GoalManager', () => {
                 expect(gm.lastYear).toBe(2026);
             });
 
+            // The field mapping moved to load-deserializer.js in the 77th slice, so the
+            // source guard follows it there. `d` is the module's local alias for the blob and
+            // `defaults` the shared default-state.js table (84th slice) — the four period fields
+            // must stay EXPLICIT with `??`, never fall into the `||` loop.
             test('the load path uses `??` for every period-tracking field', () => {
-                const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'goal-manager.js'), 'utf8');
+                const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'load-deserializer.js'), 'utf8');
                 ['lastVisitDate', 'lastWeekNumber', 'lastMonth', 'lastYear'].forEach(f => {
-                    expect(src).toContain(`this.${f} = data.${f} ?? null;`);
-                    expect(src).not.toContain(`this.${f} = data.${f} || null;`);
+                    expect(src).toContain(`state.${f} = d.${f} ?? defaults.${f};`);
+                    expect(src).not.toContain(`d.${f} || `);
                 });
             });
         });
@@ -2875,7 +3344,7 @@ describe('GoalManager', () => {
     // pieces of duplicated knowledge: the 25-min session default (×5), the chain-settings literal (×2),
     // sessionsPerChain's 4 (×3), the remaining-seconds expression (×3), and the chain-finished predicate (×2).
     describe('focus-session-logic.js (pure focus-timer + Pomodoro-chain math)', () => {
-        const FSL = require('../focus-session-logic.js');
+        const FSL = require('../focus-session-logic.js').default;
 
         describe('session length', () => {
             test('exposes the de-duplicated defaults', () => {
@@ -3043,7 +3512,7 @@ describe('GoalManager', () => {
     // Quest Doubler 2× (the latter split ACROSS the two methods via _questDoublerGoldPending), and both ended
     // in the same Math.floor(amount × m1 × m2 × …) convention.
     describe('reward-economy.js (pure XP/gold reward-stack math)', () => {
-        const REWARD_ECONOMY = require('../reward-economy.js');
+        const REWARD_ECONOMY = require('../reward-economy.js').default;
 
         describe('multiplier stack', () => {
             test('multiplies through and floors', () => {
@@ -3128,6 +3597,38 @@ describe('GoalManager', () => {
             });
         });
 
+        // Ranger Forage capstone (90th slice, Sep 7 criterion (1)/(2) audit): the hit-roll +
+        // 10-20 bonus-gold math applyForage still had inline, now isolated and unit-tested.
+        describe('Ranger Forage (forageReward)', () => {
+            test('misses (returns null) when chance is <= 0', () => {
+                const rng = jest.fn(() => 0);
+                expect(REWARD_ECONOMY.forageReward(0, rng)).toBeNull();
+                expect(REWARD_ECONOMY.forageReward(-0.1, rng)).toBeNull();
+                expect(rng).not.toHaveBeenCalled();
+            });
+            test('misses when the hit-roll lands >= chance', () => {
+                const rng = jest.fn(() => 0.2);
+                expect(REWARD_ECONOMY.forageReward(0.2, rng)).toBeNull();
+                expect(rng).toHaveBeenCalledTimes(1); // only the hit-check — amount roll never fires on a miss
+            });
+            test('hits when the roll is strictly below chance, granting 10-20 gold + 1 crystal', () => {
+                const rng = jest.fn(() => 0); // hit; amount roll floors to the base
+                expect(REWARD_ECONOMY.forageReward(0.2, rng)).toEqual({ gold: 10, crystals: 1 });
+                expect(rng).toHaveBeenCalledTimes(2);
+            });
+            test('spreads the bonus gold across the full 10-20 range', () => {
+                expect(REWARD_ECONOMY.forageReward(1, () => 0).gold).toBe(10);
+                expect(REWARD_ECONOMY.forageReward(1, () => 0.99).gold).toBe(20);
+                expect(REWARD_ECONOMY.forageReward(1, () => 0.5).gold).toBe(15);
+            });
+            test('calls rng at most twice, hit-check first then the amount roll', () => {
+                const order = [];
+                const rng = jest.fn(() => { order.push(order.length); return 0; });
+                REWARD_ECONOMY.forageReward(1, rng);
+                expect(order).toEqual([0, 1]);
+            });
+        });
+
         describe('parity with addXP / addGold', () => {
             test('addGold matches the pure stack under a companion bonus', () => {
                 const gm = createTestManager();
@@ -3155,8 +3656,8 @@ describe('GoalManager', () => {
     // against spell-definitions.js, the exact drift that caused the July 2026 loot bug
     // (scholars_charm / merchants_fortune had silently vanished from a duplicated list).
     describe('loot-pool.js (master loot pool data)', () => {
-        const MASTER_LOOT_POOL = require('../loot-pool.js');
-        const SPELL_DEFINITIONS = require('../spell-definitions.js');
+        const MASTER_LOOT_POOL = require('../loot-pool.js').default;
+        const SPELL_DEFINITIONS = require('../spell-definitions.js').default;
         const allEntries = Object.values(MASTER_LOOT_POOL).flat();
 
         test('has the five rarity tiers in order, each a non-empty array', () => {
@@ -3202,7 +3703,7 @@ describe('GoalManager', () => {
     // (the formula used to be duplicated between them). generateWeeklyBoss was previously
     // UNTESTED; it gets coverage here too.
     describe('boss-generator.js (pure boss engine)', () => {
-        const BossGen = require('../boss-generator.js');
+        const BossGen = require('../boss-generator.js').default;
         const fakeThemes = [
             { name: 'Alpha', icon: 'A', flavor: 'first', particleType: 'shadow' },
             { name: 'Beta', icon: 'B', flavor: 'second', particleType: 'ember' },
@@ -3291,7 +3792,7 @@ describe('GoalManager', () => {
     // describes); these lock each migration in isolation — including the companion name→type
     // table that used to be hand-copied in TWO places (the whole reason for this roadmap).
     describe('persistence-migrations.js (pure save-data normalizers)', () => {
-        const PM = require('../persistence-migrations.js');
+        const PM = require('../persistence-migrations.js').default;
 
         test('COMPANION_NAME_TO_TYPE covers all 12 companions and is frozen', () => {
             expect(Object.keys(PM.COMPANION_NAME_TO_TYPE)).toHaveLength(12);
@@ -3428,7 +3929,7 @@ describe('GoalManager', () => {
     // gm.getBossParticleType through the delegators); these lock the MODULE's exported surface
     // directly, incl. the newly-injected `bossThemes` param on getBossParticleType.
     describe('boss-render.js (pure boss presentation helpers)', () => {
-        const BR = require('../boss-render.js');
+        const BR = require('../boss-render.js').default;
 
         test('getBossPhase maps the HP ratio to the right color/label bands', () => {
             expect(BR.getBossPhase(100, 100)).toEqual({ color: 'red', text: 'Full Power' });
@@ -3727,7 +4228,7 @@ describe('GoalManager', () => {
     // manager's renderChecklistHTML/getChecklistProgress now delegate here; these lock the module's
     // exported surface directly (the method had ZERO prior tests), incl. the injected escapeHTML.
     describe('task-render.js (pure task/goal presentation builders)', () => {
-        const TR = require('../task-render.js');
+        const TR = require('../task-render.js').default;
         const esc = (s) => String(s); // identity-ish stub so raw text is visible in assertions
 
         // getChecklistProgress — the completion fold
@@ -4447,7 +4948,7 @@ describe('GoalManager', () => {
     // module's exported surface directly (it had ZERO prior isolated coverage), incl. the injected
     // rarity colour map, slot ids, twinBond flag, and the cross-cutting _rarityNameplate helper.
     describe('companion-render.js (pure companion-den presentation builders)', () => {
-        const CR = require('../companion-render.js');
+        const CR = require('../companion-render.js').default;
         const companionDeps = (over = {}) => ({
             companionDefs: { wolf: { icon: '🐺', name: 'Wolf', description: 'A loyal wolf', rarity: 'rare' } },
             rarityColors: {
@@ -4615,7 +5116,7 @@ describe('GoalManager', () => {
     // the ONE shared row used by BOTH the linear nodes (unlockAction 'class.unlockNode') and the
     // subclass tiers ('class.unlockSubclassTier').
     describe('Class render module (class-render.js)', () => {
-        const CLS = require('../class-render.js');
+        const CLS = require('../class-render.js').default;
         const klass = (over = {}) => ({ id: 'warrior', color: '#ef4444', icon: '⚔️', name: 'Warrior', tagline: 'Boss combat specialist', ...over });
         const node = (over = {}) => ({ desc: '+20% boss damage', cost: 2, ...over });
         const rowOpts = (over = {}) => ({ isUnlocked: false, isNext: false, canAfford: false, color: '#ef4444', unlockAction: 'class.unlockNode', ...over });
@@ -4836,7 +5337,7 @@ describe('GoalManager', () => {
     // by a temporary before/after runtime snapshot during the extraction; these lock the builders'
     // per-branch shape directly. renderQuickStats stays on the class (it sets textContent, no markup).
     describe('Analytics render module (analytics-render.js)', () => {
-        const AR = require('../analytics-render.js');
+        const AR = require('../analytics-render.js').default;
         const counts = (over = {}) => ({ daily: 0, weekly: 0, monthly: 0, yearly: 0, life: 0, side: 0, ...over });
         const cell = (over = {}) => ({ dateStr: '2026-06-15', count: 0, isFuture: false, ...over });
 
@@ -5018,7 +5519,7 @@ describe('GoalManager', () => {
     // proven by a temporary before/after runtime snapshot during the extraction; these lock the
     // builders' per-branch shape directly.
     describe('Quest chain render module (quest-chain-render.js)', () => {
-        const QCR = require('../quest-chain-render.js');
+        const QCR = require('../quest-chain-render.js').default;
         const chapters = () => [
             { title: 'Ch1', description: 'First', tasks: ['a', 'b'], reward: { xp: 100, gold: 50, spell: 'fireball', charges: 2 } },
             { title: 'Ch2', description: 'Second', tasks: ['c'], reward: { xp: 200, gold: 80, spell: 'frostbolt', charges: 1 } },
@@ -5123,7 +5624,7 @@ describe('GoalManager', () => {
     // unaffordable / premium-locked / premium-unlocked branches was proven by a temporary before/after
     // runtime snapshot (Date.now frozen) during the extraction; these lock the builders' shape directly.
     describe('Enchantment render module (enchantment-render.js)', () => {
-        const ER = require('../enchantment-render.js');
+        const ER = require('../enchantment-render.js').default;
         const NOW = 1800000000000;
         const defs = () => ({
             double_xp:  { id: 'double_xp',  name: 'Double XP',  icon: '⚡', description: '2x XP',  cost: 50,  duration: 60, effect: 'double_xp',  premium: false },
@@ -5229,7 +5730,7 @@ describe('GoalManager', () => {
     // free/premium-with-colour-fallbacks/dismissed/no-featured/already-wearing — was proven by temporary
     // before/after runtime snapshots during each extraction; these lock the builders' per-branch shape directly.
     describe('Dashboard render module (dashboard-render.js)', () => {
-        const DR = require('../dashboard-render.js');
+        const DR = require('../dashboard-render.js').default;
 
         test('module is frozen with the four builders', () => {
             expect(Object.isFrozen(DR)).toBe(true);
@@ -5388,7 +5889,7 @@ describe('GoalManager', () => {
     // not a markup builder). Byte-faithfulness across every branch was proven by a temporary before/after
     // runtime snapshot (clock frozen) during extraction; these lock the builders' per-branch shape directly.
     describe('Player HUD render module (player-hud-render.js)', () => {
-        const PH = require('../player-hud-render.js');
+        const PH = require('../player-hud-render.js').default;
         const NOW = 1800000000000;
         const min = (n) => NOW + n * 60000;
         const iso = (ms) => new Date(ms).toISOString();
@@ -5567,7 +6068,7 @@ describe('GoalManager', () => {
     // across every branch was proven by a temporary before/after runtime snapshot during extraction; these
     // lock the builders' per-branch shape directly. No clock; title/rank names interpolated raw.
     describe('Title Hall render module (title-render.js)', () => {
-        const TR = require('../title-render.js');
+        const TR = require('../title-render.js').default;
         const contentDeps = (over = {}) => ({
             unlockedTitles: [],
             currentTitle: null,
@@ -5640,7 +6141,7 @@ describe('GoalManager', () => {
     // during extraction; these lock the builder's per-branch shape directly. The clock-derived canClaimWooden +
     // goldCoins/treasureChests come in as inputs; the chest visual is produced by the injected chestStaticHTML.
     describe('Reward render module (reward-render.js)', () => {
-        const RR = require('../reward-render.js');
+        const RR = require('../reward-render.js').default;
         const stamp = (tier, emoji, cls) => `<CHEST:${tier}:${emoji}:${cls || ''}>`;
         const deps = (over = {}) => ({
             canClaimWooden: true,
@@ -5703,7 +6204,7 @@ describe('GoalManager', () => {
     // themeDefinitions catalog / unlockedThemes / currentTheme / isPremium come in as inputs; the compact tile
     // gradient is produced by the injected darkenColor (the manager's pure helper, kept on the class).
     describe('Theme render module (theme-render.js)', () => {
-        const TH = require('../theme-render.js');
+        const TH = require('../theme-render.js').default;
         const defs = {
             forest: { name: 'Forest', icon: '🌲', color: '#228833', unlockLevel: 1 },
             ocean: { name: 'Ocean', icon: '🌊', color: '#1166aa', unlockLevel: 5 },
@@ -5796,7 +6297,7 @@ describe('GoalManager', () => {
     // these lock the builder's per-branch shape directly. The achievement catalog + progress map + earned-badge
     // records are inputs; the builder is pure (the unlock date reads the record's own timestamp, never "now").
     describe('Badge render module (badge-render.js)', () => {
-        const BR = require('../badge-render.js');
+        const BR = require('../badge-render.js').default;
         const defs = [
             { id: 'a1', type: 'tasks', target: 10, rarity: 'rare', icon: '🥉', name: 'First Steps', description: 'Do 10 tasks' },
             { id: 'a2', type: 'streak', target: 7, rarity: 'epic', icon: '🔥', name: 'Week Warrior', description: '7-day streak' },
@@ -5871,7 +6372,7 @@ describe('GoalManager', () => {
     // during extraction; these lock the builder's per-card shape directly. escapeHTML + heatmapHTML are injected
     // (the heatmap is clock-dependent and stays on the class as generateHabitHeatMap); the builder is pure.
     describe('Habit render module (habit-render.js)', () => {
-        const HR = require('../habit-render.js');
+        const HR = require('../habit-render.js').default;
         // Marker stubs so assertions can see exactly what the builder routes through each injected helper.
         const esc = (s) => `[[${s}]]`;
         const hm = (h) => `<!--HM:${h.id}-->`;
@@ -5937,7 +6438,7 @@ describe('GoalManager', () => {
     // builder's per-card shape directly. escapeHTML is injected; the sort + "Archived:" date read each record's
     // own archivedAt (never the wall clock), so the builder is pure.
     describe('Archive render module (archive-render.js)', () => {
-        const AR = require('../archive-render.js');
+        const AR = require('../archive-render.js').default;
         // Marker stub so assertions can see exactly what the builder routes through escapeHTML.
         const esc = (s) => `[[${s}]]`;
         const build = (archivedGoals) => AR.renderArchivesHTML({ archivedGoals, escapeHTML: esc });
@@ -6012,7 +6513,7 @@ describe('GoalManager', () => {
     // manager's static DAILY_QUEST_POOL, def.check(tracking) is a pure predicate (and its result isn't even used
     // by the row template — preserved verbatim), and the chest's canClaim + chestStaticHTML come in as inputs.
     describe('Daily-board render module (daily-board-render.js)', () => {
-        const DB = require('../daily-board-render.js');
+        const DB = require('../daily-board-render.js').default;
         // A tiny fake pool + a marker chestStaticHTML so assertions see exactly what routes through each dep.
         const pool = [
             { id: 'a', name: 'Alpha', desc: 'do alpha', icon: '🅰️', xp: 15, check: (t) => t.x >= 1 },
@@ -6104,7 +6605,7 @@ describe('GoalManager', () => {
     // builder's per-branch shape directly. PURE: recurringTasks is the manager's list and escapeHTML is injected;
     // the human schedule line is derived from each row's own recurrence (no clock, no shared state).
     describe('Recurring render module (recurring-render.js)', () => {
-        const RR = require('../recurring-render.js');
+        const RR = require('../recurring-render.js').default;
         const esc = (s) => `[esc:${s}]`; // marker escapeHTML so assertions can see the title route through it
         const build = (recurringTasks) => RR.renderRecurringTasksHTML({ recurringTasks, escapeHTML: esc });
         // A single active task with the given recurrence (schedule-line assertions only care about recurrence).
@@ -6177,7 +6678,7 @@ describe('GoalManager', () => {
     // function of {day,isToday,completed,total} scalars, and the task list of {tasksForDay,dateString} + injected
     // escapeHTML (goalManager.toggleTask is an inline onchange string in the OUTPUT markup, not a live ref).
     describe('Calendar render module (calendar-render.js)', () => {
-        const CR = require('../calendar-render.js');
+        const CR = require('../calendar-render.js').default;
         const esc = (s) => `[esc:${s}]`; // marker escapeHTML so assertions can see text route through it
 
         test('module is frozen with both builders', () => {
@@ -6264,7 +6765,7 @@ describe('GoalManager', () => {
     // className/innerHTML writes). The wiring (real wrappers producing identical output) was proven byte-faithful by
     // a temporary before/after runtime snapshot during the extraction; these lock the builders' per-branch shape.
     describe('Focus-timer render module (focus-timer-render.js)', () => {
-        const FTR = require('../focus-timer-render.js');
+        const FTR = require('../focus-timer-render.js').default;
         const ctrl = (o) => FTR.renderFocusTimerControls({ focusTimerRunning: false, isBreak: false, hasPomodoroChain: false, focusTimeRemaining: 0, sessionsPerChain: 4, ...o });
 
         describe('renderFocusTimerControls', () => {
@@ -6340,7 +6841,7 @@ describe('GoalManager', () => {
     // Byte-faithfulness was proven during extraction by a temporary equality check against the pre-swap inline
     // output; these lock the builders' per-branch shape and the real-wrapper wiring.
     describe('Premium render module (premium-render.js)', () => {
-        const PR = require('../premium-render.js');
+        const PR = require('../premium-render.js').default;
 
         test('module is frozen with the two builders', () => {
             expect(Object.isFrozen(PR)).toBe(true);
@@ -6419,7 +6920,7 @@ describe('GoalManager', () => {
     // proven during extraction by a temporary inline-vs-module equality check; these lock the builder's per-branch
     // shape + the real-wrapper flag resolution. The time <input>s keep their inline onchange handlers verbatim.
     describe('Reminder render module (reminder-render.js)', () => {
-        const RR = require('../reminder-render.js');
+        const RR = require('../reminder-render.js').default;
         const settings = (over = {}) => ({
             enabled: true, morningReminder: true, morningTime: '09:00',
             eveningReminder: true, eveningTime: '18:00', overdueAlert: true,
@@ -6546,7 +7047,7 @@ describe('GoalManager', () => {
     // temporary before/after runtime snapshot during the extraction; these lock the
     // builders' per-branch shape directly.
     describe('Spell render module (spell-render.js)', () => {
-        const SR = require('../spell-render.js');
+        const SR = require('../spell-render.js').default;
         const nameplate = (r) => `<NP:${r}>`;
         const overcharge = (spell, charges) => `<OC:${spell.id}:${charges}>`;
         const spell = (over = {}) => ({ id: 'lucky_draw', rarity: 'rare', icon: '🎲', name: 'Lucky Draw', description: 'desc', ...over });
@@ -6657,7 +7158,7 @@ describe('GoalManager', () => {
     // tests drive initializeClasses(). These tests lock the module's shape + tuning
     // so any future edit to balance.js is a deliberate, reviewable act.
     describe('Balance module (balance.js)', () => {
-        const BALANCE = require('../balance.js');
+        const BALANCE = require('../balance.js').default;
 
         test('is loaded, non-empty, and deeply frozen (immutable source of truth)', () => {
             expect(BALANCE).toBeTruthy();
@@ -6670,7 +7171,7 @@ describe('GoalManager', () => {
         });
 
         test('goal-manager.js captured the exact same table (wiring identity)', () => {
-            expect(window.BALANCE).toBe(BALANCE);
+            expect(BALANCE).toBe(BALANCE);
         });
 
         test('loot drop thresholds match the documented 1/4/10/25/60 curve', () => {
@@ -8320,6 +8821,49 @@ describe('GoalManager', () => {
             expect(gm.monthlyBossUnlockThreshold).toBe(5);
         });
 
+        describe('executeBossBySpell — the 25% window is COMBAT_DAMAGE.isExecuteRange (criterion-(2) item)', () => {
+            const COMBAT_DAMAGE = require('../combat-damage.js').default;
+            const armed = (currentHP) => {
+                const gm = createTestManager();
+                gm.activeSpells = [{ spellId: 'execute', expiresAt: -1 }];
+                gm.dailyBoss = { name: 'B', icon: 'x', maxHP: 100, currentHP, level: 1, type: 'daily', defeated: false, totalDamage: 0, rewards: { xp: 1, gold: 1 } };
+                gm.updateBossHPBar = jest.fn();
+                gm.addBossLog = jest.fn();
+                gm.saveData = jest.fn();
+                return gm;
+            };
+
+            test('kills at exactly the threshold (25% HP) and consumes the spell', () => {
+                const gm = armed(25);
+                expect(COMBAT_DAMAGE.isExecuteRange(gm.dailyBoss)).toBe(true);
+                gm.executeBossBySpell('daily');
+                expect(gm.dailyBoss.defeated).toBe(true);
+                expect(gm.dailyBoss.currentHP).toBe(0);
+                expect(gm.activeSpells).toEqual([]);
+            });
+
+            test('does nothing one point above the threshold', () => {
+                const gm = armed(26);
+                expect(COMBAT_DAMAGE.isExecuteRange(gm.dailyBoss)).toBe(false);
+                gm.executeBossBySpell('daily');
+                expect(gm.dailyBoss.defeated).toBe(false);
+                expect(gm.dailyBoss.currentHP).toBe(26);
+                expect(gm.activeSpells).toHaveLength(1);
+            });
+
+            test('does nothing without an active execute spell, even at low HP', () => {
+                const gm = armed(5);
+                gm.activeSpells = [];
+                gm.executeBossBySpell('daily');
+                expect(gm.dailyBoss.defeated).toBe(false);
+            });
+
+            test('goal-manager.js no longer hardcodes the 25% as a percent comparison', () => {
+                const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'goal-manager.js'), 'utf8');
+                expect(src).not.toMatch(/hpPercent\s*>\s*25/);
+            });
+        });
+
         test('bossKillsThisMonth increments on daily boss defeat', () => {
             const gm = createTestManager();
             gm.level = 1;
@@ -9321,6 +9865,52 @@ describe('GoalManager', () => {
             gm.bossesDefeated = 25;
             gm.checkRewardUnlocks();
             expect(gm.unlockedThemes).toContain('shadow');
+        });
+
+        test('golden/shadow gates are read from theme-definitions.js `unlock` fields (single source)', () => {
+            const THEMES = require('../theme-definitions.js').default;
+            expect(THEMES.golden.unlock).toEqual({ goldEarned: 10000 });
+            expect(THEMES.shadow.unlock).toEqual({ bossesDefeated: 25 });
+            // The lock-card copy is derived prose — it must quote the same numbers.
+            expect(THEMES.golden.special).toContain((10000).toLocaleString('en-US'));
+            expect(THEMES.shadow.special).toContain('25');
+            // And checkRewardUnlocks has no hardcoded copy of either threshold left.
+            const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'goal-manager.js'), 'utf8');
+            expect(src).not.toMatch(/totalGoldEarned\s*\|\|\s*0\)\s*>=\s*10000/);
+            expect(src).not.toMatch(/bossesDefeated\s*\|\|\s*0\)\s*>=\s*25/);
+        });
+
+        test('checkRewardUnlocks follows a changed catalog threshold (data-driven, not hardcoded)', () => {
+            const gm = createTestManager();
+            delete gm.checkRewardUnlocks;
+            gm.themeDefinitions = {
+                ...gm.themeDefinitions,
+                golden: { ...gm.themeDefinitions.golden, unlock: { goldEarned: 500 } },
+            };
+            gm.unlockedThemes = ['default'];
+            gm.totalGoldEarned = 499;
+            gm.bossesDefeated = 0;
+            gm.level = 1;
+            gm.checkRewardUnlocks();
+            expect(gm.unlockedThemes).not.toContain('golden');
+            gm.totalGoldEarned = 500;
+            gm.checkRewardUnlocks();
+            expect(gm.unlockedThemes).toContain('golden');
+        });
+
+        test('a theme with `special` copy but no `unlock` table is never auto-unlocked', () => {
+            const gm = createTestManager();
+            delete gm.checkRewardUnlocks;
+            gm.themeDefinitions = {
+                ...gm.themeDefinitions,
+                mystery: { name: 'Mystery', icon: '?', color: '#000', unlockLevel: 0, special: 'Find the secret', premium: false },
+            };
+            gm.unlockedThemes = ['default'];
+            gm.totalGoldEarned = 1e9;
+            gm.bossesDefeated = 1e9;
+            gm.level = 99;
+            gm.checkRewardUnlocks();
+            expect(gm.unlockedThemes).not.toContain('mystery');
         });
 
         test('checkRewardUnlocks does NOT re-toast already-unlocked achievement themes', () => {
@@ -10834,12 +11424,37 @@ describe('GoalManager', () => {
     describe('v2.7.1 UX Audit deferred fixes (v2.9 cycle)', () => {
 
         describe('L5 — locked-nav teaser copy (_lockedNavMessage)', () => {
-            test('every gated feature gets a teaser fragment, not just the gate', () => {
+            // Criterion (2) follow-up to the 85th slice: the gated id set is DERIVED from the
+            // feature-unlocks.js tables, so adding a gated view/tab without a name + teaser fails
+            // here instead of shipping a bare "<id> unlocks at Level N!" toast.
+            const FU = require('../feature-unlocks.js').default;
+            const gatedIds = (levels) => Object.keys(levels).filter(k => levels[k] > 1);
+
+            test('every gated nav view gets a NAME and a teaser fragment, not just the gate', () => {
                 const gm = createTestManager();
-                ['rewards', 'arcane', 'focus', 'bossbattles', 'questchains'].forEach(view => {
+                const gated = gatedIds(FU.LEVELS);
+                expect(gated).toEqual(['rewards', 'arcane', 'bossbattles', 'focus', 'questchains']);
+                gated.forEach(view => {
                     const msg = gm._lockedNavMessage(view);
-                    expect(msg).toContain('unlocks at Level');
-                    expect(msg).toContain(' — '); // teaser separator present
+                    expect([view, msg]).toEqual([view, expect.stringContaining(`unlocks at Level ${FU.LEVELS[view]}`)]);
+                    expect([view, msg]).toEqual([view, expect.stringContaining(' — ')]); // teaser separator present
+                    // Named, not the raw id echoed back (the unknown-view fallback).
+                    expect([view, msg.startsWith(`🔒 ${view} unlocks`)]).toEqual([view, false]);
+                });
+            });
+
+            test('every gated arcane tab and goal tab gets a NAME and a teaser (_lockedTabMessage)', () => {
+                const gm = createTestManager();
+                const tabs = [
+                    ...gatedIds(FU.ARCANE_TAB_LEVELS).map(t => [t, FU.ARCANE_TAB_LEVELS[t]]),
+                    ...gatedIds(gm.getGoalTabUnlockLevelsForPath(null)).map(t => [t, gm.getGoalTabUnlockLevelsForPath(null)[t]])
+                ];
+                expect(tabs.map(([t]) => t)).toEqual(['spellbook', 'enchantments', 'weekly', 'sidequests', 'monthly', 'yearly', 'life-goals']);
+                tabs.forEach(([tab, lvl]) => {
+                    const msg = gm._lockedTabMessage(tab, lvl);
+                    expect([tab, msg]).toEqual([tab, expect.stringContaining(`unlocks at Level ${lvl}`)]);
+                    expect([tab, msg]).toEqual([tab, expect.stringContaining(' — ')]);
+                    expect([tab, msg.startsWith(`🔒 ${tab} unlocks`)]).toEqual([tab, false]);
                 });
             });
 
@@ -13559,7 +14174,7 @@ describe('delegated click dispatch (Roadmap #7b)', () => {
 // so nothing is really armed and the scheduled DELAYS become observable. Dates are compared as
 // LOCAL calendar fields, never toISOString(), so the assertions are timezone-independent.
 describe('reminder scheduling', () => {
-    const RSL = require('../reminder-schedule-logic.js');
+    const RSL = require('../reminder-schedule-logic.js').default;
 
     // Local-field serialization: TZ-independent and readable in the artifact.
     const fmt = (d) => d === null || d === undefined ? null :
@@ -13881,5 +14496,1343 @@ describe('reminder scheduling', () => {
         expect(shots([T('2026-03-01')], [], {}, { ...DEFAULTS, overdueAlert: false })).toEqual({ notes: [ALL_DONE], ...UNSTAMPED });
         expect(shots([T('2026-03-01')], [], {}, { ...DEFAULTS, enabled: false })).toEqual({ notes: [ALL_DONE], ...UNSTAMPED });
         expect(shots([T('2026-03-01', true)], [])).toEqual({ notes: [ALL_DONE], ...UNSTAMPED });
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// bounty-logic.js — pure Royal Bounty rules (Roadmap #1, 74th slice).
+//
+// Replaces the throwaway pre-extraction characterization baseline that guarded
+// the swap (the bounty core had ZERO coverage before this slice). These tests
+// drive the MODULE directly, then re-drive the REAL class delegators so the
+// wrappers can't drift away from the rules they now import.
+//
+// Three documented invariants are pinned deliberately here, because each one is
+// knowledge that still exists in two places and the module header promises a
+// test rather than a merge:
+//   1. The Monday-start off-by-one, shared verbatim with period-summary-logic.js.
+//   2. The two live ISO-week implementations (class LOCAL vs PSL UTC).
+//   3. The 1ms expiry disagreement between isPastWindow and the reminder resolver.
+//
+// Every Date is built from LOCAL calendar fields and asserted the same way, so
+// the suite is timezone-independent.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('bounty-logic.js (pure Royal Bounty rules)', () => {
+    const BL = require('../bounty-logic.js').default;
+    const PSL = require('../period-summary-logic.js').default;
+
+    /** Local-field Date builder (month is 1-based for readability). */
+    const D = (y, mo, d, h = 0, mi = 0, s = 0, ms = 0) => new Date(y, mo - 1, d, h, mi, s, ms);
+    /** Local calendar fields of a Date — the timezone-independent assertion form. */
+    const LF = (d) => (d == null ? null : [
+        d.getFullYear(), d.getMonth() + 1, d.getDate(),
+        d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
+    ]);
+    /** Local Y-M-D only, for comparisons where time-of-day is not part of the rule. */
+    const YMD = (d) => (d == null ? null : LF(d).slice(0, 3));
+
+    // June 2026 starts on a Monday, so: 8th = Mon, 10th = Wed, 14th = Sun.
+    const WED = D(2026, 6, 10, 9, 0);
+
+    /** A manager with every bounty side-effect stubbed, so only the rules are observed. */
+    const mgr = (over = {}) => {
+        const gm = createTestManager();
+        gm.level = 50;
+        gm.weeklyGoals = [];
+        gm.sideQuests = [];
+        gm.monthlyGoals = [];
+        gm.yearlyGoals = [];
+        gm.lifeGoals = [];
+        gm.activeBounties = { weekly: null, monthly: null };
+        gm.scheduleBountyReadyReminder = jest.fn();
+        gm.openTreasureChest = jest.fn();
+        gm.renderRoyalBounty = jest.fn();
+        Object.assign(gm, over);
+        return gm;
+    };
+
+    describe('the cadence → tier → chest tables', () => {
+        test('CADENCES is the sweep order every caller iterates', () => {
+            expect(BL.CADENCES).toEqual(['weekly', 'monthly']);
+        });
+
+        test('weekly draws from weekly + sidequest; monthly from monthly ONLY', () => {
+            expect(BL.CADENCE_TIERS.weekly).toEqual(['weekly', 'sidequest']);
+            expect(BL.CADENCE_TIERS.monthly).toEqual(['monthly']);
+        });
+
+        test('every tier maps to the manager list that holds it', () => {
+            expect(BL.QUEST_LIST_KEY).toEqual({
+                weekly: 'weeklyGoals',
+                sidequest: 'sideQuests',
+                monthly: 'monthlyGoals',
+                yearly: 'yearlyGoals',
+                epic: 'lifeGoals',
+            });
+        });
+
+        test('chest tier escalates with quest tier', () => {
+            expect(BL.CHEST_TIER_BY_QUEST_TIER).toEqual({
+                weekly: 'silver',
+                sidequest: 'silver',
+                monthly: 'gold',
+                yearly: 'royal',
+                epic: 'royal',
+            });
+        });
+
+        test('QUEST_LIST_KEY is WIDER than CADENCE_TIERS so legacy records still resolve', () => {
+            // A saved monthly bounty pointing at 'yearly'/'epic' must still find its
+            // quest (to be self-healed) even though monthly no longer draws those.
+            for (const tier of ['yearly', 'epic']) {
+                expect(BL.QUEST_LIST_KEY[tier]).toBeDefined();
+                expect(BL.servesTier('monthly', tier)).toBe(false);
+            }
+        });
+
+        test('the tables are frozen', () => {
+            expect(Object.isFrozen(BL.CADENCES)).toBe(true);
+            expect(Object.isFrozen(BL.CADENCE_TIERS)).toBe(true);
+            expect(Object.isFrozen(BL.CADENCE_TIERS.weekly)).toBe(true);
+            expect(Object.isFrozen(BL.QUEST_LIST_KEY)).toBe(true);
+            expect(Object.isFrozen(BL.CHEST_TIER_BY_QUEST_TIER)).toBe(true);
+            expect(Object.isFrozen(BL.DEFAULT_UNLOCK_LEVELS)).toBe(true);
+        });
+    });
+
+    // ── INVARIANT 1: the Monday-start off-by-one ─────────────────────────────
+    describe('daysFromMonday / mondayOf', () => {
+        test('Sunday is the SEVENTH day, not the first', () => {
+            // dow:      Sun Mon Tue Wed Thu Fri Sat
+            expect([0, 1, 2, 3, 4, 5, 6].map(BL.daysFromMonday)).toEqual([6, 0, 1, 2, 3, 4, 5]);
+        });
+
+        test('mondayOf snaps to this week Monday at local midnight', () => {
+            expect(LF(BL.mondayOf(WED))).toEqual([2026, 6, 8, 0, 0, 0, 0]);
+            // Sunday the 14th still belongs to the week that OPENED on the 8th.
+            expect(LF(BL.mondayOf(D(2026, 6, 14, 23, 30)))).toEqual([2026, 6, 8, 0, 0, 0, 0]);
+        });
+
+        test('Monday 00:00 is a fixed point', () => {
+            const mon = D(2026, 6, 8, 0, 0, 0, 0);
+            expect(LF(BL.mondayOf(mon))).toEqual(LF(mon));
+        });
+
+        test('walks back across a month AND year boundary', () => {
+            // Fri 2026-01-02 → Mon 2025-12-29.
+            expect(LF(BL.mondayOf(D(2026, 1, 2, 12, 0)))).toEqual([2025, 12, 29, 0, 0, 0, 0]);
+        });
+
+        test('does not mutate its argument', () => {
+            const input = D(2026, 6, 10, 9, 30, 15, 250);
+            const before = LF(input);
+            BL.mondayOf(input);
+            expect(LF(input)).toEqual(before);
+        });
+
+        // The rule fragment `dayOfWeek === 0 ? 6 : dayOfWeek - 1` is written in BOTH
+        // this module and period-summary-logic.js's previousPeriodRange. The
+        // surrounding computations genuinely differ (this week's Monday at midnight
+        // vs the PREVIOUS week's Monday with time preserved), so they are not merged
+        // — this pins them to the same weekday arithmetic instead.
+        test('agrees with period-summary-logic across all seven weekdays', () => {
+            for (let day = 8; day <= 14; day++) {
+                const today = D(2026, 6, day, 15, 45);
+                const psl = PSL.previousPeriodRange('week', today).startDate;
+                const mine = BL.mondayOf(today);
+                mine.setDate(mine.getDate() - 7);   // this week's Monday → last week's
+                expect(YMD(psl)).toEqual(YMD(mine));
+            }
+        });
+    });
+
+    // ── INVARIANT 2: two live ISO-week implementations ───────────────────────
+    describe('the week key (INJECTED, not owned)', () => {
+        test('weekly delegates to the injected weekKey; monthly never calls it', () => {
+            const weekKey = jest.fn(() => 'INJECTED');
+            expect(BL.periodKey('weekly', WED, weekKey)).toBe('INJECTED');
+            expect(weekKey).toHaveBeenCalledWith(WED);
+
+            weekKey.mockClear();
+            expect(BL.periodKey('monthly', WED, weekKey)).toBe('2026-06');
+            expect(weekKey).not.toHaveBeenCalled();
+        });
+
+        test('monthly key is local YYYY-MM, zero-padded', () => {
+            const never = () => { throw new Error('weekKey must not be called'); };
+            expect(BL.periodKey('monthly', D(2026, 1, 5), never)).toBe('2026-01');
+            expect(BL.periodKey('monthly', D(2026, 12, 31), never)).toBe('2026-12');
+        });
+
+        // The class's ISO helpers are LOCAL-time; period-summary-logic carries a
+        // separate UTC-based isoWeekNumber. Reconciling them would MOVE week
+        // boundaries for users near midnight, so both stay live and this walks them
+        // across the year-boundary dates where an ISO week-year actually disagrees
+        // with the calendar year. Dates are built at local NOON so the local/UTC
+        // calendar day cannot diverge for any real offset.
+        test('the class LOCAL and PSL UTC ISO-week numbers agree at local noon', () => {
+            const gm = mgr();
+            const dates = [
+                D(2026, 1, 1, 12), D(2025, 12, 29, 12), D(2025, 12, 31, 12),
+                D(2026, 6, 10, 12), D(2024, 2, 29, 12), D(2027, 1, 3, 12),
+            ];
+            for (const d of dates) {
+                expect(gm.getISOWeekNumber(d)).toBe(PSL.isoWeekNumber(d));
+            }
+        });
+
+        test('_weekKey uses the ISO week-YEAR, so New Year keys cannot collide', () => {
+            const gm = mgr();
+            // 2025-12-29 is Monday of ISO week 1 of 2027's predecessor year 2026,
+            // so its key must carry 2026 — NOT the calendar year 2025.
+            expect(gm._weekKey(D(2025, 12, 29, 12))).toBe('2026-W1');
+            expect(gm._weekKey(D(2026, 1, 1, 12))).toBe('2026-W1');
+            // Same week → identical key from both ends of the boundary.
+            expect(gm._weekKey(D(2025, 12, 29, 12))).toBe(gm._weekKey(D(2026, 1, 1, 12)));
+        });
+    });
+
+    describe('isUnlocked — the feature gate', () => {
+        const TABLE = { weekly: 6, monthly: 7 };
+
+        test('gates each cadence at its Quest Log tab level', () => {
+            expect(BL.isUnlocked('weekly', 5, TABLE)).toBe(false);
+            expect(BL.isUnlocked('weekly', 6, TABLE)).toBe(true);
+            expect(BL.isUnlocked('monthly', 6, TABLE)).toBe(false);
+            expect(BL.isUnlocked('monthly', 7, TABLE)).toBe(true);
+        });
+
+        test('falls back to 6 / 7 when the table is absent', () => {
+            for (const missing of [undefined, null]) {
+                expect(BL.isUnlocked('weekly', 5, missing)).toBe(false);
+                expect(BL.isUnlocked('weekly', 6, missing)).toBe(true);
+                expect(BL.isUnlocked('monthly', 6, missing)).toBe(false);
+                expect(BL.isUnlocked('monthly', 7, missing)).toBe(true);
+            }
+        });
+
+        test('a CONFIGURED 0 also falls back — the original used || not ??', () => {
+            // Preserved verbatim from the inline rule: 0 is falsy, so the default
+            // applies rather than unlocking the cadence at level 0.
+            expect(BL.isUnlocked('weekly', 3, { weekly: 0 })).toBe(false);
+            expect(BL.isUnlocked('weekly', 6, { weekly: 0 })).toBe(true);
+        });
+
+        test('any non-weekly cadence string is treated as monthly', () => {
+            expect(BL.isUnlocked('nonsense', 6, TABLE)).toBe(false);
+            expect(BL.isUnlocked('nonsense', 7, TABLE)).toBe(true);
+        });
+    });
+
+    describe('periodStart / deadline — the window boundaries', () => {
+        test('weekly period runs Monday 00:00 → Sunday 23:59:59.999', () => {
+            expect(LF(BL.periodStart('weekly', WED))).toEqual([2026, 6, 8, 0, 0, 0, 0]);
+            expect(LF(BL.deadline('weekly', WED))).toEqual([2026, 6, 14, 23, 59, 59, 999]);
+        });
+
+        test('every day of one ISO week shares the same weekly window', () => {
+            const start = LF(BL.periodStart('weekly', WED));
+            const end = LF(BL.deadline('weekly', WED));
+            for (let day = 8; day <= 14; day++) {
+                const d = D(2026, 6, day, 17, 3);
+                expect(LF(BL.periodStart('weekly', d))).toEqual(start);
+                expect(LF(BL.deadline('weekly', d))).toEqual(end);
+            }
+        });
+
+        test('monthly period starts on the 1st at local midnight', () => {
+            expect(LF(BL.periodStart('monthly', WED))).toEqual([2026, 6, 1, 0, 0, 0, 0]);
+            expect(LF(BL.periodStart('monthly', D(2024, 2, 29, 12)))).toEqual([2024, 2, 1, 0, 0, 0, 0]);
+        });
+
+        test('monthly deadline is a ROLLING 10-day window from the assignment day', () => {
+            // The assignment day counts, so the window is +(10 - 1) days.
+            expect(BL.MONTHLY_WINDOW_DAYS).toBe(10);
+            expect(LF(BL.deadline('monthly', WED))).toEqual([2026, 6, 19, 23, 59, 59, 999]);
+            // Assigned on the 1st → through the end of the 10th.
+            expect(LF(BL.deadline('monthly', D(2026, 6, 1, 8, 0)))).toEqual([2026, 6, 10, 23, 59, 59, 999]);
+        });
+
+        test('the monthly window can cross into the next month (and year)', () => {
+            expect(LF(BL.deadline('monthly', D(2026, 3, 31, 12)))).toEqual([2026, 4, 9, 23, 59, 59, 999]);
+            expect(LF(BL.deadline('monthly', D(2026, 12, 28, 12)))).toEqual([2027, 1, 6, 23, 59, 59, 999]);
+        });
+
+        test('does not mutate the injected clock', () => {
+            const now = D(2026, 6, 10, 9, 0, 0, 0);
+            const before = LF(now);
+            BL.periodStart('weekly', now);
+            BL.periodStart('monthly', now);
+            BL.deadline('weekly', now);
+            BL.deadline('monthly', now);
+            expect(LF(now)).toEqual(before);
+        });
+    });
+
+    describe('tiersFor / servesTier', () => {
+        const lists = {
+            weeklyGoals: [{ id: 'w1' }],
+            sideQuests: [{ id: 's1' }, { id: 's2' }],
+            monthlyGoals: [{ id: 'm1' }],
+        };
+
+        test('pairs each drawn tier with its list, in sweep order', () => {
+            expect(BL.tiersFor('weekly', lists)).toEqual([
+                ['weekly', lists.weeklyGoals],
+                ['sidequest', lists.sideQuests],
+            ]);
+            expect(BL.tiersFor('monthly', lists)).toEqual([['monthly', lists.monthlyGoals]]);
+        });
+
+        test('a missing list comes back as undefined rather than throwing', () => {
+            expect(BL.tiersFor('weekly', {})).toEqual([['weekly', undefined], ['sidequest', undefined]]);
+        });
+
+        test('servesTier is the legacy self-heal probe', () => {
+            expect(BL.servesTier('weekly', 'weekly')).toBe(true);
+            expect(BL.servesTier('weekly', 'sidequest')).toBe(true);
+            expect(BL.servesTier('weekly', 'monthly')).toBe(false);
+            expect(BL.servesTier('monthly', 'monthly')).toBe(true);
+            // The narrowing that refreshBounties heals: monthly no longer draws these.
+            expect(BL.servesTier('monthly', 'yearly')).toBe(false);
+            expect(BL.servesTier('monthly', 'epic')).toBe(false);
+        });
+    });
+
+    describe('eligibleQuests — the anti-stage rule', () => {
+        const START = D(2026, 6, 8);   // this week's Monday
+
+        test('only incomplete quests that PREDATE the period are eligible', () => {
+            const lists = {
+                weeklyGoals: [
+                    { id: 'old', created: D(2026, 6, 1).toISOString() },
+                    { id: 'staged', created: D(2026, 6, 9).toISOString() },   // after the start
+                    { id: 'done', created: D(2026, 6, 1).toISOString(), completed: true },
+                ],
+                sideQuests: [{ id: 'sq', created: D(2026, 5, 30).toISOString() }],
+            };
+            expect(BL.eligibleQuests('weekly', START, lists)).toEqual([
+                { id: 'old', tier: 'weekly' },
+                { id: 'sq', tier: 'sidequest' },
+            ]);
+        });
+
+        test('a quest created exactly AT the boundary is staged, not eligible', () => {
+            const lists = { weeklyGoals: [{ id: 'edge', created: START.toISOString() }] };
+            expect(BL.eligibleQuests('weekly', START, lists)).toEqual([]);
+        });
+
+        test('a legacy quest with no `created` stamp counts as pre-period', () => {
+            const lists = { weeklyGoals: [{ id: 'legacy' }] };
+            expect(BL.eligibleQuests('weekly', START, lists)).toEqual([{ id: 'legacy', tier: 'weekly' }]);
+        });
+
+        test('null holes, absent and empty lists are all tolerated', () => {
+            const lists = { weeklyGoals: [null, { id: 'ok' }], sideQuests: undefined };
+            expect(BL.eligibleQuests('weekly', START, lists)).toEqual([{ id: 'ok', tier: 'weekly' }]);
+            expect(BL.eligibleQuests('weekly', START, {})).toEqual([]);
+            expect(BL.eligibleQuests('monthly', START, { monthlyGoals: [] })).toEqual([]);
+        });
+
+        test('monthly ignores the weekly-only lists entirely', () => {
+            const lists = {
+                weeklyGoals: [{ id: 'w' }],
+                sideQuests: [{ id: 's' }],
+                monthlyGoals: [{ id: 'm' }],
+            };
+            expect(BL.eligibleQuests('monthly', D(2026, 6, 1), lists)).toEqual([{ id: 'm', tier: 'monthly' }]);
+        });
+    });
+
+    describe('seededIndex / pickFrom — the deterministic pick', () => {
+        test('same key + salt + length always yields the same index', () => {
+            const a = BL.seededIndex('2026-W24', '', 5);
+            for (let i = 0; i < 25; i++) expect(BL.seededIndex('2026-W24', '', 5)).toBe(a);
+        });
+
+        test('always in range for any pool size', () => {
+            for (const len of [1, 2, 3, 5, 17, 40]) {
+                for (const key of ['2026-W24', '2026-06', '2025-W1', '2026-W1']) {
+                    const idx = BL.seededIndex(key, '', len);
+                    expect(Number.isInteger(idx)).toBe(true);
+                    expect(idx).toBeGreaterThanOrEqual(0);
+                    expect(idx).toBeLessThan(len);
+                }
+            }
+        });
+
+        test('an empty pool is index 0, never NaN or -1', () => {
+            expect(BL.seededIndex('2026-W24', '', 0)).toBe(0);
+            expect(BL.seededIndex('2026-W24', '', -3)).toBe(0);
+        });
+
+        test('undefined and null salt behave exactly like the empty string', () => {
+            for (const len of [3, 5, 17]) {
+                const base = BL.seededIndex('2026-W24', '', len);
+                expect(BL.seededIndex('2026-W24', undefined, len)).toBe(base);
+                expect(BL.seededIndex('2026-W24', null, len)).toBe(base);
+            }
+        });
+
+        test('the reroll salt moves the pick off the original slot', () => {
+            // Not guaranteed for every key/length, but it must be a DIFFERENT
+            // sequence — otherwise a reroll could never land anywhere new.
+            const plain = [];
+            const salted = [];
+            for (const key of ['2026-W24', '2026-W25', '2026-06', '2026-07']) {
+                plain.push(BL.seededIndex(key, '', 5));
+                salted.push(BL.seededIndex(key, 'reroll', 5));
+            }
+            expect(salted).not.toEqual(plain);
+        });
+
+        test('a different period key generally re-rolls the pick', () => {
+            const keys = ['2026-W20', '2026-W21', '2026-W22', '2026-W23', '2026-W24'];
+            const picks = new Set(keys.map(k => BL.seededIndex(k, '', 5)));
+            expect(picks.size).toBeGreaterThan(1);
+        });
+
+        test('pickFrom returns the pooled entry at the seeded index', () => {
+            const pool = [
+                { id: 'a', tier: 'weekly' }, { id: 'b', tier: 'weekly' },
+                { id: 'c', tier: 'sidequest' },
+            ];
+            expect(BL.pickFrom(pool, '2026-W24')).toBe(pool[BL.seededIndex('2026-W24', '', 3)]);
+            expect(BL.pickFrom(pool, '2026-W24', 'reroll')).toBe(pool[BL.seededIndex('2026-W24', 'reroll', 3)]);
+        });
+
+        test('pickFrom yields null for an empty or absent pool', () => {
+            expect(BL.pickFrom([], '2026-W24')).toBeNull();
+            expect(BL.pickFrom(null, '2026-W24')).toBeNull();
+            expect(BL.pickFrom(undefined, '2026-W24')).toBeNull();
+        });
+    });
+
+    describe('the record builders', () => {
+        test('emptyBounty is the add-a-quest nudge record', () => {
+            expect(BL.emptyBounty('weekly', '2026-W24')).toEqual({
+                periodKey: '2026-W24', cadence: 'weekly', empty: true,
+            });
+        });
+
+        test('assignedBounty stamps the full active record', () => {
+            const now = D(2026, 6, 10, 9, 0);
+            const expiresAt = D(2026, 6, 14, 23, 59, 59, 999);
+            expect(BL.assignedBounty({
+                cadence: 'weekly',
+                periodKey: '2026-W24',
+                pick: { id: 'w1', tier: 'sidequest' },
+                now,
+                expiresAt,
+            })).toEqual({
+                periodKey: '2026-W24',
+                cadence: 'weekly',
+                questType: 'sidequest',
+                questId: 'w1',
+                assignedAt: now.toISOString(),
+                expiresAt: expiresAt.toISOString(),
+                chestTier: 'silver',      // sidequest → silver, from the table
+                status: 'active',
+                rerolled: false,
+            });
+        });
+
+        test('the chest tier always comes from the table, per targeted tier', () => {
+            const args = (tier) => ({
+                cadence: 'monthly', periodKey: '2026-06', pick: { id: 'q', tier },
+                now: WED, expiresAt: WED,
+            });
+            expect(BL.assignedBounty(args('monthly')).chestTier).toBe('gold');
+            expect(BL.assignedBounty(args('yearly')).chestTier).toBe('royal');
+            expect(BL.assignedBounty(args('epic')).chestTier).toBe('royal');
+        });
+
+        test('emptySlots hands back a FRESH map each call', () => {
+            const a = BL.emptySlots();
+            expect(a).toEqual({ weekly: null, monthly: null });
+            a.weekly = { id: 'mutated' };
+            // Callers assign into this, so a shared object would leak between saves.
+            expect(BL.emptySlots()).toEqual({ weekly: null, monthly: null });
+        });
+    });
+
+    describe('findQuest / isTarget — the read side', () => {
+        const lists = {
+            weeklyGoals: [{ id: 'w1', title: 'Slay' }],
+            sideQuests: [{ id: 's1', title: 'Scout' }],
+            monthlyGoals: [{ id: 'm1', title: 'Raid' }],
+            yearlyGoals: [{ id: 'y1', title: 'Campaign' }],
+            lifeGoals: [{ id: 'l1', title: 'Legend' }],
+        };
+
+        test('resolves the live quest for every tier, legacy ones included', () => {
+            const find = (questType, questId) => BL.findQuest({ questType, questId }, lists);
+            expect(find('weekly', 'w1')).toBe(lists.weeklyGoals[0]);
+            expect(find('sidequest', 's1')).toBe(lists.sideQuests[0]);
+            expect(find('monthly', 'm1')).toBe(lists.monthlyGoals[0]);
+            expect(find('yearly', 'y1')).toBe(lists.yearlyGoals[0]);
+            expect(find('epic', 'l1')).toBe(lists.lifeGoals[0]);
+        });
+
+        test('null for a deleted target, an unknown tier, or a non-record', () => {
+            expect(BL.findQuest({ questType: 'weekly', questId: 'gone' }, lists)).toBeNull();
+            expect(BL.findQuest({ questType: 'mystery', questId: 'w1' }, lists)).toBeNull();
+            expect(BL.findQuest({ empty: true }, lists)).toBeNull();
+            expect(BL.findQuest(null, lists)).toBeNull();
+            expect(BL.findQuest(undefined, lists)).toBeNull();
+        });
+
+        const active = {
+            weekly: { questType: 'weekly', questId: 'w1', status: 'active' },
+            monthly: null,
+        };
+
+        test('badges only the live target of an ACTIVE bounty', () => {
+            expect(BL.isTarget(active, 'weekly', 'w1')).toBe(true);
+            expect(BL.isTarget(active, 'sidequest', 'w1')).toBe(false);
+            expect(BL.isTarget(active, 'weekly', 'nope')).toBe(false);
+        });
+
+        test('a claimed, expired or empty bounty badges nothing', () => {
+            for (const status of ['claimed', 'expired']) {
+                expect(BL.isTarget({ weekly: { ...active.weekly, status } }, 'weekly', 'w1')).toBe(false);
+            }
+            expect(BL.isTarget({ weekly: { empty: true }, monthly: null }, 'weekly', 'w1')).toBe(false);
+        });
+
+        test('checks BOTH cadences, and survives an absent map', () => {
+            const monthlyOnly = {
+                weekly: null,
+                monthly: { questType: 'monthly', questId: 'm1', status: 'active' },
+            };
+            expect(BL.isTarget(monthlyOnly, 'monthly', 'm1')).toBe(true);
+            expect(BL.isTarget(null, 'weekly', 'w1')).toBe(false);
+            expect(BL.isTarget(undefined, 'weekly', 'w1')).toBe(false);
+        });
+    });
+
+    describe('timeLeftLabel', () => {
+        const NOW = D(2026, 6, 10, 9, 0).getTime();
+        const HOUR = 3600000;
+        const label = (offsetMs) => BL.timeLeftLabel(new Date(NOW + offsetMs).toISOString(), NOW);
+
+        test('a closed window reads "expired" — including the exact instant', () => {
+            expect(label(-HOUR)).toBe('expired');
+            expect(label(-1)).toBe('expired');
+            expect(label(0)).toBe('expired');
+        });
+
+        test('under an hour is spelled out rather than "0h"', () => {
+            expect(label(1)).toBe('less than 1h left');
+            expect(label(30 * 60000)).toBe('less than 1h left');
+            expect(label(HOUR - 1)).toBe('less than 1h left');
+        });
+
+        test('hours are floored, up to the 24h changeover', () => {
+            expect(label(HOUR)).toBe('1h left');
+            expect(label(2 * HOUR)).toBe('2h left');
+            expect(label(23 * HOUR)).toBe('23h left');
+            expect(label(24 * HOUR - 1)).toBe('23h left');
+        });
+
+        test('a day or more is ROUNDED, with singular/plural agreement', () => {
+            expect(label(24 * HOUR)).toBe('1 day left');
+            expect(label(36 * HOUR)).toBe('2 days left');   // round(1.5) → 2
+            expect(label(47 * HOUR)).toBe('2 days left');
+            expect(label(72 * HOUR)).toBe('3 days left');
+        });
+
+        test('accepts an ISO string, epoch number or Date', () => {
+            const exp = new Date(NOW + 2 * HOUR);
+            expect(BL.timeLeftLabel(exp.toISOString(), NOW)).toBe('2h left');
+            expect(BL.timeLeftLabel(exp.getTime(), NOW)).toBe('2h left');
+            expect(BL.timeLeftLabel(exp, NOW)).toBe('2h left');
+        });
+    });
+
+    // ── INVARIANT 3: the deliberate 1ms disagreement ─────────────────────────
+    describe('isPastWindow', () => {
+        const exp = D(2026, 6, 14, 23, 59, 59, 999);
+        const bounty = { expiresAt: exp.toISOString() };
+
+        test('is STRICTLY past — the boundary instant is still inside the window', () => {
+            expect(BL.isPastWindow(bounty, exp.getTime() - 1)).toBe(false);
+            expect(BL.isPastWindow(bounty, exp.getTime())).toBe(false);
+            expect(BL.isPastWindow(bounty, exp.getTime() + 1)).toBe(true);
+        });
+
+        test('the reminder resolver DISAGREES at exactly the boundary, on purpose', () => {
+            // _soonestClaimableBounty keeps its own inclusive phrasing
+            // `!(expMs > nowMs)`. At now === expiresAt the claim path still credits
+            // while the resolver already declines to schedule a nudge, so for one
+            // millisecond a bounty is claimable but un-nudged. Harmless (the
+            // reminder is an optimisation, the claim path is the authority) and
+            // changing either side is a gameplay decision — pinned, not "fixed".
+            const gm = mgr({ weeklyGoals: [{ id: 'w1', title: 'Slay' }] });
+            gm.activeBounties = {
+                weekly: {
+                    periodKey: '2026-W24', cadence: 'weekly', questType: 'weekly', questId: 'w1',
+                    expiresAt: exp.toISOString(), chestTier: 'silver', status: 'active', rerolled: false,
+                },
+                monthly: null,
+            };
+
+            const atBoundary = new Date(exp.getTime());
+            expect(BL.isPastWindow(gm.activeBounties.weekly, atBoundary.getTime())).toBe(false);
+            expect(gm._soonestClaimableBounty(atBoundary)).toBeNull();
+
+            // One millisecond earlier the two agree the bounty is live.
+            const before = new Date(exp.getTime() - 1);
+            expect(BL.isPastWindow(gm.activeBounties.weekly, before.getTime())).toBe(false);
+            expect(gm._soonestClaimableBounty(before)).toMatchObject({ cadence: 'weekly', chestTier: 'silver' });
+        });
+    });
+
+    // ── the class delegators still speak for the module ──────────────────────
+    describe('class parity (the thin wrappers)', () => {
+        test('the boundary/key/gate wrappers return exactly the module values', () => {
+            const gm = mgr();
+            for (const cadence of BL.CADENCES) {
+                expect(gm._bountyPeriodKey(cadence, WED))
+                    .toBe(BL.periodKey(cadence, WED, (d) => gm._weekKey(d)));
+                expect(LF(gm._bountyPeriodStart(cadence, WED))).toEqual(LF(BL.periodStart(cadence, WED)));
+                expect(LF(gm._bountyDeadline(cadence, WED))).toEqual(LF(BL.deadline(cadence, WED)));
+            }
+        });
+
+        test('the weekly period key is the class _weekKey, not a second spelling', () => {
+            const gm = mgr();
+            expect(gm._bountyPeriodKey('weekly', WED)).toBe(gm._weekKey(WED));
+        });
+
+        test('_bountyUnlocked forwards the live unlock table on every onboarding path', () => {
+            for (const path of [null, 'goals']) {
+                for (const level of [1, 5, 6, 7, 8]) {
+                    const gm = mgr();
+                    gm.applyOnboardingPath(path);
+                    gm.level = level;
+                    for (const cadence of BL.CADENCES) {
+                        expect(gm._bountyUnlocked(cadence))
+                            .toBe(BL.isUnlocked(cadence, level, gm.goalTabUnlockLevels));
+                    }
+                }
+            }
+        });
+
+        test('the eligibility + pick wrappers agree with the module', () => {
+            const quests = {
+                weeklyGoals: [
+                    { id: 'w1', created: D(2026, 6, 1).toISOString() },
+                    { id: 'w2', created: D(2026, 6, 9).toISOString() },
+                ],
+                sideQuests: [{ id: 's1', created: D(2026, 5, 30).toISOString() }],
+                monthlyGoals: [{ id: 'm1', created: D(2026, 5, 2).toISOString() }],
+            };
+            const gm = mgr(quests);
+            for (const cadence of BL.CADENCES) {
+                const start = gm._bountyPeriodStart(cadence, WED);
+                expect(gm._bountyEligibleQuests(cadence, start))
+                    .toEqual(BL.eligibleQuests(cadence, start, gm));
+            }
+            for (const len of [0, 1, 5, 17]) {
+                expect(gm._bountySeededIndex('2026-W24', 'reroll', len))
+                    .toBe(BL.seededIndex('2026-W24', 'reroll', len));
+            }
+        });
+
+        test('the read-side wrappers agree with the module', () => {
+            const gm = mgr({
+                weeklyGoals: [{ id: 'w1', title: 'Slay' }],
+                monthlyGoals: [{ id: 'm1', title: 'Raid' }],
+            });
+            const record = { questType: 'weekly', questId: 'w1', status: 'active' };
+            gm.activeBounties = { weekly: record, monthly: null };
+
+            expect(gm._bountyQuest(record)).toBe(BL.findQuest(record, gm));
+            expect(gm.isBountyTarget('weekly', 'w1')).toBe(BL.isTarget(gm.activeBounties, 'weekly', 'w1'));
+            expect(gm.isBountyTarget('monthly', 'm1')).toBe(false);
+
+            const exp = D(2026, 6, 14, 23, 59, 59, 999).toISOString();
+            expect(gm._bountyTimeLeftLabel(exp)).toBe(BL.timeLeftLabel(exp, Date.now()));
+        });
+
+        test('assignment writes a module-shaped record, once per period', () => {
+            const gm = mgr({
+                weeklyGoals: [
+                    { id: 'w1', created: D(2026, 6, 1).toISOString() },
+                    { id: 'w2', created: D(2026, 6, 1).toISOString() },
+                ],
+            });
+            const assigned = gm.maybeAssignBounty('weekly', WED);
+            expect(assigned).toMatchObject({
+                periodKey: gm._weekKey(WED),
+                cadence: 'weekly',
+                questType: 'weekly',
+                chestTier: 'silver',
+                status: 'active',
+                rerolled: false,
+            });
+            expect(LF(new Date(assigned.expiresAt))).toEqual(LF(BL.deadline('weekly', WED)));
+            expect(['w1', 'w2']).toContain(assigned.questId);
+
+            // Re-running inside the same period is a no-op returning the same object.
+            expect(gm.maybeAssignBounty('weekly', WED)).toBe(gm.activeBounties.weekly);
+        });
+
+        test('no eligible quest yields the empty nudge; a locked level yields null', () => {
+            expect(mgr().maybeAssignBounty('weekly', WED)).toEqual({
+                periodKey: mgr()._weekKey(WED), cadence: 'weekly', empty: true,
+            });
+
+            const locked = mgr({
+                level: 1,
+                weeklyGoals: [{ id: 'w1', created: D(2026, 6, 1).toISOString() }],
+            });
+            expect(locked.maybeAssignBounty('weekly', WED)).toBeNull();
+            expect(locked.activeBounties).toEqual({ weekly: null, monthly: null });
+        });
+
+        test('an absent activeBounties map is initialized from emptySlots, not thrown on', () => {
+            const gm = mgr({ weeklyGoals: [{ id: 'w1', created: D(2026, 6, 1).toISOString() }] });
+            gm.activeBounties = null;
+            expect(() => gm.maybeAssignBounty('weekly', WED)).not.toThrow();
+            expect(gm.activeBounties.monthly).toBeNull();
+            expect(gm.activeBounties.weekly).toMatchObject({ questId: 'w1', status: 'active' });
+        });
+
+        test('completing the target credits once; a stale window expires instead', () => {
+            const live = (over = {}) => ({
+                periodKey: '2026-W24', cadence: 'weekly', questType: 'weekly', questId: 'w1',
+                assignedAt: D(2026, 6, 8).toISOString(),
+                expiresAt: D(2099, 1, 1).toISOString(),
+                chestTier: 'silver', status: 'active', rerolled: false, ...over,
+            });
+
+            const gm = mgr({ weeklyGoals: [{ id: 'w1' }] });
+            gm.activeBounties = { weekly: live(), monthly: null };
+            gm.checkBountyCompletion('w1');
+            expect(gm.activeBounties.weekly.status).toBe('claimed');
+
+            // Idempotent — a second check changes nothing.
+            gm.checkBountyCompletion('w1');
+            expect(gm.activeBounties.weekly.status).toBe('claimed');
+
+            // A non-target id is ignored.
+            const other = mgr({ weeklyGoals: [{ id: 'w1' }] });
+            other.activeBounties = { weekly: live(), monthly: null };
+            other.checkBountyCompletion('nope');
+            expect(other.activeBounties.weekly.status).toBe('active');
+
+            // Past its window → expired, never claimed.
+            const late = mgr({ weeklyGoals: [{ id: 'w1' }] });
+            late.activeBounties = { weekly: live({ expiresAt: D(2020, 1, 1).toISOString() }), monthly: null };
+            late.checkBountyCompletion('w1');
+            expect(late.activeBounties.weekly.status).toBe('expired');
+
+            // No map at all → no throw.
+            const none = mgr();
+            none.activeBounties = null;
+            expect(() => none.checkBountyCompletion('w1')).not.toThrow();
+        });
+
+        test('refreshBounties self-heals a record whose tier the cadence dropped', () => {
+            const gm = mgr({
+                weeklyGoals: [{ id: 'w1', created: D(2026, 6, 1).toISOString() }],
+                monthlyGoals: [{ id: 'm1', created: D(2026, 5, 1).toISOString() }],
+                yearlyGoals: [{ id: 'y1', created: D(2020, 1, 1).toISOString() }],
+            });
+            // A legacy monthly bounty pointing at 'yearly' — a tier monthly no
+            // longer serves (servesTier === false), so it must be re-picked.
+            gm.activeBounties = {
+                weekly: null,
+                monthly: {
+                    periodKey: '2026-06', cadence: 'monthly', questType: 'yearly', questId: 'y1',
+                    expiresAt: D(2099, 1, 1).toISOString(), chestTier: 'royal',
+                    status: 'active', rerolled: false,
+                },
+            };
+            gm.refreshBounties();
+            expect(gm.activeBounties.monthly.questType).toBe('monthly');
+            expect(gm.activeBounties.monthly.questId).toBe('m1');
+        });
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// recurring-logic.js — pure recurring-task scheduling rules (Roadmap #1, 75th slice).
+//
+// Replaces the throwaway characterization baseline that guarded the swap. Before
+// this slice the whole subsystem had FIVE tests (weekly match, the duplicate
+// guard, the inactive skip, monthly-date and the generated-task shape) and
+// NOTHING for `biweekly` or `monthly-weekday` — the only two branches with real
+// date math in them.
+//
+// Calendar facts these tests lean on (January 2025 opens on a WEDNESDAY):
+//   4th Sat · 5th Sun · 6th Mon · 7th Tue (1st Tue) · 14th Tue (2nd) · 15th Wed
+//   (3rd Wed) · 21st Tue (3rd) · 28th Tue (4th AND last) · 31st Fri (5th and
+//   last). February 2025 ends Friday the 28th (4th and last Friday).
+//
+// Every Date is built from LOCAL calendar fields, because every branch of
+// `dueToday` reads local getters — so the suite is timezone-independent. The one
+// deliberate exception is the biweekly offset walk, which builds UTC instants on
+// purpose to stand in for users in other timezones.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('recurring-logic.js (pure recurring-task scheduling rules)', () => {
+    const RL = require('../recurring-logic.js').default;
+
+    /** Local-field noon Date — mirrors the class's own `T12:00:00` parse. */
+    const at = (y, m, d) => new Date(y, m - 1, d, 12, 0, 0);
+    /** The per-sweep context every schedule branch reads. */
+    const ctx = (y, m, d) => RL.dayContext(at(y, m, d));
+
+    const WED = ctx(2025, 1, 15);
+
+    describe('the one day vocabulary', () => {
+        test('DAY_KEYS is Sunday-first because it is indexed by Date.getDay()', () => {
+            expect(RL.DAY_KEYS).toEqual(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
+            // Jan 5 2025 is a Sunday — walk a real week through the real getter.
+            RL.DAY_KEYS.forEach((key, i) => {
+                expect(RL.dayKeyFor(at(2025, 1, 5 + i))).toBe(key);
+            });
+        });
+
+        test('DAY_ORDER is Monday-first for the pickers, and is the same seven days', () => {
+            expect(RL.DAY_ORDER).toEqual(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+            expect([...RL.DAY_ORDER].sort()).toEqual([...RL.DAY_KEYS].sort());
+        });
+
+        test('the two orders are NOT interchangeable — swapping them shifts every schedule by a day', () => {
+            expect(RL.DAY_ORDER).not.toEqual(RL.DAY_KEYS);
+            const sunday = at(2025, 1, 5);
+            expect(RL.DAY_KEYS[sunday.getDay()]).toBe('sun');
+            expect(RL.DAY_ORDER[sunday.getDay()]).toBe('mon'); // the drift, made visible
+        });
+
+        test('both label tables cover all seven keys', () => {
+            RL.DAY_KEYS.forEach(key => {
+                expect(RL.DAY_LABELS[key]).toEqual(expect.any(String));
+                expect(RL.DAY_LABELS_LONG[key]).toEqual(expect.any(String));
+                expect(RL.DAY_LABELS_LONG[key].startsWith(RL.DAY_LABELS[key])).toBe(true);
+            });
+            expect(Object.keys(RL.DAY_LABELS)).toHaveLength(7);
+            expect(Object.keys(RL.DAY_LABELS_LONG)).toHaveLength(7);
+        });
+
+        test('DAY_LABELS agrees with the copy recurring-render.js deliberately keeps inline', () => {
+            // recurring-render.js takes injected deps only and never reaches for another
+            // module, so its table stays duplicated — this drives the REAL builder across
+            // all seven keys so the duplication is CAUGHT rather than merely re-homed.
+            const RECURRING_RENDER = require('../recurring-render.js').default;
+            RL.DAY_KEYS.forEach(key => {
+                const html = RECURRING_RENDER.renderRecurringTasksHTML({
+                    recurringTasks: [{ id: 1, active: true, title: 'T', recurrence: { type: 'biweekly', day: key } }],
+                    escapeHTML: (s) => s,
+                });
+                expect(html).toContain(`Every other ${RL.DAY_LABELS[key]}`);
+            });
+        });
+
+        test('the exported tables are frozen', () => {
+            expect(Object.isFrozen(RL.DAY_KEYS)).toBe(true);
+            expect(Object.isFrozen(RL.DAY_ORDER)).toBe(true);
+            expect(Object.isFrozen(RL.DAY_LABELS)).toBe(true);
+            expect(Object.isFrozen(RL.DAY_LABELS_LONG)).toBe(true);
+            expect(Object.isFrozen(RL)).toBe(true);
+        });
+
+        test('dayContext bundles the date, its key and its day-of-month', () => {
+            expect(WED).toEqual({ date: expect.any(Date), dayKey: 'wed', dayOfMonth: 15 });
+        });
+    });
+
+    describe('daysSince — the mixed local-noon / UTC-midnight parse', () => {
+        test('a true fortnight reads as 13, 14 or 15 depending purely on the user\'s offset', () => {
+            const n = RL.daysSince(at(2025, 1, 15), '2025-01-01');
+            expect(n).toBeGreaterThanOrEqual(13);
+            expect(n).toBeLessThanOrEqual(15);
+        });
+
+        test('the >= 13 window holds for every UTC offset from -12 to +14', () => {
+            // Local noon at offset X is `12 - X` hours UTC, while the stored stamp parses
+            // as UTC midnight — so a 14-day gap floors to 14 + floor((12 - X) / 24).
+            for (let x = -12; x <= 14; x++) {
+                const localNoonAtOffset = new Date(Date.UTC(2025, 0, 15, 12 - x));
+                const n = RL.daysSince(localNoonAtOffset, '2025-01-01');
+                expect(n).toBe(14 + Math.floor((12 - x) / 24));
+                expect(n).toBeGreaterThanOrEqual(RL.BIWEEKLY_MIN_DAYS);
+            }
+        });
+
+        test('why the threshold is 13 and not 14 — the far east would otherwise skip a fortnight', () => {
+            const kiribati = new Date(Date.UTC(2025, 0, 15, 12 - 14)); // UTC+14
+            const bakerIsland = new Date(Date.UTC(2025, 0, 15, 12 + 12)); // UTC-12
+            expect(RL.daysSince(kiribati, '2025-01-01')).toBe(13);
+            expect(RL.daysSince(bakerIsland, '2025-01-01')).toBe(15);
+            // A `>= 14` rule would silently strand the first of those.
+            expect(RL.BIWEEKLY_MIN_DAYS).toBe(13);
+        });
+    });
+
+    describe('the monthly-weekday primitives', () => {
+        test('occurrenceOfMonth is exact — the Nth weekday always lands in its 7-day band', () => {
+            expect(RL.occurrenceOfMonth(1)).toBe(1);
+            expect(RL.occurrenceOfMonth(7)).toBe(1);
+            expect(RL.occurrenceOfMonth(8)).toBe(2);
+            expect(RL.occurrenceOfMonth(14)).toBe(2);
+            expect(RL.occurrenceOfMonth(21)).toBe(3);
+            expect(RL.occurrenceOfMonth(22)).toBe(4);
+            expect(RL.occurrenceOfMonth(28)).toBe(4);
+            expect(RL.occurrenceOfMonth(29)).toBe(5); // legitimately 5
+            expect(RL.occurrenceOfMonth(31)).toBe(5);
+        });
+
+        test('isLastOccurrenceInMonth probes seven days ahead rather than counting', () => {
+            expect(RL.isLastOccurrenceInMonth(at(2025, 1, 28))).toBe(true);  // 4th AND last Tue
+            expect(RL.isLastOccurrenceInMonth(at(2025, 1, 21))).toBe(false); // 3rd Tue
+            expect(RL.isLastOccurrenceInMonth(at(2025, 1, 31))).toBe(true);  // 5th and last Fri
+            expect(RL.isLastOccurrenceInMonth(at(2025, 2, 28))).toBe(true);  // 4th and last Fri
+        });
+
+        test('the probe does not mutate the date it is given', () => {
+            const d = at(2025, 1, 28);
+            RL.isLastOccurrenceInMonth(d);
+            expect(d.getTime()).toBe(at(2025, 1, 28).getTime());
+        });
+    });
+
+    describe('dueToday — weekly', () => {
+        test('fires when today\'s key is listed, alone or among others', () => {
+            expect(RL.dueToday({ type: 'weekly', days: ['wed'] }, WED)).toBe(true);
+            expect(RL.dueToday({ type: 'weekly', days: ['mon', 'wed', 'fri'] }, WED)).toBe(true);
+        });
+
+        test('a non-matching or empty list is simply not due', () => {
+            expect(RL.dueToday({ type: 'weekly', days: ['mon'] }, WED)).toBe(false);
+            expect(RL.dueToday({ type: 'weekly', days: [] }, WED)).toBe(false);
+        });
+
+        test('index 0 and index 6 both resolve — the Sunday-first boundary', () => {
+            expect(RL.dueToday({ type: 'weekly', days: ['sun'] }, ctx(2025, 1, 5))).toBe(true);
+            expect(RL.dueToday({ type: 'weekly', days: ['sat'] }, ctx(2025, 1, 4))).toBe(true);
+            expect(RL.dueToday({ type: 'weekly', days: ['mon'] }, ctx(2025, 1, 6))).toBe(true);
+        });
+
+        test('a corrupt `days` is not due instead of throwing out of the load-time sweep', () => {
+            const corrupt = [{ type: 'weekly' }, { type: 'weekly', days: null }, { type: 'weekly', days: 'wed' }];
+            corrupt.forEach(recurrence => {
+                expect(() => RL.dueToday(/** @type {any} */ (recurrence), WED)).not.toThrow();
+                expect(RL.dueToday(/** @type {any} */ (recurrence), WED)).toBe(false);
+            });
+        });
+    });
+
+    describe('dueToday — biweekly (the 13-day window on its own anchor)', () => {
+        const bi = (lastGenerated) => ({ type: 'biweekly', day: 'wed', lastGenerated });
+
+        test('the very first run has no anchor, so it fires', () => {
+            expect(RL.dueToday(bi(null), WED)).toBe(true);
+            expect(RL.dueToday(bi(undefined), WED)).toBe(true);
+        });
+
+        test('the wrong weekday never fires, anchor or not', () => {
+            expect(RL.dueToday({ type: 'biweekly', day: 'mon', lastGenerated: null }, WED)).toBe(false);
+            expect(RL.dueToday({ type: 'biweekly', day: 'mon', lastGenerated: '2024-11-06' }, WED)).toBe(false);
+        });
+
+        test('a fortnight-old anchor fires; a week-old one does not', () => {
+            expect(RL.dueToday(bi('2025-01-01'), WED)).toBe(true);
+            expect(RL.dueToday(bi('2025-01-08'), WED)).toBe(false);
+        });
+
+        test('a same-day anchor never re-fires', () => {
+            expect(RL.dueToday(bi('2025-01-15'), WED)).toBe(false);
+        });
+
+        test('a long-dormant task fires on its next matching weekday', () => {
+            expect(RL.dueToday(bi('2024-11-06'), WED)).toBe(true);
+        });
+    });
+
+    describe('dueToday — monthly-date', () => {
+        test('matches on the calendar day number', () => {
+            expect(RL.dueToday({ type: 'monthly-date', dayOfMonth: 15 }, WED)).toBe(true);
+            expect(RL.dueToday({ type: 'monthly-date', dayOfMonth: 14 }, WED)).toBe(false);
+            expect(RL.dueToday({ type: 'monthly-date', dayOfMonth: 1 }, ctx(2025, 1, 1))).toBe(true);
+            expect(RL.dueToday({ type: 'monthly-date', dayOfMonth: 28 }, ctx(2025, 2, 28))).toBe(true);
+        });
+
+        test('a 31st schedule simply never fires in a short month', () => {
+            expect(RL.dueToday({ type: 'monthly-date', dayOfMonth: 31 }, ctx(2025, 2, 28))).toBe(false);
+            expect(RL.dueToday({ type: 'monthly-date', dayOfMonth: 31 }, ctx(2025, 1, 31))).toBe(true);
+        });
+    });
+
+    describe('dueToday — monthly-weekday', () => {
+        const mw = (week, day) => ({ type: 'monthly-weekday', week, day });
+
+        test('the Nth weekday counts by 7-day band', () => {
+            expect(RL.dueToday(mw(1, 'tue'), ctx(2025, 1, 7))).toBe(true);
+            expect(RL.dueToday(mw(2, 'tue'), ctx(2025, 1, 7))).toBe(false);
+            expect(RL.dueToday(mw(2, 'tue'), ctx(2025, 1, 14))).toBe(true);
+            expect(RL.dueToday(mw(3, 'tue'), ctx(2025, 1, 21))).toBe(true);
+            expect(RL.dueToday(mw(4, 'tue'), ctx(2025, 1, 28))).toBe(true);
+        });
+
+        test('the wrong weekday never fires', () => {
+            expect(RL.dueToday(mw(3, 'tue'), WED)).toBe(false);
+        });
+
+        test('week -1 means LAST, which is the 4th in one month and the 5th in another', () => {
+            expect(RL.dueToday(mw(-1, 'tue'), ctx(2025, 1, 28))).toBe(true);  // 4th and last
+            expect(RL.dueToday(mw(-1, 'tue'), ctx(2025, 1, 21))).toBe(false); // 3rd, not yet
+            expect(RL.dueToday(mw(-1, 'fri'), ctx(2025, 1, 31))).toBe(true);  // 5th and last
+            expect(RL.dueToday(mw(-1, 'fri'), ctx(2025, 2, 28))).toBe(true);  // 4th and last
+            expect(RL.LAST_OCCURRENCE).toBe(-1);
+        });
+
+        test('a stored week: 5 is honoured even though the UI only offers 1-4 and Last', () => {
+            expect(RL.dueToday(mw(5, 'fri'), ctx(2025, 1, 31))).toBe(true);
+            expect(RL.dueToday(mw(5, 'fri'), ctx(2025, 2, 28))).toBe(false);
+        });
+    });
+
+    describe('dueToday — anything else', () => {
+        test('an unknown type, and an absent recurrence, are not due', () => {
+            expect(RL.dueToday(/** @type {any} */ ({ type: 'fortnightly', days: ['wed'] }), WED)).toBe(false);
+            expect(RL.dueToday(/** @type {any} */ (null), WED)).toBe(false);
+            expect(RL.dueToday(/** @type {any} */ (undefined), WED)).toBe(false);
+            expect(RL.dueToday(/** @type {any} */ ({}), WED)).toBe(false);
+        });
+    });
+
+    describe('the three pre-schedule guards', () => {
+        const TODAY = '2025-01-15';
+        const rt = (over = {}) => ({
+            id: 100, title: 'RT', description: 'desc', active: true, lastGenerated: null,
+            recurrence: { type: 'weekly', days: ['wed'] }, ...over,
+        });
+
+        test('hasGeneratedToday is the once-per-DAY stamp', () => {
+            expect(RL.hasGeneratedToday(rt({ lastGenerated: TODAY }), TODAY)).toBe(true);
+            expect(RL.hasGeneratedToday(rt({ lastGenerated: '2025-01-14' }), TODAY)).toBe(false);
+            expect(RL.hasGeneratedToday(rt(), TODAY)).toBe(false);
+        });
+
+        test('taskExistsFor matches on ALL THREE of title, due date and parent id', () => {
+            const hit = { id: 1, title: 'RT', dueDate: TODAY, recurringTaskId: 100 };
+            expect(RL.taskExistsFor([hit], rt(), TODAY)).toBe(true);
+            expect(RL.taskExistsFor([{ ...hit, title: 'Other' }], rt(), TODAY)).toBe(false);
+            expect(RL.taskExistsFor([{ ...hit, dueDate: '2025-01-14' }], rt(), TODAY)).toBe(false);
+            expect(RL.taskExistsFor([{ ...hit, recurringTaskId: 555 }], rt(), TODAY)).toBe(false);
+            expect(RL.taskExistsFor([], rt(), TODAY)).toBe(false);
+        });
+
+        test('an unrelated task that merely shares the title does not suppress generation', () => {
+            const decoy = { id: 9, title: 'RT', dueDate: TODAY, recurringTaskId: 555 };
+            expect(RL.isPending(rt(), { todayStr: TODAY, dailyTasks: [decoy] })).toBe(true);
+        });
+
+        test('isPending is active AND not-generated-today AND not-already-present', () => {
+            const deps = { todayStr: TODAY, dailyTasks: [] };
+            expect(RL.isPending(rt(), deps)).toBe(true);
+            expect(RL.isPending(rt({ active: false }), deps)).toBe(false);
+            expect(RL.isPending(rt({ active: undefined }), deps)).toBe(false);
+            expect(RL.isPending(rt({ lastGenerated: TODAY }), deps)).toBe(false);
+            expect(RL.isPending(rt(), {
+                todayStr: TODAY,
+                dailyTasks: [{ id: 1, title: 'RT', dueDate: TODAY, recurringTaskId: 100 }],
+            })).toBe(false);
+        });
+
+        test('yesterday\'s generation does not block today', () => {
+            expect(RL.isPending(rt({ lastGenerated: '2025-01-14' }), { todayStr: TODAY, dailyTasks: [] })).toBe(true);
+        });
+    });
+
+    describe('generatedTask', () => {
+        const parent = {
+            id: 100, title: 'RT', description: 'desc', active: true,
+            recurrence: { type: 'weekly', days: ['wed'] },
+        };
+
+        test('carries the parent\'s text and links back by id', () => {
+            expect(RL.generatedTask(parent, { id: 7, todayStr: '2025-01-15', createdISO: '2025-01-15T09:00:00.000Z' }))
+                .toEqual({
+                    id: 7,
+                    title: 'RT',
+                    description: 'desc',
+                    weeklyGoalIds: [],
+                    created: '2025-01-15T09:00:00.000Z',
+                    dueDate: '2025-01-15',
+                    completed: false,
+                    checklist: [],
+                    recurringTaskId: 100,
+                });
+        });
+
+        test('hands back FRESH arrays each call, never shared ones', () => {
+            const deps = { id: 7, todayStr: '2025-01-15', createdISO: '2025-01-15T09:00:00.000Z' };
+            const a = RL.generatedTask(parent, deps);
+            const b = RL.generatedTask(parent, deps);
+            expect(a.checklist).not.toBe(b.checklist);
+            expect(a.weeklyGoalIds).not.toBe(b.weeklyGoalIds);
+        });
+    });
+
+    // ── class parity: the impure half still on GoalManager ───────────────────
+    describe('class parity — generateRecurringTasksForToday', () => {
+        /** Deterministic manager: fixed "today" and counter ids. */
+        const managerOn = (today, recurringTasks, dailyTasks = []) => {
+            const gm = createTestManager();
+            gm.getTodayDateString = () => today;
+            gm.recurringTasks = JSON.parse(JSON.stringify(recurringTasks));
+            gm.dailyTasks = JSON.parse(JSON.stringify(dailyTasks));
+            let n = 0;
+            gm.uniqueId = () => ++n * 1000;
+            return gm;
+        };
+
+        const one = (recurrence, over = {}) => [{
+            id: 100, title: 'RT', description: 'desc', recurrence, active: true, lastGenerated: null, ...over,
+        }];
+
+        test('a due task produces exactly the module\'s record', () => {
+            const gm = managerOn('2025-01-15', one({ type: 'weekly', days: ['wed'] }));
+            gm.generateRecurringTasksForToday();
+
+            expect(gm.dailyTasks).toHaveLength(1);
+            expect(gm.dailyTasks[0]).toEqual({
+                ...RL.generatedTask(gm.recurringTasks[0], {
+                    id: 1000, todayStr: '2025-01-15', createdISO: gm.dailyTasks[0].created,
+                }),
+            });
+            expect(typeof gm.dailyTasks[0].created).toBe('string');
+        });
+
+        test('a task that is not due generates nothing and stamps nothing', () => {
+            const gm = managerOn('2025-01-15', one({ type: 'weekly', days: ['mon'] }));
+            gm.generateRecurringTasksForToday();
+            expect(gm.dailyTasks).toHaveLength(0);
+            expect(gm.recurringTasks[0].lastGenerated).toBeNull();
+        });
+
+        test('BOTH lastGenerated stamps are written for biweekly, only the day guard otherwise', () => {
+            const bi = managerOn('2025-01-15', one({ type: 'biweekly', day: 'wed', lastGenerated: null }));
+            bi.generateRecurringTasksForToday();
+            expect(bi.recurringTasks[0].lastGenerated).toBe('2025-01-15');
+            expect(bi.recurringTasks[0].recurrence.lastGenerated).toBe('2025-01-15');
+
+            const wk = managerOn('2025-01-15', one({ type: 'weekly', days: ['wed'] }));
+            wk.generateRecurringTasksForToday();
+            expect(wk.recurringTasks[0].lastGenerated).toBe('2025-01-15');
+            expect(wk.recurringTasks[0].recurrence.lastGenerated).toBeUndefined();
+        });
+
+        test('the day guard stops a second sweep on the same day', () => {
+            const gm = managerOn('2025-01-15', one({ type: 'weekly', days: ['wed'] }));
+            gm.generateRecurringTasksForToday();
+            gm.generateRecurringTasksForToday();
+            expect(gm.dailyTasks).toHaveLength(1);
+        });
+
+        test('a mixed sweep generates only the due, active, un-generated tasks', () => {
+            const gm = managerOn('2025-01-15', [
+                { id: 1, title: 'A', description: '', recurrence: { type: 'weekly', days: ['wed'] }, active: true, lastGenerated: null },
+                { id: 2, title: 'B', description: '', recurrence: { type: 'weekly', days: ['mon'] }, active: true, lastGenerated: null },
+                { id: 3, title: 'C', description: '', recurrence: { type: 'monthly-date', dayOfMonth: 15 }, active: false, lastGenerated: null },
+                { id: 4, title: 'D', description: '', recurrence: { type: 'biweekly', day: 'wed', lastGenerated: null }, active: true, lastGenerated: null },
+            ]);
+            gm.generateRecurringTasksForToday();
+
+            expect(gm.dailyTasks.map(t => t.title)).toEqual(['A', 'D']);
+            expect(gm.dailyTasks.map(t => t.recurringTaskId)).toEqual([1, 4]);
+            expect(gm.recurringTasks.map(rt => rt.lastGenerated))
+                .toEqual(['2025-01-15', null, null, '2025-01-15']);
+        });
+
+        test('the noon parse keeps the weekday correct rather than reading back a day early', () => {
+            // A bare 'YYYY-MM-DD' parses as UTC midnight, which is the PREVIOUS day for
+            // every user west of UTC — this is a Wednesday schedule on a Wednesday.
+            const gm = managerOn('2025-01-15', one({ type: 'weekly', days: ['wed'] }));
+            gm.generateRecurringTasksForToday();
+            expect(gm.dailyTasks).toHaveLength(1);
+            expect(gm.dailyTasks[0].dueDate).toBe('2025-01-15');
+        });
+
+        test('the sweep persists', () => {
+            const gm = managerOn('2025-01-15', one({ type: 'weekly', days: ['wed'] }));
+            gm.generateRecurringTasksForToday();
+            expect(gm.saveData).toHaveBeenCalled();
+        });
+
+        test('one corrupt entry no longer breaks the whole load-time sweep', () => {
+            const gm = managerOn('2025-01-15', [
+                { id: 1, title: 'Corrupt', description: '', recurrence: { type: 'weekly' }, active: true, lastGenerated: null },
+                { id: 2, title: 'Good', description: '', recurrence: { type: 'weekly', days: ['wed'] }, active: true, lastGenerated: null },
+            ]);
+            expect(() => gm.generateRecurringTasksForToday()).not.toThrow();
+            expect(gm.dailyTasks.map(t => t.title)).toEqual(['Good']);
+        });
+    });
+});
+
+// ==================== EXPORT → IMPORT PARITY (Roadmap #1, 80th slice guard) ====================
+//
+// tests/persistence-roundtrip.test.js pins save ⇄ load. This is the THIRD leg of the
+// same triangle: exportData ⇄ importData, the backup-file round trip.
+//
+// The 79th slice made exportData delegate to SAVE_SERIALIZER.buildSaveData, so a backup
+// file is now a strict superset of the save blob. importData, however, is still a
+// hand-maintained ~110-line field map — the LAST copy of the persistence field list —
+// so any field export writes but import forgets is silently dropped on restore: the
+// user's backup contains the value, and restoring it resets to whatever the running
+// instance happened to hold.
+//
+// These tests drive the REAL importData and name every such field.
+describe('export → import round-trip parity (backup files)', () => {
+    const SAVE_SERIALIZER = require('../save-serializer.js').default;
+    const {
+        SAVE_ONLY_KEYS,
+        EXPORT_ENVELOPE_KEYS,
+        instanceKeyFor,
+        saveOpts,
+        makeFullManager
+    } = require('./fixtures/full-manager.js');
+
+    const IMPORTED_REMINDERS = { enabled: true, morningTime: '07:15' };
+
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    /**
+     * The exact payload exportData writes, built the way exportData now builds it:
+     * buildSaveData + the reminderSettings extra + the file envelope. Going through
+     * the serializer (rather than calling exportData) skips the share-sheet / native
+     * Filesystem I/O while keeping the PAYLOAD identical — that payload is the contract
+     * under test here.
+     */
+    function exportBlob() {
+        const saved = SAVE_SERIALIZER.buildSaveData(makeFullManager(), saveOpts());
+        const withEnvelope = Object.assign({}, saved, {
+            reminderSettings: IMPORTED_REMINDERS,
+            exportDate: new Date().toISOString(),
+            version: '3.0.0'
+        });
+        // JSON round-trip: what actually happens to a backup file on disk.
+        return JSON.parse(JSON.stringify(withEnvelope));
+    }
+
+    /** A manager ready to receive an import (the DOM/toast tail stubbed out). */
+    function importTarget() {
+        const gm = createTestManager();
+        // createTestManager flips this to true to skip onboarding; a fresh import
+        // target must carry the production default so the indistinguishable-field
+        // guard can detect a dropped tutorialCompleted.
+        gm.tutorialCompleted = false;
+        gm.showConfirm = (_msg, onConfirm) => onConfirm();
+        gm.loadTheme = jest.fn();
+        gm.showSuccessNotification = jest.fn();
+        return gm;
+    }
+
+    /**
+     * Drive the real importData. importData assigns reader.onload BEFORE calling
+     * readAsText, so a synchronous FileReader stand-in fires the handler inline and
+     * keeps the test deterministic — jsdom's async FileReader would add flake, not
+     * coverage, since the field map is what is under test.
+     */
+    function importInto(gm, blob) {
+        const RealFileReader = global.FileReader;
+        global.FileReader = /** @type {any} */ (class {
+            constructor() { this.onload = null; this.onerror = null; }
+            readAsText() { this.onload({ target: { result: JSON.stringify(blob) } }); }
+        });
+        try {
+            gm.importData({ target: { files: [{ name: 'backup.json' }], value: 'backup.json' } });
+        } finally {
+            global.FileReader = RealFileReader;
+        }
+    }
+
+    /** Blob keys that should land on the instance (envelope + schema gate excluded). */
+    function restorableKeys(blob) {
+        return Object.keys(blob)
+            .filter(k => !EXPORT_ENVELOPE_KEYS.includes(k))
+            .filter(k => !SAVE_ONLY_KEYS.includes(k));
+    }
+
+    test('the import actually ran (guard against a silently skipped confirm)', () => {
+        const gm = importTarget();
+        importInto(gm, exportBlob());
+        expect(gm.showSuccessNotification).toHaveBeenCalled();
+        expect(gm.saveData).toHaveBeenCalled();
+    });
+
+    // Health check, mirroring the save/load suite's "cannot pass by luck" test: if a
+    // fixture value coincidentally equals the fresh manager's default, a dropped field
+    // would be invisible. Any key listed here needs a more distinctive fixture value.
+    test('every exported field differs from a fresh manager, so a drop cannot hide', () => {
+        const blob = exportBlob();
+        const fresh = importTarget();
+        const indistinguishable = restorableKeys(blob).filter(
+            k => JSON.stringify(fresh[instanceKeyFor(k)]) === JSON.stringify(blob[k])
+        );
+        expect(indistinguishable).toEqual([]);
+    });
+
+    test('every field in a backup file is restored by importData', () => {
+        const blob = exportBlob();
+        const gm = importTarget();
+        importInto(gm, blob);
+
+        // A key here rides in the backup file but is NEVER read by importData — the
+        // value is silently lost on restore.
+        const dropped = restorableKeys(blob).filter(
+            k => JSON.stringify(gm[instanceKeyFor(k)]) !== JSON.stringify(blob[k])
+        );
+        expect(dropped).toEqual([]);
+    });
+
+    test('export → import → export is a fixed point', () => {
+        const first = exportBlob();
+        const gm = importTarget();
+        importInto(gm, first);
+
+        const second = SAVE_SERIALIZER.buildSaveData(gm, saveOpts());
+        for (const key of Object.keys(second)) {
+            if (SAVE_ONLY_KEYS.includes(key)) continue;
+            expect(second[key]).toEqual(first[key]);
+        }
+    });
+
+    test('reminderSettings is restored to its own localStorage key', () => {
+        const gm = importTarget();
+        importInto(gm, exportBlob());
+        expect(gm.reminderSettings).toEqual(IMPORTED_REMINDERS);
+        expect(JSON.parse(localStorage.getItem('reminderSettings'))).toEqual(IMPORTED_REMINDERS);
+    });
+
+    test('the pre-import backup of current data is written before overwriting', () => {
+        localStorage.setItem('lifeOrganizeData', '{"xp":1}');
+        const gm = importTarget();
+        importInto(gm, exportBlob());
+        expect(localStorage.getItem('lifeOrganizeData_pre_import_backup')).toBe('{"xp":1}');
+    });
+
+    test('a non-JSON file is rejected without touching state', () => {
+        const gm = importTarget();
+        const xpBefore = gm.xp;
+        gm.importData({ target: { files: [{ name: 'notes.txt' }], value: 'notes.txt' } });
+        expect(gm.showErrorNotification).toHaveBeenCalled();
+        expect(gm.xp).toBe(xpBefore);
+    });
+
+    test('a JSON file that is not a backup is rejected', () => {
+        const gm = importTarget();
+        const xpBefore = gm.xp;
+        importInto(gm, { somethingElse: true });
+        expect(gm.showErrorNotification).toHaveBeenCalled();
+        expect(gm.xp).toBe(xpBefore);
     });
 });

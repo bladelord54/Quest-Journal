@@ -25,19 +25,19 @@
  *   - Browser: plain <script> BEFORE goal-manager.js; attaches window.THEME_RENDER.
  *   - Jest/Node: require('./theme-render.js') returns the frozen builders via module.exports.
  */
-(function () {
-    /**
-     * @param {{
-     *   themeDefinitions: Record<string, any>,
-     *   unlockedThemes: string[],
-     *   currentTheme: string,
-     *   featuredId: string | null,
-     * }} deps
-     * @returns {string}
-     */
-    function renderThemesHTML({ themeDefinitions, unlockedThemes, currentTheme, featuredId }) {
-        const featuredTheme = featuredId ? themeDefinitions[featuredId] : null;
-        const banner = featuredTheme ? `
+
+/**
+ * @param {{
+ *   themeDefinitions: Record<string, any>,
+ *   unlockedThemes: string[],
+ *   currentTheme: string,
+ *   featuredId: string | null,
+ * }} deps
+ * @returns {string}
+ */
+function renderThemesHTML({ themeDefinitions, unlockedThemes, currentTheme, featuredId }) {
+    const featuredTheme = featuredId ? themeDefinitions[featuredId] : null;
+    const banner = featuredTheme ? `
             <div class="theme-featured-banner col-span-full mb-4">
                 <div class="flex items-center gap-3">
                     <span class="theme-featured-banner-icon">${featuredTheme.icon}</span>
@@ -52,40 +52,40 @@
             </div>
         ` : '';
 
-        return banner + Object.entries(themeDefinitions).map(([id, theme]) => {
-            const isUnlocked = unlockedThemes.includes(id);
-            const isSelected = currentTheme === id;
-            const isFeatured = id === featuredId;
-            const lockReason = !isUnlocked ?
-                (theme.special ? theme.special : `Level ${theme.unlockLevel}`) : '';
+    return banner + Object.entries(themeDefinitions).map(([id, theme]) => {
+        const isUnlocked = unlockedThemes.includes(id);
+        const isSelected = currentTheme === id;
+        const isFeatured = id === featuredId;
+        const lockReason = !isUnlocked ?
+            (theme.special ? theme.special : `Level ${theme.unlockLevel}`) : '';
 
-            // Layered tile structure (z-stack):
-            //   .theme-tile-bg      z=0 — static gradient preview mirroring body.theme-X
-            //   .theme-tile-content z=2 — icon, name, status pill
-            // CSS for these classes lives in themes.css "THEME TILE LIVE
-            // PREVIEWS" section. (Previously had a `.theme-tile-video`
-            // layer at z=1 with autoplay WebM per hybrid tile — REMOVED
-            // Jun 6, 2026 evening after user feedback that 6 simultaneous
-            // WebMs on the Themes panel slowed initial load too much. The
-            // tile now shows only the static gradient identity; clicking
-            // the tile opens a preview modal via `previewTheme(id)` which
-            // renders the WebM ON DEMAND for one theme at a time. docs/HISTORY.md
-            // § 2.4 final v2.8 deliverable revision.)
-            //
-            // Tile click changed from `selectTheme(id)` to `previewTheme(id)`
-            // — selection now requires explicit Apply confirmation in the
-            // modal, which (a) reduces accidental theme switches and
-            // (b) lets locked themes display a preview as motivation
-            // before unlock.
-            // v2.9 Track 7 — featured tile decoration. Locked-but-featured
-            // themes get a "✨ FREE this week" pill instead of the
-            // standard "🔒 Level N" lock chip; unlocked-and-featured
-            // themes keep their normal Active/Preview pill but still
-            // get the ✨ corner badge + glow ring via `theme-featured`.
-            const tileTitle = isFeatured
-                ? `✨ Free this week — click to preview`
-                : (isUnlocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview');
-            return `
+        // Layered tile structure (z-stack):
+        //   .theme-tile-bg      z=0 — static gradient preview mirroring body.theme-X
+        //   .theme-tile-content z=2 — icon, name, status pill
+        // CSS for these classes lives in themes.css "THEME TILE LIVE
+        // PREVIEWS" section. (Previously had a `.theme-tile-video`
+        // layer at z=1 with autoplay WebM per hybrid tile — REMOVED
+        // Jun 6, 2026 evening after user feedback that 6 simultaneous
+        // WebMs on the Themes panel slowed initial load too much. The
+        // tile now shows only the static gradient identity; clicking
+        // the tile opens a preview modal via `previewTheme(id)` which
+        // renders the WebM ON DEMAND for one theme at a time. docs/HISTORY.md
+        // § 2.4 final v2.8 deliverable revision.)
+        //
+        // Tile click changed from `selectTheme(id)` to `previewTheme(id)`
+        // — selection now requires explicit Apply confirmation in the
+        // modal, which (a) reduces accidental theme switches and
+        // (b) lets locked themes display a preview as motivation
+        // before unlock.
+        // v2.9 Track 7 — featured tile decoration. Locked-but-featured
+        // themes get a "✨ FREE this week" pill instead of the
+        // standard "🔒 Level N" lock chip; unlocked-and-featured
+        // themes keep their normal Active/Preview pill but still
+        // get the ✨ corner badge + glow ring via `theme-featured`.
+        const tileTitle = isFeatured
+            ? `✨ Free this week — click to preview`
+            : (isUnlocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview');
+        return `
                 <div data-action="theme.preview" data-theme-id="${id}"
                     class="theme-option quest-card rounded-xl shadow-xl text-center cursor-pointer transition-all ${isSelected ? 'ring-4 ring-yellow-400' : ''} ${!isUnlocked && !isFeatured ? 'theme-locked' : ''} ${isFeatured ? 'theme-featured' : ''}"
                     title="${tileTitle}">
@@ -115,56 +115,56 @@
                     </div>
                 </div>
             `;
-        }).join('');
-    }
+    }).join('');
+}
 
-    /**
-     * @param {{
-     *   themeDefinitions: Record<string, any>,
-     *   unlockedThemes: string[],
-     *   currentTheme: string,
-     *   isPremium: boolean,
-     *   featuredId: string | null,
-     *   darkenColor: (hex: string, percent: number) => string,
-     * }} deps
-     * @returns {string}
-     */
-    function renderThemeSelectorHTML({ themeDefinitions, unlockedThemes, currentTheme, isPremium, featuredId, darkenColor }) {
-        return Object.entries(themeDefinitions).map(([id, theme]) => {
-            const isUnlocked = unlockedThemes.includes(id);
-            const isSelected = currentTheme === id;
-            const isPremiumTheme = theme.premium && !isPremium;
-            const isFeatured = id === featuredId;
+/**
+ * @param {{
+ *   themeDefinitions: Record<string, any>,
+ *   unlockedThemes: string[],
+ *   currentTheme: string,
+ *   isPremium: boolean,
+ *   featuredId: string | null,
+ *   darkenColor: (hex: string, percent: number) => string,
+ * }} deps
+ * @returns {string}
+ */
+function renderThemeSelectorHTML({ themeDefinitions, unlockedThemes, currentTheme, isPremium, featuredId, darkenColor }) {
+    return Object.entries(themeDefinitions).map(([id, theme]) => {
+        const isUnlocked = unlockedThemes.includes(id);
+        const isSelected = currentTheme === id;
+        const isPremiumTheme = theme.premium && !isPremium;
+        const isFeatured = id === featuredId;
 
-            let lockReason = '';
-            if (isPremiumTheme) {
-                lockReason = '👑 Premium';
-            } else if (!isUnlocked) {
-                lockReason = theme.special ? theme.special : `Level ${theme.unlockLevel}`;
-            }
+        let lockReason = '';
+        if (isPremiumTheme) {
+            lockReason = '👑 Premium';
+        } else if (!isUnlocked) {
+            lockReason = theme.special ? theme.special : `Level ${theme.unlockLevel}`;
+        }
 
-            // Featured themes override the lock visualization for the
-            // duration of their week — the user CAN apply them, so the
-            // 🔒 chip would be misleading.
-            const isLocked = (isPremiumTheme || !isUnlocked) && !isFeatured;
+        // Featured themes override the lock visualization for the
+        // duration of their week — the user CAN apply them, so the
+        // 🔒 chip would be misleading.
+        const isLocked = (isPremiumTheme || !isUnlocked) && !isFeatured;
 
-            // Compact selector tiles — unified Jun 6, 2026 late-evening
-            // with the full Themes view so BOTH surfaces open the
-            // preview modal on click (previously this compact selector
-            // was left at click=apply for "quick switching", but with
-            // no preview affordance the user couldn't see what locked
-            // / unlocked themes look like before switching). Now
-            // consistent: click any tile anywhere → preview modal →
-            // explicit Apply confirmation. Visual chrome of these
-            // compact tiles intentionally kept as the original flat
-            // 135°-gradient (not upgraded to the layered
-            // `.theme-tile-bg-X` structure used in the full view)
-            // because at p-3 / 3xl-icon size the simpler gradient
-            // reads cleaner — the modal carries the rich preview.
-            const tileTitle = isFeatured
-                ? '✨ Free this week — click to preview'
-                : (!isLocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview');
-            return `
+        // Compact selector tiles — unified Jun 6, 2026 late-evening
+        // with the full Themes view so BOTH surfaces open the
+        // preview modal on click (previously this compact selector
+        // was left at click=apply for "quick switching", but with
+        // no preview affordance the user couldn't see what locked
+        // / unlocked themes look like before switching). Now
+        // consistent: click any tile anywhere → preview modal →
+        // explicit Apply confirmation. Visual chrome of these
+        // compact tiles intentionally kept as the original flat
+        // 135°-gradient (not upgraded to the layered
+        // `.theme-tile-bg-X` structure used in the full view)
+        // because at p-3 / 3xl-icon size the simpler gradient
+        // reads cleaner — the modal carries the rich preview.
+        const tileTitle = isFeatured
+            ? '✨ Free this week — click to preview'
+            : (!isLocked ? 'Click to preview' : '🔒 Locked (' + lockReason.replace(/^[🔒👑]\s*/, '') + ') — click to preview');
+        return `
                 <div data-action="theme.preview" data-theme-id="${id}"
                     class="theme-option p-3 rounded-lg text-center transition-all cursor-pointer ${isSelected ? 'selected ring-2 ring-yellow-400' : ''} ${isLocked ? 'opacity-70' : ''} ${isFeatured ? 'theme-featured' : ''}"
                     style="background: linear-gradient(135deg, ${theme.color}, ${darkenColor(theme.color, 30)})"
@@ -176,22 +176,15 @@
                     ${isSelected ? '<div class="text-xs text-yellow-300 mt-1">✓ Active</div>' : ''}
                 </div>
             `;
-        }).join('');
-    }
+    }).join('');
+}
 
-    const THEME_RENDER = Object.freeze({
-        renderThemesHTML,
-        renderThemeSelectorHTML,
-    });
+const THEME_RENDER = Object.freeze({
+    renderThemesHTML,
+    renderThemeSelectorHTML,
+});
 
-    // Browser (window / globalThis) — cast to `any` so checkJs doesn't flag the
-    // dynamic THEME_RENDER property on the global object.
-    const root = /** @type {any} */ (
-        typeof window !== 'undefined' ? window
-        : (typeof globalThis !== 'undefined' ? globalThis : null)
-    );
-    if (root) root.THEME_RENDER = THEME_RENDER;
 
-    // Node / Jest
-    if (typeof module !== 'undefined' && module.exports) module.exports = THEME_RENDER;
-})();
+// Node / Jest
+
+export default THEME_RENDER;
